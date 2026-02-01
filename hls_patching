@@ -1,0 +1,73 @@
+import rasterio
+from rasterio.windows import Window
+import numpy as np
+import os
+
+# --- CONFIGURATION ---
+patch_size = 256
+base_path = r'C:\Users\user\Desktop\CAPSTONE'
+image_path = f"{base_path}/2024_lhs/merged_2024_lhs.tif"
+mask_path = f"{base_path}/Mining_Footprint/Mining_Footprint/reproj_2024.tif"
+
+output_dir = './optical_training_data'
+os.makedirs(f"{output_dir}/images24", exist_ok=True)
+os.makedirs(f"{output_dir}/masks24", exist_ok=True)
+
+print("--- Starting Optical Targeted Extraction ---")
+
+with rasterio.open(mask_path) as m_src:
+    mask_full = m_src.read(1)
+    # Find all mining pixels
+    y_coords, x_coords = np.where(mask_full == 1)
+    
+    # REDUCED STEP: For 30m, we use a much smaller step to get more patches.
+    # Try [::5] or [::10] to increase the count. 
+    # [::10] means take every 10th mining pixel as a patch center.
+    targets = list(zip(x_coords, y_coords))[::5] 
+
+with rasterio.open(image_path) as img_src:
+    count = 0
+    for cx, cy in targets:
+        # Define window centered on the mining pixel
+        window = Window(cx - patch_size//2, cy - patch_size//2, patch_size, patch_size)
+        
+        # Check bounds
+        if (cx - patch_size//2 < 0 or cy - patch_size//2 < 0 or 
+            cx + patch_size//2 > img_src.width or cy + patch_size//2 > img_src.height):
+            continue
+
+        # Read all 22 bands for this window
+        img_patch = img_src.read(window=window) # (22, 256, 256)
+        
+        # Slice the mask using the same window
+        mask_patch = mask_full[int(window.row_off):int(window.row_off+patch_size), 
+                               int(window.col_off):int(window.col_off+patch_size)]
+
+        # --- OPTICAL STRETCH (Percentile) ---
+        def stretch_optical(patch):
+            # patch shape is (22, 256, 256)
+            stretched_stack = []
+            for b in range(patch.shape[0]):
+                band = patch[b]
+                valid = band[band != 0]
+                if valid.size < 100: 
+                    stretched_stack.append(np.zeros_like(band))
+                    continue
+                p2, p98 = np.percentile(valid, 2), np.percentile(valid, 98)
+                # Normalize 0 to 1
+                s = np.clip((band - p2) / (p98 - p2 + 1e-6), 0, 1)
+                stretched_stack.append(s)
+            return np.stack(stretched_stack)
+
+        final_img = stretch_optical(img_patch).astype(np.float32)
+
+        # Transpose to (256, 256, 22) for PyTorch compatibility
+        final_img = final_img.transpose(1, 2, 0)
+
+        # Save if the patch isn't just empty space
+        if final_img.max() > 0:
+            np.save(f"{output_dir}/images/patch_{count:05d}.npy", final_img)
+            np.save(f"{output_dir}/masks/mask_{count:05d}.npy", mask_patch)
+            count += 1
+
+print(f"--- Processed {count} targeted optical patches. ---")
