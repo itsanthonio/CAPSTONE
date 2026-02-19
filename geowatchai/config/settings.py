@@ -28,13 +28,16 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
 # CSRF trusted origins for browser preview
 CSRF_TRUSTED_ORIGINS = [
+    'http://localhost',
+    'http://127.0.0.1',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
+    'http://localhost:8001',
+    'http://127.0.0.1:8001',
+    'http://localhost:8080',
+    'http://127.0.0.1:8080',
     'http://127.0.0.1:62075',
     'http://localhost:62075',
-    'http://localhost:8001', 
-    'http://127.0.0.1:8001'
-
 ]
 
 # Additional CORS settings for development
@@ -100,6 +103,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
+GDAL_LIBRARY_PATH = r'C:\Program Files\QGIS 3.44.7\bin\gdal312.dll'
+GEOS_LIBRARY_PATH = r'C:\Program Files\QGIS 3.44.7\bin\geos_c.dll'
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
