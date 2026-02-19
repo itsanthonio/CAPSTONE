@@ -189,14 +189,21 @@ class MiningDetectionPipeline:
 
     def _resolve_local_path(self, gcs_path: str, job: Job) -> str:
         if gcs_path.startswith('gs://'):
-            import subprocess
-            local_path = f"/tmp/hls_{job.id}.tif"
-            result = subprocess.run(
-                ['gsutil', 'cp', gcs_path, local_path],
-                capture_output=True, text=True
-            )
-            if result.returncode != 0:
-                raise RuntimeError(f"gsutil cp failed: {result.stderr}")
+            from google.cloud import storage as gcs
+            import tempfile, os
+
+            # Parse gs://bucket/path/to/file.tif
+            without_scheme = gcs_path[5:]  # strip "gs://"
+            bucket_name, blob_path = without_scheme.split('/', 1)
+
+            local_path = os.path.join(tempfile.gettempdir(), f"hls_{job.id}.tif")
+
+            logger.info(f"[Pipeline] Downloading {gcs_path} -> {local_path}")
+            client = gcs.Client()
+            bucket = client.bucket(bucket_name)
+            blob   = bucket.blob(blob_path)
+            blob.download_to_filename(local_path)
+            logger.info(f"[Pipeline] Download complete")
             return local_path
         return gcs_path
 
@@ -441,4 +448,3 @@ def process_detection_job(job_id: str, threshold: float = 0.5,
 
 
 trigger_detection_pipeline = process_detection_job
-

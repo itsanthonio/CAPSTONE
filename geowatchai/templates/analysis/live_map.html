@@ -11,7 +11,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
         </svg>
     </button>
-    
+
     <!-- Main Sidebar -->
     <aside id="main-sidebar" class="fixed left-0 top-16 bottom-0 w-64 bg-sidebar-green text-white z-20 transform transition-transform duration-300 ease-in-out overflow-y-auto">
         <div class="p-4 space-y-4">
@@ -29,14 +29,14 @@
                     </button>
                 </div>
             </div>
-            
+
             <div>
                 <h3 class="text-sm font-semibold text-gray-300 mb-3">AOI Tools</h3>
                 <button id="draw-aoi-btn" class="w-full px-4 py-2 bg-sidebar-green text-white rounded-lg shadow-sm hover:bg-opacity-90 transition-colors block">
                     Draw Area
                 </button>
             </div>
-            
+
             <div>
                 <h3 class="text-sm font-semibold text-gray-300 mb-2">Coordinates</h3>
                 <div class="bg-gray-800 px-3 py-2 rounded-lg text-sm text-gray-300 border border-gray-700">
@@ -45,10 +45,10 @@
             </div>
         </div>
     </aside>
-    
+
     <div class="flex-1 relative">
         <div id="live-map" class="w-full h-full bg-gray-100 z-0"></div>
-        
+
         <div class="absolute bottom-4 right-4 z-20">
             <div class="bg-white rounded-lg shadow-sm p-3">
                 <h4 class="text-xs font-semibold text-gray-700 mb-2">Legend</h4>
@@ -68,7 +68,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="absolute top-4 right-4 z-20">
             <div class="bg-white rounded-lg shadow-sm p-3 max-w-xs">
                 <h4 class="text-xs font-semibold text-gray-700 mb-1">HLS Optical Metadata</h4>
@@ -81,14 +81,14 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Detection Details Sidebar Toggle Button -->
     <button id="toggle-details-sidebar" class="fixed right-4 top-20 z-30 bg-sidebar-green text-white p-2 rounded-lg shadow-lg hover:bg-opacity-90 transition-all duration-300">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
         </svg>
     </button>
-    
+
     <!-- Detection Details Sidebar -->
     <aside id="details-sidebar" class="fixed right-0 top-16 bottom-0 w-80 bg-white border-l border-gray-200 flex flex-col transform transition-transform duration-300 ease-in-out z-20">
         <div class="p-4 border-b border-gray-200">
@@ -104,7 +104,7 @@
                 </span>
             </div>
         </div>
-        
+
         <div id="aoi-scan-section" class="p-4 border-b border-gray-200 hidden">
             <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                 <h4 class="text-sm font-medium text-yellow-800 mb-2">AOI Selected</h4>
@@ -116,7 +116,7 @@
                 </button>
             </div>
         </div>
-        
+
         <div class="p-4 border-b border-gray-200">
             <h4 class="text-sm font-medium text-gray-700 mb-3">Confidence Filter</h4>
             <div class="space-y-2">
@@ -124,11 +124,11 @@
                     <span class="text-xs text-gray-600">Min Confidence</span>
                     <span id="confidence-value" class="text-xs font-medium text-gray-900">50%</span>
                 </div>
-                <input type="range" id="confidence-slider" min="0" max="100" value="50" 
+                <input type="range" id="confidence-slider" min="0" max="100" value="50"
                        class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
             </div>
         </div>
-        
+
         <div class="flex-1 overflow-y-auto p-4 space-y-3" id="detection-list">
             <div class="text-center text-gray-500 text-sm py-8">
                 <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize sidebar state
     let mainSidebarOpen = true;
     let detailsSidebarOpen = true;
-    
+
     // Initialize the main Map Handler
     window.mapHandler = new MapHandler('live-map', {
         center: [-1.6244, 6.6885], // Center on Kumasi, Ghana
@@ -197,11 +197,11 @@ function setupSidebarToggles() {
     // Main Sidebar Toggle
     const mainSidebarToggle = document.getElementById('toggle-main-sidebar');
     const mainSidebar = document.getElementById('main-sidebar');
-    
+
     if (mainSidebarToggle && mainSidebar) {
         mainSidebarToggle.addEventListener('click', () => {
             mainSidebarOpen = !mainSidebarOpen;
-            
+
             if (mainSidebarOpen) {
                 mainSidebar.classList.remove('-translate-x-full');
                 mainSidebarToggle.classList.remove('left-4');
@@ -211,7 +211,7 @@ function setupSidebarToggles() {
                 mainSidebarToggle.classList.remove('left-64');
                 mainSidebarToggle.classList.add('left-4');
             }
-            
+
             // Resize map after animation
             setTimeout(() => {
                 if (window.mapHandler && window.mapHandler.map) {
@@ -220,15 +220,15 @@ function setupSidebarToggles() {
             }, 300);
         });
     }
-    
+
     // Details Sidebar Toggle
     const detailsSidebarToggle = document.getElementById('toggle-details-sidebar');
     const detailsSidebar = document.getElementById('details-sidebar');
-    
+
     if (detailsSidebarToggle && detailsSidebar) {
         detailsSidebarToggle.addEventListener('click', () => {
             detailsSidebarOpen = !detailsSidebarOpen;
-            
+
             if (detailsSidebarOpen) {
                 detailsSidebar.classList.remove('translate-x-full');
                 detailsSidebarToggle.classList.remove('right-4');
@@ -238,7 +238,7 @@ function setupSidebarToggles() {
                 detailsSidebarToggle.classList.remove('right-80');
                 detailsSidebarToggle.classList.add('right-4');
             }
-            
+
             // Resize map after animation
             setTimeout(() => {
                 if (window.mapHandler && window.mapHandler.map) {
@@ -256,12 +256,12 @@ function setupEventListeners() {
         'toggle-detection-layer': 'detections',
         'toggle-concession-layer': 'concessions'
     };
-    
+
     Object.entries(toggleButtons).forEach(([id, layer]) => {
         const btn = document.getElementById(id);
         if (btn) btn.addEventListener('click', () => window.mapHandler.toggleLayer(layer));
     });
-    
+
     // 2. Drawing Mode Toggle
     const drawBtn = document.getElementById('draw-aoi-btn');
     if (drawBtn) {
@@ -275,7 +275,7 @@ function setupEventListeners() {
     if (scanBtn) {
         scanBtn.addEventListener('click', () => window.mapHandler.scanAOI());
     }
-    
+
     // 4. Confidence Filtering
     const slider = document.getElementById('confidence-slider');
     if (slider) {
