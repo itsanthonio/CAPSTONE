@@ -17,13 +17,15 @@ class MapHandler {
             container: this.containerId,
             style: 'https://tiles.openfreemap.org/styles/liberty',
             center: this.options.center || [-1.6244, 6.6885],
-            zoom: this.options.zoom || 10
+            zoom: this.options.zoom || 8,
+            zoomControl: true
         });
 
         this.map.on('load', () => {
             this.setupDrawingTools();
             this.setupMapLayers();
             this.setupClickHandlers();
+            this.setupKeyboardControls();
             console.log("Map fully loaded and layers initialized.");
         });
 
@@ -43,14 +45,27 @@ class MapHandler {
     }
 
     setupDrawingTools() {
-        if (typeof MapboxDraw === 'undefined') return;
+        console.log('setupDrawingTools called');
+        console.log('MapboxDraw available:', typeof MapboxDraw !== 'undefined');
+        
+        if (typeof MapboxDraw === 'undefined') {
+            console.warn('MapboxDraw not loaded - drawing tools disabled');
+            return;
+        }
+        
+        console.log('Initializing MapboxDraw...');
         this.draw = new MapboxDraw({
             displayControlsDefault: false,
             controls: { polygon: true, trash: true }
         });
+        console.log('MapboxDraw initialized:', this.draw);
+        
         this.map.addControl(this.draw);
+        console.log('MapboxDraw added to map');
+        
         this.map.on('draw.create', (e) => this.handleAOICreated(e));
         this.map.on('draw.update', (e) => this.handleAOICreated(e));
+        console.log('Drawing event listeners added');
     }
 
     setupMapLayers() {
@@ -225,6 +240,46 @@ class MapHandler {
         }
     }
 
+    toggleDrawingMode() {
+        console.log('toggleDrawingMode called');
+        console.log('draw object:', this.draw);
+        console.log('MapboxDraw available:', typeof MapboxDraw !== 'undefined');
+        
+        if (!this.draw) {
+            console.warn('Drawing tools not available - draw object not initialized');
+            // Try to initialize drawing tools
+            this.setupDrawingTools();
+            if (!this.draw) {
+                console.error('Failed to initialize drawing tools');
+                return;
+            }
+        }
+        
+        const drawBtns = document.querySelectorAll('#draw-aoi-btn');
+        console.log('Found draw buttons:', drawBtns.length);
+        
+        // Toggle between drawing and navigation modes
+        if (this.draw.getMode() === 'draw_polygon') {
+            this.draw.changeMode('simple_select');
+            drawBtns.forEach(btn => {
+                if (btn) {
+                    btn.textContent = btn.textContent.includes('AOI') ? 'Draw AOI' : 'Draw Area';
+                    btn.classList.remove('bg-red-600');
+                    btn.classList.add('bg-sidebar-green');
+                }
+            });
+        } else {
+            this.draw.changeMode('draw_polygon');
+            drawBtns.forEach(btn => {
+                if (btn) {
+                    btn.textContent = btn.textContent.includes('AOI') ? 'Stop Drawing' : 'Stop Drawing';
+                    btn.classList.remove('bg-sidebar-green');
+                    btn.classList.add('bg-red-600');
+                }
+            });
+        }
+    }
+
     getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -238,5 +293,25 @@ class MapHandler {
             }
         }
         return cookieValue;
+    }
+
+    setupKeyboardControls() {
+        // Add keyboard shortcuts for zoom
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            
+            switch(e.key) {
+                case '+':
+                case '=':
+                    e.preventDefault();
+                    this.map.zoomIn();
+                    break;
+                case '-':
+                case '_':
+                    e.preventDefault();
+                    this.map.zoomOut();
+                    break;
+            }
+        });
     }
 }
