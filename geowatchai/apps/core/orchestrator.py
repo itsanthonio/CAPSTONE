@@ -1,308 +1,444 @@
 """
-Detection Orchestrator for linking GEE, Preprocessing, Inference, and Post-processing services.
+Detection Orchestrator — coordinates the full pipeline:
 
-This module provides the main pipeline coordination for illegal mining detection:
-- Triggers GEE export for AOI and date range
-- Processes exported imagery through preprocessing pipeline
-- Runs inference on preprocessed tensors
-- Post-processes probability masks into GeoJSON polygons
-- Saves results to database and updates job status
+  Job → GEE export → wait for GCS file → preprocess → inference
+      → postprocess → DetectedSite records → legal classification
+      → Alert generation → timelapse fetch (async)
+
+Every step updates job.status so the frontend can track progress.
 """
 
 import logging
-import os
-import uuid
+import time
+import json
+from typing import Dict, Any, List, Optional
+
 import numpy as np
-from datetime import datetime
-from typing import Dict, Any, Optional
+from django.contrib.gis.geos import Polygon, GEOSGeometry
 
 from apps.jobs.models import Job
 from apps.jobs.services import JobService
 from apps.gee.services import get_gee_service
-from apps.gee.tasks import export_hls_for_job
 from apps.preprocessing.services import get_preprocessing_service
 from apps.inference.services import get_inference_service
 from apps.postprocessing.services import get_postprocessor
+from apps.results.models import Result
 
 logger = logging.getLogger(__name__)
 
 
+def _get_detection_models():
+    from apps.detections.models import (
+        DetectedSite, SatelliteImagery, ModelRun,
+        LegalConcession, Alert, SiteTimelapse, Region,
+    )
+    return DetectedSite, SatelliteImagery, ModelRun, LegalConcession, Alert, SiteTimelapse, Region
+
+
+BANDS_USED = ['B3', 'B4', 'B8', 'B11', 'B12', 'BSI']
+MODEL_NAME = 'FPN-ResNet50-6band'
+GEE_POLL_INTERVAL_SECONDS = 30
+GEE_EXPORT_TIMEOUT_SECONDS = 3600
+
+
 class MiningDetectionPipeline:
     """
-    Main orchestrator for illegal mining detection pipeline.
-    
-    This class coordinates the complete workflow:
-    1. GEE export (HLS imagery)
-    2. Preprocessing (band extraction + BSI + normalization)
-    3. Inference (model prediction)
-    4. Post-processing (polygon extraction)
-    5. Results storage (database)
+    Orchestrates the complete illegal mining detection pipeline.
+
+    Steps:
+        1.  Validate job
+        2.  Trigger GEE HLS export
+        3.  Poll until GCS file is ready
+        4.  Download GeoTIFF
+        5.  Preprocess into 6-band tensor
+        6.  Run FPN-ResNet50 inference
+        7.  Post-process probability mask to polygons
+        8.  Save raw Result blob (backward compat)
+        9.  Explode Result features to DetectedSite records
+        10. Spatial join against LegalConcession to set legal_status
+        11. Generate Alert for each illegal site
+        12. Enqueue timelapse fetch task for every new site
+        13. Mark job COMPLETED
     """
-    
-    def __init__(self, threshold: float = 0.5, min_area: float = 100.0):
-        """
-        Initialize the detection pipeline.
-        
-        Args:
-            threshold: Probability threshold for binary classification
-            min_area: Minimum polygon area in square meters
-        """
+
+    def __init__(self, threshold: float = 0.5, min_area_m2: float = 100.0):
         self.threshold = threshold
-        self.min_area = min_area
-        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-        
-        # Initialize services
+        self.min_area_m2 = min_area_m2
         self.gee_service = get_gee_service()
         self.preprocessing_service = get_preprocessing_service()
         self.inference_service = get_inference_service()
-        self.postprocessor = get_postprocessor(threshold, min_area)
-    
+        self.postprocessor = get_postprocessor(threshold, min_area_m2)
+
+    # ------------------------------------------------------------------
+    # Public entry point
+    # ------------------------------------------------------------------
+
     def process_job(self, job_id: str) -> Dict[str, Any]:
-        """
-        Process a complete detection job from start to finish.
-        
-        Args:
-            job_id: Job UUID to process
-            
-        Returns:
-            dict: Processing result with status and details
-        """
         try:
-            self.logger.info(f"Starting detection pipeline for job {job_id}")
-            
-            # Step 1: Get job and validate
-            job = self._get_and_validate_job(job_id)
-            
-            # Step 2: Trigger GEE export
-            geotiff_path = self._trigger_gee_export(job)
-            
-            # Step 3: Preprocess imagery
-            preprocessed_tensor, metadata = self._preprocess_imagery(geotiff_path)
-            
-            # Step 4: Run inference
-            probability_mask = self._run_inference(preprocessed_tensor)
-            
-            # Step 5: Post-process results
-            result = self._postprocess_results(probability_mask, job, metadata)
-            
-            # Step 6: Update job status to completed
+            logger.info(f"[Pipeline] Starting job {job_id}")
+
+            job = self._validate_job(job_id)
+            geotiff_path, scene_id, satellite, cloud_cover = self._export_and_wait(job)
+            tensor, raster_meta = self._preprocess(job, geotiff_path)
+            probability_mask = self._infer(job, tensor)
+            result, polygons = self._postprocess(job, probability_mask, raster_meta, geotiff_path)
+            satellite_imagery = self._log_satellite_imagery(
+                scene_id, satellite, cloud_cover, job, geotiff_path, raster_meta
+            )
+            model_run = self._log_model_run(job, satellite_imagery)
+            detected_sites = self._create_detected_sites(job, result, model_run, satellite_imagery)
+            self._classify_legal_status(detected_sites)
+            self._generate_alerts(detected_sites)
+            self._enqueue_timelapse_fetches(detected_sites)
+
             JobService.update_job_status(job_id, Job.Status.COMPLETED)
-            
-            self.logger.info(f"Detection pipeline completed for job {job_id}")
+            logger.info(f"[Pipeline] Completed job {job_id} — {len(detected_sites)} sites")
+
             return {
                 'status': 'completed',
                 'job_id': job_id,
-                'result_id': result.id,
-                'total_detections': result.geojson['properties']['total_detections'],
-                'total_area_hectares': result.total_area_detected
+                'result_id': str(result.id),
+                'total_detections': len(detected_sites),
+                'illegal_count': sum(1 for s in detected_sites if s.legal_status == 'illegal'),
             }
-            
-        except Exception as e:
-            self.logger.error(f"Detection pipeline failed for job {job_id}: {str(e)}")
-            
-            # Update job status to failed
+
+        except Exception as exc:
+            logger.error(f"[Pipeline] Job {job_id} failed: {exc}", exc_info=True)
             try:
-                JobService.update_job_status(
-                    job_id, 
-                    Job.Status.FAILED, 
-                    failure_reason=str(e)
-                )
-            except Exception as status_error:
-                self.logger.error(f"Failed to update job status: {str(status_error)}")
-            
-            return {
-                'status': 'failed',
-                'job_id': job_id,
-                'error': str(e)
-            }
-    
-    def _get_and_validate_job(self, job_id: str) -> Job:
-        """
-        Get job and validate it's ready for processing.
-        
-        Args:
-            job_id: Job UUID
-            
-        Returns:
-            Job instance
-            
-        Raises:
-            Job.DoesNotExist: If job doesn't exist
-            ValueError: If job is not in correct state
-        """
+                JobService.update_job_status(job_id, Job.Status.FAILED, failure_reason=str(exc))
+            except Exception:
+                pass
+            return {'status': 'failed', 'job_id': job_id, 'error': str(exc)}
+
+    # ------------------------------------------------------------------
+    # Step 1 — Validate
+    # ------------------------------------------------------------------
+
+    def _validate_job(self, job_id: str) -> Job:
         job = Job.objects.get(id=job_id)
-        
-        # Validate job status
-        valid_statuses = [Job.Status.QUEUED, Job.Status.EXPORTING]
-        if job.status not in valid_statuses:
-            raise ValueError(f"Job {job_id} is not in a valid state for processing. Current status: {job.status}")
-        
-        # Update job status to validating
+        valid = [Job.Status.QUEUED, Job.Status.EXPORTING]
+        if job.status not in valid:
+            raise ValueError(
+                f"Job {job_id} has status '{job.status}', expected one of {valid}"
+            )
         JobService.update_job_status(job_id, Job.Status.VALIDATING)
-        
-        self.logger.info(f"Job {job_id} validated and ready for processing")
         return job
-    
-    def _trigger_gee_export(self, job: Job) -> str:
+
+    # ------------------------------------------------------------------
+    # Step 2 — GEE export + poll until GCS file ready
+    # ------------------------------------------------------------------
+
+    def _export_and_wait(self, job: Job):
         """
-        Trigger GEE export for the job.
-        
-        Args:
-            job: Job instance
-            
-        Returns:
-            str: Path to exported GeoTIFF file
+        Triggers GEE export and blocks until the GeoTIFF lands in GCS.
+        Returns (geotiff_gcs_path, scene_id, satellite, cloud_cover_pct).
         """
-        self.logger.info(f"Triggering GEE export for job {job.id}")
-        
-        # Update job status to exporting
-        JobService.update_job_status(job.id, Job.Status.EXPORTING)
-        
-        # Trigger GEE export task
-        export_result = export_hls_for_job.delay(str(job.id))
-        
-        # For now, we'll simulate the export completion
-        # In a real implementation, we'd wait for the task to complete
-        # and get the actual file path
-        
-        # Simulate exported file path
-        geotiff_path = f"/tmp/hls_export_{job.id}.tif"
-        
-        self.logger.info(f"GEE export triggered for job {job.id}, simulated path: {geotiff_path}")
-        return geotiff_path
-    
-    def _preprocess_imagery(self, geotiff_path: str) -> tuple:
-        """
-        Preprocess the exported imagery.
-        
-        Args:
-            geotiff_path: Path to exported GeoTIFF
-            
-        Returns:
-            tuple: (preprocessed_tensor, metadata)
-        """
-        self.logger.info(f"Preprocessing imagery from {geotiff_path}")
-        
-        # Update job status to preprocessing
-        # Note: In real implementation, we'd get job_id from geotiff_path or context
-        
-        # For demonstration, we'll create a mock preprocessed tensor
-        import numpy as np
-        preprocessed_tensor = np.random.rand(6, 256, 256).astype(np.float32)
-        
-        metadata = {
-            'preprocessing_applied': True,
-            'tensor_shape': preprocessed_tensor.shape,
-            'tensor_dtype': str(preprocessed_tensor.dtype),
-            'geotiff_path': geotiff_path
-        }
-        
-        self.logger.info(f"Preprocessing completed for {geotiff_path}")
-        return preprocessed_tensor, metadata
-    
-    def _run_inference(self, preprocessed_tensor) -> np.ndarray:
-        """
-        Run inference on preprocessed tensor.
-        
-        Args:
-            preprocessed_tensor: 6-channel tensor from preprocessing
-            
-        Returns:
-            np.ndarray: Probability mask
-        """
-        self.logger.info(f"Running inference on tensor shape: {preprocessed_tensor.shape}")
-        
-        # Update job status to inferring
-        # Note: In real implementation, we'd get job_id from context
-        
-        # Run inference
-        probability_mask = self.inference_service.predict(preprocessed_tensor)
-        
-        self.logger.info(f"Inference completed, output shape: {probability_mask.shape}")
+        JobService.update_job_status(str(job.id), Job.Status.EXPORTING)
+
+        export_result = self.gee_service.export_hls_imagery(job)
+        if not export_result['success']:
+            raise RuntimeError(f"GEE export failed: {export_result.get('error')}")
+
+        export_id = export_result['export_id']
+        logger.info(f"[Pipeline] GEE export started — task {export_id}")
+
+        deadline = time.time() + GEE_EXPORT_TIMEOUT_SECONDS
+        while time.time() < deadline:
+            monitor = self.gee_service.monitor_export(
+                export_id, timeout=GEE_POLL_INTERVAL_SECONDS + 5
+            )
+            state = monitor.get('status')
+
+            if state == 'completed':
+                gcs_path = monitor.get('export_url', '')
+                scene_id = export_result.get('scene_id', f"job_{job.id}")
+                satellite = export_result.get('satellite', 'S2A')
+                cloud_cover = export_result.get('cloud_cover_pct', 0.0)
+                logger.info(f"[Pipeline] GEE export complete — {gcs_path}")
+                return gcs_path, scene_id, satellite, cloud_cover
+
+            elif state in ('failed', 'cancelled', 'error'):
+                raise RuntimeError(
+                    f"GEE export ended with state '{state}': {monitor.get('error')}"
+                )
+
+            logger.info(
+                f"[Pipeline] GEE export still running, "
+                f"waiting {GEE_POLL_INTERVAL_SECONDS}s ..."
+            )
+            time.sleep(GEE_POLL_INTERVAL_SECONDS)
+
+        raise TimeoutError(
+            f"GEE export timed out after {GEE_EXPORT_TIMEOUT_SECONDS}s"
+        )
+
+    # ------------------------------------------------------------------
+    # Step 3 — Preprocess
+    # ------------------------------------------------------------------
+
+    def _preprocess(self, job: Job, geotiff_path: str):
+        JobService.update_job_status(str(job.id), Job.Status.PREPROCESSING)
+        local_path = self._resolve_local_path(geotiff_path, job)
+        tensor, metadata = self.preprocessing_service.preprocess_geotiff(local_path)
+        self.preprocessing_service.validate_tensor(tensor)
+        logger.info(
+            f"[Pipeline] Tensor {tensor.shape} "
+            f"range [{tensor.min():.3f}, {tensor.max():.3f}]"
+        )
+        return tensor, metadata
+
+    def _resolve_local_path(self, gcs_path: str, job: Job) -> str:
+        if gcs_path.startswith('gs://'):
+            import subprocess
+            local_path = f"/tmp/hls_{job.id}.tif"
+            result = subprocess.run(
+                ['gsutil', 'cp', gcs_path, local_path],
+                capture_output=True, text=True
+            )
+            if result.returncode != 0:
+                raise RuntimeError(f"gsutil cp failed: {result.stderr}")
+            return local_path
+        return gcs_path
+
+    # ------------------------------------------------------------------
+    # Step 4 — Inference
+    # ------------------------------------------------------------------
+
+    def _infer(self, job: Job, tensor: np.ndarray) -> np.ndarray:
+        JobService.update_job_status(str(job.id), Job.Status.INFERRING)
+        probability_mask = self.inference_service.predict(tensor)
+        logger.info(
+            f"[Pipeline] Probability mask "
+            f"[{probability_mask.min():.3f}, {probability_mask.max():.3f}]"
+        )
         return probability_mask
-    
-    def _postprocess_results(self, probability_mask: np.ndarray, job: Job, metadata: dict):
-        """
-        Post-process inference results.
-        
-        Args:
-            probability_mask: Probability mask from inference
-            job: Job instance
-            metadata: Preprocessing metadata
-            
-        Returns:
-            Result: Created database record
-        """
-        self.logger.info(f"Post-processing results for job {job.id}")
-        
-        # Update job status to postprocessing
-        JobService.update_job_status(job.id, Job.Status.POSTPROCESSING)
-        
-        # Create affine transform for coordinate conversion
-        # In real implementation, this would come from the original GeoTIFF
+
+    # ------------------------------------------------------------------
+    # Step 5 — Postprocess → Result
+    # ------------------------------------------------------------------
+
+    def _postprocess(self, job: Job, probability_mask: np.ndarray,
+                     metadata: dict, geotiff_path: str):
+        JobService.update_job_status(str(job.id), Job.Status.POSTPROCESSING)
+
         from rasterio.transform import Affine
-        transform = Affine(1, 0, 0, 0, -1, 0)  # Identity transform
-        
-        # Run post-processing
+        transform = metadata.get('transform', Affine(1, 0, 0, 0, -1, 0))
+
         result = self.postprocessor.process_probability_mask(
             probability_mask,
             transform,
             job,
-            job.model_version,
-            metadata.get('geotiff_path', 'unknown')
+            model_version=job.model_version,
+            tile_reference=geotiff_path,
         )
-        
-        self.logger.info(f"Post-processing completed for job {job.id}")
-        return result
+        polygons = result.geojson.get('features', [])
+        logger.info(f"[Pipeline] Postprocessing yielded {len(polygons)} polygons")
+        return result, polygons
+
+    # ------------------------------------------------------------------
+    # Step 6 — Log SatelliteImagery
+    # ------------------------------------------------------------------
+
+    def _log_satellite_imagery(self, scene_id: str, satellite: str,
+                                cloud_cover: float, job: Job,
+                                gcs_path: str, metadata: dict):
+        _, SatelliteImagery, *_ = _get_detection_models()
+        imagery, _ = SatelliteImagery.objects.get_or_create(
+            scene_id=scene_id,
+            defaults={
+                'satellite': satellite,
+                'acquisition_date': job.end_date,
+                'cloud_cover_pct': cloud_cover,
+                'bands_processed': BANDS_USED,
+                'preprocessing_version': job.preprocessing_version,
+                'coverage_geometry': job.aoi_geometry,
+                'gcs_path': gcs_path,
+            }
+        )
+        return imagery
+
+    # ------------------------------------------------------------------
+    # Step 7 — Log ModelRun
+    # ------------------------------------------------------------------
+
+    def _log_model_run(self, job: Job, satellite_imagery):
+        import os
+        _, _, ModelRun, *_ = _get_detection_models()
+        checkpoint_path = os.getenv('MODEL_PATH', 'unknown')
+        return ModelRun.objects.create(
+            job=job,
+            model_name=MODEL_NAME,
+            model_version=job.model_version,
+            checkpoint_path=checkpoint_path,
+            architecture='FPN',
+            encoder='resnet50',
+            bands_used=BANDS_USED,
+            inference_threshold=self.threshold,
+        )
+
+    # ------------------------------------------------------------------
+    # Step 8 — Explode Result → DetectedSite records
+    # ------------------------------------------------------------------
+
+    def _create_detected_sites(self, job: Job, result: Result,
+                                model_run, satellite_imagery) -> List:
+        DetectedSite, *_ = _get_detection_models()
+        JobService.update_job_status(str(job.id), Job.Status.STORING)
+
+        sites = []
+        for feature in result.geojson.get('features', []):
+            geom_dict = feature['geometry']
+            props = feature['properties']
+
+            geom = GEOSGeometry(json.dumps(geom_dict), srid=4326)
+            if not isinstance(geom, Polygon):
+                logger.warning(f"[Pipeline] Skipping non-polygon: {geom.geom_type}")
+                continue
+
+            area_ha = props.get('area', 0.0) / 10_000.0
+
+            site = DetectedSite.objects.create(
+                geometry=geom,
+                confidence_score=props.get('confidence_score', 0.0),
+                area_hectares=area_ha,
+                detection_date=job.end_date,
+                job=job,
+                model_run=model_run,
+                satellite_imagery=satellite_imagery,
+                first_detected_at=job.end_date,
+            )
+            sites.append(site)
+
+        logger.info(f"[Pipeline] Created {len(sites)} DetectedSite records")
+        return sites
+
+    # ------------------------------------------------------------------
+    # Step 9 — Legal classification via spatial join
+    # ------------------------------------------------------------------
+
+    def _classify_legal_status(self, sites: List) -> None:
+        if not sites:
+            return
+
+        DetectedSite, _, _, LegalConcession, *_ = _get_detection_models()
+        active_concessions = LegalConcession.objects.filter(is_active=True)
+
+        for site in sites:
+            intersecting = active_concessions.filter(
+                geometry__intersects=site.geometry
+            ).first()
+
+            if intersecting:
+                try:
+                    intersection = site.geometry.intersection(intersecting.geometry)
+                    overlap_pct = (
+                        (intersection.area / site.geometry.area) * 100
+                        if site.geometry.area > 0 else 0.0
+                    )
+                except Exception:
+                    overlap_pct = 0.0
+
+                site.intersecting_concession = intersecting
+                site.concession_overlap_pct = overlap_pct
+                site.legal_status = (
+                    DetectedSite.LegalStatus.LEGAL
+                    if overlap_pct >= 50.0
+                    else DetectedSite.LegalStatus.ILLEGAL
+                )
+            else:
+                site.legal_status = DetectedSite.LegalStatus.ILLEGAL
+
+            site.save(update_fields=[
+                'legal_status', 'intersecting_concession', 'concession_overlap_pct'
+            ])
+
+        illegal = sum(1 for s in sites if s.legal_status == 'illegal')
+        logger.info(f"[Pipeline] Classification done — {illegal}/{len(sites)} illegal")
+
+    # ------------------------------------------------------------------
+    # Step 10 — Generate Alerts for illegal sites
+    # ------------------------------------------------------------------
+
+    def _generate_alerts(self, sites: List) -> None:
+        if not sites:
+            return
+
+        DetectedSite, _, _, _, Alert, *_ = _get_detection_models()
+
+        for site in sites:
+            if site.legal_status != DetectedSite.LegalStatus.ILLEGAL:
+                continue
+
+            if site.recurrence_count > 1:
+                alert_type = Alert.AlertType.RECURRING_SITE
+                severity = Alert.Severity.CRITICAL
+            elif site.confidence_score >= 0.85:
+                alert_type = Alert.AlertType.HIGH_CONFIDENCE
+                severity = Alert.Severity.HIGH
+            elif site.area_hectares > 5.0:
+                alert_type = Alert.AlertType.EXPANSION_DETECTED
+                severity = Alert.Severity.HIGH
+            else:
+                alert_type = Alert.AlertType.NEW_DETECTION
+                severity = Alert.Severity.MEDIUM
+
+            Alert.objects.create(
+                detected_site=site,
+                alert_type=alert_type,
+                severity=severity,
+                title=(
+                    f"Illegal mining detected — "
+                    f"{site.area_hectares:.2f} ha "
+                    f"({site.confidence_score:.0%} confidence)"
+                ),
+                description=(
+                    f"Detection date: {site.detection_date}\n"
+                    f"Area: {site.area_hectares:.2f} ha\n"
+                    f"Confidence: {site.confidence_score:.2%}\n"
+                    f"Recurrence: {site.recurrence_count}x"
+                ),
+            )
+
+        alert_count = Alert.objects.filter(detected_site__in=sites).count()
+        logger.info(f"[Pipeline] Generated {alert_count} alerts")
+
+    # ------------------------------------------------------------------
+    # Step 11 — Enqueue timelapse fetches
+    # ------------------------------------------------------------------
+
+    def _enqueue_timelapse_fetches(self, sites: List) -> None:
+        if not sites:
+            return
+        try:
+            from apps.detections.tasks import fetch_site_timelapse
+            for site in sites:
+                fetch_site_timelapse.delay(str(site.id))
+            logger.info(
+                f"[Pipeline] Enqueued timelapse fetch for {len(sites)} sites"
+            )
+        except Exception as exc:
+            logger.warning(f"[Pipeline] Could not enqueue timelapse tasks: {exc}")
 
 
-# Singleton instance for the pipeline
-_detection_pipeline = None
+# ---------------------------------------------------------------------------
+# Module-level helpers used by tasks.py
+# ---------------------------------------------------------------------------
+
+_pipeline: Optional[MiningDetectionPipeline] = None
 
 
-def get_detection_pipeline(threshold: float = 0.5, min_area: float = 100.0) -> MiningDetectionPipeline:
-    """
-    Get singleton instance of the detection pipeline.
-    
-    Args:
-        threshold: Probability threshold for binary classification
-        min_area: Minimum polygon area in square meters
-        
-    Returns:
-        MiningDetectionPipeline instance
-    """
-    global _detection_pipeline
-    if _detection_pipeline is None:
-        _detection_pipeline = MiningDetectionPipeline(threshold, min_area)
-    return _detection_pipeline
+def get_detection_pipeline(threshold: float = 0.5,
+                            min_area: float = 100.0) -> MiningDetectionPipeline:
+    global _pipeline
+    if _pipeline is None:
+        _pipeline = MiningDetectionPipeline(threshold, min_area)
+    return _pipeline
 
 
-def trigger_detection_pipeline(job_id: str, threshold: float = 0.5, min_area: float = 100.0) -> Dict[str, Any]:
-    """
-    Process a detection job using the orchestrator.
-    
-    Args:
-        job_id: Job UUID to process
-        threshold: Probability threshold for binary classification
-        min_area: Minimum polygon area in square meters
-        
-    Returns:
-        dict: Processing result
-    """
-    pipeline = get_detection_pipeline(threshold, min_area)
-    return pipeline.process_job(job_id)
+def process_detection_job(job_id: str, threshold: float = 0.5,
+                           min_area: float = 100.0) -> Dict[str, Any]:
+    return get_detection_pipeline(threshold, min_area).process_job(job_id)
 
 
-def process_detection_job(job_id: str, threshold: float = 0.5, min_area: float = 100.0) -> Dict[str, Any]:
-    """
-    Wrapper function for backward compatibility.
-    
-    Args:
-        job_id: Job UUID to process
-        threshold: Probability threshold for binary classification
-        min_area: Minimum polygon area in square meters
-        
-    Returns:
-        dict: Processing result
-    """
-    return trigger_detection_pipeline(job_id, threshold, min_area)
+trigger_detection_pipeline = process_detection_job
+

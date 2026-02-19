@@ -10,10 +10,9 @@
         <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
         <p class="text-gray-600 mt-1">Illegal mining detection overview and system status</p>
     </div>
-    
+
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <!-- Total Detected Sites -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 card-hover">
             <div class="flex items-center justify-between">
                 <div>
@@ -34,17 +33,14 @@
                 </div>
             </div>
         </div>
-        
-        <!-- High-Risk Zones -->
+
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 card-hover">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600">High-Risk Zones</p>
                     <p class="text-2xl font-bold text-gray-900 mt-1"><span data-stats="high_risk_zones">{{ stats.high_risk_zones }}</span></p>
                     <div class="flex items-center mt-2">
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            8 active alerts
-                        </span>
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">8 active alerts</span>
                     </div>
                 </div>
                 <div class="w-12 h-12 bg-high-risk bg-opacity-10 rounded-lg flex items-center justify-center">
@@ -54,17 +50,13 @@
                 </div>
             </div>
         </div>
-        
-        <!-- Monthly Alerts -->
+
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 card-hover">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600">Monthly Alerts</p>
                     <p class="text-2xl font-bold text-gray-900 mt-1">{{ stats.monthly_alerts }}</p>
                     <div class="flex items-center mt-2">
-                        <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                        </svg>
                         <span class="text-sm text-green-600 font-medium">+{{ stats.trends.alerts_change }}% from last month</span>
                     </div>
                 </div>
@@ -75,17 +67,14 @@
                 </div>
             </div>
         </div>
-        
-        <!-- Model Accuracy -->
+
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 card-hover">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600">Model Accuracy</p>
                     <p class="text-2xl font-bold text-gray-900 mt-1">{{ stats.model_accuracy }}%</p>
                     <div class="flex items-center mt-2">
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Validated
-                        </span>
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Validated</span>
                     </div>
                 </div>
                 <div class="w-12 h-12 bg-gis-blue bg-opacity-10 rounded-lg flex items-center justify-center">
@@ -96,7 +85,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Main Content Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- HLS Optical Visualization -->
@@ -104,46 +93,27 @@
             <div class="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div class="p-6 border-b border-gray-200">
                     <h2 class="text-lg font-semibold text-gray-900">HLS Optical Visualization</h2>
-                    <p class="text-sm text-gray-600 mt-1">Real-time optical satellite imagery analysis</p>
+                    <p class="text-sm text-gray-600 mt-1">Click a detection polygon to inspect the site</p>
                 </div>
                 <div class="p-6">
-                    <!-- Map Container -->
-                    <div id="dashboard-map" class="map-container bg-gray-100 rounded-lg mb-4" style="height: 400px;">
-                        <!-- Map will be initialized here -->
-                        <div class="flex items-center justify-center h-full">
-                            <div class="text-center">
-                                <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
-                                </svg>
-                                <p class="text-gray-600">Map loading...</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Detection Status Legend -->
+                    <div id="dashboard-map" class="map-container bg-gray-100 rounded-lg mb-4" style="height: 400px;"></div>
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-4">
                             <div class="flex items-center">
-                                <div class="w-4 h-4 rounded mr-2 detection-critical"></div>
-                                <span class="text-sm text-gray-600">Critical Risk</span>
+                                <div class="w-4 h-4 rounded mr-2" style="background:#ef4444;opacity:0.7;"></div>
+                                <span class="text-sm text-gray-600">Illegal / Unclassified</span>
                             </div>
                             <div class="flex items-center">
-                                <div class="w-4 h-4 rounded mr-2 detection-high"></div>
-                                <span class="text-sm text-gray-600">High Risk</span>
-                            </div>
-                            <div class="flex items-center">
-                                <div class="w-4 h-4 rounded mr-2 detection-moderate"></div>
-                                <span class="text-sm text-gray-600">Moderate Risk</span>
+                                <div class="w-4 h-4 rounded mr-2" style="background:#f97316;opacity:0.7;"></div>
+                                <span class="text-sm text-gray-600">Hover</span>
                             </div>
                         </div>
-                        <div class="text-sm text-gray-600">
-                            <span class="font-medium">Coordinates:</span> 6.6885° N, 1.6244° W
-                        </div>
+                        <div class="text-sm text-gray-500">Click polygon to inspect</div>
                     </div>
                 </div>
             </div>
         </div>
-        
+
         <!-- Model Performance Panel -->
         <div class="lg:col-span-1">
             <div class="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -152,38 +122,27 @@
                     <p class="text-sm text-gray-600 mt-1">Detection accuracy metrics</p>
                 </div>
                 <div class="p-6">
-                    <!-- Accuracy Metric -->
                     <div class="mb-6">
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-sm font-medium text-gray-600">Detection Accuracy</span>
-                            <span class="text-sm font-bold text-gray-900">{{ stats.model_accuracy }}% +{{ stats.trends.accuracy_change }}%</span>
+                            <span class="text-sm font-bold text-gray-900">{{ stats.model_accuracy }}%</span>
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-2">
                             <div class="bg-gis-blue h-2 rounded-full" style="width: {{ stats.model_accuracy }}%"></div>
                         </div>
                     </div>
-                    
-                    <!-- Performance Chart -->
-                    <div class="mb-6">
-                        <h3 class="text-sm font-medium text-gray-600 mb-3">Performance Over Time</h3>
-                        <div class="chart-container">
-                            <canvas id="performance-chart"></canvas>
-                        </div>
-                    </div>
-                    
-                    <!-- Metrics -->
                     <div class="space-y-3">
                         <div class="flex justify-between items-center">
                             <span class="text-sm text-gray-600">Precision</span>
-                            <span class="text-sm font-medium text-gray-900">96.1%</span>
+                            <span class="text-sm font-medium text-gray-900">72.4%</span>
                         </div>
                         <div class="flex justify-between items-center">
                             <span class="text-sm text-gray-600">Recall</span>
-                            <span class="text-sm font-medium text-gray-900">92.8%</span>
+                            <span class="text-sm font-medium text-gray-900">76.7%</span>
                         </div>
                         <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-600">F1 Score</span>
-                            <span class="text-sm font-medium text-gray-900">94.4%</span>
+                            <span class="text-sm text-gray-600">IoU</span>
+                            <span class="text-sm font-medium text-gray-900">—</span>
                         </div>
                     </div>
                 </div>
@@ -191,116 +150,383 @@
         </div>
     </div>
 </div>
+
+<!-- ============================================================
+     Site Detail Panel — slides in from the right on polygon click
+     ============================================================ -->
+<div id="site-panel" class="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl border-l border-gray-200 z-50 transform translate-x-full transition-transform duration-300 ease-in-out overflow-y-auto">
+
+    <!-- Panel Header -->
+    <div class="flex items-center justify-between p-5 border-b border-gray-200 sticky top-0 bg-white z-10">
+        <h3 class="text-base font-semibold text-gray-900">Site Detail</h3>
+        <button id="site-panel-close" class="text-gray-400 hover:text-gray-600 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Loading state -->
+    <div id="site-panel-loading" class="p-6 text-center hidden">
+        <div class="inline-block w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+        <p class="text-sm text-gray-500">Loading site data...</p>
+    </div>
+
+    <!-- Error state -->
+    <div id="site-panel-error" class="p-6 hidden">
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p class="text-sm text-red-600" id="site-panel-error-msg">Failed to load site data.</p>
+        </div>
+    </div>
+
+    <!-- Content -->
+    <div id="site-panel-content" class="p-5 hidden">
+
+        <!-- Legal status badge -->
+        <div class="mb-5">
+            <span id="sp-legal-badge" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold"></span>
+        </div>
+
+        <!-- Key metrics -->
+        <div class="grid grid-cols-2 gap-4 mb-5">
+            <div class="bg-gray-50 rounded-lg p-3">
+                <p class="text-xs text-gray-500 mb-1">Confidence</p>
+                <p id="sp-confidence" class="text-xl font-bold text-gray-900">—</p>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-3">
+                <p class="text-xs text-gray-500 mb-1">Area</p>
+                <p id="sp-area" class="text-xl font-bold text-gray-900">—</p>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-3">
+                <p class="text-xs text-gray-500 mb-1">Detected</p>
+                <p id="sp-date" class="text-sm font-semibold text-gray-900">—</p>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-3">
+                <p class="text-xs text-gray-500 mb-1">Recurrences</p>
+                <p id="sp-recurrence" class="text-xl font-bold text-gray-900">—</p>
+            </div>
+        </div>
+
+        <!-- Concession info (shown only when present) -->
+        <div id="sp-concession-block" class="mb-5 hidden">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Overlapping Concession</h4>
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-1">
+                <p class="text-sm font-semibold text-blue-900" id="sp-concession-name">—</p>
+                <p class="text-xs text-blue-700" id="sp-concession-holder">—</p>
+                <p class="text-xs text-blue-600" id="sp-concession-overlap">—</p>
+            </div>
+        </div>
+
+        <!-- Region -->
+        <div id="sp-region-block" class="mb-5 hidden">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Region</h4>
+            <p class="text-sm text-gray-800" id="sp-region">—</p>
+        </div>
+
+        <!-- Timelapse -->
+        <div class="mb-5">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">5-Year Timelapse</h4>
+
+            <!-- Timelapse loading -->
+            <div id="sp-timelapse-loading" class="text-center py-4 hidden">
+                <div class="inline-block w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+
+            <!-- No frames -->
+            <div id="sp-timelapse-empty" class="hidden">
+                <p class="text-sm text-gray-400 italic">No timelapse data yet — frames are fetched automatically in the background.</p>
+            </div>
+
+            <!-- Frames viewer -->
+            <div id="sp-timelapse-viewer" class="hidden">
+                <!-- Year label -->
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-semibold text-gray-700" id="sp-timelapse-year-label">—</span>
+                    <div class="text-xs text-gray-500">
+                        NDVI: <span id="sp-timelapse-ndvi">—</span> &nbsp;|&nbsp; BSI: <span id="sp-timelapse-bsi">—</span>
+                    </div>
+                </div>
+
+                <!-- Image -->
+                <div class="relative mb-3">
+                    <img id="sp-timelapse-img"
+                         src=""
+                         alt="Satellite composite"
+                         class="w-full rounded-lg border border-gray-200 bg-gray-100"
+                         style="height:200px;object-fit:cover;"
+                         onerror="this.src='';this.classList.add('hidden');document.getElementById('sp-timelapse-img-fallback').classList.remove('hidden');" />
+                    <div id="sp-timelapse-img-fallback" class="hidden w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <p class="text-xs text-gray-400">Image unavailable</p>
+                    </div>
+                </div>
+
+                <!-- Slider -->
+                <input id="sp-timelapse-slider"
+                       type="range"
+                       min="0" max="0" value="0"
+                       class="w-full accent-blue-600"
+                       oninput="window._sitePanel.onSliderChange(this.value)" />
+
+                <!-- Year ticks -->
+                <div id="sp-timelapse-ticks" class="flex justify-between text-xs text-gray-400 mt-1"></div>
+            </div>
+        </div>
+
+    </div><!-- /site-panel-content -->
+</div>
+
+<!-- Dark overlay when panel is open -->
+<div id="site-panel-overlay" class="fixed inset-0 bg-black bg-opacity-20 z-40 hidden" id="site-panel-overlay"></div>
 {% endblock %}
+
 
 {% block extra_js %}
 <script src="{% static 'js/map_handler.js' %}"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize performance chart
-    const ctx = document.getElementById('performance-chart');
-    if (ctx) {
-        const modelAccuracy = {{ stats.model_accuracy }};
-        const performanceData = {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-            datasets: [{
-                label: 'Detection Accuracy',
-                data: [88, 90, 91, 92, 93, modelAccuracy],
-                borderColor: '#3b82f6',
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                tension: 0.4
-            }]
-        };
+document.addEventListener('DOMContentLoaded', function () {
 
-        const performanceChart = GalamseyWatch.ChartHelpers.createLineChart(ctx, performanceData);
-    }
+    // ------------------------------------------------------------------
+    // Site detail panel controller
+    // ------------------------------------------------------------------
+    window._sitePanel = (function () {
+        const panel   = document.getElementById('site-panel');
+        const overlay = document.getElementById('site-panel-overlay');
+        const loading = document.getElementById('site-panel-loading');
+        const error   = document.getElementById('site-panel-error');
+        const content = document.getElementById('site-panel-content');
+        let _frames   = [];
 
-    // Initialize dashboard map
-    initializeDashboardMap();
-});
-
-function initializeDashboardMap() {
-    const mapContainer = document.getElementById('dashboard-map');
-    if (!mapContainer) return;
-
-    // Clear the placeholder content
-    mapContainer.innerHTML = '';
-
-    // Instantiate MapHandler (read-only view — no AOI drawing needed on dashboard)
-    const dashboardMap = new MapHandler('dashboard-map', {
-        center: [-1.6244, 6.6885],
-        zoom: 8
-    });
-
-    // Once the map is loaded, fetch and render all existing detections
-    dashboardMap.map.on('load', async function () {
-        try {
-            const response = await fetch('/api/results/', {
-                credentials: 'include',
-                headers: { 'Accept': 'application/json' }
-            });
-
-            if (!response.ok) return;
-
-            const data = await response.json();
-
-            // data may be a list (DRF default) or paginated {results: [...]}
-            const results = Array.isArray(data) ? data : (data.results || []);
-
-            // Merge all result GeoJSON features into one FeatureCollection
-            const allFeatures = [];
-            results.forEach(function (result) {
-                if (result.geojson && result.geojson.features) {
-                    result.geojson.features.forEach(function (feature) {
-                        allFeatures.push(feature);
-                    });
-                }
-            });
-
-            if (allFeatures.length > 0) {
-                const source = dashboardMap.map.getSource('detections');
-                if (source) {
-                    source.setData({
-                        type: 'FeatureCollection',
-                        features: allFeatures
-                    });
-
-                    // Add a border layer for better visibility if not already present
-                    if (!dashboardMap.map.getLayer('detections-outline')) {
-                        dashboardMap.map.addLayer({
-                            id: 'detections-outline',
-                            type: 'line',
-                            source: 'detections',
-                            paint: {
-                                'line-color': '#b91c1c',
-                                'line-width': 1.5
-                            }
-                        });
-                    }
-
-                    // Fit map bounds to detections
-                    try {
-                        const bounds = new maplibregl.LngLatBounds();
-                        allFeatures.forEach(function (feature) {
-                            if (feature.geometry && feature.geometry.coordinates) {
-                                const coords = feature.geometry.type === 'Polygon'
-                                    ? feature.geometry.coordinates[0]
-                                    : feature.geometry.coordinates.flat(2);
-                                coords.forEach(function (c) { bounds.extend(c); });
-                            }
-                        });
-                        if (!bounds.isEmpty()) {
-                            dashboardMap.map.fitBounds(bounds, { padding: 40, maxZoom: 13 });
-                        }
-                    } catch (e) {
-                        console.warn('Could not fit bounds to detections:', e);
-                    }
-                }
-            }
-        } catch (err) {
-            console.error('Failed to load detections on dashboard map:', err);
+        function open() {
+            panel.classList.remove('translate-x-full');
+            overlay.classList.remove('hidden');
         }
-    });
-}
+
+        function close() {
+            panel.classList.add('translate-x-full');
+            overlay.classList.add('hidden');
+        }
+
+        function showLoading() {
+            loading.classList.remove('hidden');
+            error.classList.add('hidden');
+            content.classList.add('hidden');
+        }
+
+        function showError(msg) {
+            loading.classList.add('hidden');
+            error.classList.remove('hidden');
+            content.classList.add('hidden');
+            document.getElementById('site-panel-error-msg').textContent = msg;
+        }
+
+        function showContent() {
+            loading.classList.add('hidden');
+            error.classList.add('hidden');
+            content.classList.remove('hidden');
+        }
+
+        async function load(siteId) {
+            open();
+            showLoading();
+
+            try {
+                // Fetch site detail
+                const res = await fetch(`/api/sites/${siteId}/`, { credentials: 'include' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const site = await res.json();
+                populateSite(site);
+                showContent();
+
+                // Fetch timelapse separately (non-blocking)
+                loadTimelapse(siteId);
+            } catch (e) {
+                showError('Could not load site data: ' + e.message);
+            }
+        }
+
+        function populateSite(site) {
+            // Legal status badge
+            const badge = document.getElementById('sp-legal-badge');
+            if (site.legal_status === 'illegal') {
+                badge.textContent = '⚠ Illegal Mining';
+                badge.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-800';
+            } else if (site.legal_status === 'legal') {
+                badge.textContent = '✓ Legal Activity';
+                badge.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800';
+            } else {
+                badge.textContent = '? Unclassified';
+                badge.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-gray-100 text-gray-700';
+            }
+
+            document.getElementById('sp-confidence').textContent  = site.confidence_pct + '%';
+            document.getElementById('sp-area').textContent         = site.area_hectares + ' ha';
+            document.getElementById('sp-date').textContent         = site.detection_date;
+            document.getElementById('sp-recurrence').textContent   = site.recurrence_count + 'x';
+
+            // Concession block
+            const concBlock = document.getElementById('sp-concession-block');
+            if (site.concession) {
+                concBlock.classList.remove('hidden');
+                document.getElementById('sp-concession-name').textContent    = site.concession.name + ' (' + site.concession.license_number + ')';
+                document.getElementById('sp-concession-holder').textContent  = site.concession.holder + ' — ' + site.concession.license_type;
+                document.getElementById('sp-concession-overlap').textContent = 'Overlap: ' + (site.concession.overlap_pct || 0).toFixed(1) + '%';
+            } else {
+                concBlock.classList.add('hidden');
+            }
+
+            // Region block
+            const regBlock = document.getElementById('sp-region-block');
+            if (site.region) {
+                regBlock.classList.remove('hidden');
+                document.getElementById('sp-region').textContent = site.region;
+            } else {
+                regBlock.classList.add('hidden');
+            }
+        }
+
+        async function loadTimelapse(siteId) {
+            const tlLoading = document.getElementById('sp-timelapse-loading');
+            const tlEmpty   = document.getElementById('sp-timelapse-empty');
+            const tlViewer  = document.getElementById('sp-timelapse-viewer');
+
+            tlLoading.classList.remove('hidden');
+            tlEmpty.classList.add('hidden');
+            tlViewer.classList.add('hidden');
+
+            try {
+                const res = await fetch(`/api/sites/${siteId}/timelapse/`, { credentials: 'include' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                _frames = data.frames || [];
+                tlLoading.classList.add('hidden');
+
+                if (_frames.length === 0) {
+                    tlEmpty.classList.remove('hidden');
+                } else {
+                    tlViewer.classList.remove('hidden');
+                    const slider = document.getElementById('sp-timelapse-slider');
+                    slider.min   = 0;
+                    slider.max   = _frames.length - 1;
+                    slider.value = _frames.length - 1; // start at most recent
+
+                    // Build year ticks
+                    const ticks = document.getElementById('sp-timelapse-ticks');
+                    ticks.innerHTML = _frames.map(f => `<span>${f.year}</span>`).join('');
+
+                    renderFrame(_frames.length - 1);
+                }
+            } catch (e) {
+                tlLoading.classList.add('hidden');
+                tlEmpty.classList.remove('hidden');
+            }
+        }
+
+        function renderFrame(idx) {
+            const frame = _frames[idx];
+            if (!frame) return;
+
+            document.getElementById('sp-timelapse-year-label').textContent = frame.year;
+            document.getElementById('sp-timelapse-ndvi').textContent = frame.mean_ndvi != null ? frame.mean_ndvi.toFixed(3) : '—';
+            document.getElementById('sp-timelapse-bsi').textContent  = frame.mean_bsi  != null ? frame.mean_bsi.toFixed(3)  : '—';
+
+            const img      = document.getElementById('sp-timelapse-img');
+            const fallback = document.getElementById('sp-timelapse-img-fallback');
+            if (frame.thumbnail_url) {
+                img.src = frame.thumbnail_url;
+                img.classList.remove('hidden');
+                fallback.classList.add('hidden');
+            } else {
+                img.src = '';
+                img.classList.add('hidden');
+                fallback.classList.remove('hidden');
+            }
+        }
+
+        function onSliderChange(val) {
+            renderFrame(parseInt(val, 10));
+        }
+
+        // Close on overlay click or X button
+        document.getElementById('site-panel-close').addEventListener('click', close);
+        overlay.addEventListener('click', close);
+
+        return { load, close, onSliderChange };
+    })();
+
+    // ------------------------------------------------------------------
+    // Dashboard map
+    // ------------------------------------------------------------------
+    const mapContainer = document.getElementById('dashboard-map');
+    if (mapContainer) {
+        mapContainer.innerHTML = '';
+
+        const dashboardMap = new MapHandler('dashboard-map', {
+            center: [-1.6244, 6.6885],
+            zoom: 8
+        });
+
+        // Wire up site panel on polygon click
+        dashboardMap.onSiteClick(function (siteId) {
+            window._sitePanel.load(siteId);
+        });
+
+        dashboardMap.map.on('load', async function () {
+            try {
+                const response = await fetch('/api/results/', {
+                    credentials: 'include',
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!response.ok) return;
+
+                const data    = await response.json();
+                const results = Array.isArray(data) ? data : (data.results || []);
+
+                const allFeatures = [];
+                results.forEach(function (result) {
+                    if (result.geojson && result.geojson.features) {
+                        result.geojson.features.forEach(function (feature) {
+                            allFeatures.push(feature);
+                        });
+                    }
+                });
+
+                console.log('[Dashboard] Results fetched:', results.length, 'records,', allFeatures.length, 'features');
+
+                if (allFeatures.length > 0) {
+                    const source = dashboardMap.map.getSource('detections');
+                    if (source) {
+                        source.setData({ type: 'FeatureCollection', features: allFeatures });
+
+                        try {
+                            const bounds = new maplibregl.LngLatBounds();
+                            allFeatures.forEach(function (f) {
+                                if (f.geometry && f.geometry.coordinates) {
+                                    const coords = f.geometry.type === 'Polygon'
+                                        ? f.geometry.coordinates[0]
+                                        : f.geometry.coordinates.flat(2);
+                                    coords.forEach(function (c) { bounds.extend(c); });
+                                }
+                            });
+                            if (!bounds.isEmpty()) {
+                                dashboardMap.map.fitBounds(bounds, { padding: 40, maxZoom: 13 });
+                            }
+                        } catch (e) {
+                            console.warn('Could not fit bounds:', e);
+                        }
+                    }
+                } else {
+                    // No detections yet — show a notice on the map
+                    const notice = document.createElement('div');
+                    notice.style.cssText = 'position:absolute;bottom:16px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.92);border:1px solid #e5e7eb;border-radius:8px;padding:8px 16px;font-size:13px;color:#6b7280;pointer-events:none;z-index:10;white-space:nowrap;';
+                    notice.textContent = 'No detections yet — run a scan on the Live Map to generate results';
+                    document.getElementById('dashboard-map').style.position = 'relative';
+                    document.getElementById('dashboard-map').appendChild(notice);
+                }
+            } catch (err) {
+                console.error('Failed to load detections:', err);
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

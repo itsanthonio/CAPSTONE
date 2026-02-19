@@ -28,16 +28,13 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
 # CSRF trusted origins for browser preview
 CSRF_TRUSTED_ORIGINS = [
-    'http://localhost',
-    'http://127.0.0.1',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
-    'http://localhost:8001',
-    'http://127.0.0.1:8001',
-    'http://localhost:8080',
-    'http://127.0.0.1:8080',
     'http://127.0.0.1:62075',
     'http://localhost:62075',
+    'http://localhost:8001',
+    'http://127.0.0.1:8001'
+
 ]
 
 # Additional CORS settings for development
@@ -70,6 +67,9 @@ INSTALLED_APPS = [
     'apps.results',
     'apps.core',
     'apps.api',
+    # Domain models
+    'apps.accounts',
+    'apps.detections',
 ]
 
 MIDDLEWARE = [
