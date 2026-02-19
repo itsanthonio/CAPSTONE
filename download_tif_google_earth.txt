@@ -1,0 +1,178 @@
+// == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+// PHASE
+2: OPTICAL(HLS)
+INDEPENDENT
+DATASET
+// Project: Illegal
+Mining
+Detection - Ghana
+// CRS: EPSG:32630(UTM
+Zone
+30
+N) | Resolution: 30
+m
+// == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+
+// 1.
+Define
+Area
+of
+Interest(Same
+Districts as SAR)
+var
+districts = ee.FeatureCollection('FAO/GAUL/2015/level2')
+.filter(ee.Filter.eq('ADM0_NAME', 'Ghana'));
+
+var
+districtNames = [
+    "Tarkwa Nsuaem", "Wassa Amenfi East", "Prestea / Huni Valley", "Mpohor",
+    "Amansie Central", "Adansi North", "Atwima Nwabiagya",
+    "Birim North", "Fanteakwa", "Ayensuano",
+    "Upper Denkyira East", "Upper Denkyira West"
+];
+
+var
+geometry = districts
+.filter(ee.Filter.inList('ADM2_NAME', districtNames))
+.geometry();
+
+// 2.
+Expert
+'s Indices (Corrected for HLS S30 Band Mapping)
+var
+addIndicesHLS = function(img)
+{
+// NDMoI(Normalized
+Difference
+Moisture
+Index)
+var
+ndmoi = img.normalizedDifference(['B8A', 'B11']).rename('NDMoI');
+
+// BSI - Baresoil
+Index
+var
+bsi = img.expression(
+    '((SWIR1 + RED) - (NIR + BLUE)) / ((SWIR1 + RED) + (NIR + BLUE))', {
+                                                                           'SWIR1': img.select('B11'),
+                                                                           'RED': img.select('B4'),
+                                                                           'NIR': img.select('B8'), // S30
+NIR is B8
+'BLUE': img.select('B2')
+}).rename('BSI');
+
+// GCVI
+var
+gcvi = img.expression('(NIR/GREEN)-1', {
+    'NIR': img.select('B8'),
+    'GREEN': img.select('B3')
+}).rename('GCVI');
+
+// EVI
+var
+evi = img.expression(
+    '2.5 * ((NIR-RED) / (NIR + 6 * RED - 7.5* BLUE +1))', {
+        'NIR': img.select('B8'),
+        'RED': img.select('B4'),
+        'BLUE': img.select('B2')
+    }).rename('EVI');
+
+return img.addBands([ndmoi, bsi, gcvi, evi]);
+};
+
+// 3.
+HLS
+Specific
+Cloud
+Masking
+var
+maskHLS = function(image)
+{
+var
+qa = image.select('Fmask');
+// HLS
+Fmask: bit
+1 = cloud, bit
+2 = cloud
+shadow, bit
+3 = adjacent
+to
+cloud
+var
+mask = qa.bitwiseAnd(1 << 1).eq(0)
+.and (qa.bitwiseAnd(1 << 2).eq(0))
+.and (qa.bitwiseAnd(1 << 3).eq(0));
+return image.updateMask(mask);
+};
+
+// 4.
+Dataset
+Generation
+Function
+function
+getHLSComposite(year)
+{
+var
+startDate = year + '-01-01';
+var
+endDate = year + '-12-31';
+
+return ee.ImageCollection("NASA/HLS/HLSS30/v002")
+.filterBounds(geometry)
+.filterDate(startDate, endDate)
+.map(maskHLS)
+.map(addIndicesHLS)
+.median() // Create
+cloud - free
+composite
+.clip(geometry)
+.toFloat();
+}
+
+// 5.
+Create
+Composites
+for 2021 and 2024
+var optical_2021 = getHLSComposite('2021');
+var optical_2024 = getHLSComposite('2024');
+
+// 6. Force Projection to EPSG:32630(UTM
+30
+N)
+var
+proj = ee.Projection('EPSG:32630');
+var
+optical_final_2021 = optical_2021.reproject({crs: proj, scale: 30});
+var
+optical_final_2024 = optical_2024.reproject({crs: proj, scale: 30});
+
+// 7.
+Visual
+Confirmation
+Map.centerObject(geometry, 8);
+Map.addLayer(optical_final_2024, {bands: ['B4', 'B3', 'B2'], min: 0, max: 0.2}, 'Optical 2024 RGB');
+Map.addLayer(optical_final_2024.select('BSI'), {min: 0, max: 0.5}, 'Baresoil Index');
+
+// 8.
+Export
+to
+Drive
+Export.image.toDrive({
+    image: optical_final_2021,
+    description: 'HLS_Ghana_2021_EPSG32630',
+    folder: 'HLS_Dataset',
+    region: geometry,
+    scale: 30,
+    crs: 'EPSG:32630',
+    maxPixels: 1e13
+});
+
+Export.image.toDrive({
+    image: optical_final_2024,
+    description: 'HLS_Ghana_2024_EPSG32630',
+    folder: 'HLS_Dataset',
+    region: geometry,
+    scale: 30,
+    crs: 'EPSG:32630',
+    maxPixels: 1e13
+});
