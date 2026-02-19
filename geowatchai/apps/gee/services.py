@@ -12,6 +12,42 @@ from apps.jobs.models import Job
 logger = logging.getLogger(__name__)
 
 
+def _to_gcs_uri(uri: str, meta: dict) -> str:
+    """
+    Convert a GEE destinationUri to a proper gs:// path.
+    GEE metadata may not contain fileNamePrefix directly, so we parse the URI.
+    """
+    if not uri:
+        return ''
+
+    # Already a gs:// path — return as-is
+    if uri.startswith('gs://'):
+        return uri
+
+    # Browser console URL formats:
+    # https://console.developers.google.com/storage/browser/BUCKET/FOLDER/
+    # https://console.cloud.google.com/storage/browser/BUCKET/FOLDER/
+    for browser_prefix in [
+        'https://console.developers.google.com/storage/browser/',
+        'https://console.cloud.google.com/storage/browser/',
+    ]:
+        if uri.startswith(browser_prefix):
+            # Strip the prefix and trailing slash to get "bucket/folder"
+            path = uri[len(browser_prefix):].rstrip('/')
+            # GEE always exports fileNamePrefix + ".tif"
+            # The URI folder path IS the fileNamePrefix (without .tif)
+            # e.g. "geo-vigil-guard-exports/jobs/UUID/hls_imagery"
+            # But sometimes it's just the folder "geo-vigil-guard-exports/jobs/UUID/"
+            # In that case append the default filename
+            if not path.endswith('.tif'):
+                # Check if it looks like a folder (ends with job UUID)
+                # Append the known filename from export_params
+                path = path + '/hls_imagery'
+            return f"gs://{path}.tif"
+
+    return uri
+
+
 class GeeService:
     """Google Earth Engine integration service following Anti-Vibe guardrails"""
 
@@ -20,27 +56,26 @@ class GeeService:
         self._authenticate()
 
     def _authenticate(self):
-        """Initialize GEE authentication using service account credentials"""
+        """Initialize GEE — service account if configured, else personal credentials"""
         try:
             service_account_path = config('GEE_SERVICE_ACCOUNT', default='')
             project_id = config('GEE_PROJECT_ID', default='')
 
-            if not service_account_path or not project_id:
-                logger.warning("GEE credentials not configured, using mock mode")
+            if service_account_path and os.path.exists(service_account_path) and project_id:
+                # Production: service account
+                credentials = ee.ServiceAccountCredentials(service_account_path, project_id)
+                ee.Initialize(credentials)
+                logger.info("GEE authenticated via service account")
+            elif project_id:
+                # Development: personal credentials (earthengine authenticate)
+                ee.Initialize(project=project_id)
+                logger.info(f"GEE authenticated via personal credentials (project={project_id})")
+            else:
+                logger.warning("GEE_PROJECT_ID not set — falling back to mock mode")
                 self._ee_initialized = False
                 return
-
-            if not os.path.exists(service_account_path):
-                logger.error(f"GEE service account file not found: {service_account_path}")
-                self._ee_initialized = False
-                return
-
-            # Initialize GEE with service account
-            credentials = ee.ServiceAccountCredentials(service_account_path, project_id)
-            ee.Initialize(credentials)
 
             self._ee_initialized = True
-            logger.info("GEE authentication successful")
 
         except Exception as e:
             logger.error(f"GEE authentication failed: {str(e)}")
@@ -335,81 +370,72 @@ class GeeService:
 
     def monitor_export(self, export_id: str, timeout: int = None) -> Dict[str, Any]:
         """
-        Monitor GEE export task status with exponential backoff
-
-        Args:
-            export_id: GEE task ID
-            timeout: Maximum wait time in seconds
-
-        Returns:
-            Dict[str, Any]: Export status and result
+        Check GEE export task status ONCE and return immediately.
+        The orchestrator loop handles waiting between calls.
         """
         try:
             if not self._ee_initialized:
-                return {
-                    'status': 'failed',
-                    'error': 'GEE not initialized'
-                }
+                return {'status': 'failed', 'error': 'GEE not initialized'}
 
-            if timeout is None:
-                timeout = config('EXPORT_TIMEOUT', default=3600, cast=int)
+            project_id = config('GEE_PROJECT_ID', default='')
 
-            start_time = time.time()
-            wait_time = 5  # Initial wait time
-            max_wait = 300  # Maximum wait time (5 minutes)
+            # Build full operation name if only short ID passed
+            if '/' not in export_id:
+                op_name = f'projects/{project_id}/operations/{export_id}'
+            else:
+                op_name = export_id
 
-            while time.time() - start_time < timeout:
-                # Get task status
-                task = ee.batch.Task(export_id)
-                status = task.status()
-
-                state = status.get('state', 'UNKNOWN')
-
-                if state == 'COMPLETED':
-                    logger.info(f"Export {export_id} completed successfully")
-                    return {
-                        'status': 'completed',
-                        'export_url': status.get('destination_uris', [None])[0]
-                    }
-                elif state == 'FAILED':
-                    error_message = status.get('error_message', 'Unknown error')
-                    logger.error(f"Export {export_id} failed: {error_message}")
-                    return {
-                        'status': 'failed',
-                        'error': error_message
-                    }
-                elif state == 'CANCELLED':
-                    logger.warning(f"Export {export_id} was cancelled")
-                    return {
-                        'status': 'cancelled',
-                        'error': 'Export was cancelled'
-                    }
-
-                # Exponential backoff with jitter
-                time.sleep(wait_time)
-                wait_time = min(wait_time * 1.5, max_wait)
-
-            # Timeout reached
-            logger.warning(f"Export {export_id} timed out after {timeout}s")
-
-            # Try to cancel the task
+            # Try getOperation first (newer API)
             try:
-                task = ee.batch.Task(export_id)
-                task.cancel()
-            except:
-                pass
+                status = ee.data.getOperation(op_name)
+                done   = status.get('done', False)
+                error  = status.get('error', {})
+                meta   = status.get('metadata', {})
 
-            return {
-                'status': 'timeout',
-                'error': f'Export timed out after {timeout} seconds'
-            }
+                if done and not error:
+                    dest = meta.get('destinationUris', [None])
+                    uri  = dest[0] if dest else None
+                    # Convert browser console URL to gs:// path
+                    uri  = _to_gcs_uri(uri, meta)
+                    logger.info(f"Export {export_id} completed — {uri}")
+                    return {'status': 'completed', 'export_url': uri}
+                elif done and error:
+                    msg = error.get('message', 'Unknown error')
+                    logger.error(f"Export {export_id} failed: {msg}")
+                    return {'status': 'failed', 'error': msg}
+                else:
+                    state = meta.get('state', 'RUNNING')
+                    logger.info(f"Export {export_id} state: {state}")
+                    return {'status': 'running', 'state': state}
+
+            except Exception as e1:
+                logger.debug(f"getOperation failed ({e1}), trying listOperations")
+
+            # Fallback: scan listOperations
+            try:
+                tasks   = ee.data.listOperations()
+                matched = next((t for t in tasks if export_id in t.get('name', '')), None)
+                if matched:
+                    done  = matched.get('done', False)
+                    error = matched.get('error', {})
+                    meta  = matched.get('metadata', {})
+                    if done and not error:
+                        dest = meta.get('destinationUris', [None])
+                        uri  = _to_gcs_uri(dest[0] if dest else None, meta)
+                        return {'status': 'completed', 'export_url': uri}
+                    elif done and error:
+                        return {'status': 'failed', 'error': error.get('message', 'Unknown')}
+                    else:
+                        return {'status': 'running', 'state': meta.get('state', 'RUNNING')}
+                else:
+                    return {'status': 'running', 'state': 'PENDING'}
+            except Exception as e2:
+                logger.error(f"listOperations failed: {e2}")
+                return {'status': 'running', 'state': 'UNKNOWN'}
 
         except Exception as e:
             logger.error(f"Export monitoring error: {str(e)}")
-            return {
-                'status': 'error',
-                'error': str(e)
-            }
+            return {'status': 'error', 'error': str(e)}
 
     def get_service_info(self) -> Dict[str, Any]:
         """

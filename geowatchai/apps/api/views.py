@@ -415,7 +415,7 @@ class AlertViewSet(viewsets.ViewSet):
         from apps.detections.models import Alert
         qs      = self.get_queryset()
         page    = int(request.query_params.get('page', 1))
-        per_page = 20
+        per_page = min(int(request.query_params.get('per_page', 20)), 10000)
         total   = qs.count()
         alerts  = qs[(page - 1) * per_page: page * per_page]
 

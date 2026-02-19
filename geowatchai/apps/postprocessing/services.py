@@ -90,14 +90,21 @@ class PostProcessor:
                     shapely_geom = shape(geom)
                     
                     # Calculate area in square meters
-                    area = shapely_geom.area
-                    
+                    # shapely.area is in CRS units (degrees for WGS84)
+                    # Convert to m² using rough approximation: 1 deg ≈ 111,320 m at equator
+                    area_deg = shapely_geom.area
+                    centroid_lat = shapely_geom.centroid.y
+                    import math
+                    m_per_deg_lat = 111320.0
+                    m_per_deg_lon = 111320.0 * math.cos(math.radians(centroid_lat))
+                    area_m2 = area_deg * m_per_deg_lat * m_per_deg_lon
+
                     # Filter by minimum area
-                    if area >= self.min_area:
+                    if area_m2 >= self.min_area:
                         polygons.append({
                             'geometry': geom,
                             'shapely_geometry': shapely_geom,
-                            'area': area,
+                            'area': area_m2,
                             'value': value
                         })
             
@@ -267,7 +274,11 @@ class PostProcessor:
         """
         try:
             self.logger.info(f"Starting post-processing for job {job.id}")
-            
+
+            # Squeeze channel dim if present: (1, H, W) -> (H, W)
+            if probability_mask.ndim == 3 and probability_mask.shape[0] == 1:
+                probability_mask = probability_mask.squeeze(0)
+
             # Step 1: Apply threshold
             binary_mask = self.threshold_mask(probability_mask)
             

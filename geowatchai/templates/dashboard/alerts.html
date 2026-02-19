@@ -403,9 +403,40 @@
     }
 
     // ── CSV export ──
-    function exportCSV() {
+    async function exportCSV() {
         const params = new URLSearchParams({ ...activeFilters, page: 1, per_page: 10000 });
-        window.location = `/api/alerts/?${params}&format=csv`;
+        const res = await fetch(`/api/alerts/?${params}`, { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const rows = data.results || [];
+
+        const headers = ['ID','Title','Severity','Type','Status','Region','Lat','Lng','Confidence %','Area (ha)','Detection Date','Recurrences','Created At'];
+        const lines = [headers.join(',')];
+        rows.forEach(a => {
+            lines.push([
+                a.short_id,
+                `"${(a.title || '').replace(/"/g,'""')}"`,
+                a.severity_display,
+                a.alert_type_display,
+                a.status_display,
+                a.site.region || '',
+                a.site.lat ?? '',
+                a.site.lng ?? '',
+                a.site.confidence_pct,
+                a.site.area_hectares,
+                a.site.detection_date,
+                a.site.recurrence_count,
+                `"${a.created_at}"`,
+            ].join(','));
+        });
+
+        const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = `alerts_export_${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
     }
 
     function getCookie(name) {
