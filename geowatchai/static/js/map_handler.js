@@ -15,7 +15,7 @@ class MapHandler {
     initializeMap() {
         this.map = new maplibregl.Map({
             container: this.containerId,
-            style: 'https://demotiles.maplibre.org/style.json',
+            style: 'https://tiles.openfreemap.org/styles/liberty',
             center: this.options.center || [-1.6244, 6.6885],
             zoom: this.options.zoom || 10
         });
@@ -54,6 +54,36 @@ class MapHandler {
     }
 
     setupMapLayers() {
+        // --- Legal concessions layer (green outline, semi-transparent fill) ---
+        this.map.addSource('concessions', {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features: [] }
+        });
+        this.map.addLayer({
+            id: 'concessions-fill',
+            type: 'fill',
+            source: 'concessions',
+            paint: { 'fill-color': '#22c55e', 'fill-opacity': 0.08 }
+        });
+        this.map.addLayer({
+            id: 'concessions-outline',
+            type: 'line',
+            source: 'concessions',
+            paint: { 'line-color': '#16a34a', 'line-width': 1.2, 'line-dasharray': [3, 2] }
+        });
+
+        // Fetch and populate concessions
+        fetch('/api/concessions/', { credentials: 'include' })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (data && data.features) {
+                    this.map.getSource('concessions').setData(data);
+                    console.log('[Map] Loaded', data.features.length, 'legal concessions');
+                }
+            })
+            .catch(e => console.warn('[Map] Could not load concessions:', e));
+
+        // --- Detection layers ---
         this.map.addSource('detections', {
             type: 'geojson',
             data: { type: 'FeatureCollection', features: [] }
@@ -108,13 +138,17 @@ class MapHandler {
     }
 
     toggleLayer(layerId) {
-        const fullLayerId = layerId === 'detections' ? 'detections-layer' : layerId;
-        if (this.map.getLayer(fullLayerId)) {
-            const visibility = this.map.getLayoutProperty(fullLayerId, 'visibility');
-            this.map.setLayoutProperty(
-                fullLayerId, 'visibility', visibility === 'none' ? 'visible' : 'none'
-            );
-        }
+        const layerMap = {
+            'detections': ['detections-layer', 'detections-outline'],
+            'concessions': ['concessions-fill', 'concessions-outline'],
+        };
+        const layers = layerMap[layerId] || [layerId];
+        layers.forEach(id => {
+            if (this.map.getLayer(id)) {
+                const vis = this.map.getLayoutProperty(id, 'visibility');
+                this.map.setLayoutProperty(id, 'visibility', vis === 'none' ? 'visible' : 'none');
+            }
+        });
     }
 
     handleAOICreated(e) {
@@ -171,62 +205,16 @@ class MapHandler {
 
     pollJobStatus(jobId) {
         console.log("Polling status for job:", jobId);
-        let failCount = 0;
         const interval = setInterval(async () => {
             try {
                 const res = await fetch(`/api/jobs/${jobId}/`);
-                if (!res.ok) { failCount++; if (failCount > 5) clearInterval(interval); return; }
-                const job = await res.json();
-                console.log("Job status:", job.status);
-
-                if (job.status === 'completed') {
+                const status = await res.json();
+                if (status.state === 'SUCCESS') {
                     clearInterval(interval);
-                    // Fetch the results for this job and render them
-                    try {
-                        const rRes = await fetch(`/api/results/?job_id=${jobId}`, { credentials: 'include' });
-                        const rData = await rRes.json();
-                        // Handle both paginated {results:[...]} and plain array
-                        const results = Array.isArray(rData) ? rData : (rData.results || []);
-                        const allFeatures = [];
-                        results.forEach(r => {
-                            if (r.geojson && r.geojson.features) {
-                                r.geojson.features.forEach(f => allFeatures.push(f));
-                            }
-                        });
-                        if (allFeatures.length > 0) {
-                            this.map.getSource('detections').setData({
-                                type: 'FeatureCollection',
-                                features: allFeatures
-                            });
-                            // Fit map to results
-                            try {
-                                const bounds = new maplibregl.LngLatBounds();
-                                allFeatures.forEach(f => {
-                                    if (f.geometry && f.geometry.coordinates) {
-                                        const coords = f.geometry.type === 'Polygon'
-                                            ? f.geometry.coordinates[0]
-                                            : f.geometry.coordinates.flat(2);
-                                        coords.forEach(c => bounds.extend(c));
-                                    }
-                                });
-                                if (!bounds.isEmpty()) {
-                                    this.map.fitBounds(bounds, { padding: 40, maxZoom: 13 });
-                                }
-                            } catch(e) { console.warn('Could not fit bounds:', e); }
-                        }
-                        console.log(`Loaded ${allFeatures.length} detection features`);
-                    } catch(e) {
-                        console.error('Failed to fetch results after job completion:', e);
-                    }
-                } else if (job.status === 'failed') {
-                    clearInterval(interval);
-                    console.error('Job failed:', job.failure_reason || 'Unknown reason');
+                    this.map.getSource('detections').setData(status.result);
                 }
-                // Otherwise still running — keep polling
             } catch (e) {
-                console.error('Poll error:', e);
-                failCount++;
-                if (failCount > 5) clearInterval(interval);
+                clearInterval(interval);
             }
         }, 3000);
     }

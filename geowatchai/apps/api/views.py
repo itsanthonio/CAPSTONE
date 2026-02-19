@@ -18,12 +18,11 @@ from rest_framework.permissions import AllowAny
 from apps.jobs.models import Job
 from apps.results.models import Result
 from apps.api.serializers import (
-    JobSerializer, 
-    ResultSerializer, 
+    JobSerializer,
+    ResultSerializer,
     JobCreateSerializer,
     StatusSerializer
 )
-from apps.core.orchestrator import process_detection_job
 
 logger = logging.getLogger(__name__)
 
@@ -31,56 +30,56 @@ logger = logging.getLogger(__name__)
 class JobViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Job model with creation and status tracking.
-    
+
     Provides endpoints for:
     - Creating new detection jobs
     - Retrieving job status with progress
     - Listing all jobs
     """
-    
+
     queryset = Job.objects.all()
     serializer_class = JobSerializer
     permission_classes = [AllowAny]
-    
+
     def get_serializer_class(self):
         """
         Return appropriate serializer based on action.
-        
+
         Returns:
             Serializer class
         """
         if self.action == 'create':
             return JobCreateSerializer
         return JobSerializer
-    
+
     def create(self, request, *args, **kwargs):
         """
         Create new job and trigger detection pipeline.
-        
+
         Args:
             request: HTTP request object
-            
+
         Returns:
             Response: Created job with immediate processing
         """
         try:
             serializer = self.get_serializer_class()(data=request.data)
             serializer.is_valid(raise_exception=True)
-            
+
             # Create job within transaction
             with transaction.atomic():
                 job = serializer.save()
-            
+
             logger.info(f"Created new job {job.id} via API")
-            
+
             # Trigger detection pipeline asynchronously
             try:
                 # Import here to avoid circular imports
                 from apps.core.tasks import run_detection_task
                 task_result = run_detection_task.delay(str(job.id))
-                
+
                 logger.info(f"Triggered detection pipeline for job {job.id}")
-                
+
                 # Return immediate response with job details
                 response_serializer = JobSerializer(job)
                 return Response(
@@ -91,14 +90,14 @@ class JobViewSet(viewsets.ModelViewSet):
                         'X-Job-ID': str(job.id)
                     }
                 )
-                
+
             except Exception as e:
                 logger.error(f"Failed to trigger pipeline for job {job.id}: {str(e)}")
-                
+
                 # Update job status to failed
                 job.status = Job.Status.FAILED
                 job.save()
-                
+
                 return Response(
                     {
                         'error': 'Failed to start detection pipeline',
@@ -107,7 +106,7 @@ class JobViewSet(viewsets.ModelViewSet):
                     },
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
-                
+
         except Exception as e:
             logger.error(f"Job creation failed: {str(e)}")
             return Response(
@@ -117,23 +116,23 @@ class JobViewSet(viewsets.ModelViewSet):
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
-    
+
     @action(detail=True, methods=['get'])
     def status(self, request, pk=None):
         """
         Get detailed status for a specific job.
-        
+
         Args:
             request: HTTP request object
             pk: Job UUID
-            
+
         Returns:
             Response: Job status with progress details
         """
         try:
             job = get_object_or_404(Job, id=pk)
             serializer = JobSerializer(job)
-            
+
             # Add additional status information
             data = serializer.data
             data['pipeline_stages'] = {
@@ -146,9 +145,9 @@ class JobViewSet(viewsets.ModelViewSet):
                 'completed': job.status == Job.Status.COMPLETED,
                 'failed': job.status == Job.Status.FAILED
             }
-            
+
             return Response(data)
-            
+
         except Job.DoesNotExist:
             return Response(
                 {
@@ -171,19 +170,19 @@ class JobViewSet(viewsets.ModelViewSet):
 class ResultViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Result model with GeoJSON output.
-    
+
     Provides endpoints for:
     - Retrieving detection results for completed jobs
     - Listing all results
     """
-    
+
     serializer_class = ResultSerializer
     permission_classes = [AllowAny]
-    
+
     def get_queryset(self):
         """
         Filter results by job_id if provided.
-        
+
         Returns:
             QuerySet: Filtered results
         """
@@ -192,28 +191,28 @@ class ResultViewSet(viewsets.ModelViewSet):
         if job_id:
             queryset = queryset.filter(job__id=job_id)
         return queryset
-    
+
     def retrieve(self, request, *args, **kwargs):
         """
         Retrieve result with GeoJSON validation.
-        
+
         Args:
             request: HTTP request object
-            
+
         Returns:
             Response: Result with GeoJSON FeatureCollection
         """
         try:
             instance = self.get_object()
             serializer = self.get_serializer(instance)
-            
+
             # Validate GeoJSON structure
             geojson_data = serializer.data.get('geojson', {})
             if not geojson_data.get('type') == 'FeatureCollection':
                 logger.warning(f"Invalid GeoJSON structure for result {instance.id}")
-                
+
             return Response(serializer.data)
-            
+
         except Exception as e:
             logger.error(f"Failed to retrieve result: {str(e)}")
             return Response(
@@ -223,21 +222,10 @@ class ResultViewSet(viewsets.ModelViewSet):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-    
-    def get_serializer(self, instance):
-        """
-        Get appropriate serializer for result instance.
 
-        Args:
-            instance: Result instance
-
-        Returns:
-            ResultSerializer: Configured serializer
-        """
-        return ResultSerializer(
-            instance,
-            context={'request': self.request}
-        )
+    def get_serializer(self, *args, **kwargs):
+        kwargs.setdefault('context', {'request': self.request})
+        return ResultSerializer(*args, **kwargs)
 
     @action(detail=True, methods=['get'])
     def by_job(self, request, job_id=None):
@@ -355,3 +343,171 @@ class DetectedSiteViewSet(viewsets.ReadOnlyModelViewSet):
             'frames': list(frames),
             'frame_count': len(frames),
         })
+
+
+class ConcessionGeoJSONView(viewsets.ReadOnlyModelViewSet):
+    """
+    Returns legal concessions as GeoJSON for map display.
+    Lightweight — only geometry + label fields, no heavy data.
+    """
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        from apps.detections.models import LegalConcession
+        return LegalConcession.objects.filter(is_active=True).only(
+            'id', 'license_number', 'concession_name', 'holder_name',
+            'license_type', 'geometry'
+        )
+
+    def list(self, request, *args, **kwargs):
+        from apps.detections.models import LegalConcession
+        from django.contrib.gis.serializers.geojson import Serializer as GeoJSONSerializer
+        import json
+
+        qs = self.get_queryset()
+
+        features = []
+        for c in qs:
+            if c.geometry:
+                features.append({
+                    'type': 'Feature',
+                    'geometry': json.loads(c.geometry.geojson),
+                    'properties': {
+                        'id': str(c.id),
+                        'license_number': c.license_number,
+                        'name': c.concession_name,
+                        'holder': c.holder_name,
+                        'license_type': c.get_license_type_display(),
+                    }
+                })
+
+        return Response({
+            'type': 'FeatureCollection',
+            'features': features,
+        })
+
+
+class AlertViewSet(viewsets.ViewSet):
+    """
+    Alert listing and status-change actions.
+    GET  /api/alerts/          — list with filter params: status, severity, alert_type
+    GET  /api/alerts/{id}/     — detail
+    POST /api/alerts/{id}/acknowledge/
+    POST /api/alerts/{id}/dismiss/
+    POST /api/alerts/{id}/dispatch/
+    """
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        from apps.detections.models import Alert
+        qs = Alert.objects.select_related(
+            'detected_site', 'detected_site__region', 'assigned_to'
+        )
+        status   = self.request.query_params.get('status')
+        severity = self.request.query_params.get('severity')
+        atype    = self.request.query_params.get('alert_type')
+        if status:   qs = qs.filter(status=status)
+        if severity: qs = qs.filter(severity=severity)
+        if atype:    qs = qs.filter(alert_type=atype)
+        return qs
+
+    def list(self, request, *args, **kwargs):
+        from apps.detections.models import Alert
+        qs      = self.get_queryset()
+        page    = int(request.query_params.get('page', 1))
+        per_page = 20
+        total   = qs.count()
+        alerts  = qs[(page - 1) * per_page: page * per_page]
+
+        def fmt(a):
+            site = a.detected_site
+            centroid = site.centroid
+            return {
+                'id': str(a.id),
+                'short_id': str(a.id)[:8].upper(),
+                'title': a.title,
+                'description': a.description,
+                'alert_type': a.alert_type,
+                'alert_type_display': a.get_alert_type_display(),
+                'severity': a.severity,
+                'severity_display': a.get_severity_display(),
+                'status': a.status,
+                'status_display': a.get_status_display(),
+                'created_at': a.created_at.strftime('%Y-%m-%d %H:%M'),
+                'acknowledged_at': a.acknowledged_at.strftime('%Y-%m-%d %H:%M') if a.acknowledged_at else None,
+                'resolved_at': a.resolved_at.strftime('%Y-%m-%d %H:%M') if a.resolved_at else None,
+                'site': {
+                    'id': str(site.id),
+                    'confidence_pct': round(site.confidence_score * 100, 1),
+                    'area_hectares': round(site.area_hectares, 2),
+                    'legal_status': site.legal_status,
+                    'detection_date': str(site.detection_date),
+                    'recurrence_count': site.recurrence_count,
+                    'region': site.region.name if site.region else None,
+                    'lat': round(centroid.y, 4) if centroid else None,
+                    'lng': round(centroid.x, 4) if centroid else None,
+                },
+                'assigned_to': a.assigned_to.get_full_name() or a.assigned_to.username if a.assigned_to else None,
+            }
+
+        return Response({
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': max(1, (total + per_page - 1) // per_page),
+            'results': [fmt(a) for a in alerts],
+        })
+
+    def retrieve(self, request, *args, **kwargs):
+        from apps.detections.models import Alert
+        a = get_object_or_404(Alert, pk=kwargs['pk'])
+        site = a.detected_site
+        centroid = site.centroid
+        return Response({
+            'id': str(a.id),
+            'title': a.title,
+            'description': a.description,
+            'alert_type_display': a.get_alert_type_display(),
+            'severity': a.severity,
+            'severity_display': a.get_severity_display(),
+            'status': a.status,
+            'status_display': a.get_status_display(),
+            'created_at': a.created_at.isoformat(),
+            'resolution_notes': a.resolution_notes,
+            'site': {
+                'id': str(site.id),
+                'confidence_pct': round(site.confidence_score * 100, 1),
+                'area_hectares': round(site.area_hectares, 2),
+                'legal_status': site.legal_status,
+                'detection_date': str(site.detection_date),
+                'recurrence_count': site.recurrence_count,
+                'region': site.region.name if site.region else None,
+                'lat': round(centroid.y, 4) if centroid else None,
+                'lng': round(centroid.x, 4) if centroid else None,
+            },
+        })
+
+    def _change_status(self, request, pk, new_status, extra=None):
+        from apps.detections.models import Alert
+        from django.utils import timezone
+        a = get_object_or_404(Alert, pk=pk)
+        a.status = new_status
+        if new_status == 'acknowledged':
+            a.acknowledged_at = timezone.now()
+        elif new_status == 'resolved':
+            a.resolved_at = timezone.now()
+            a.resolution_notes = request.data.get('resolution_notes', '')
+        a.save()
+        return Response({'id': str(a.id), 'status': a.status})
+
+    @action(detail=True, methods=['post'])
+    def acknowledge(self, request, pk=None):
+        return self._change_status(request, pk, 'acknowledged')
+
+    @action(detail=True, methods=['post'])
+    def dismiss(self, request, pk=None):
+        return self._change_status(request, pk, 'dismissed')
+
+    @action(detail=True, methods=['post'])
+    def dispatch_alert(self, request, pk=None):
+        return self._change_status(request, pk, 'dispatched')

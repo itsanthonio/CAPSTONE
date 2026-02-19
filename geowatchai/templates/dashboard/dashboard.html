@@ -1,194 +1,274 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Dashboard - {{ settings.APP_NAME }}{% endblock %}
+{% block title %}Dashboard - GalamseyWatch{% endblock %}
 
 {% block content %}
-<div class="p-6">
-    <!-- Page Header -->
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p class="text-gray-600 mt-1">Illegal mining detection overview and system status</p>
+<div class="p-6 space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+            <p class="text-gray-500 text-sm mt-0.5">Illegal mining detection overview — Ghana</p>
+        </div>
+        <a href="{% url 'analysis:live_map' %}"
+           class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+            </svg>
+            Open Live Map
+        </a>
     </div>
 
-    <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 card-hover">
-            <div class="flex items-center justify-between">
+    {% if not stats.has_data %}
+    <!-- Empty state banner -->
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+        <svg class="w-5 h-5 text-amber-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="text-sm text-amber-800">
+            No detection data yet. Go to the <a href="{% url 'analysis:live_map' %}" class="font-semibold underline">Live Map</a>,
+            draw an AOI over a mining area, and run a scan to populate the dashboard.
+        </p>
+    </div>
+    {% endif %}
+
+    <!-- ── Stat Cards ── -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+        <!-- Detected Sites -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <div class="flex items-start justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-600">Total Detected Sites</p>
-                    <p class="text-2xl font-bold text-gray-900 mt-1"><span data-stats="total_detected_sites">{{ stats.total_detected_sites }}</span></p>
-                    <div class="flex items-center mt-2">
-                        <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                        </svg>
-                        <span class="text-sm text-green-600 font-medium">+{{ stats.trends.sites_change }} this week</span>
-                    </div>
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Detected Sites</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">{{ stats.total_detected_sites }}</p>
+                    <p class="text-xs text-gray-500 mt-1">
+                        <span class="font-semibold text-red-600">{{ stats.illegal_sites }}</span> illegal
+                    </p>
                 </div>
-                <div class="w-12 h-12 bg-alert-red bg-opacity-10 rounded-lg flex items-center justify-center">
-                    <svg class="w-6 h-6 text-alert-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                <div class="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                     </svg>
                 </div>
+            </div>
+            <div class="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+                +{{ stats.trends.sites_change }} this week
             </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 card-hover">
-            <div class="flex items-center justify-between">
+        <!-- Open Alerts -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <div class="flex items-start justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-600">High-Risk Zones</p>
-                    <p class="text-2xl font-bold text-gray-900 mt-1"><span data-stats="high_risk_zones">{{ stats.high_risk_zones }}</span></p>
-                    <div class="flex items-center mt-2">
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">8 active alerts</span>
-                    </div>
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Open Alerts</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">{{ stats.open_alerts }}</p>
+                    <p class="text-xs text-gray-500 mt-1">
+                        <span class="font-semibold text-red-600">{{ stats.critical_alerts }}</span> critical
+                        · <span class="font-semibold text-orange-500">{{ stats.high_alerts }}</span> high
+                    </p>
                 </div>
-                <div class="w-12 h-12 bg-high-risk bg-opacity-10 rounded-lg flex items-center justify-center">
-                    <svg class="w-6 h-6 text-high-risk" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                <div class="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                     </svg>
                 </div>
+            </div>
+            <div class="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+                {{ stats.alerts_this_month }} this month
+                {% if stats.trends.alerts_change != 0 %}
+                    · {% if stats.trends.alerts_change > 0 %}+{% endif %}{{ stats.trends.alerts_change }}% vs last month
+                {% endif %}
             </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 card-hover">
-            <div class="flex items-center justify-between">
+        <!-- High-Risk Zones -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <div class="flex items-start justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-600">Monthly Alerts</p>
-                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ stats.monthly_alerts }}</p>
-                    <div class="flex items-center mt-2">
-                        <span class="text-sm text-green-600 font-medium">+{{ stats.trends.alerts_change }}% from last month</span>
-                    </div>
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">High-Risk Zones</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">{{ stats.high_risk_zones }}</p>
+                    <p class="text-xs text-gray-500 mt-1">recurring or critical sites</p>
                 </div>
-                <div class="w-12 h-12 bg-active-gold bg-opacity-10 rounded-lg flex items-center justify-center">
-                    <svg class="w-6 h-6 text-active-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                <div class="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                     </svg>
                 </div>
+            </div>
+            <div class="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+                {{ stats.total_area_ha }} ha total illegal area
             </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 card-hover">
-            <div class="flex items-center justify-between">
+        <!-- Model Precision -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <div class="flex items-start justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-600">Model Accuracy</p>
-                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ stats.model_accuracy }}%</p>
-                    <div class="flex items-center mt-2">
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Validated</span>
-                    </div>
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Model Precision</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">{{ stats.precision }}%</p>
+                    <p class="text-xs text-gray-500 mt-1">{{ stats.model_name }}</p>
                 </div>
-                <div class="w-12 h-12 bg-gis-blue bg-opacity-10 rounded-lg flex items-center justify-center">
-                    <svg class="w-6 h-6 text-gis-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                 </div>
             </div>
+            <div class="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+                Recall {{ stats.recall }}%{% if stats.f1 %} · F1 {{ stats.f1 }}%{% endif %}
+            </div>
         </div>
+
     </div>
 
-    <!-- Main Content Grid -->
+    <!-- ── Main Grid ── -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- HLS Optical Visualization -->
-        <div class="lg:col-span-2">
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div class="p-6 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900">HLS Optical Visualization</h2>
-                    <p class="text-sm text-gray-600 mt-1">Click a detection polygon to inspect the site</p>
+
+        <!-- Map (2 cols) -->
+        <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <div>
+                    <h2 class="text-sm font-semibold text-gray-900">Detection Map</h2>
+                    <p class="text-xs text-gray-500 mt-0.5">Red = detections · Green dashed = legal concessions · Click polygon to inspect</p>
                 </div>
-                <div class="p-6">
-                    <div id="dashboard-map" class="map-container bg-gray-100 rounded-lg mb-4" style="height: 400px;"></div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-4">
-                            <div class="flex items-center">
-                                <div class="w-4 h-4 rounded mr-2" style="background:#ef4444;opacity:0.7;"></div>
-                                <span class="text-sm text-gray-600">Illegal / Unclassified</span>
-                            </div>
-                            <div class="flex items-center">
-                                <div class="w-4 h-4 rounded mr-2" style="background:#f97316;opacity:0.7;"></div>
-                                <span class="text-sm text-gray-600">Hover</span>
-                            </div>
-                        </div>
-                        <div class="text-sm text-gray-500">Click polygon to inspect</div>
-                    </div>
+                <div class="flex items-center gap-3 text-xs text-gray-500">
+                    <span class="flex items-center gap-1">
+                        <span class="w-3 h-3 rounded-sm inline-block" style="background:#ef4444;opacity:0.6;"></span> Illegal
+                    </span>
+                    <span class="flex items-center gap-1">
+                        <span class="w-3 h-3 rounded-sm inline-block border-2" style="border-color:#16a34a;border-style:dashed;"></span> Concession
+                    </span>
                 </div>
             </div>
+            <div id="dashboard-map" style="height:420px;"></div>
         </div>
 
-        <!-- Model Performance Panel -->
-        <div class="lg:col-span-1">
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div class="p-6 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900">Model Performance</h2>
-                    <p class="text-sm text-gray-600 mt-1">Detection accuracy metrics</p>
-                </div>
-                <div class="p-6">
-                    <div class="mb-6">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-medium text-gray-600">Detection Accuracy</span>
-                            <span class="text-sm font-bold text-gray-900">{{ stats.model_accuracy }}%</span>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2">
-                            <div class="bg-gis-blue h-2 rounded-full" style="width: {{ stats.model_accuracy }}%"></div>
-                        </div>
-                    </div>
+        <!-- Right column -->
+        <div class="space-y-5">
+
+            <!-- Model metrics -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                <h2 class="text-sm font-semibold text-gray-900 mb-4">Model Performance</h2>
+                <div class="space-y-3">
+                    {% for label, value in model_metrics %}
+                    {% empty %}
                     <div class="space-y-3">
-                        <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-600">Precision</span>
-                            <span class="text-sm font-medium text-gray-900">72.4%</span>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-gray-600">Precision</span>
+                                <span class="font-semibold text-gray-900">{{ stats.precision }}%</span>
+                            </div>
+                            <div class="w-full bg-gray-100 rounded-full h-1.5">
+                                <div class="bg-blue-500 h-1.5 rounded-full" style="width:{{ stats.precision }}%"></div>
+                            </div>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-600">Recall</span>
-                            <span class="text-sm font-medium text-gray-900">76.7%</span>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-gray-600">Recall</span>
+                                <span class="font-semibold text-gray-900">{{ stats.recall }}%</span>
+                            </div>
+                            <div class="w-full bg-gray-100 rounded-full h-1.5">
+                                <div class="bg-green-500 h-1.5 rounded-full" style="width:{{ stats.recall }}%"></div>
+                            </div>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-600">IoU</span>
-                            <span class="text-sm font-medium text-gray-900">—</span>
+                        {% if stats.iou %}
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-gray-600">IoU</span>
+                                <span class="font-semibold text-gray-900">{{ stats.iou }}%</span>
+                            </div>
+                            <div class="w-full bg-gray-100 rounded-full h-1.5">
+                                <div class="bg-purple-500 h-1.5 rounded-full" style="width:{{ stats.iou }}%"></div>
+                            </div>
                         </div>
+                        {% endif %}
+                        {% if stats.f1 %}
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-gray-600">F1 Score</span>
+                                <span class="font-semibold text-gray-900">{{ stats.f1 }}%</span>
+                            </div>
+                            <div class="w-full bg-gray-100 rounded-full h-1.5">
+                                <div class="bg-amber-500 h-1.5 rounded-full" style="width:{{ stats.f1 }}%"></div>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
+                    {% endfor %}
+                </div>
+                <div class="mt-4 pt-3 border-t border-gray-100 text-xs text-gray-500">
+                    {{ stats.model_name }} · {{ stats.completed_jobs }} scan{{ stats.completed_jobs|pluralize }} completed
                 </div>
             </div>
+
+            <!-- Recent detections feed -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                <h2 class="text-sm font-semibold text-gray-900 mb-3">Recent Detections</h2>
+                {% if stats.recent_sites %}
+                <div class="space-y-2">
+                    {% for site in stats.recent_sites %}
+                    <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                        <div class="min-w-0">
+                            <p class="text-xs font-medium text-gray-900 truncate">
+                                {% if site.region__name %}{{ site.region__name }}{% else %}Unassigned region{% endif %}
+                            </p>
+                            <p class="text-xs text-gray-400 mt-0.5">{{ site.detection_date }} · {{ site.area_hectares|floatformat:1 }} ha</p>
+                        </div>
+                        <div class="shrink-0 ml-3">
+                            {% if site.legal_status == 'illegal' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Illegal</span>
+                            {% elif site.legal_status == 'legal' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Legal</span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Unknown</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-xs text-gray-400 italic">No detections yet.</p>
+                {% endif %}
+            </div>
+
         </div>
     </div>
+
 </div>
 
-<!-- ============================================================
-     Site Detail Panel — slides in from the right on polygon click
-     ============================================================ -->
+<!-- ── Site Detail Panel ── -->
 <div id="site-panel" class="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl border-l border-gray-200 z-50 transform translate-x-full transition-transform duration-300 ease-in-out overflow-y-auto">
-
-    <!-- Panel Header -->
     <div class="flex items-center justify-between p-5 border-b border-gray-200 sticky top-0 bg-white z-10">
-        <h3 class="text-base font-semibold text-gray-900">Site Detail</h3>
+        <h3 class="text-sm font-semibold text-gray-900">Site Detail</h3>
         <button id="site-panel-close" class="text-gray-400 hover:text-gray-600 transition-colors">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
         </button>
     </div>
-
-    <!-- Loading state -->
     <div id="site-panel-loading" class="p-6 text-center hidden">
         <div class="inline-block w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
         <p class="text-sm text-gray-500">Loading site data...</p>
     </div>
-
-    <!-- Error state -->
     <div id="site-panel-error" class="p-6 hidden">
         <div class="bg-red-50 border border-red-200 rounded-lg p-4">
             <p class="text-sm text-red-600" id="site-panel-error-msg">Failed to load site data.</p>
         </div>
     </div>
-
-    <!-- Content -->
     <div id="site-panel-content" class="p-5 hidden">
-
-        <!-- Legal status badge -->
         <div class="mb-5">
             <span id="sp-legal-badge" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold"></span>
         </div>
-
-        <!-- Key metrics -->
-        <div class="grid grid-cols-2 gap-4 mb-5">
+        <div class="grid grid-cols-2 gap-3 mb-5">
             <div class="bg-gray-50 rounded-lg p-3">
                 <p class="text-xs text-gray-500 mb-1">Confidence</p>
                 <p id="sp-confidence" class="text-xl font-bold text-gray-900">—</p>
@@ -206,8 +286,6 @@
                 <p id="sp-recurrence" class="text-xl font-bold text-gray-900">—</p>
             </div>
         </div>
-
-        <!-- Concession info (shown only when present) -->
         <div id="sp-concession-block" class="mb-5 hidden">
             <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Overlapping Concession</h4>
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-1">
@@ -216,67 +294,41 @@
                 <p class="text-xs text-blue-600" id="sp-concession-overlap">—</p>
             </div>
         </div>
-
-        <!-- Region -->
         <div id="sp-region-block" class="mb-5 hidden">
             <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Region</h4>
             <p class="text-sm text-gray-800" id="sp-region">—</p>
         </div>
-
-        <!-- Timelapse -->
         <div class="mb-5">
             <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">5-Year Timelapse</h4>
-
-            <!-- Timelapse loading -->
             <div id="sp-timelapse-loading" class="text-center py-4 hidden">
                 <div class="inline-block w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
             </div>
-
-            <!-- No frames -->
             <div id="sp-timelapse-empty" class="hidden">
-                <p class="text-sm text-gray-400 italic">No timelapse data yet — frames are fetched automatically in the background.</p>
+                <p class="text-xs text-gray-400 italic">No timelapse data yet — frames are fetched automatically in the background.</p>
             </div>
-
-            <!-- Frames viewer -->
             <div id="sp-timelapse-viewer" class="hidden">
-                <!-- Year label -->
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-sm font-semibold text-gray-700" id="sp-timelapse-year-label">—</span>
                     <div class="text-xs text-gray-500">
                         NDVI: <span id="sp-timelapse-ndvi">—</span> &nbsp;|&nbsp; BSI: <span id="sp-timelapse-bsi">—</span>
                     </div>
                 </div>
-
-                <!-- Image -->
                 <div class="relative mb-3">
-                    <img id="sp-timelapse-img"
-                         src=""
-                         alt="Satellite composite"
-                         class="w-full rounded-lg border border-gray-200 bg-gray-100"
-                         style="height:200px;object-fit:cover;"
-                         onerror="this.src='';this.classList.add('hidden');document.getElementById('sp-timelapse-img-fallback').classList.remove('hidden');" />
+                    <img id="sp-timelapse-img" src="" alt="Satellite composite"
+                         class="w-full rounded-lg border border-gray-200 bg-gray-100" style="height:200px;object-fit:cover;"
+                         onerror="this.classList.add('hidden');document.getElementById('sp-timelapse-img-fallback').classList.remove('hidden');" />
                     <div id="sp-timelapse-img-fallback" class="hidden w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center">
                         <p class="text-xs text-gray-400">Image unavailable</p>
                     </div>
                 </div>
-
-                <!-- Slider -->
-                <input id="sp-timelapse-slider"
-                       type="range"
-                       min="0" max="0" value="0"
-                       class="w-full accent-blue-600"
-                       oninput="window._sitePanel.onSliderChange(this.value)" />
-
-                <!-- Year ticks -->
+                <input id="sp-timelapse-slider" type="range" min="0" max="0" value="0"
+                       class="w-full accent-blue-600" oninput="window._sitePanel.onSliderChange(this.value)" />
                 <div id="sp-timelapse-ticks" class="flex justify-between text-xs text-gray-400 mt-1"></div>
             </div>
         </div>
-
-    </div><!-- /site-panel-content -->
+    </div>
 </div>
-
-<!-- Dark overlay when panel is open -->
-<div id="site-panel-overlay" class="fixed inset-0 bg-black bg-opacity-20 z-40 hidden" id="site-panel-overlay"></div>
+<div id="site-panel-overlay" class="fixed inset-0 bg-black bg-opacity-20 z-40 hidden"></div>
 {% endblock %}
 
 
@@ -285,67 +337,34 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
-    // ------------------------------------------------------------------
-    // Site detail panel controller
-    // ------------------------------------------------------------------
+    // ── Site panel ──
     window._sitePanel = (function () {
         const panel   = document.getElementById('site-panel');
         const overlay = document.getElementById('site-panel-overlay');
         const loading = document.getElementById('site-panel-loading');
         const error   = document.getElementById('site-panel-error');
         const content = document.getElementById('site-panel-content');
-        let _frames   = [];
+        let _frames = [];
 
-        function open() {
-            panel.classList.remove('translate-x-full');
-            overlay.classList.remove('hidden');
-        }
+        const open  = () => { panel.classList.remove('translate-x-full'); overlay.classList.remove('hidden'); };
+        const close = () => { panel.classList.add('translate-x-full');    overlay.classList.add('hidden'); };
 
-        function close() {
-            panel.classList.add('translate-x-full');
-            overlay.classList.add('hidden');
-        }
-
-        function showLoading() {
-            loading.classList.remove('hidden');
-            error.classList.add('hidden');
-            content.classList.add('hidden');
-        }
-
-        function showError(msg) {
-            loading.classList.add('hidden');
-            error.classList.remove('hidden');
-            content.classList.add('hidden');
-            document.getElementById('site-panel-error-msg').textContent = msg;
-        }
-
-        function showContent() {
-            loading.classList.add('hidden');
-            error.classList.add('hidden');
-            content.classList.remove('hidden');
-        }
+        const showLoading = () => { loading.classList.remove('hidden'); error.classList.add('hidden'); content.classList.add('hidden'); };
+        const showError   = (msg) => { loading.classList.add('hidden'); error.classList.remove('hidden'); content.classList.add('hidden'); document.getElementById('site-panel-error-msg').textContent = msg; };
+        const showContent = () => { loading.classList.add('hidden'); error.classList.add('hidden'); content.classList.remove('hidden'); };
 
         async function load(siteId) {
-            open();
-            showLoading();
-
+            open(); showLoading();
             try {
-                // Fetch site detail
                 const res = await fetch(`/api/sites/${siteId}/`, { credentials: 'include' });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const site = await res.json();
-                populateSite(site);
+                populateSite(await res.json());
                 showContent();
-
-                // Fetch timelapse separately (non-blocking)
                 loadTimelapse(siteId);
-            } catch (e) {
-                showError('Could not load site data: ' + e.message);
-            }
+            } catch (e) { showError('Could not load site data: ' + e.message); }
         }
 
         function populateSite(site) {
-            // Legal status badge
             const badge = document.getElementById('sp-legal-badge');
             if (site.legal_status === 'illegal') {
                 badge.textContent = '⚠ Illegal Mining';
@@ -357,176 +376,92 @@ document.addEventListener('DOMContentLoaded', function () {
                 badge.textContent = '? Unclassified';
                 badge.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-gray-100 text-gray-700';
             }
+            document.getElementById('sp-confidence').textContent = site.confidence_pct + '%';
+            document.getElementById('sp-area').textContent       = site.area_hectares + ' ha';
+            document.getElementById('sp-date').textContent       = site.detection_date;
+            document.getElementById('sp-recurrence').textContent = site.recurrence_count + 'x';
 
-            document.getElementById('sp-confidence').textContent  = site.confidence_pct + '%';
-            document.getElementById('sp-area').textContent         = site.area_hectares + ' ha';
-            document.getElementById('sp-date').textContent         = site.detection_date;
-            document.getElementById('sp-recurrence').textContent   = site.recurrence_count + 'x';
-
-            // Concession block
             const concBlock = document.getElementById('sp-concession-block');
             if (site.concession) {
                 concBlock.classList.remove('hidden');
-                document.getElementById('sp-concession-name').textContent    = site.concession.name + ' (' + site.concession.license_number + ')';
-                document.getElementById('sp-concession-holder').textContent  = site.concession.holder + ' — ' + site.concession.license_type;
+                document.getElementById('sp-concession-name').textContent   = site.concession.name + ' (' + site.concession.license_number + ')';
+                document.getElementById('sp-concession-holder').textContent = site.concession.holder + ' — ' + site.concession.license_type;
                 document.getElementById('sp-concession-overlap').textContent = 'Overlap: ' + (site.concession.overlap_pct || 0).toFixed(1) + '%';
-            } else {
-                concBlock.classList.add('hidden');
-            }
+            } else { concBlock.classList.add('hidden'); }
 
-            // Region block
             const regBlock = document.getElementById('sp-region-block');
-            if (site.region) {
-                regBlock.classList.remove('hidden');
-                document.getElementById('sp-region').textContent = site.region;
-            } else {
-                regBlock.classList.add('hidden');
-            }
+            if (site.region) { regBlock.classList.remove('hidden'); document.getElementById('sp-region').textContent = site.region; }
+            else { regBlock.classList.add('hidden'); }
         }
 
         async function loadTimelapse(siteId) {
-            const tlLoading = document.getElementById('sp-timelapse-loading');
-            const tlEmpty   = document.getElementById('sp-timelapse-empty');
-            const tlViewer  = document.getElementById('sp-timelapse-viewer');
-
-            tlLoading.classList.remove('hidden');
-            tlEmpty.classList.add('hidden');
-            tlViewer.classList.add('hidden');
-
+            const tlLoad  = document.getElementById('sp-timelapse-loading');
+            const tlEmpty = document.getElementById('sp-timelapse-empty');
+            const tlView  = document.getElementById('sp-timelapse-viewer');
+            tlLoad.classList.remove('hidden'); tlEmpty.classList.add('hidden'); tlView.classList.add('hidden');
             try {
                 const res = await fetch(`/api/sites/${siteId}/timelapse/`, { credentials: 'include' });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                if (!res.ok) throw new Error();
                 const data = await res.json();
                 _frames = data.frames || [];
-                tlLoading.classList.add('hidden');
-
-                if (_frames.length === 0) {
-                    tlEmpty.classList.remove('hidden');
-                } else {
-                    tlViewer.classList.remove('hidden');
-                    const slider = document.getElementById('sp-timelapse-slider');
-                    slider.min   = 0;
-                    slider.max   = _frames.length - 1;
-                    slider.value = _frames.length - 1; // start at most recent
-
-                    // Build year ticks
-                    const ticks = document.getElementById('sp-timelapse-ticks');
-                    ticks.innerHTML = _frames.map(f => `<span>${f.year}</span>`).join('');
-
-                    renderFrame(_frames.length - 1);
-                }
-            } catch (e) {
-                tlLoading.classList.add('hidden');
-                tlEmpty.classList.remove('hidden');
-            }
+                tlLoad.classList.add('hidden');
+                if (_frames.length === 0) { tlEmpty.classList.remove('hidden'); return; }
+                tlView.classList.remove('hidden');
+                const slider = document.getElementById('sp-timelapse-slider');
+                slider.min = 0; slider.max = _frames.length - 1; slider.value = _frames.length - 1;
+                document.getElementById('sp-timelapse-ticks').innerHTML = _frames.map(f => `<span>${f.year}</span>`).join('');
+                renderFrame(_frames.length - 1);
+            } catch { tlLoad.classList.add('hidden'); tlEmpty.classList.remove('hidden'); }
         }
 
         function renderFrame(idx) {
-            const frame = _frames[idx];
-            if (!frame) return;
-
-            document.getElementById('sp-timelapse-year-label').textContent = frame.year;
-            document.getElementById('sp-timelapse-ndvi').textContent = frame.mean_ndvi != null ? frame.mean_ndvi.toFixed(3) : '—';
-            document.getElementById('sp-timelapse-bsi').textContent  = frame.mean_bsi  != null ? frame.mean_bsi.toFixed(3)  : '—';
-
-            const img      = document.getElementById('sp-timelapse-img');
-            const fallback = document.getElementById('sp-timelapse-img-fallback');
-            if (frame.thumbnail_url) {
-                img.src = frame.thumbnail_url;
-                img.classList.remove('hidden');
-                fallback.classList.add('hidden');
-            } else {
-                img.src = '';
-                img.classList.add('hidden');
-                fallback.classList.remove('hidden');
-            }
+            const f = _frames[idx]; if (!f) return;
+            document.getElementById('sp-timelapse-year-label').textContent = f.year;
+            document.getElementById('sp-timelapse-ndvi').textContent = f.mean_ndvi != null ? f.mean_ndvi.toFixed(3) : '—';
+            document.getElementById('sp-timelapse-bsi').textContent  = f.mean_bsi  != null ? f.mean_bsi.toFixed(3)  : '—';
+            const img = document.getElementById('sp-timelapse-img');
+            const fb  = document.getElementById('sp-timelapse-img-fallback');
+            if (f.thumbnail_url) { img.src = f.thumbnail_url; img.classList.remove('hidden'); fb.classList.add('hidden'); }
+            else { img.src = ''; img.classList.add('hidden'); fb.classList.remove('hidden'); }
         }
 
-        function onSliderChange(val) {
-            renderFrame(parseInt(val, 10));
-        }
-
-        // Close on overlay click or X button
         document.getElementById('site-panel-close').addEventListener('click', close);
         overlay.addEventListener('click', close);
 
-        return { load, close, onSliderChange };
+        return { load, close, onSliderChange: (v) => renderFrame(parseInt(v, 10)) };
     })();
 
-    // ------------------------------------------------------------------
-    // Dashboard map
-    // ------------------------------------------------------------------
+    // ── Dashboard map ──
     const mapContainer = document.getElementById('dashboard-map');
-    if (mapContainer) {
-        mapContainer.innerHTML = '';
+    if (!mapContainer) return;
 
-        const dashboardMap = new MapHandler('dashboard-map', {
-            center: [-1.6244, 6.6885],
-            zoom: 8
-        });
+    const dashboardMap = new MapHandler('dashboard-map', { center: [-1.6244, 6.6885], zoom: 7 });
+    dashboardMap.onSiteClick(siteId => window._sitePanel.load(siteId));
 
-        // Wire up site panel on polygon click
-        dashboardMap.onSiteClick(function (siteId) {
-            window._sitePanel.load(siteId);
-        });
-
-        dashboardMap.map.on('load', async function () {
-            try {
-                const response = await fetch('/api/results/', {
-                    credentials: 'include',
-                    headers: { 'Accept': 'application/json' }
-                });
-                if (!response.ok) return;
-
-                const data    = await response.json();
-                const results = Array.isArray(data) ? data : (data.results || []);
-
-                const allFeatures = [];
-                results.forEach(function (result) {
-                    if (result.geojson && result.geojson.features) {
-                        result.geojson.features.forEach(function (feature) {
-                            allFeatures.push(feature);
-                        });
-                    }
-                });
-
-                console.log('[Dashboard] Results fetched:', results.length, 'records,', allFeatures.length, 'features');
-
-                if (allFeatures.length > 0) {
-                    const source = dashboardMap.map.getSource('detections');
-                    if (source) {
-                        source.setData({ type: 'FeatureCollection', features: allFeatures });
-
-                        try {
-                            const bounds = new maplibregl.LngLatBounds();
-                            allFeatures.forEach(function (f) {
-                                if (f.geometry && f.geometry.coordinates) {
-                                    const coords = f.geometry.type === 'Polygon'
-                                        ? f.geometry.coordinates[0]
-                                        : f.geometry.coordinates.flat(2);
-                                    coords.forEach(function (c) { bounds.extend(c); });
-                                }
-                            });
-                            if (!bounds.isEmpty()) {
-                                dashboardMap.map.fitBounds(bounds, { padding: 40, maxZoom: 13 });
-                            }
-                        } catch (e) {
-                            console.warn('Could not fit bounds:', e);
+    dashboardMap.map.on('load', async function () {
+        try {
+            const res = await fetch('/api/results/', { credentials: 'include', headers: { 'Accept': 'application/json' } });
+            if (!res.ok) return;
+            const data    = await res.json();
+            const results = Array.isArray(data) ? data : (data.results || []);
+            const features = [];
+            results.forEach(r => { if (r.geojson?.features) r.geojson.features.forEach(f => features.push(f)); });
+            console.log('[Dashboard] Results fetched:', results.length, 'records,', features.length, 'features');
+            if (features.length > 0) {
+                dashboardMap.map.getSource('detections')?.setData({ type: 'FeatureCollection', features });
+                try {
+                    const bounds = new maplibregl.LngLatBounds();
+                    features.forEach(f => {
+                        if (f.geometry?.coordinates) {
+                            const coords = f.geometry.type === 'Polygon' ? f.geometry.coordinates[0] : f.geometry.coordinates.flat(2);
+                            coords.forEach(c => bounds.extend(c));
                         }
-                    }
-                } else {
-                    // No detections yet — show a notice on the map
-                    const notice = document.createElement('div');
-                    notice.style.cssText = 'position:absolute;bottom:16px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.92);border:1px solid #e5e7eb;border-radius:8px;padding:8px 16px;font-size:13px;color:#6b7280;pointer-events:none;z-index:10;white-space:nowrap;';
-                    notice.textContent = 'No detections yet — run a scan on the Live Map to generate results';
-                    document.getElementById('dashboard-map').style.position = 'relative';
-                    document.getElementById('dashboard-map').appendChild(notice);
-                }
-            } catch (err) {
-                console.error('Failed to load detections:', err);
+                    });
+                    if (!bounds.isEmpty()) dashboardMap.map.fitBounds(bounds, { padding: 50, maxZoom: 13 });
+                } catch(e) {}
             }
-        });
-    }
+        } catch (err) { console.error('Failed to load detections:', err); }
+    });
 });
 </script>
 {% endblock %}

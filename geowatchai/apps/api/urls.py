@@ -1,22 +1,21 @@
-"""
-URL configuration for API app.
-
-Provides endpoints for job creation, status tracking, and result retrieval.
-"""
-
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views import JobViewSet, ResultViewSet, DetectedSiteViewSet
+from .views import JobViewSet, ResultViewSet, DetectedSiteViewSet, ConcessionGeoJSONView, AlertViewSet
 
-# Create router for ViewSets
 router = DefaultRouter()
 router.register(r'jobs', JobViewSet, basename='job')
 router.register(r'results', ResultViewSet, basename='result')
 router.register(r'sites', DetectedSiteViewSet, basename='site')
+router.register(r'concessions', ConcessionGeoJSONView, basename='concession')
 
 app_name = 'api'
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('alerts/', AlertViewSet.as_view({'get': 'list'}), name='alert-list'),
+    path('alerts/<pk>/', AlertViewSet.as_view({'get': 'retrieve'}), name='alert-detail'),
+    path('alerts/<pk>/acknowledge/', AlertViewSet.as_view({'post': 'acknowledge'}), name='alert-acknowledge'),
+    path('alerts/<pk>/dismiss/', AlertViewSet.as_view({'post': 'dismiss'}), name='alert-dismiss'),
+    path('alerts/<pk>/dispatch/', AlertViewSet.as_view({'post': 'dispatch_alert'}), name='alert-dispatch'),
 ]
