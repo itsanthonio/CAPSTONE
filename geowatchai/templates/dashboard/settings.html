@@ -1,0 +1,255 @@
+{% extends 'base.html' %}
+
+{% block title %}Settings - {{ settings.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">Settings</h1>
+        <p class="text-gray-600 mt-1">Configure system preferences and parameters</p>
+    </div>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Detection Settings -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div class="p-6 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-900">Detection Settings</h2>
+                    <p class="text-sm text-gray-600 mt-1">Configure AI model detection parameters</p>
+                </div>
+                <div class="p-6 space-y-6">
+                    <!-- Confidence Threshold -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Minimum Confidence Threshold: <span id="confidence-threshold-value">70%</span>
+                        </label>
+                        <input type="range" id="confidence-threshold" min="0" max="100" value="70" class="w-full">
+                        <p class="text-xs text-gray-500 mt-1">Alerts below this threshold will be filtered out</p>
+                    </div>
+                    
+                    <!-- Detection Types -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Enabled Detection Types</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center">
+                                <input type="checkbox" checked class="rounded border-gray-300 text-gis-blue focus:ring-gis-blue">
+                                <span class="ml-2 text-sm text-gray-700">Illegal Mining Activity</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" checked class="rounded border-gray-300 text-gis-blue focus:ring-gis-blue">
+                                <span class="ml-2 text-sm text-gray-700">Vegetation Clearance</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" checked class="rounded border-gray-300 text-gis-blue focus:ring-gis-blue">
+                                <span class="ml-2 text-sm text-gray-700">Water Contamination</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" checked class="rounded border-gray-300 text-gis-blue focus:ring-gis-blue">
+                                <span class="ml-2 text-sm text-gray-700">Excavation Patterns</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" checked class="rounded border-gray-300 text-gis-blue focus:ring-gis-blue">
+                                <span class="ml-2 text-sm text-gray-700">Equipment Detection</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Scan Frequency -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Automatic Scan Frequency</label>
+                        <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gis-blue focus:border-transparent">
+                            <option value="hourly">Every Hour</option>
+                            <option value="6hours">Every 6 Hours</option>
+                            <option value="daily" selected>Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="manual">Manual Only</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">How often the system automatically scans for new activity</p>
+                    </div>
+                    
+                    <!-- Region of Interest -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Region of Interest</label>
+                        <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gis-blue focus:border-transparent">
+                            <option value="all">All Ghana</option>
+                            <option value="ashanti">Ashanti Region</option>
+                            <option value="western">Western Region</option>
+                            <option value="eastern">Eastern Region</option>
+                            <option value="central">Central Region</option>
+                            <option value="greater_accra">Greater Accra Region</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Geographic area to monitor for illegal mining</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Notification Settings -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
+                <div class="p-6 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-900">Notification Settings</h2>
+                    <p class="text-sm text-gray-600 mt-1">Configure alert notifications</p>
+                </div>
+                <div class="p-6 space-y-6">
+                    <!-- Email Notifications -->
+                    <div>
+                        <label class="flex items-center">
+                            <input type="checkbox" checked class="rounded border-gray-300 text-gis-blue focus:ring-gis-blue">
+                            <span class="ml-2 text-sm font-medium text-gray-700">Email Notifications</span>
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 ml-6">Receive email alerts for new detections</p>
+                    </div>
+                    
+                    <!-- High Priority Only -->
+                    <div>
+                        <label class="flex items-center">
+                            <input type="checkbox" checked class="rounded border-gray-300 text-gis-blue focus:ring-gis-blue">
+                            <span class="ml-2 text-sm font-medium text-gray-700">High Priority Alerts Only</span>
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 ml-6">Only notify for high-risk detections (>90% confidence)</p>
+                    </div>
+                    
+                    <!-- Notification Frequency -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Notification Frequency</label>
+                        <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gis-blue focus:border-transparent">
+                            <option value="immediate" selected>Immediate</option>
+                            <option value="hourly">Hourly Digest</option>
+                            <option value="daily">Daily Digest</option>
+                            <option value="weekly">Weekly Digest</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- System Information -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div class="p-6 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-900">System Information</h2>
+                    <p class="text-sm text-gray-600 mt-1">Current system status</p>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="text-sm font-medium text-gray-600">Application Version</label>
+                        <p class="text-sm text-gray-900">{{ settings.APP_VERSION }}</p>
+                    </div>
+                    
+                    <div>
+                        <label class="text-sm font-medium text-gray-600">Environment</label>
+                        <p class="text-sm text-gray-900">{{ settings.ENVIRONMENT }}</p>
+                    </div>
+                    
+                    <div>
+                        <label class="text-sm font-medium text-gray-600">Model Version</label>
+                        <p class="text-sm text-gray-900">v2.1.0</p>
+                    </div>
+                    
+                    <div>
+                        <label class="text-sm font-medium text-gray-600">Last Data Update</label>
+                        <p class="text-sm text-gray-900">2024-12-10 14:30 UTC</p>
+                    </div>
+                    
+                    <div>
+                        <label class="text-sm font-medium text-gray-600">System Status</label>
+                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            Operational
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
+                <div class="p-6 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-900">Quick Actions</h2>
+                    <p class="text-sm text-gray-600 mt-1">System maintenance tasks</p>
+                </div>
+                <div class="p-6 space-y-3">
+                    <button class="w-full px-4 py-2 bg-gis-blue text-white rounded-lg hover:bg-opacity-90 transition-colors">
+                        Run Manual Scan
+                    </button>
+                    <button class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                        Clear Cache
+                    </button>
+                    <button class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                        Export Settings
+                    </button>
+                    <button class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                        Import Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Save Button -->
+    <div class="flex justify-end mt-6">
+        <button class="px-6 py-2 bg-active-gold text-white rounded-lg hover:bg-opacity-90 transition-colors">
+            Save Settings
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    initializeSettings();
+});
+
+function initializeSettings() {
+    // Confidence threshold slider
+    const confidenceThreshold = document.getElementById('confidence-threshold');
+    const confidenceThresholdValue = document.getElementById('confidence-threshold-value');
+    
+    if (confidenceThreshold && confidenceThresholdValue) {
+        confidenceThreshold.addEventListener('input', function() {
+            confidenceThresholdValue.textContent = this.value + '%';
+        });
+    }
+    
+    // Save settings button
+    const saveButton = document.querySelector('.bg-active-gold');
+    if (saveButton) {
+        saveButton.addEventListener('click', function() {
+            GalamseyWatch.showLoading(this);
+            
+            // Simulate saving settings
+            setTimeout(() => {
+                GalamseyWatch.hideLoading(this);
+                alert('Settings saved successfully!');
+            }, 1500);
+        });
+    }
+    
+    // Quick action buttons
+    const quickActionButtons = document.querySelectorAll('.space-y-3 button');
+    quickActionButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const action = this.textContent.trim();
+            console.log('Executing action:', action);
+            
+            if (action === 'Run Manual Scan') {
+                GalamseyWatch.showLoading(this);
+                setTimeout(() => {
+                    GalamseyWatch.hideLoading(this);
+                    alert('Manual scan initiated successfully!');
+                }, 2000);
+            } else if (action === 'Clear Cache') {
+                GalamseyWatch.showLoading(this);
+                setTimeout(() => {
+                    GalamseyWatch.hideLoading(this);
+                    alert('Cache cleared successfully!');
+                }, 1000);
+            } else if (action === 'Export Settings') {
+                console.log('Exporting settings...');
+            } else if (action === 'Import Settings') {
+                console.log('Importing settings...');
+            }
+        });
+    });
+}
+</script>
+{% endblock %}

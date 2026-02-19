@@ -1,0 +1,247 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="GalamseyWatch AI - Illegal Mining Detection System for Government Agencies">
+    <title>{% block title %}{{ settings.APP_NAME }}{% endblock %}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'gis-blue': '#3b82f6',
+                        'alert-red': '#ef4444',
+                        'conflict-purple': '#8b5cf6',
+                        'sidebar-green': '#062d1f',
+                        'active-gold': '#f59e0b',
+                        'critical-risk': '#ef4444',
+                        'high-risk': '#f97316',
+                        'moderate-risk': '#eab308',
+                    },
+                    spacing: {
+                        '18': '4.5rem',
+                        '88': '22rem',
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'ui-sans-serif', 'system-ui'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/custom.css' %}">
+    
+    <!-- MapLibre GL JS -->
+    <link href="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.js"></script>
+
+    <!-- MapLibre Draw Plugin -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.0/mapbox-gl-draw.js"></script>
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.0/mapbox-gl-draw.css" type="text/css" />    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-50 font-sans antialiased">
+    <!-- Top Navigation -->
+    <header class="fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-50">
+        <div class="flex items-center justify-between h-full px-6">
+            <!-- Logo and Title -->
+            <div class="flex items-center space-x-4">
+                <a href="{% url 'analysis:live_map' %}" class="flex items-center space-x-4 hover:opacity-80 transition-opacity">
+                    <div class="w-8 h-8 bg-active-gold rounded flex items-center justify-center">
+                        <span class="text-white font-bold text-sm">G</span>
+                    </div>
+                    <h1 class="text-xl font-semibold text-gray-900">{{ settings.APP_NAME }}</h1>
+                </a>
+                {% if settings.ENVIRONMENT %}
+                <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
+                    {{ settings.ENVIRONMENT }}
+                </span>
+                {% endif %}
+            </div>
+            
+            <!-- Right Navigation -->
+            <div class="flex items-center space-x-4">
+                <!-- Admin Panel Button -->
+                {% if user.is_staff %}
+                <button class="px-4 py-2 text-sm font-medium text-white bg-sidebar-green rounded hover:bg-opacity-90 transition-colors">
+                    Admin Panel
+                </button>
+                {% endif %}
+                
+                <!-- Notifications -->
+                <button class="relative p-2 text-gray-600 hover:text-gray-900 transition-colors" aria-label="Notifications">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                    </svg>
+                    <span class="absolute top-1 right-1 w-2 h-2 bg-alert-red rounded-full"></span>
+                </button>
+                
+                <!-- User Profile Dropdown -->
+                <div class="relative">
+                    <button 
+                        onclick="toggleUserMenu()" 
+                        class="flex items-center space-x-2 p-2 rounded hover:bg-gray-100 transition-colors" 
+                        aria-label="User Profile"
+                    >
+                        <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                            <span class="text-sm font-medium text-gray-700">
+                                {% if user.is_authenticated %}{{ user.username|first|upper }}{% else %}U{% endif %}
+                            </span>
+                        </div>
+                        <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    
+                    <!-- Dropdown Menu -->
+                    <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                        {% if user.is_authenticated %}
+                            <div class="px-4 py-3 border-b border-gray-200">
+                                <p class="text-sm font-medium text-gray-900">{{ user.username }}</p>
+                                <p class="text-xs text-gray-500">{{ user.email }}</p>
+                            </div>
+                            <div class="py-1">
+                                <a href="{% url 'password_change' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    Change Password
+                                </a>
+                                {% if user.is_staff %}
+                                    <a href="{% url 'admin:index' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                        Admin Panel
+                                    </a>
+                                {% endif %}
+                                <form method="post" action="{% url 'logout' %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                        Logout
+                                    </button>
+                                </form>
+                            </div>
+                        {% else %}
+                            <div class="py-1">
+                                <a href="{% url 'login' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    Login
+                                </a>
+                                <a href="{% url 'signup' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    Sign Up
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <div class="flex pt-16">
+        <!-- Sidebar -->
+        <aside class="fixed left-0 top-16 bottom-0 w-64 bg-sidebar-green text-white z-40 overflow-y-auto">
+            <nav class="p-4">
+                <ul class="space-y-2">
+                    <li>
+                        <a href="{% url 'dashboard:home' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'dashboard_home' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                            </svg>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'analysis:live_map' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'analysis_live_map' or request.path == '/' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+                            </svg>
+                            <span>Live Map</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard:alerts' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if 'alerts' in request.resolver_match.url_name %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                            <span>Alerts</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard:model_insights' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'dashboard_model_insights' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                            <span>Model Insights</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'uploads:data_uploads' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'uploads_data_uploads' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                            </svg>
+                            <span>Data Uploads</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard:settings' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'dashboard_settings' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            <span>Settings</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="flex-1 ml-64">
+            {% block content %}
+            {% endblock %}
+        </main>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="fixed bottom-0 left-64 right-0 bg-white border-t border-gray-200 py-2 px-6 text-xs text-gray-600">
+        <div class="flex justify-between items-center">
+            <span>{{ settings.APP_NAME }} v{{ settings.APP_VERSION }}</span>
+            <span>&copy; 2024 Environmental Protection Agency</span>
+        </div>
+    </footer>
+    
+    <!-- JavaScript -->
+    <script src="{% static 'js/main.js' %}"></script>
+    
+    <!-- User Menu Toggle Script -->
+    <script>
+        function toggleUserMenu() {
+            const menu = document.getElementById('userMenu');
+            menu.classList.toggle('hidden');
+            
+            // Close menu when clicking outside
+            document.addEventListener('click', function closeMenu(e) {
+                if (!e.target.closest('#userMenu') && !e.target.closest('button[onclick="toggleUserMenu()"]')) {
+                    menu.classList.add('hidden');
+                    document.removeEventListener('click', closeMenu);
+                }
+            });
+        }
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

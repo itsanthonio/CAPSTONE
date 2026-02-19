@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - {{ settings.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <p class="text-gray-600 mt-1">Illegal mining detection overview and system status</p>
+    </div>
+    
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Total Detected Sites -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 card-hover">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Total Detected Sites</p>
+                    <p class="text-2xl font-bold text-gray-900 mt-1"><span data-stats="total_detected_sites">{{ stats.total_detected_sites }}</span></p>
+                    <div class="flex items-center mt-2">
+                        <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                        <span class="text-sm text-green-600 font-medium">+{{ stats.trends.sites_change }} this week</span>
+                    </div>
+                </div>
+                <div class="w-12 h-12 bg-alert-red bg-opacity-10 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-alert-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <!-- High-Risk Zones -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 card-hover">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">High-Risk Zones</p>
+                    <p class="text-2xl font-bold text-gray-900 mt-1"><span data-stats="high_risk_zones">{{ stats.high_risk_zones }}</span></p>
+                    <div class="flex items-center mt-2">
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            8 active alerts
+                        </span>
+                    </div>
+                </div>
+                <div class="w-12 h-12 bg-high-risk bg-opacity-10 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-high-risk" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Monthly Alerts -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 card-hover">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Monthly Alerts</p>
+                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ stats.monthly_alerts }}</p>
+                    <div class="flex items-center mt-2">
+                        <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                        <span class="text-sm text-green-600 font-medium">+{{ stats.trends.alerts_change }}% from last month</span>
+                    </div>
+                </div>
+                <div class="w-12 h-12 bg-active-gold bg-opacity-10 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-active-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Model Accuracy -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 card-hover">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Model Accuracy</p>
+                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ stats.model_accuracy }}%</p>
+                    <div class="flex items-center mt-2">
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Validated
+                        </span>
+                    </div>
+                </div>
+                <div class="w-12 h-12 bg-gis-blue bg-opacity-10 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-gis-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- HLS Optical Visualization -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div class="p-6 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-900">HLS Optical Visualization</h2>
+                    <p class="text-sm text-gray-600 mt-1">Real-time optical satellite imagery analysis</p>
+                </div>
+                <div class="p-6">
+                    <!-- Map Container -->
+                    <div id="dashboard-map" class="map-container bg-gray-100 rounded-lg mb-4" style="height: 400px;">
+                        <!-- Map will be initialized here -->
+                        <div class="flex items-center justify-center h-full">
+                            <div class="text-center">
+                                <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+                                </svg>
+                                <p class="text-gray-600">Map loading...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Detection Status Legend -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded mr-2 detection-critical"></div>
+                                <span class="text-sm text-gray-600">Critical Risk</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded mr-2 detection-high"></div>
+                                <span class="text-sm text-gray-600">High Risk</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded mr-2 detection-moderate"></div>
+                                <span class="text-sm text-gray-600">Moderate Risk</span>
+                            </div>
+                        </div>
+                        <div class="text-sm text-gray-600">
+                            <span class="font-medium">Coordinates:</span> 6.6885° N, 1.6244° W
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Model Performance Panel -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div class="p-6 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-900">Model Performance</h2>
+                    <p class="text-sm text-gray-600 mt-1">Detection accuracy metrics</p>
+                </div>
+                <div class="p-6">
+                    <!-- Accuracy Metric -->
+                    <div class="mb-6">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-600">Detection Accuracy</span>
+                            <span class="text-sm font-bold text-gray-900">{{ stats.model_accuracy }}% +{{ stats.trends.accuracy_change }}%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-gis-blue h-2 rounded-full" style="width: {{ stats.model_accuracy }}%"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Performance Chart -->
+                    <div class="mb-6">
+                        <h3 class="text-sm font-medium text-gray-600 mb-3">Performance Over Time</h3>
+                        <div class="chart-container">
+                            <canvas id="performance-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Metrics -->
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Precision</span>
+                            <span class="text-sm font-medium text-gray-900">96.1%</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Recall</span>
+                            <span class="text-sm font-medium text-gray-900">92.8%</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">F1 Score</span>
+                            <span class="text-sm font-medium text-gray-900">94.4%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize performance chart
+    const ctx = document.getElementById('performance-chart');
+    if (ctx) {
+        const modelAccuracy = {{ stats.model_accuracy }};
+        const performanceData = {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            datasets: [{
+                label: 'Detection Accuracy',
+                data: [88, 90, 91, 92, 93, modelAccuracy],
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4
+            }]
+        };
+        
+        const performanceChart = GalamseyWatch.ChartHelpers.createLineChart(ctx, performanceData);
+    }
+    
+    // Initialize map (placeholder)
+    initializeDashboardMap();
+});
+
+function initializeDashboardMap() {
+    const mapContainer = document.getElementById('dashboard-map');
+    if (mapContainer) {
+        // MapLibre initialization would go here
+        console.log('Dashboard map initialized');
+    }
+}
+</script>
+{% endblock %}
