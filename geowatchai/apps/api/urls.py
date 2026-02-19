@@ -7,12 +7,13 @@ Provides endpoints for job creation, status tracking, and result retrieval.
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views import JobViewSet, ResultViewSet
+from .views import JobViewSet, ResultViewSet, DetectedSiteViewSet
 
 # Create router for ViewSets
 router = DefaultRouter()
 router.register(r'jobs', JobViewSet, basename='job')
 router.register(r'results', ResultViewSet, basename='result')
+router.register(r'sites', DetectedSiteViewSet, basename='site')
 
 app_name = 'api'
 

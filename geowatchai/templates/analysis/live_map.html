@@ -161,7 +161,34 @@ document.addEventListener('DOMContentLoaded', function() {
         center: [-1.6244, 6.6885], // Center on Kumasi, Ghana
         zoom: 10
     });
-    
+
+    // Load existing detections on page load
+    window.mapHandler.map.on('load', async function () {
+        try {
+            const res = await fetch('/api/results/', { credentials: 'include', headers: { 'Accept': 'application/json' } });
+            if (!res.ok) return;
+            const data = await res.json();
+            const results = Array.isArray(data) ? data : (data.results || []);
+            const allFeatures = [];
+            results.forEach(r => {
+                if (r.geojson && r.geojson.features) {
+                    r.geojson.features.forEach(f => allFeatures.push(f));
+                }
+            });
+            console.log('[LiveMap] Loaded', allFeatures.length, 'existing detection features');
+            if (allFeatures.length > 0) {
+                window.mapHandler.map.getSource('detections').setData({
+                    type: 'FeatureCollection', features: allFeatures
+                });
+                // Update detection count in sidebar
+                const countEl = document.querySelector('#detection-list')?.previousElementSibling?.querySelector('span');
+                if (countEl) countEl.textContent = allFeatures.length + ' detections';
+            }
+        } catch (e) {
+            console.warn('[LiveMap] Could not load existing detections:', e);
+        }
+    });
+
     setupEventListeners();
     setupSidebarToggles();
 });

@@ -30,6 +30,7 @@ class Result(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     
     class Meta:
+        ordering = ['-created_at']
         indexes = [
             models.Index(fields=['job_id']),
             models.Index(fields=['created_at']),

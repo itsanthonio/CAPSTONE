@@ -227,10 +227,10 @@ class ResultViewSet(viewsets.ModelViewSet):
     def get_serializer(self, instance):
         """
         Get appropriate serializer for result instance.
-        
+
         Args:
             instance: Result instance
-            
+
         Returns:
             ResultSerializer: Configured serializer
         """
@@ -238,23 +238,23 @@ class ResultViewSet(viewsets.ModelViewSet):
             instance,
             context={'request': self.request}
         )
-    
+
     @action(detail=True, methods=['get'])
     def by_job(self, request, job_id=None):
         """
         Get all results for a specific job.
-        
+
         Args:
             request: HTTP request object
             job_id: Job UUID
-            
+
         Returns:
             Response: List of results for the job
         """
         try:
             # Validate job exists and is completed
             job = get_object_or_404(Job, id=job_id)
-            
+
             if job.status != Job.Status.COMPLETED:
                 return Response(
                     {
@@ -265,18 +265,18 @@ class ResultViewSet(viewsets.ModelViewSet):
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
             # Get results for this job
             results = Result.objects.filter(job_id=job_id)
             serializer = ResultSerializer(results, many=True)
-            
+
             return Response({
                 'job_id': job_id,
                 'job_status': job.status,
                 'total_results': len(results),
                 'results': serializer.data
             })
-            
+
         except Job.DoesNotExist:
             return Response(
                 {
@@ -294,3 +294,64 @@ class ResultViewSet(viewsets.ModelViewSet):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class DetectedSiteViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Read-only ViewSet for DetectedSite.
+    Provides site detail and timelapse frames for the map panel.
+    """
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        from apps.detections.models import DetectedSite
+        return DetectedSite.objects.select_related(
+            'intersecting_concession', 'region', 'model_run', 'satellite_imagery'
+        ).all()
+
+    def retrieve(self, request, *args, **kwargs):
+        from apps.detections.models import DetectedSite
+        site = get_object_or_404(DetectedSite, pk=kwargs['pk'])
+
+        concession = None
+        if site.intersecting_concession:
+            concession = {
+                'license_number': site.intersecting_concession.license_number,
+                'name': site.intersecting_concession.concession_name,
+                'holder': site.intersecting_concession.holder_name,
+                'license_type': site.intersecting_concession.get_license_type_display(),
+                'overlap_pct': site.concession_overlap_pct,
+            }
+
+        return Response({
+            'id': str(site.id),
+            'detection_date': site.detection_date.isoformat(),
+            'confidence_score': round(site.confidence_score, 4),
+            'confidence_pct': round(site.confidence_score * 100, 1),
+            'area_hectares': round(site.area_hectares, 2),
+            'legal_status': site.legal_status,
+            'legal_status_display': site.get_legal_status_display(),
+            'status': site.status,
+            'status_display': site.get_status_display(),
+            'recurrence_count': site.recurrence_count,
+            'first_detected_at': site.first_detected_at.isoformat() if site.first_detected_at else None,
+            'concession': concession,
+            'region': site.region.name if site.region else None,
+        })
+
+    @action(detail=True, methods=['get'], url_path='timelapse')
+    def timelapse(self, request, pk=None):
+        """Return ordered timelapse frames for a detected site."""
+        from apps.detections.models import DetectedSite, SiteTimelapse
+        site = get_object_or_404(DetectedSite, pk=pk)
+        frames = SiteTimelapse.objects.filter(
+            detected_site=site
+        ).order_by('year').values(
+            'year', 'acquisition_period', 'thumbnail_url',
+            'cloud_cover_pct', 'mean_ndvi', 'mean_bsi'
+        )
+        return Response({
+            'site_id': str(site.id),
+            'frames': list(frames),
+            'frame_count': len(frames),
+        })
