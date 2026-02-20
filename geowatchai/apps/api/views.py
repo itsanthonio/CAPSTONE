@@ -313,6 +313,7 @@ class DetectedSiteViewSet(viewsets.ReadOnlyModelViewSet):
 
         return Response({
             'id': str(site.id),
+            'scan_date': site.created_at.date().isoformat(),
             'detection_date': site.detection_date.isoformat(),
             'confidence_score': round(site.confidence_score, 4),
             'confidence_pct': round(site.confidence_score * 100, 1),

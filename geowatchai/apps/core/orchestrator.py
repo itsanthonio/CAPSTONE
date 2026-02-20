@@ -87,28 +87,37 @@ class MiningDetectionPipeline:
             )
             model_run = self._log_model_run(job, satellite_imagery)
             detected_sites = self._create_detected_sites(job, result, model_run, satellite_imagery)
+            self._assign_regions(detected_sites)
             self._classify_legal_status(detected_sites)
             self._generate_alerts(detected_sites)
             self._enqueue_timelapse_fetches(detected_sites)
 
-            # Update job with detection results
+            # Save detection results BEFORE marking completed (avoids race condition)
+            job.total_detections = len(detected_sites)
+            job.illegal_count = sum(1 for s in detected_sites if s.legal_status == 'illegal')
+            job.result_id = result.id
+            job.detection_data = {
+                'type': 'FeatureCollection',
+                'features': [
+                    {
+                        'type': 'Feature',
+                        'geometry': json.loads(s.geometry.json),
+                        'properties': {
+                            'site_id': str(s.id),
+                            'confidence_score': s.confidence_score,
+                            'area_hectares': s.area_hectares,
+                            'legal_status': s.legal_status,
+                        }
+                    } for s in detected_sites
+                ]
+            }
+            job.save(update_fields=['total_detections', 'illegal_count', 'result_id', 'detection_data'])
+
+            # Mark completed AFTER data is saved
             JobService.update_job_status(
                 job_id=str(job.id),
                 new_status=Job.Status.COMPLETED
             )
-            
-            # Set detection result fields directly on job object
-            job.total_detections = len(detected_sites)
-            job.illegal_count = sum(1 for s in detected_sites if s.legal_status == 'illegal')
-            job.result_id = result.id
-            job.detection_data = [
-                {
-                    'geometry': s.geometry.json,
-                    'confidence_score': s.confidence_score,
-                    'area_hectares': s.area_hectares
-                } for s in detected_sites
-            ]
-            job.save()
             logger.info(f"[Pipeline] Completed job {job_id} — {len(detected_sites)} sites")
 
             return {
@@ -169,7 +178,7 @@ class MiningDetectionPipeline:
             raise RuntimeError(f"GEE export failed: {actual_error}")
         
         # 5. Check if GEE returned an error immediately
-        if not export_result or export_result.get('status') == 'failed':
+        if not export_result or not export_result.get('success'):
             error_msg = export_result.get('error', 'GEE returned no data')
             raise RuntimeError(f"GEE export failed: {error_msg}")
 
@@ -334,6 +343,28 @@ class MiningDetectionPipeline:
         return sites
 
     # ------------------------------------------------------------------
+    # Step 9a — Assign Region via spatial join
+    # ------------------------------------------------------------------
+
+    def _assign_regions(self, sites: List) -> None:
+        if not sites:
+            return
+        _, _, _, _, _, _, Region = _get_detection_models()
+        active_regions = Region.objects.filter(is_active=True)
+        for site in sites:
+            region = active_regions.filter(
+                geometry__contains=site.geometry.centroid
+            ).first()
+            if not region:
+                region = active_regions.filter(
+                    geometry__intersects=site.geometry
+                ).first()
+            if region:
+                site.region = region
+                site.save(update_fields=['region'])
+        logger.info(f"[Pipeline] Region assignment done for {len(sites)} sites")
+
+    # ------------------------------------------------------------------
     # Step 9 — Legal classification via spatial join
     # ------------------------------------------------------------------
 
@@ -345,27 +376,34 @@ class MiningDetectionPipeline:
         active_concessions = LegalConcession.objects.filter(is_active=True)
 
         for site in sites:
-            intersecting = active_concessions.filter(
-                geometry__intersects=site.geometry
+            centroid = site.geometry.centroid
+
+            # Primary check: is the centroid of the detected site inside a concession?
+            # This is robust against raster-to-vector edge misalignment where polygon
+            # boundaries may slightly cross the concession boundary.
+            concession = active_concessions.filter(
+                geometry__contains=centroid
             ).first()
 
-            if intersecting:
+            # Fallback: centroid on boundary edge — try any intersection
+            if not concession:
+                concession = active_concessions.filter(
+                    geometry__intersects=site.geometry
+                ).first()
+
+            if concession:
                 try:
-                    intersection = site.geometry.intersection(intersecting.geometry)
+                    intersection = site.geometry.intersection(concession.geometry)
                     overlap_pct = (
                         (intersection.area / site.geometry.area) * 100
                         if site.geometry.area > 0 else 0.0
                     )
                 except Exception:
-                    overlap_pct = 0.0
+                    overlap_pct = 100.0  # centroid confirmed inside, assume full overlap
 
-                site.intersecting_concession = intersecting
+                site.intersecting_concession = concession
                 site.concession_overlap_pct = overlap_pct
-                site.legal_status = (
-                    DetectedSite.LegalStatus.LEGAL
-                    if overlap_pct >= 50.0
-                    else DetectedSite.LegalStatus.ILLEGAL
-                )
+                site.legal_status = DetectedSite.LegalStatus.LEGAL
             else:
                 site.legal_status = DetectedSite.LegalStatus.ILLEGAL
 

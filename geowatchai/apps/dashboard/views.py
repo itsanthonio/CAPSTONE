@@ -105,12 +105,12 @@ def _get_dashboard_stats():
         completed_jobs = Job.objects.filter(status='completed').count()
         failed_jobs    = Job.objects.filter(status='failed').count()
 
-        # --- Recent sites for activity feed (last 5) ---
+        # --- Recent sites for activity feed (last 5 by scan time) ---
         recent_sites = list(
             DetectedSite.objects.select_related('region')
-            .order_by('-detection_date')[:5]
+            .order_by('-created_at')[:5]
             .values(
-                'id', 'detection_date', 'legal_status',
+                'id', 'detection_date', 'created_at', 'legal_status',
                 'confidence_score', 'area_hectares',
                 'region__name', 'recurrence_count'
             )

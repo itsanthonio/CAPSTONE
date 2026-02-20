@@ -30,9 +30,15 @@ class JobSerializer(serializers.ModelSerializer):
             'start_date',
             'end_date',
             'model_version',
-            'created_at'
+            'created_at',
+            'total_detections',
+            'illegal_count',
+            'detection_data',
+            'failure_reason',
+            'result_id',
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'created_at', 'total_detections', 'illegal_count',
+                            'detection_data', 'failure_reason', 'result_id']
     
     def to_representation(self, instance):
         """
@@ -218,17 +224,6 @@ class JobCreateSerializer(serializers.Serializer):
             end_date=validated_data['end_date'],
             model_version=validated_data['model_version']
         )
-        
-        # Trigger orchestrator asynchronously
-        try:
-            from apps.core.tasks import run_detection_task
-            run_detection_task.delay(str(job.id))
-        except Exception as e:
-            # Log error but don't fail job creation for testing
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.warning(f"Failed to start detection pipeline for job {job.id}: {str(e)}")
-            # Don't update job status to failed for testing
         
         return job
 
