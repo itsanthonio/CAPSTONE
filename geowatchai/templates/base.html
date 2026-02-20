@@ -52,10 +52,10 @@
 
     <!-- MapLibre Draw Plugin -->
     <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.0/mapbox-gl-draw.js"></script>
-    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.0/mapbox-gl-draw.css" type="text/css" />    
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.0/mapbox-gl-draw.css" type="text/css" />
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+
     {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-gray-50 font-sans antialiased">
@@ -76,7 +76,7 @@
                 </span>
                 {% endif %}
             </div>
-            
+
             <!-- Right Navigation -->
             <div class="flex items-center space-x-4">
                 <!-- Admin Panel Button -->
@@ -85,7 +85,7 @@
                     Admin Panel
                 </button>
                 {% endif %}
-                
+
                 <!-- Notifications -->
                 <button class="relative p-2 text-gray-600 hover:text-gray-900 transition-colors" aria-label="Notifications">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,12 +93,12 @@
                     </svg>
                     <span class="absolute top-1 right-1 w-2 h-2 bg-alert-red rounded-full"></span>
                 </button>
-                
+
                 <!-- User Profile Dropdown -->
                 <div class="relative">
-                    <button 
-                        onclick="toggleUserMenu()" 
-                        class="flex items-center space-x-2 p-2 rounded hover:bg-gray-100 transition-colors" 
+                    <button
+                        onclick="toggleUserMenu()"
+                        class="flex items-center space-x-2 p-2 rounded hover:bg-gray-100 transition-colors"
                         aria-label="User Profile"
                     >
                         <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
@@ -110,7 +110,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                         </svg>
                     </button>
-                    
+
                     <!-- Dropdown Menu -->
                     <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                         {% if user.is_authenticated %}
@@ -149,7 +149,7 @@
             </div>
         </div>
     </header>
-    
+
     <div class="flex pt-16">
         <!-- Sidebar -->
         <aside class="fixed left-0 top-16 bottom-0 w-64 bg-sidebar-green text-white z-40 overflow-y-auto">
@@ -244,14 +244,14 @@
                 </ul>
             </nav>
         </aside>
-        
+
         <!-- Main Content -->
         <main class="flex-1 ml-64">
             {% block content %}
             {% endblock %}
         </main>
     </div>
-    
+
     <!-- Footer -->
     <footer class="fixed bottom-0 left-64 right-0 bg-white border-t border-gray-200 py-2 px-6 text-xs text-gray-600">
         <div class="flex justify-between items-center">
@@ -259,16 +259,16 @@
             <span>&copy; 2024 Environmental Protection Agency</span>
         </div>
     </footer>
-    
+
     <!-- JavaScript -->
     <script src="{% static 'js/main.js' %}"></script>
-    
+
     <!-- User Menu Toggle Script -->
     <script>
         function toggleUserMenu() {
             const menu = document.getElementById('userMenu');
             menu.classList.toggle('hidden');
-            
+
             // Close menu when clicking outside
             document.addEventListener('click', function closeMenu(e) {
                 if (!e.target.closest('#userMenu') && !e.target.closest('button[onclick="toggleUserMenu()"]')) {
@@ -278,7 +278,7 @@
             });
         }
     </script>
-    
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

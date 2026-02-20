@@ -50,25 +50,57 @@ class MapHandler {
     setupDrawingTools() {
         console.log('setupDrawingTools called');
         console.log('MapboxDraw available:', typeof MapboxDraw !== 'undefined');
-        
+
         if (typeof MapboxDraw === 'undefined') {
             console.warn('MapboxDraw not loaded - drawing tools disabled');
             return;
         }
-        
+
         console.log('Initializing MapboxDraw...');
         this.draw = new MapboxDraw({
             displayControlsDefault: false,
             controls: { polygon: true, trash: true }
         });
         console.log('MapboxDraw initialized:', this.draw);
-        
+
         this.map.addControl(this.draw);
         console.log('MapboxDraw added to map');
-        
+
         this.map.on('draw.create', (e) => this.handleAOICreated(e));
         this.map.on('draw.update', (e) => this.handleAOICreated(e));
         console.log('Drawing event listeners added');
+
+        this._drawClickCount = 0;
+        this._drawCoords = [];
+
+        this.map.on('click', (e) => {
+            if (!this.draw || this.draw.getMode() !== 'draw_polygon') return;
+
+            this._drawClickCount++;
+            this._drawCoords.push([e.lngLat.lng, e.lngLat.lat]);
+
+            if (this._drawClickCount >= 4) {
+                const ring = [...this._drawCoords, this._drawCoords[0]];
+                this._drawClickCount = 0;
+                this._drawCoords = [];
+
+                setTimeout(() => {
+                    this.draw.deleteAll();
+                    const ids = this.draw.add({
+                        type: 'Feature',
+                        geometry: { type: 'Polygon', coordinates: [ring] }
+                    });
+                    this.draw.changeMode('simple_select', { featureIds: ids });
+                    this.handleAOICreated({ features: this.draw.getAll().features });
+
+                    document.querySelectorAll('#draw-aoi-btn').forEach(btn => {
+                        btn.textContent = btn.textContent.includes('AOI') ? 'Draw AOI' : 'Draw Area';
+                        btn.classList.remove('bg-red-600');
+                        btn.classList.add('bg-sidebar-green');
+                    });
+                }, 50);
+            }
+        });
     }
 
     setupMapLayers() {
@@ -384,6 +416,8 @@ class MapHandler {
                 }
             });
         } else {
+            this._drawClickCount = 0;
+            this._drawCoords = [];
             this.draw.changeMode('draw_polygon');
             drawBtns.forEach(btn => {
                 if (btn) {
