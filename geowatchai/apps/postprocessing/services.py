@@ -115,37 +115,40 @@ class PostProcessor:
             self.logger.error(f"Failed to extract polygons: {str(e)}")
             raise
     
-    def calculate_confidence_scores(self, polygons: List[Dict[str, Any]], 
-                               probability_mask: np.ndarray) -> List[Dict[str, Any]]:
+    def calculate_confidence_scores(self, polygons: List[Dict[str, Any]],
+                               probability_mask: np.ndarray,
+                               transform: Affine) -> List[Dict[str, Any]]:
         """
         Calculate confidence scores for each polygon using the original probability mask.
-        
+
         Args:
-            polygons: List of polygon dictionaries
+            polygons: List of polygon dictionaries (geometries in raster CRS)
             probability_mask: Original probability mask
-            
+            transform: Affine transform of the raster (same one used to extract polygons)
+
         Returns:
             Updated polygon list with confidence scores
         """
+        from rasterio.features import rasterize
+
         for polygon in polygons:
             shapely_geom = polygon['shapely_geometry']
-            
-            # Create a mask for this polygon to extract mean probability
-            from rasterio.features import rasterize
+
+            # Rasterize back using the SAME transform used to extract the polygon,
+            # so geographic coordinates map correctly to pixel positions.
             polygon_mask = rasterize(
                 [(shapely_geom, 1)],
                 out_shape=probability_mask.shape,
-                transform=Affine(1, 0, 0, 0, -1, 0)  # Identity transform for pixel coordinates
+                transform=transform,
             ).astype(bool)
-            
-            # Calculate mean probability within polygon
+
             if polygon_mask.sum() > 0:
-                confidence = probability_mask[polygon_mask].mean()
+                confidence = float(probability_mask[polygon_mask].mean())
             else:
                 confidence = 0.0
-            
-            polygon['confidence_score'] = float(confidence)
-        
+
+            polygon['confidence_score'] = confidence
+
         return polygons
     
     def create_geojson_featurecollection(self, polygons: List[Dict[str, Any]], 
@@ -305,7 +308,7 @@ class PostProcessor:
                 return self.save_results(empty_geojson, job, tile_reference)
             
             # Step 3: Calculate confidence scores
-            polygons = self.calculate_confidence_scores(polygons, probability_mask)
+            polygons = self.calculate_confidence_scores(polygons, probability_mask, transform)
             
             # Step 4: Create GeoJSON FeatureCollection
             geojson_fc = self.create_geojson_featurecollection(polygons, str(job.id), model_version)

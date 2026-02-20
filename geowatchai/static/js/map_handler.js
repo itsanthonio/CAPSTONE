@@ -15,6 +15,7 @@ class MapHandler {
         this.initializeMap();
     }
 
+
     initializeMap() {
         this.map = new maplibregl.Map({
             container: this.containerId,
@@ -25,7 +26,7 @@ class MapHandler {
         });
 
         this.map.on('load', () => {
-            this.setupDrawingTools();
+            if (this.options.drawing === true) this.setupDrawingTools();
             this.setupMapLayers();
             this.setupClickHandlers();
             this.setupKeyboardControls();
@@ -142,13 +143,27 @@ class MapHandler {
             id: 'detections-layer',
             type: 'fill',
             source: 'detections',
-            paint: { 'fill-color': '#ef4444', 'fill-opacity': 0.45 }
+            paint: {
+                'fill-color': [
+                    'match', ['get', 'legal_status'],
+                    'legal', '#3b82f6',
+                    '#ef4444'  // illegal or unknown
+                ],
+                'fill-opacity': 0.45
+            }
         });
         this.map.addLayer({
             id: 'detections-outline',
             type: 'line',
             source: 'detections',
-            paint: { 'line-color': '#b91c1c', 'line-width': 1.5 }
+            paint: {
+                'line-color': [
+                    'match', ['get', 'legal_status'],
+                    'legal', '#1d4ed8',
+                    '#b91c1c'  // illegal or unknown
+                ],
+                'line-width': 1.5
+            }
         });
         this.map.addLayer({
             id: 'detections-hover',
@@ -345,23 +360,17 @@ class MapHandler {
             scanBtn.style.cursor = 'pointer';
         }
         
-        // Use detection data from Job object
-        if (data.detection_data && data.detection_data.length > 0) {
-            console.log("Setting", data.detection_data.length, "detections on map");
-            this.map.getSource('detections').setData(data.detection_data);
-        } else if (data.total_detections > 0) {
-            console.warn("Job has detections but no detection_data array");
-            // Fallback: try to use result if available
-            if (data.result && Array.isArray(data.result)) {
-                console.log("Setting", data.result.length, "detections from result array");
-                this.map.getSource('detections').setData(data.result);
-            } else {
-                console.log("No detection data available to display");
-                this.map.getSource('detections').setData([]);
-            }
+        // Use detection data GeoJSON FeatureCollection from Job object
+        const fc = data.detection_data;
+        if (fc && fc.type === 'FeatureCollection' && fc.features && fc.features.length > 0) {
+            console.log("Setting", fc.features.length, "detections on map");
+            this.map.getSource('detections').setData(fc);
+            const illegal = data.illegal_count || 0;
+            alert(`Scan complete: ${fc.features.length} site(s) detected (${illegal} illegal).`);
         } else {
             console.log("No detections found in completed job");
-            this.map.getSource('detections').setData([]);
+            this.map.getSource('detections').setData({ type: 'FeatureCollection', features: [] });
+            alert("Scan complete: No mining sites detected in this area.");
         }
     }
 
