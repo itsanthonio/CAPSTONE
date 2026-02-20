@@ -4,7 +4,10 @@ class MapHandler {
         this.options = options;
         this.map = null;
         this.draw = null;
-        this._onSiteClick = null;
+        this.isDrawing = false;
+        this.isPolling = false; // Add polling state tracker
+        this.pollingTimeout = null; // Add polling timeout tracker
+        this.pollingCacheBuster = 0; // Add polling cache buster
         this.init();
     }
 
@@ -177,6 +180,13 @@ class MapHandler {
     }
 
     async scanAOI() {
+        // Strong debounce protection - prevent multiple simultaneous scans
+        if (this.isPolling) {
+            console.log("⚠️ Scan already in progress, ignoring duplicate request");
+            alert("Scan already in progress. Please wait for current scan to complete.");
+            return;
+        }
+        
         const data = this.draw.getAll();
         if (data.features.length === 0) return;
 
@@ -190,7 +200,12 @@ class MapHandler {
         const formattedStartDate = startDate.toISOString().split('T')[0];
 
         const scanBtn = document.getElementById('scan-aoi-btn');
-        if (scanBtn) { scanBtn.textContent = 'Processing...'; scanBtn.disabled = true; }
+        if (scanBtn) { 
+            scanBtn.textContent = 'Starting scan...'; 
+            scanBtn.disabled = true;
+            scanBtn.style.opacity = '0.6';
+            scanBtn.style.cursor = 'not-allowed';
+        }
 
         try {
             const response = await fetch('/api/jobs/', {
@@ -209,6 +224,7 @@ class MapHandler {
             });
             if (!response.ok) throw new Error('Server responded with ' + response.status);
             const job = await response.json();
+            this.isPolling = true; // Set polling state
             this.pollJobStatus(job.id);
         } catch (err) {
             console.error("Failed to start job:", err);
@@ -219,19 +235,118 @@ class MapHandler {
     }
 
     pollJobStatus(jobId) {
+        console.log("Starting job status poll at:", new Date().toISOString());
         console.log("Polling status for job:", jobId);
+        let pollCount = 0;
+        const maxPolls = 200; // Max 10 minutes of polling (200 * 3 seconds)
+        
         const interval = setInterval(async () => {
+            pollCount++;
+            if (pollCount > maxPolls) {
+                clearInterval(interval);
+                console.error("Job polling timed out after 10 minutes");
+                alert("Scan timed out. The job may be taking longer than expected or may have failed.");
+                return;
+            }
+            
             try {
-                const res = await fetch(`/api/jobs/${jobId}/`);
+                const res = await fetch(`/api/jobs/${jobId}/?t=${new Date().getTime()}`);
+                if (!res.ok) {
+                    throw new Error(`Server responded with ${res.status}`);
+                }
                 const status = await res.json();
-                if (status.state === 'SUCCESS') {
+                console.log("Full API Response:", status);
+                console.log("Current Backend Status:", status.status);
+                console.log("Poll count:", pollCount, "of", maxPolls);
+                
+                // Force direct check on status.status field
+                if (status.status === 'completed') {
                     clearInterval(interval);
-                    this.map.getSource('detections').setData(status.result);
+                    console.log("Job completed - forcing immediate success handling");
+                    this.handleJobSuccess(status);
+                    return;
+                }
+                
+                if (status.status === 'failed') {
+                    clearInterval(interval);
+                    this.handleJobFailure(status);
+                    return;
+                }
+                
+                // Handle all non-final states - continue polling
+                const processingStates = ['queued', 'validating', 'exporting', 'preprocessing', 'inferring', 'postprocessing', 'storing'];
+                if (processingStates.includes(status.status)) {
+                    console.log("Job still processing at poll count:", pollCount, "Status:", status.status);
+                    // Update scan button to show progress
+                    const scanBtn = document.getElementById('scan-aoi-btn');
+                    if (scanBtn) {
+                        scanBtn.textContent = `Scanning... (${pollCount * 3}s) - ${status.status}`;
+                        scanBtn.disabled = true;
+                    }
+                } else {
+                    console.warn("Unknown job status at poll count:", pollCount, "Status:", status.status);
+                    console.warn("Available fields:", Object.keys(status));
                 }
             } catch (e) {
                 clearInterval(interval);
+                this.isPolling = false; // Reset polling state
+                console.error("Error polling job status at poll count:", pollCount);
+                console.error("Fetch error:", e);
+                alert("Error checking scan status: " + e.message);
             }
         }, 3000);
+    }
+
+    handleJobSuccess(data) {
+        this.isPolling = false; // Reset polling state
+        console.log("Job completed successfully!");
+        console.log("Job result data:", data.result);
+        console.log("Job total_detections:", data.total_detections);
+        console.log("Job detection_data:", data.detection_data);
+        
+        // Reset scan button
+        const scanBtn = document.getElementById('scan-aoi-btn');
+        if (scanBtn) {
+            scanBtn.textContent = 'Scan AOI';
+            scanBtn.disabled = false;
+            scanBtn.style.opacity = '1';
+            scanBtn.style.cursor = 'pointer';
+        }
+        
+        // Use detection data from Job object
+        if (data.detection_data && data.detection_data.length > 0) {
+            console.log("Setting", data.detection_data.length, "detections on map");
+            this.map.getSource('detections').setData(data.detection_data);
+        } else if (data.total_detections > 0) {
+            console.warn("Job has detections but no detection_data array");
+            // Fallback: try to use result if available
+            if (data.result && Array.isArray(data.result)) {
+                console.log("Setting", data.result.length, "detections from result array");
+                this.map.getSource('detections').setData(data.result);
+            } else {
+                console.log("No detection data available to display");
+                this.map.getSource('detections').setData([]);
+            }
+        } else {
+            console.log("No detections found in completed job");
+            this.map.getSource('detections').setData([]);
+        }
+    }
+
+    handleJobFailure(data) {
+        this.isPolling = false; // Reset polling state
+        console.error("Job failed:", data);
+        
+        // Reset scan button
+        const scanBtn = document.getElementById('scan-aoi-btn');
+        if (scanBtn) {
+            scanBtn.textContent = 'Scan AOI';
+            scanBtn.disabled = false;
+            scanBtn.style.opacity = '1';
+            scanBtn.style.cursor = 'pointer';
+        }
+        
+        alert("Scan failed: " + (data.error || data.failure_reason || 'Unknown error occurred'));
     }
 
     updateConfidenceFilter(val) {
