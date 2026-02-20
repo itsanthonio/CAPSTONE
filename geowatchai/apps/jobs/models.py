@@ -41,6 +41,12 @@ class Job(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
     failure_reason = models.TextField(null=True, blank=True)
     
+    # Detection result fields for frontend access
+    total_detections = models.IntegerField(default=0, help_text="Total number of detections")
+    illegal_count = models.IntegerField(default=0, help_text="Number of illegal detections")
+    result_id = models.UUIDField(null=True, blank=True, help_text="Related result ID")
+    detection_data = models.JSONField(default=list, help_text="Detection data as JSON")
+    
     class Meta:
         indexes = [
             models.Index(fields=['status']),

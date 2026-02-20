@@ -48,8 +48,14 @@ class JobService:
         ).first()
         
         if existing_job:
-            logger.info(f"Returning existing job {existing_job.id} for duplicate AOI")
-            return existing_job
+            # Check if existing job is stale (older than 10 minutes)
+            job_age = timezone.now() - existing_job.created_at
+            if job_age > timedelta(minutes=10):
+                logger.info(f"Found stale job {existing_job.id} ({job_age}), creating new job")
+                # Don't return stale job, create new one instead
+            else:
+                logger.info(f"Returning existing job {existing_job.id} for duplicate AOI")
+                return existing_job
         
         # Create new job with concurrency lock
         with transaction.atomic():

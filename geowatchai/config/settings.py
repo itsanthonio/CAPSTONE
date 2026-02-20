@@ -103,9 +103,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-GDAL_LIBRARY_PATH = r'C:\Program Files\QGIS 3.44.7\bin\gdal312.dll'
-GEOS_LIBRARY_PATH = r'C:\Program Files\QGIS 3.44.7\bin\geos_c.dll'
-os.environ['PROJ_LIB'] = r'C:\Program Files\QGIS 3.44.7\share\proj'
+# GDAL_LIBRARY_PATH = r'C:\Program Files\QGIS 3.44.7\bin\gdal312.dll'
+# GEOS_LIBRARY_PATH = r'C:\Program Files\QGIS 3.44.7\bin\geos_c.dll'
+# os.environ['PROJ_LIB'] = r'C:\Program Files\QGIS 3.44.7\share\proj'
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases

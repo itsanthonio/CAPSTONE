@@ -10,7 +10,9 @@ class JobSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'status', 'aoi_geometry', 'aoi_hash', 'start_date', 'end_date',
             'model_version', 'preprocessing_version', 'created_at', 'started_at',
-            'completed_at', 'failure_reason'
+            'completed_at', 'failure_reason',
+            # Add detection result fields
+            'total_detections', 'illegal_count', 'result_id', 'detection_data'
         ]
         read_only_fields = ['id', 'aoi_hash', 'created_at', 'started_at', 'completed_at']
 

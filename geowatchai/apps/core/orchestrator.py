@@ -91,7 +91,24 @@ class MiningDetectionPipeline:
             self._generate_alerts(detected_sites)
             self._enqueue_timelapse_fetches(detected_sites)
 
-            JobService.update_job_status(job_id, Job.Status.COMPLETED)
+            # Update job with detection results
+            JobService.update_job_status(
+                job_id=str(job.id),
+                new_status=Job.Status.COMPLETED
+            )
+            
+            # Set detection result fields directly on job object
+            job.total_detections = len(detected_sites)
+            job.illegal_count = sum(1 for s in detected_sites if s.legal_status == 'illegal')
+            job.result_id = result.id
+            job.detection_data = [
+                {
+                    'geometry': s.geometry.json,
+                    'confidence_score': s.confidence_score,
+                    'area_hectares': s.area_hectares
+                } for s in detected_sites
+            ]
+            job.save()
             logger.info(f"[Pipeline] Completed job {job_id} — {len(detected_sites)} sites")
 
             return {
@@ -130,47 +147,44 @@ class MiningDetectionPipeline:
 
     def _export_and_wait(self, job: Job):
         """
-        Triggers GEE export and blocks until the GeoTIFF lands in GCS.
-        Returns (geotiff_gcs_path, scene_id, satellite, cloud_cover_pct).
+        Triggers GEE export using Direct Download and returns immediately.
+        Returns (geotiff_path, scene_id, satellite, cloud_cover_pct).
         """
+        # 1. Initialize EVERYTHING at the very top, before any 'try'
+        export_result = {"status": "starting", "error": "Unknown initialization error"}
+        error_msg = "Unknown error"
+        
         JobService.update_job_status(str(job.id), Job.Status.EXPORTING)
 
-        export_result = self.gee_service.export_hls_imagery(job)
-        if not export_result['success']:
-            raise RuntimeError(f"GEE export failed: {export_result.get('error')}")
+        try:
+            # 2. Ensure that assignment happens clearly
+            export_result = self.gee_service.export_hls_imagery(job)
+            logger.info(f"[Pipeline] GEE export result: {export_result}")
+            
+        except Exception as e:
+            # 3. Use 'e' directly if export_result is still at default
+            actual_error = export_result.get('error') if export_result.get('status') != 'starting' else str(e)
+            logger.error(f"HLS export error: {actual_error}")
+            # 4. This line below is where your current crash is happening:
+            raise RuntimeError(f"GEE export failed: {actual_error}")
+        
+        # 5. Check if GEE returned an error immediately
+        if not export_result or export_result.get('status') == 'failed':
+            error_msg = export_result.get('error', 'GEE returned no data')
+            raise RuntimeError(f"GEE export failed: {error_msg}")
 
-        export_id = export_result['export_id']
-        logger.info(f"[Pipeline] GEE export started — task {export_id}")
-
-        deadline = time.time() + GEE_EXPORT_TIMEOUT_SECONDS
-        while time.time() < deadline:
-            monitor = self.gee_service.monitor_export(
-                export_id, timeout=GEE_POLL_INTERVAL_SECONDS + 5
-            )
-            state = monitor.get('status')
-
-            if state == 'completed':
-                gcs_path = monitor.get('export_url', '')
-                scene_id = export_result.get('scene_id', f"job_{job.id}")
-                satellite = export_result.get('satellite', 'S2A')
-                cloud_cover = export_result.get('cloud_cover_pct', 0.0)
-                logger.info(f"[Pipeline] GEE export complete — {gcs_path}")
-                return gcs_path, scene_id, satellite, cloud_cover
-
-            elif state in ('failed', 'cancelled', 'error'):
-                raise RuntimeError(
-                    f"GEE export ended with state '{state}': {monitor.get('error')}"
-                )
-
-            logger.info(
-                f"[Pipeline] GEE export still running, "
-                f"waiting {GEE_POLL_INTERVAL_SECONDS}s ..."
-            )
-            time.sleep(GEE_POLL_INTERVAL_SECONDS)
-
-        raise TimeoutError(
-            f"GEE export timed out after {GEE_EXPORT_TIMEOUT_SECONDS}s"
-        )
+        # 6. Direct download is immediate - no monitoring needed
+        if export_result.get('is_local'):
+            # Local export - file is already downloaded
+            local_path = export_result.get('local_path')
+            scene_id = export_result.get('scene_id', f"job_{job.id}")
+            satellite = export_result.get('satellite', 'S2A')
+            cloud_cover = export_result.get('cloud_cover_pct', 0.0)
+            logger.info(f"[Pipeline] Direct download complete — {local_path}")
+            return local_path, scene_id, satellite, cloud_cover
+        else:
+            # This should not happen with direct download, but handle for completeness
+            raise RuntimeError(f"Unexpected non-local export result: {export_result}")
 
     # ------------------------------------------------------------------
     # Step 3 — Preprocess

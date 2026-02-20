@@ -39,12 +39,12 @@ def export_hls_for_job(self, job_id: str):
             JobService.update_job_status(
                 job_id, 
                 Job.Status.FAILED, 
-                failure_reason=export_result['error']
+                failure_reason=export_result.get('error', 'Unknown error')
             )
             return {
                 'status': 'failed',
                 'job_id': job_id,
-                'error': export_result['error']
+                'error': export_result.get('error', 'Unknown error')
             }
         
         # Store export ID in job (you may need to add this field to Job model)
