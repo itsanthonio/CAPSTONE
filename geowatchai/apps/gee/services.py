@@ -2,6 +2,7 @@ import logging
 import os
 import json
 import time
+import requests
 from typing import Optional, Dict, Any, Tuple
 from pathlib import Path
 import ee
@@ -251,31 +252,18 @@ class GeeService:
             return image
 
     def export_hls_imagery(self, job: Job) -> Dict[str, Any]:
-        """
-        Export HLS imagery for job AOI and date range
-
-        Args:
-            job: Job instance with AOI and date range
-
-        Returns:
-            Dict[str, Any]: Export result with task ID
-        """
+        """Export HLS imagery for job AOI and date range using Direct Download"""
+        # 1. INITIALIZE variables at the start to prevent NameErrors
+        export_result = {'success': False, 'error': 'Unknown error', 'export_id': None}
+        
         try:
             if not self._ee_initialized:
-                return {
-                    'success': False,
-                    'error': 'GEE not initialized',
-                    'export_id': None
-                }
+                return {'success': False, 'error': 'GEE not initialized', 'export_id': None}
 
             # Validate AOI
             is_valid, error_msg = self.validate_aoi(job.aoi_geometry)
             if not is_valid:
-                return {
-                    'success': False,
-                    'error': error_msg,
-                    'export_id': None
-                }
+                return {'success': False, 'error': error_msg, 'export_id': None}
 
             # Simplify geometry if needed
             simplified_aoi = self.simplify_geometry(job.aoi_geometry)
@@ -283,11 +271,7 @@ class GeeService:
             # Convert to GEE geometry
             ee_geometry = self.geometry_to_ee(simplified_aoi)
             if ee_geometry is None:
-                return {
-                    'success': False,
-                    'error': 'Failed to convert geometry',
-                    'export_id': None
-                }
+                return {'success': False, 'error': 'Failed to convert geometry', 'export_id': None}
 
             # Get HLS collection
             collection = self.get_hls_collection(
@@ -295,11 +279,7 @@ class GeeService:
                 job.end_date.strftime('%Y-%m-%d')
             )
             if collection is None:
-                return {
-                    'success': False,
-                    'error': 'Failed to load HLS collection',
-                    'export_id': None
-                }
+                return {'success': False, 'error': 'Failed to load HLS collection', 'export_id': None}
 
             # Process collection: cloud mask, band selection, mosaic
             processed = collection \
@@ -310,63 +290,73 @@ class GeeService:
             # Clip to AOI
             clipped = processed.clip(ee_geometry)
 
-            # Export configuration
-            gcs_bucket = config('GCS_BUCKET', default='geo-vigil-guard-exports')
-            export_params = {
-                'image': clipped,
-                'description': f'job_{job.id}_hls_export',
-                'bucket': gcs_bucket,
-                'fileNamePrefix': f'jobs/{job.id}/hls_imagery',
-                'scale': config('MAX_RESOLUTION', default=30, cast=int),
-                'fileFormat': 'GeoTIFF',
-                'maxPixels': 1e10,
-                'region': ee_geometry,
-            }
-
-            # Compute mean cloud cover for the composite period
+            # Define Metadata for return
             try:
                 mean_cloud = float(collection.aggregate_mean('CLOUDY_PIXEL_PERCENTAGE').getInfo() or 0.0)
-            except Exception:
+            except:
                 mean_cloud = 0.0
+            
+            satellite = 'S2A' # Default
+            scene_id = f"HLS.job_{job.id}.{job.start_date.strftime('%Y%m%d')}"
 
-            # Determine satellite from collection name
-            collection_name = config('HLS_COLLECTION', default='COPERNICUS/S2_SR_HARMONIZED')
-            if 'LC08' in collection_name or 'LANDSAT_8' in collection_name or 'L8' in collection_name:
-                satellite = 'L8'
-            elif 'LC09' in collection_name or 'LANDSAT_9' in collection_name or 'L9' in collection_name:
-                satellite = 'L9'
-            else:
-                satellite = 'S2A'
-
-            # Deterministic scene ID from job + date range
-            scene_id = (
-                f"HLS.{satellite}.job_{job.id}"
-                f".{job.start_date.strftime('%Y%m%d')}"
-                f"_{job.end_date.strftime('%Y%m%d')}"
-            )
-
-            # Start export task
-            task = ee.batch.Export.image.toCloudStorage(**export_params)
-            task.start()
-
-            logger.info(f"Started GEE export task: {task.id}")
-
-            return {
-                'success': True,
-                'export_id': task.id,
-                'task': task,
-                'scene_id': scene_id,
-                'satellite': satellite,
-                'cloud_cover_pct': mean_cloud,
-            }
+            # 2. DIRECT DOWNLOAD METHOD - bypass GCS/Billing
+            local_path = f'local_exports/jobs/{job.id}/hls_imagery.tif'
+            
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+            
+            # 1. Get Download ID first
+            try:
+                # Use getDownloadId instead of getDownloadURL
+                download_id = ee.data.getDownloadId({
+                    'image': clipped,
+                    'scale': config('MAX_RESOLUTION', default=30, cast=int),
+                    'filePerBand': False,
+                    'name': 'hls_imagery',
+                    'format': 'GEO_TIFF'  # Use the internal GEE constant name
+                })
+                
+                # 2. Construct the URL manually
+                base_url = 'https://earthengine.googleapis.com/v1alpha/projects/earthengine-legacy/thumbnails'
+                # Wait, legacy endpoint is more reliable for direct downloads:
+                download_url = ee.data.makeDownloadUrl(download_id)
+                
+                logger.info(f"Generated download URL for job {job.id}")
+                
+                # Use requests to pull the file to your local_exports folder
+                response = requests.get(download_url, timeout=300)  # 5 minute timeout
+                if response.status_code == 200:
+                    with open(local_path, 'wb') as f:
+                        f.write(response.content)
+                    logger.info(f"Direct download successful: {local_path}")
+                    
+                    return {
+                        'success': True,
+                        'export_id': f'direct_download_{job.id}',
+                        'scene_id': scene_id,
+                        'satellite': satellite,
+                        'cloud_cover_pct': mean_cloud,
+                        'is_local': True,
+                        'local_path': local_path
+                    }
+                else:
+                    raise Exception(f"GEE Download Failed: {response.text}")
+                    
+            except Exception as e:
+                logger.error(f"Download trigger error: {str(e)}")
+                error_msg = str(e)
+                if 'too large' in error_msg.lower() or 'limit' in error_msg.lower():
+                    error_msg = 'AOI too large for direct download. Please select a smaller area.'
+                
+                return {
+                    'success': False,
+                    'error': error_msg,
+                    'export_id': None
+                }
 
         except Exception as e:
             logger.error(f"HLS export error: {str(e)}")
-            return {
-                'success': False,
-                'error': str(e),
-                'export_id': None
-            }
+            return {'success': False, 'error': str(e), 'export_id': None}
 
     def monitor_export(self, export_id: str, timeout: int = None) -> Dict[str, Any]:
         """
@@ -376,6 +366,11 @@ class GeeService:
         try:
             if not self._ee_initialized:
                 return {'status': 'failed', 'error': 'GEE not initialized'}
+
+            # Handle local exports
+            if export_id.startswith('local_export_'):
+                # Local exports are always "completed" immediately
+                return {'status': 'completed', 'export_url': f'local_file_{export_id}'}
 
             project_id = config('GEE_PROJECT_ID', default='')
 

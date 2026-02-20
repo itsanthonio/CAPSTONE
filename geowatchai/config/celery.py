@@ -10,6 +10,10 @@ from celery import Celery
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
+# Use spawn method instead of fork to avoid macOS fork safety issues
+os.environ.setdefault('CELERYD_POOL', 'solo')
+os.environ.setdefault('CELERYD_POOL_RESTARTS', 'True')
+
 app = Celery('geo-vigil-guard')
 
 # Using a string here means the worker doesn't have to serialize
