@@ -257,10 +257,16 @@
                 <td class="px-5 py-3 text-xs" onclick="event.stopPropagation()">
                     <div class="flex items-center gap-2">
                         ${a.status === 'open' ? `
-                        <button onclick="window._alertsPage.action('${a.id}','acknowledge')"
-                                class="text-blue-600 hover:underline">Acknowledge</button>
-                        <button onclick="window._alertsPage.action('${a.id}','dismiss')"
-                                class="text-gray-400 hover:underline">Dismiss</button>
+                            <button onclick="window._alertsPage.action('${a.id}','acknowledge')"
+                                    class="text-blue-600 hover:underline">Acknowledge</button>
+                            <button onclick="window._alertsPage.action('${a.id}','dismiss')"
+                                    class="text-gray-400 hover:underline">Dismiss</button>
+                        ` : a.status === 'acknowledged' ? `
+                            <button onclick="window._alertsPage.action('${a.id}','dispatch')"
+                                    class="text-purple-600 hover:underline">Dispatch Inspector</button>
+                        ` : a.status === 'dispatched' ? `
+                            <button onclick="window._alertsPage.action('${a.id}','resolve')"
+                                    class="text-green-600 hover:underline">Mark Resolved</button>
                         ` : `<span class="text-gray-300">—</span>`}
                     </div>
                 </td>
@@ -361,13 +367,17 @@
                 class="px-4 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50">Close</button>`;
             if (a.status === 'open') {
                 actDiv.innerHTML += `
+                    <button onclick="window._alertsPage.action('${id}','dismiss');window._alertsPage.closeModal()"
+                        class="px-4 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50">Dismiss</button>
                     <button onclick="window._alertsPage.action('${id}','acknowledge');window._alertsPage.closeModal()"
-                        class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Acknowledge</button>
-                    <button onclick="window._alertsPage.action('${id}','dispatch');window._alertsPage.closeModal()"
-                        class="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700">Dispatch Inspector</button>`;
-            } else if (a.status === 'acknowledged' || a.status === 'dispatched') {
+                        class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Acknowledge</button>`;
+            } else if (a.status === 'acknowledged') {
                 actDiv.innerHTML += `
                     <button onclick="window._alertsPage.action('${id}','dispatch');window._alertsPage.closeModal()"
+                        class="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700">Dispatch Inspector</button>`;
+            } else if (a.status === 'dispatched') {
+                actDiv.innerHTML += `
+                    <button onclick="window._alertsPage.action('${id}','resolve');window._alertsPage.closeModal()"
                         class="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">Mark Resolved</button>`;
             }
         } catch(e) {
@@ -385,8 +395,8 @@
             acknowledge: 'acknowledge',
             dismiss:     'dismiss',
             dispatch:    'dispatch',
+            resolve:     'resolve',
         };
-        // "dispatch" doubles as "resolve" when already dispatched — use resolve endpoint
         const endpoint = endpointMap[verb] || verb;
         try {
             const res = await fetch(`/api/alerts/${id}/${endpoint}/`, {
