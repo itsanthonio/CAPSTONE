@@ -512,3 +512,7 @@ class AlertViewSet(viewsets.ViewSet):
     @action(detail=True, methods=['post'])
     def dispatch_alert(self, request, pk=None):
         return self._change_status(request, pk, 'dispatched')
+
+    @action(detail=True, methods=['post'])
+    def resolve(self, request, pk=None):
+        return self._change_status(request, pk, 'resolved')

@@ -18,4 +18,5 @@ urlpatterns = [
     path('alerts/<pk>/acknowledge/', AlertViewSet.as_view({'post': 'acknowledge'}), name='alert-acknowledge'),
     path('alerts/<pk>/dismiss/', AlertViewSet.as_view({'post': 'dismiss'}), name='alert-dismiss'),
     path('alerts/<pk>/dispatch/', AlertViewSet.as_view({'post': 'dispatch_alert'}), name='alert-dispatch'),
+    path('alerts/<pk>/resolve/', AlertViewSet.as_view({'post': 'resolve'}), name='alert-resolve'),
 ]
