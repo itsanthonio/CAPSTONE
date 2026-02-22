@@ -1,168 +1,340 @@
 {% extends 'base.html' %}
 
-{% block title %}Model Insights & Performance - {{ settings.APP_NAME }}{% endblock %}
+{% block title %}Model Insights - {{ settings.APP_NAME }}{% endblock %}
 
 {% block content %}
-<div class="p-6">
+<div class="p-6 space-y-6">
+
     <!-- Page Header -->
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Model Insights & Performance</h1>
-        <p class="text-gray-600 mt-1">Advanced analytics and model evaluation metrics</p>
-    </div>
-    
-    <!-- Metrics Cards -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <!-- Model Accuracy -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-900">Model Accuracy</h3>
-                <div class="w-10 h-10 bg-gis-blue bg-opacity-10 rounded-lg flex items-center justify-center">
-                    <svg class="w-5 h-5 text-gis-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                </div>
-            </div>
-            <div class="text-3xl font-bold text-gray-900">{{ model_metrics.accuracy }}%</div>
-            <div class="flex items-center mt-2">
-                <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                </svg>
-                <span class="text-sm text-green-600 font-medium">+{{ model_metrics.accuracy_change }}%</span>
-            </div>
-            <div class="mt-4">
-                <div class="w-full bg-gray-200 rounded-full h-2">
-                    <div class="bg-gis-blue h-2 rounded-full" id="accuracy-bar" style="width: 0%;"></div>
-                </div>
-            </div>
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Model Insights</h1>
+            <p class="text-sm text-gray-500 mt-0.5">FPN-ResNet50 v1.0 &middot; HLS Optical Imagery &middot; Ghana Mining Belt</p>
         </div>
-        
-        <!-- Precision / Recall -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-900">Precision / Recall</h3>
-                <div class="w-10 h-10 bg-active-gold bg-opacity-10 rounded-lg flex items-center justify-center">
-                    <svg class="w-5 h-5 text-active-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                    </svg>
-                </div>
-            </div>
-            <div class="space-y-3">
-                <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-600">Precision</span>
-                    <span class="text-lg font-semibold text-gray-900">{{ model_metrics.precision }}%</span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-600">Recall</span>
-                    <span class="text-lg font-semibold text-gray-900">{{ model_metrics.recall }}%</span>
-                </div>
-                <div class="flex justify-between items-center pt-3 border-t border-gray-200">
-                    <span class="text-sm font-medium text-gray-900">F1 Score</span>
-                    <span class="text-lg font-bold text-gray-900">{{ model_metrics.f1_score }}</span>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Confidence Distribution -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-900">Confidence Distribution</h3>
-                <div class="w-10 h-10 bg-high-risk bg-opacity-10 rounded-lg flex items-center justify-center">
-                    <svg class="w-5 h-5 text-high-risk" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                    </svg>
-                </div>
-            </div>
-            <div class="text-sm text-gray-600 mb-3">Most detections: 95-100% confidence (optical spectral analysis)</div>
-            <div class="chart-container">
-                <canvas id="confidence-chart"></canvas>
-            </div>
+        <div class="flex items-center gap-2 flex-wrap">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                Best Precision Model
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+                Test Set Results
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                Production
+            </span>
         </div>
     </div>
-    
-    <!-- Performance Over Time Chart -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div class="p-6 border-b border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-900">Model Performance Over Time</h2>
-            <p class="text-sm text-gray-600 mt-1">Detection accuracy trends from July to December (HLS Optical)</p>
+
+    <!-- 6 Metric Cards -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
+
+        <!-- Pixel Accuracy -->
+        <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
+            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Accuracy</p>
+            <p class="text-2xl font-bold text-gray-900">97.9<span class="text-base font-semibold text-gray-400">%</span></p>
+            <div class="mt-2 w-full bg-gray-100 rounded-full h-1">
+                <div class="bg-green-500 h-1 rounded-full" style="width:97.9%"></div>
+            </div>
+            <p class="text-xs text-green-600 font-medium mt-1.5">Excellent</p>
         </div>
-        <div class="p-6">
-            <div class="chart-container" style="height: 400px;">
+
+        <!-- Precision -->
+        <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
+            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Precision</p>
+            <p class="text-2xl font-bold text-gray-900">73.1<span class="text-base font-semibold text-gray-400">%</span></p>
+            <div class="mt-2 w-full bg-gray-100 rounded-full h-1">
+                <div class="bg-blue-500 h-1 rounded-full" style="width:73.1%"></div>
+            </div>
+            <p class="text-xs text-blue-600 font-medium mt-1.5">Detection</p>
+        </div>
+
+        <!-- Recall -->
+        <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
+            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Recall</p>
+            <p class="text-2xl font-bold text-gray-900">77.1<span class="text-base font-semibold text-gray-400">%</span></p>
+            <div class="mt-2 w-full bg-gray-100 rounded-full h-1">
+                <div class="bg-blue-500 h-1 rounded-full" style="width:77.1%"></div>
+            </div>
+            <p class="text-xs text-blue-600 font-medium mt-1.5">Coverage</p>
+        </div>
+
+        <!-- F1 / Dice -->
+        <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
+            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">F1 / Dice</p>
+            <p class="text-2xl font-bold text-gray-900">75.0<span class="text-base font-semibold text-gray-400">%</span></p>
+            <div class="mt-2 w-full bg-gray-100 rounded-full h-1">
+                <div class="bg-indigo-500 h-1 rounded-full" style="width:75%"></div>
+            </div>
+            <p class="text-xs text-indigo-600 font-medium mt-1.5">Balance</p>
+        </div>
+
+        <!-- IoU -->
+        <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
+            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">IoU</p>
+            <p class="text-2xl font-bold text-gray-900">60.0<span class="text-base font-semibold text-gray-400">%</span></p>
+            <div class="mt-2 w-full bg-gray-100 rounded-full h-1">
+                <div class="bg-orange-400 h-1 rounded-full" style="width:60%"></div>
+            </div>
+            <p class="text-xs text-orange-600 font-medium mt-1.5">Overlap</p>
+        </div>
+
+        <!-- Loss -->
+        <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
+            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Test Loss</p>
+            <p class="text-2xl font-bold text-gray-900">0.12<span class="text-base font-semibold text-gray-400">46</span></p>
+            <div class="mt-2 w-full bg-gray-100 rounded-full h-1">
+                <!-- Lower is better — fill from right -->
+                <div class="bg-green-400 h-1 rounded-full" style="width:{{ model_metrics.loss|floatformat:0 }}%;max-width:25%"></div>
+            </div>
+            <p class="text-xs text-green-600 font-medium mt-1.5">Low &darr;</p>
+        </div>
+
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Performance Over Time (2/3) -->
+        <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm">
+            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                    <h2 class="text-sm font-semibold text-gray-900">Performance Over Time</h2>
+                    <p class="text-xs text-gray-400 mt-0.5">Model version progression &mdash; IoU, Precision &amp; Recall</p>
+                </div>
+                <span class="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded border border-gray-100">Hardcoded &middot; v0.3 &rarr; v1.0</span>
+            </div>
+            <div class="p-5" style="height:300px;">
                 <canvas id="performance-chart"></canvas>
             </div>
         </div>
+
+        <!-- Confidence Distribution (1/3) -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+            <div class="px-5 py-4 border-b border-gray-100">
+                <h2 class="text-sm font-semibold text-gray-900">Confidence Distribution</h2>
+                <p class="text-xs text-gray-400 mt-0.5">
+                    {% if conf_total > 0 %}
+                        {{ conf_total }} active detection{{ conf_total|pluralize }}
+                    {% else %}
+                        No predictions yet
+                    {% endif %}
+                </p>
+            </div>
+            <div class="p-5" style="height:300px;">
+                {% if conf_total > 0 %}
+                    <canvas id="confidence-chart"></canvas>
+                {% else %}
+                    <div class="flex flex-col items-center justify-center h-full text-gray-300 gap-2">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                        <p class="text-sm text-gray-400">No predictions yet</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
     </div>
+
+    <!-- Metric Detail Breakdown -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+        <div class="px-5 py-4 border-b border-gray-100">
+            <h2 class="text-sm font-semibold text-gray-900">Metric Breakdown</h2>
+            <p class="text-xs text-gray-400 mt-0.5">FPN-ResNet50 v1.0 &middot; Best Precision Checkpoint &middot; Test Set</p>
+        </div>
+        <div class="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+            <div>
+                <div class="flex justify-between text-sm mb-1.5">
+                    <span class="font-medium text-gray-700">Pixel Accuracy</span>
+                    <span class="font-bold text-gray-900">97.90%</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-2">
+                    <div class="bg-green-500 h-2 rounded-full" style="width:97.9%"></div>
+                </div>
+                <p class="text-xs text-gray-400 mt-1">Fraction of correctly classified pixels across all classes</p>
+            </div>
+
+            <div>
+                <div class="flex justify-between text-sm mb-1.5">
+                    <span class="font-medium text-gray-700">Precision</span>
+                    <span class="font-bold text-gray-900">73.07%</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-2">
+                    <div class="bg-blue-500 h-2 rounded-full" style="width:73.07%"></div>
+                </div>
+                <p class="text-xs text-gray-400 mt-1">Of all predicted mining pixels, how many are truly mining</p>
+            </div>
+
+            <div>
+                <div class="flex justify-between text-sm mb-1.5">
+                    <span class="font-medium text-gray-700">Recall</span>
+                    <span class="font-bold text-gray-900">77.09%</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-2">
+                    <div class="bg-blue-400 h-2 rounded-full" style="width:77.09%"></div>
+                </div>
+                <p class="text-xs text-gray-400 mt-1">Of all actual mining pixels, how many were detected</p>
+            </div>
+
+            <div>
+                <div class="flex justify-between text-sm mb-1.5">
+                    <span class="font-medium text-gray-700">F1 Score / Dice</span>
+                    <span class="font-bold text-gray-900">75.02%</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-2">
+                    <div class="bg-indigo-500 h-2 rounded-full" style="width:75.02%"></div>
+                </div>
+                <p class="text-xs text-gray-400 mt-1">Harmonic mean of precision and recall</p>
+            </div>
+
+            <div>
+                <div class="flex justify-between text-sm mb-1.5">
+                    <span class="font-medium text-gray-700">IoU (Jaccard)</span>
+                    <span class="font-bold text-gray-900">60.03%</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-2">
+                    <div class="bg-orange-400 h-2 rounded-full" style="width:60.03%"></div>
+                </div>
+                <p class="text-xs text-gray-400 mt-1">Overlap between predicted and ground truth masks</p>
+            </div>
+
+            <div>
+                <div class="flex justify-between text-sm mb-1.5">
+                    <span class="font-medium text-gray-700">Test Loss</span>
+                    <span class="font-bold text-gray-900">0.1246</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-2">
+                    <!-- Visual: lower loss = thinner bar (scaled: 0.1246 / 0.5 max = ~25%) -->
+                    <div class="bg-green-400 h-2 rounded-full" style="width:24.9%"></div>
+                </div>
+                <p class="text-xs text-gray-400 mt-1">Combined BCE + Dice loss on held-out test imagery</p>
+            </div>
+
+        </div>
+    </div>
+
 </div>
 {% endblock %}
 
 {% block extra_js %}
-{{ model_metrics|json_script:"modelMetrics" }}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Set accuracy bar width from JSON data
-    const modelMetrics = JSON.parse(document.getElementById('modelMetrics').textContent);
-    const accuracyBar = document.getElementById('accuracy-bar');
-    if (accuracyBar) {
-        accuracyBar.style.width = modelMetrics.accuracy + '%';
-    }
-    
-    // Initialize confidence distribution chart
-    const confidenceCtx = document.getElementById('confidence-chart');
-    if (confidenceCtx) {
-        const confidenceData = {
-            labels: ['70-80%', '80-85%', '85-90%', '90-95%', '95-100%'],
-            datasets: [{
-                label: 'Number of Detections',
-                data: [12, 45, 78, 156, 234],
-                backgroundColor: [
-                    '#ef4444',
-                    '#f97316',
-                    '#eab308',
-                    '#3b82f6',
-                    '#10b981'
-                ],
-                borderWidth: 0
-            }]
-        };
-        
-        const confidenceChart = GalamseyWatch.ChartHelpers.createBarChart(confidenceCtx, confidenceData, {
-            plugins: {
-                legend: {
-                    display: false
-                }
-            }
-        });
-    }
-    
-    // Initialize performance over time chart
-    const performanceCtx = document.getElementById('performance-chart');
-    if (performanceCtx) {
-        const performanceData = {
-            labels: ['July', 'August', 'September', 'October', 'November', 'December'],
-            datasets: [{
-                label: 'Detection Accuracy',
-                data: [88, 90, 91, 92, 93, modelMetrics.accuracy],
-                borderColor: '#3b82f6',
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                tension: 0.4,
-                fill: true
-            }]
-        };
-        
-        const performanceChart = GalamseyWatch.ChartHelpers.createLineChart(performanceCtx, performanceData, {
-            scales: {
-                y: {
-                    beginAtZero: false,
-                    min: 80,
-                    max: 100,
-                    ticks: {
-                        callback: function(value) {
-                            return value + '%';
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ── Performance Over Time ──
+    const perfCtx = document.getElementById('performance-chart');
+    if (perfCtx) {
+        new Chart(perfCtx, {
+            type: 'line',
+            data: {
+                labels: ['v0.3', 'v0.5', 'v0.7', 'v0.9', 'v1.0'],
+                datasets: [
+                    {
+                        label: 'IoU',
+                        data: [42, 50, 55, 58, 60],
+                        borderColor: '#f97316',
+                        backgroundColor: 'rgba(249,115,22,0.08)',
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        tension: 0.35,
+                        fill: false,
+                    },
+                    {
+                        label: 'Precision',
+                        data: [55, 63, 68, 71, 73.1],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59,130,246,0.08)',
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        tension: 0.35,
+                        fill: false,
+                    },
+                    {
+                        label: 'Recall',
+                        data: [60, 67, 72, 75, 77.1],
+                        borderColor: '#8b5cf6',
+                        backgroundColor: 'rgba(139,92,246,0.08)',
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        tension: 0.35,
+                        fill: false,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { font: { size: 11 }, color: '#6b7280', boxWidth: 14, padding: 16 }
+                    },
+                    tooltip: { mode: 'index', intersect: false }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 11 }, color: '#9ca3af' }
+                    },
+                    y: {
+                        min: 30,
+                        max: 100,
+                        grid: { color: '#f3f4f6' },
+                        ticks: {
+                            font: { size: 11 },
+                            color: '#9ca3af',
+                            callback: v => v + '%'
                         }
                     }
                 }
             }
         });
     }
+
+    // ── Confidence Distribution (real DB data) ──
+    const confCtx = document.getElementById('confidence-chart');
+    if (confCtx) {
+        const confBins = [{% for b in conf_bins %}{{ b }}{% if not forloop.last %},{% endif %}{% endfor %}];
+        new Chart(confCtx, {
+            type: 'bar',
+            data: {
+                labels: ['50–60%', '60–70%', '70–80%', '80–90%', '90–100%'],
+                datasets: [{
+                    label: 'Detections',
+                    data: confBins,
+                    backgroundColor: [
+                        'rgba(239,68,68,0.7)',
+                        'rgba(249,115,22,0.7)',
+                        'rgba(234,179,8,0.7)',
+                        'rgba(59,130,246,0.7)',
+                        'rgba(16,185,129,0.7)',
+                    ],
+                    borderWidth: 0,
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => ` ${ctx.raw} detection${ctx.raw !== 1 ? 's' : ''}` } }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 10 }, color: '#9ca3af' }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#f3f4f6' },
+                        ticks: { font: { size: 10 }, color: '#9ca3af', stepSize: 1 }
+                    }
+                }
+            }
+        });
+    }
+
 });
 </script>
 {% endblock %}

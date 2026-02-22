@@ -1,210 +1,441 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Live Map - {{ settings.APP_NAME }}{% endblock %}
+{% block title %}Live Map - GalamseyWatch{% endblock %}
 
 {% block content %}
 <div class="flex h-screen pt-16">
+
+    <!-- Map -->
     <div class="flex-1 relative">
-        <div id="live-map" class="w-full h-full bg-gray-100 z-0"></div>
-        
-        <!-- Floating AOI Button - always visible -->
-        <div class="absolute top-4 right-4 z-30">
-            <button id="draw-aoi-btn" class="bg-red-600 text-white px-6 py-3 rounded-full shadow-xl hover:bg-red-700 transition-all transform hover:scale-105 flex items-center space-x-2" title="Draw Area of Interest">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536a2.5 2.5 0 00-3.536 0V6a2.5 2.5 0 002.5 2.5v11.5a2.5 2.5 0 013.536 0l-3.536 3.536M15.232 5.232l3.536-3.536a2.5 2.5 0 013.536 0V6a2.5 2.5 0 002.5 2.5v11.5a2.5 2.5 0 013.536 0l-3.536 3.536"></path>
-                </svg>
-                <span class="font-semibold">DRAW AOI</span>
-            </button>
-        </div>
-        
-        <!-- Custom Zoom Controls -->
-        <div class="absolute top-4 left-4 z-20">
-            <div class="bg-white rounded-lg shadow-sm p-1 flex flex-col space-y-1">
-                <button id="zoom-in-btn" class="p-2 hover:bg-gray-100 rounded transition-colors" title="Zoom In (+)">
-                    <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                    </svg>
-                </button>
-                <button id="zoom-out-btn" class="p-2 hover:bg-gray-100 rounded transition-colors" title="Zoom Out (-)">
-                    <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
-                    </svg>
-                </button>
-            </div>
-        </div>
-        
-        <div class="absolute bottom-4 right-4 z-20">
-            <div class="bg-white rounded-lg shadow-sm p-3">
-                <h4 class="text-xs font-semibold text-gray-700 mb-2">Legend</h4>
-                <div class="space-y-1">
-                    <div class="flex items-center text-xs">
-                        <div class="w-3 h-3 rounded mr-2" style="background:#ef4444"></div>
-                        <span>Illegal Mining Site</span>
+        <div id="live-map" class="w-full h-full"></div>
+
+        <!-- Legend -->
+        <div class="absolute bottom-4 left-4 z-20 pointer-events-none">
+            <div class="bg-white bg-opacity-90 rounded-lg shadow-sm px-3 py-2">
+                <div class="space-y-1.5">
+                    <div class="flex items-center gap-2 text-xs text-gray-600">
+                        <div class="w-3 h-3 rounded shrink-0" style="background:#ef4444"></div>Illegal
                     </div>
-                    <div class="flex items-center text-xs">
-                        <div class="w-3 h-3 rounded mr-2" style="background:#3b82f6"></div>
-                        <span>Legal Mining Site</span>
+                    <div class="flex items-center gap-2 text-xs text-gray-600">
+                        <div class="w-3 h-3 rounded shrink-0" style="background:#3b82f6"></div>Legal
                     </div>
-                    <div class="flex items-center text-xs">
-                        <div class="w-3 h-3 rounded mr-2" style="background:#22c55e; border: 1px dashed #16a34a"></div>
-                        <span>Licensed Concession</span>
+                    <div class="flex items-center gap-2 text-xs text-gray-600">
+                        <div class="w-3 h-3 rounded shrink-0 border border-dashed border-green-600" style="background:#22c55e;opacity:0.5"></div>Concession
                     </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="absolute top-4 right-4 z-20">
-            <div class="bg-white rounded-lg shadow-sm p-3 max-w-xs">
-                <h4 class="text-xs font-semibold text-gray-700 mb-1">HLS Optical Metadata</h4>
-                <div class="text-xs text-gray-600 space-y-1">
-                    <div>Satellite: Landsat 8/9</div>
-                    <div>Date: <span id="hls-date">2024-12-10</span></div>
-                    <div>Cloud Cover: <span id="cloud-cover">&lt;10%</span></div>
-                    <div>Processing: Real-time</div>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- Detection Details Sidebar Toggle Button -->
-    <button id="toggle-details-sidebar" class="fixed right-4 top-20 z-50 bg-sidebar-green text-white p-2 rounded-lg shadow-lg hover:bg-opacity-90 transition-all duration-300">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-        </svg>
-    </button>
-    
-    <!-- Detection Details Sidebar -->
-    <aside id="details-sidebar" class="fixed right-0 top-16 bottom-0 w-80 bg-white border-l border-gray-200 flex flex-col transform transition-transform duration-300 ease-in-out z-50">
-        <div class="p-4 border-b border-gray-200">
+
+    <!-- Detection Sidebar -->
+    <aside class="w-80 bg-white border-l border-gray-200 flex flex-col shrink-0 overflow-hidden">
+
+        <!-- Sidebar header -->
+        <div class="px-4 py-3 border-b border-gray-100 shrink-0">
             <div class="flex items-center justify-between">
-                <h2 class="text-lg font-semibold text-gray-900 flex items-center">
-                    <svg class="w-5 h-5 text-alert-red mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-                    </svg>
-                    Detection Details
-                </h2>
-                <span id="detection-count" class="px-2 py-1 bg-alert-red text-white text-xs font-medium rounded-full">
-                    0 detections
+                <h2 class="text-sm font-semibold text-gray-900">Detections</h2>
+                <span id="detection-count"
+                      class="px-2 py-0.5 bg-red-500 text-white text-xs font-semibold rounded-full min-w-[20px] text-center">
+                    0
                 </span>
             </div>
         </div>
-        
-        <div id="aoi-scan-section" class="p-4 border-b border-gray-200 hidden">
-            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <h4 class="text-sm font-medium text-yellow-800 mb-2">AOI Selected</h4>
-                <div class="text-xs text-yellow-700 mb-2">
-                    Area: <span id="aoi-area">0.00</span> hectares
-                </div>
-                <button id="scan-aoi-btn" class="w-full px-3 py-2 bg-active-gold text-white text-xs rounded hover:bg-opacity-90 transition-colors">
-                    Run AI Detection Scan
-                </button>
+
+        <!-- Confidence filter -->
+        <div class="px-4 py-3 border-b border-gray-100 shrink-0">
+            <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs text-gray-600">Min Confidence</span>
+                <span id="confidence-value" class="text-xs font-semibold text-gray-900">50%</span>
             </div>
+            <input type="range" id="confidence-slider" min="0" max="100" value="50"
+                   class="w-full accent-blue-600"/>
         </div>
-        
-        <div class="p-4 border-b border-gray-200">
-            <h4 class="text-sm font-medium text-gray-700 mb-3">Confidence Filter</h4>
-            <div class="space-y-2">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs text-gray-600">Min Confidence</span>
-                    <span id="confidence-value" class="text-xs font-medium text-gray-900">50%</span>
-                </div>
-                <input type="range" id="confidence-slider" min="0" max="100" value="50" 
-                       class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-            </div>
-        </div>
-        
-        <div class="flex-1 overflow-y-auto p-4 space-y-3" id="detection-list">
-            <div class="text-center text-gray-500 text-sm py-8">
-                <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+
+        <!-- Detection list -->
+        <div class="flex-1 overflow-y-auto">
+            <div id="detection-empty" class="py-10 px-4 text-center">
+                <svg class="w-10 h-10 text-gray-200 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                          d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
                 </svg>
-                <p>No detections loaded</p>
-                <p class="text-xs mt-1">Draw an AOI and scan to begin</p>
+                <p class="text-sm text-gray-400 font-medium">No detections yet</p>
+                <p class="text-xs text-gray-300 mt-1">Draw an AOI and scan to start</p>
             </div>
+
+            <div id="detection-list" class="p-3 space-y-2 hidden"></div>
         </div>
     </aside>
 </div>
+
+
+<!-- ── Site Detail Modal ── -->
+<div id="site-modal" class="fixed inset-0 bg-black bg-opacity-40 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden">
+
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+            <h3 class="text-base font-semibold text-gray-900">Detection Details</h3>
+            <button id="site-modal-close" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="overflow-y-auto flex-1">
+            <div class="px-6 py-5 space-y-4">
+
+                <div class="flex items-center gap-2">
+                    <span id="site-legal-badge" class="px-2.5 py-1 rounded-full text-xs font-bold"></span>
+                    <span id="site-status-badge" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600"></span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs text-gray-400 mb-1">Confidence</p>
+                        <div class="flex items-center gap-2">
+                            <span id="site-confidence" class="text-sm font-semibold text-gray-900"></span>
+                            <div class="flex-1 bg-gray-100 rounded-full h-1.5">
+                                <div id="site-confidence-bar" class="h-1.5 rounded-full bg-blue-500" style="width:0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 mb-1">Area</p>
+                        <p id="site-area" class="text-sm font-semibold text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 mb-1">Detection Date</p>
+                        <p id="site-date" class="text-sm text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 mb-1">Recurrences</p>
+                        <p id="site-recurrence" class="text-sm text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 mb-1">Region</p>
+                        <p id="site-region" class="text-sm text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 mb-1">Coordinates</p>
+                        <p id="site-coords" class="text-sm text-gray-900 font-mono text-xs"></p>
+                    </div>
+                </div>
+
+                <div id="site-concession-block" class="hidden bg-green-50 border border-green-100 rounded-lg p-3">
+                    <p class="text-xs font-semibold text-green-800 mb-1">Licensed Concession</p>
+                    <p id="site-concession-name" class="text-xs text-green-700"></p>
+                    <p id="site-concession-holder" class="text-xs text-green-600 mt-0.5"></p>
+                </div>
+            </div>
+
+            <!-- Timelapse -->
+            <div class="border-t border-gray-100 px-6 py-5">
+                <h4 class="text-sm font-semibold text-gray-900 mb-3">Site Timelapse</h4>
+
+                <div id="site-tl-loading" class="py-6 text-center">
+                    <div class="inline-block w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
+                    <p class="text-xs text-gray-400">Loading imagery…</p>
+                </div>
+
+                <div id="site-tl-empty" class="hidden py-6 text-center">
+                    <svg class="w-8 h-8 text-gray-200 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    <p class="text-xs text-gray-400">No imagery yet — fetched after detection.</p>
+                </div>
+
+                <div id="site-tl-viewer" class="hidden">
+                    <div class="relative bg-gray-900 rounded-lg overflow-hidden" style="height:210px;">
+                        <img id="site-tl-img" src="" alt="Satellite" class="w-full h-full object-cover"/>
+                        <div id="site-tl-fallback"
+                             class="hidden absolute inset-0 flex items-center justify-center text-gray-400 text-xs bg-gray-800">
+                            No image
+                        </div>
+                        <div class="absolute top-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-0.5 rounded font-semibold"
+                             id="site-tl-year"></div>
+                        <div class="absolute top-2 right-2 flex gap-1.5">
+                            <span class="bg-black bg-opacity-60 text-green-400 text-xs px-2 py-0.5 rounded">
+                                NDVI <span id="site-tl-ndvi">—</span>
+                            </span>
+                            <span class="bg-black bg-opacity-60 text-orange-400 text-xs px-2 py-0.5 rounded">
+                                BSI <span id="site-tl-bsi">—</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <input id="site-tl-slider" type="range" min="0" max="0" value="0"
+                               class="w-full accent-blue-600"
+                               oninput="renderSiteTlFrame(parseInt(this.value))"/>
+                        <div id="site-tl-ticks"
+                             class="flex justify-between text-xs text-gray-400 mt-1 px-0.5"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end shrink-0">
+            <button onclick="closeSiteModal()"
+                    class="px-4 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
 {% endblock %}
+
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-gl-draw@1.4.3/dist/mapbox-gl-draw.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-gl-draw@1.4.3/dist/mapbox-gl-draw.css" type="text/css">
-
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-gl-draw@1.4.3/dist/mapbox-gl-draw.css">
 <script src="{% static 'js/map_handler.js' %}"></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize sidebar state
-    let detailsSidebarOpen = true;
-    
-    // Initialize the main Map Handler
+// ── Timelapse helpers ──────────────────────────────────────────────────────
+let _siteTlFrames = [];
+
+function renderSiteTlFrame(idx) {
+    const f = _siteTlFrames[idx];
+    if (!f) return;
+    document.getElementById('site-tl-year').textContent = f.year;
+    document.getElementById('site-tl-ndvi').textContent = f.mean_ndvi != null ? f.mean_ndvi.toFixed(3) : '—';
+    document.getElementById('site-tl-bsi').textContent  = f.mean_bsi  != null ? f.mean_bsi.toFixed(3)  : '—';
+    const img = document.getElementById('site-tl-img');
+    const fb  = document.getElementById('site-tl-fallback');
+    if (f.thumbnail_url) {
+        img.src = f.thumbnail_url;
+        img.classList.remove('hidden');
+        fb.classList.add('hidden');
+    } else {
+        img.src = '';
+        img.classList.add('hidden');
+        fb.classList.remove('hidden');
+    }
+}
+
+async function loadSiteTimelapse(siteId) {
+    try {
+        const res = await fetch(`/api/sites/${siteId}/timelapse/`, { credentials: 'include' });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        _siteTlFrames = data.frames || [];
+        document.getElementById('site-tl-loading').classList.add('hidden');
+        if (!_siteTlFrames.length) {
+            document.getElementById('site-tl-empty').classList.remove('hidden');
+            return;
+        }
+        const viewer = document.getElementById('site-tl-viewer');
+        viewer.classList.remove('hidden');
+        const slider = document.getElementById('site-tl-slider');
+        slider.min   = 0;
+        slider.max   = _siteTlFrames.length - 1;
+        slider.value = _siteTlFrames.length - 1;
+        document.getElementById('site-tl-ticks').innerHTML =
+            _siteTlFrames.map(f => `<span>${f.year}</span>`).join('');
+        renderSiteTlFrame(_siteTlFrames.length - 1);
+    } catch {
+        document.getElementById('site-tl-loading').classList.add('hidden');
+        document.getElementById('site-tl-empty').classList.remove('hidden');
+    }
+}
+
+// ── Site modal ─────────────────────────────────────────────────────────────
+async function openSiteModal(siteId) {
+    _siteTlFrames = [];
+    document.getElementById('site-modal').classList.remove('hidden');
+    document.getElementById('site-tl-loading').classList.remove('hidden');
+    document.getElementById('site-tl-empty').classList.add('hidden');
+    document.getElementById('site-tl-viewer').classList.add('hidden');
+
+    try {
+        const res  = await fetch(`/api/sites/${siteId}/`, { credentials: 'include' });
+        if (!res.ok) throw new Error();
+        const site = await res.json();
+
+        const legalCls = site.legal_status === 'legal'
+            ? 'bg-blue-100 text-blue-800'
+            : site.legal_status === 'illegal'
+                ? 'bg-red-100 text-red-800'
+                : 'bg-gray-100 text-gray-600';
+
+        const legalBadge = document.getElementById('site-legal-badge');
+        legalBadge.textContent = (site.legal_status_display || site.legal_status || '—').toUpperCase();
+        legalBadge.className   = `px-2.5 py-1 rounded-full text-xs font-bold ${legalCls}`;
+
+        document.getElementById('site-status-badge').textContent = site.status_display || site.status || '—';
+
+        const pct = Math.round((site.confidence_score || 0) * 100);
+        document.getElementById('site-confidence').textContent     = pct + '%';
+        document.getElementById('site-confidence-bar').style.width = pct + '%';
+        document.getElementById('site-area').textContent           = site.area_hectares + ' ha';
+        document.getElementById('site-date').textContent           = site.detection_date || '—';
+        document.getElementById('site-recurrence').textContent     = site.recurrence_count + 'x';
+        document.getElementById('site-region').textContent         = site.region || 'Unknown';
+
+        const lat = site.lat, lng = site.lng;
+        document.getElementById('site-coords').textContent = (lat != null && lng != null)
+            ? `${lat}° N, ${Math.abs(lng)}° W`
+            : '—';
+
+        const concBlock = document.getElementById('site-concession-block');
+        if (site.concession) {
+            concBlock.classList.remove('hidden');
+            document.getElementById('site-concession-name').textContent =
+                site.concession.name + ' (' + site.concession.license_number + ')';
+            document.getElementById('site-concession-holder').textContent =
+                site.concession.holder + ' — ' + site.concession.license_type;
+        } else {
+            concBlock.classList.add('hidden');
+        }
+
+        loadSiteTimelapse(siteId);
+    } catch (e) {
+        console.error('Failed to load site detail:', e);
+        document.getElementById('site-tl-loading').classList.add('hidden');
+        document.getElementById('site-tl-empty').classList.remove('hidden');
+    }
+}
+
+function closeSiteModal() {
+    document.getElementById('site-modal').classList.add('hidden');
+}
+
+// ── Sidebar rendering ──────────────────────────────────────────────────────
+let _allFeatures = [];
+let _sortNewestFirst = false;
+
+function renderDetectionSidebar(features, meta) {
+    _allFeatures = features;
+    _sortNewestFirst = meta && meta.source === 'scan';
+    applyDetectionFilter();
+}
+
+function applyDetectionFilter() {
+    const minConf = (document.getElementById('confidence-slider')?.value || 0) / 100;
+
+    let filtered = _allFeatures.filter(f => {
+        const conf = (f.properties || {}).confidence_score || 0;
+        return conf >= minConf;
+    });
+
+    // Sort: oldest-first on page load, newest-first after a scan
+    filtered = filtered.slice().sort((a, b) => {
+        const da = new Date((a.properties || {}).detection_date || 0);
+        const db = new Date((b.properties || {}).detection_date || 0);
+        return _sortNewestFirst ? db - da : da - db;
+    });
+
+    document.getElementById('detection-count').textContent = filtered.length;
+    const emptyEl = document.getElementById('detection-empty');
+    const listEl  = document.getElementById('detection-list');
+
+    if (!filtered.length) {
+        emptyEl.classList.remove('hidden');
+        listEl.classList.add('hidden');
+        listEl.innerHTML = '';
+        return;
+    }
+
+    emptyEl.classList.add('hidden');
+    listEl.classList.remove('hidden');
+
+    listEl.innerHTML = filtered.map((f, idx) => {
+        const p    = f.properties || {};
+        const id   = p.site_id || '';
+        const conf = Math.round((p.confidence_score || 0) * 100);
+        const area = p.area_hectares != null ? Number(p.area_hectares).toFixed(1) : '—';
+        const legal = p.legal_status || 'unknown';
+        const region = p.region || null;
+
+        let lat = p.lat, lng = p.lng;
+        if ((lat == null || lng == null) && f.geometry) {
+            try {
+                const c = turf.centroid(f).geometry.coordinates;
+                lng = c[0]; lat = c[1];
+            } catch (_) {}
+        }
+        const coordStr = (lat != null && lng != null)
+            ? `${parseFloat(lat).toFixed(4)}° N, ${Math.abs(parseFloat(lng)).toFixed(4)}° W`
+            : '—';
+
+        const legalCls = legal === 'legal'
+            ? 'bg-blue-100 text-blue-800'
+            : legal === 'illegal'
+                ? 'bg-red-100 text-red-800'
+                : 'bg-gray-100 text-gray-600';
+        const legalLabel = legal.charAt(0).toUpperCase() + legal.slice(1);
+        const barColor   = conf >= 80 ? 'bg-green-500' : conf >= 60 ? 'bg-yellow-500' : 'bg-red-400';
+
+        return `
+<div class="bg-white border border-gray-200 rounded-lg p-3 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer"
+     onclick="openSiteModal('${id}')">
+    <div class="flex items-start justify-between mb-2">
+        <div class="flex-1 min-w-0 pr-2">
+            <p class="text-xs font-semibold text-gray-900">Mining Site #${idx + 1}</p>
+            ${region ? `<p class="text-xs text-gray-400 truncate">${region}</p>` : ''}
+        </div>
+        <span class="px-1.5 py-0.5 rounded text-xs font-bold ${legalCls} shrink-0">${legalLabel}</span>
+    </div>
+    <div class="flex items-center gap-2 mb-2">
+        <span class="text-xs font-semibold text-gray-800 w-9 shrink-0">${conf}%</span>
+        <div class="flex-1 bg-gray-100 rounded-full h-1.5">
+            <div class="h-1.5 rounded-full ${barColor}" style="width:${conf}%"></div>
+        </div>
+        <span class="text-xs text-gray-400 shrink-0">${area} ha</span>
+    </div>
+    <p class="text-xs text-gray-400 font-mono mb-2">${coordStr}</p>
+    <button class="w-full text-xs px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-700 font-medium"
+            onclick="event.stopPropagation();openSiteModal('${id}')">
+        View Details &amp; Images
+    </button>
+</div>`;
+    }).join('');
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
     window.mapHandler = new MapHandler('live-map', {
-        center: [-1.6244, 6.6885], // Center on Kumasi, Ghana
+        center: [-1.6244, 6.6885],
         zoom: 8,
         drawing: true
     });
-    
-    setupEventListeners();
-});
 
-function setupEventListeners() {
-    // 1. Layer Toggles
-    const toggleButtons = {
-        'toggle-hls-layer': 'hls',
-        'toggle-detection-layer': 'detections',
-        'toggle-concession-layer': 'concessions'
-    };
-    
-    Object.entries(toggleButtons).forEach(([id, layer]) => {
-        const btn = document.getElementById(id);
-        if (btn) btn.addEventListener('click', () => window.mapHandler.toggleLayer(layer));
-    });
-    
-    // 2. Zoom Controls
-    const zoomInBtn = document.getElementById('zoom-in-btn');
-    const zoomOutBtn = document.getElementById('zoom-out-btn');
-    
-    if (zoomInBtn) {
-        zoomInBtn.addEventListener('click', () => {
-            window.mapHandler.map.zoomIn();
-        });
-    }
-    
-    if (zoomOutBtn) {
-        zoomOutBtn.addEventListener('click', () => {
-            window.mapHandler.map.zoomOut();
-        });
-    }
-    
-    // 3. Drawing Mode Toggle
-    const drawBtns = document.querySelectorAll('#draw-aoi-btn');
-    drawBtns.forEach(btn => {
-        if (btn) {
-            btn.addEventListener('click', () => {
-                if (window.mapHandler && window.mapHandler.toggleDrawingMode) {
-                    window.mapHandler.toggleDrawingMode();
-                }
-            });
+    window.mapHandler.onDetectionsUpdated(renderDetectionSidebar);
+    window.mapHandler.onSiteClick(openSiteModal);
+
+    // draw-aoi-btn lives in base.html left sidebar
+    const drawBtn = document.getElementById('draw-aoi-btn');
+    if (drawBtn) drawBtn.addEventListener('click', function () {
+        if (window.mapHandler && window.mapHandler.toggleDrawingMode) {
+            window.mapHandler.toggleDrawingMode();
         }
     });
-    // 3. Scan Execution
+
     const scanBtn = document.getElementById('scan-aoi-btn');
-    if (scanBtn) {
-        scanBtn.addEventListener('click', () => window.mapHandler.scanAOI());
-    }
-    
-    // 4. Confidence Filtering
+    if (scanBtn) scanBtn.addEventListener('click', () => window.mapHandler.scanAOI());
+
+    // Layer toggles (buttons in base.html left sidebar)
+    const detBtn = document.getElementById('toggle-detection-layer');
+    if (detBtn) detBtn.addEventListener('click', () => window.mapHandler.toggleLayer('detections'));
+    const conBtn = document.getElementById('toggle-concession-layer');
+    if (conBtn) conBtn.addEventListener('click', () => window.mapHandler.toggleLayer('concessions'));
+
     const slider = document.getElementById('confidence-slider');
     if (slider) {
-        slider.addEventListener('input', (e) => {
-            const val = e.target.value;
-            document.getElementById('confidence-value').textContent = val + '%';
-            window.mapHandler.updateConfidenceFilter(val / 100);
+        slider.addEventListener('input', function () {
+            document.getElementById('confidence-value').textContent = this.value + '%';
+            window.mapHandler.updateConfidenceFilter(this.value / 100);
+            applyDetectionFilter();
         });
     }
-}
+
+    document.getElementById('site-modal').addEventListener('click', function (e) {
+        if (e.target === this) closeSiteModal();
+    });
+    document.getElementById('site-modal-close').addEventListener('click', closeSiteModal);
+});
 </script>
 {% endblock %}

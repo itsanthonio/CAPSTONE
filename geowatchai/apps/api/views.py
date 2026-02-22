@@ -297,6 +297,29 @@ class DetectedSiteViewSet(viewsets.ReadOnlyModelViewSet):
             'intersecting_concession', 'region', 'model_run', 'satellite_imagery'
         ).all()
 
+    def list(self, request, *args, **kwargs):
+        """Return all detected sites as a GeoJSON FeatureCollection for map + sidebar."""
+        import json as _json
+        qs = self.get_queryset().filter(geometry__isnull=False).order_by('-created_at')[:500]
+        features = []
+        for site in qs:
+            centroid = site.centroid
+            features.append({
+                'type': 'Feature',
+                'geometry': _json.loads(site.geometry.geojson),
+                'properties': {
+                    'site_id': str(site.id),
+                    'confidence_score': site.confidence_score,
+                    'area_hectares': round(site.area_hectares, 2),
+                    'legal_status': site.legal_status,
+                    'detection_date': str(site.detection_date),
+                    'region': site.region.name if site.region else None,
+                    'lat': round(centroid.y, 4) if centroid else None,
+                    'lng': round(centroid.x, 4) if centroid else None,
+                }
+            })
+        return Response({'type': 'FeatureCollection', 'features': features})
+
     def retrieve(self, request, *args, **kwargs):
         from apps.detections.models import DetectedSite
         site = get_object_or_404(DetectedSite, pk=kwargs['pk'])
@@ -326,6 +349,8 @@ class DetectedSiteViewSet(viewsets.ReadOnlyModelViewSet):
             'first_detected_at': site.first_detected_at.isoformat() if site.first_detected_at else None,
             'concession': concession,
             'region': site.region.name if site.region else None,
+            'lat': round(site.centroid.y, 4) if site.centroid else None,
+            'lng': round(site.centroid.x, 4) if site.centroid else None,
         })
 
     @action(detail=True, methods=['get'], url_path='timelapse')

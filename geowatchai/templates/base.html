@@ -156,7 +156,7 @@
             <nav class="p-4">
                 <ul class="space-y-2">
                     <li>
-                        <a href="{% url 'dashboard:home' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'dashboard_home' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
+                        <a href="{% url 'dashboard:home' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'home' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
                             </svg>
@@ -164,7 +164,7 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{% url 'analysis:live_map' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'analysis_live_map' or request.path == '/' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
+                        <a href="{% url 'analysis:live_map' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'live_map' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
                             </svg>
@@ -180,7 +180,7 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{% url 'dashboard:model_insights' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'dashboard_model_insights' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
+                        <a href="{% url 'dashboard:model_insights' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'model_insights' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                             </svg>
@@ -188,7 +188,7 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{% url 'uploads:data_uploads' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'uploads_data_uploads' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
+                        <a href="{% url 'uploads:data_uploads' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'data_uploads' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                             </svg>
@@ -196,7 +196,7 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{% url 'dashboard:settings' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'dashboard_settings' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
+                        <a href="{% url 'dashboard:settings' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'settings' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -209,29 +209,44 @@
                     {% if 'live_map' in request.path or 'analysis' in request.path %}
                     <li class="border-t border-gray-700 pt-4 mt-4">
                         <div class="space-y-4">
-                            <!-- AOI Tools - moved to top for visibility -->
+                            <!-- AOI Tools -->
                             <div>
                                 <h4 class="text-sm font-semibold text-gray-300 mb-2">AOI Tools</h4>
-                                <button id="draw-aoi-btn" class="w-full px-4 py-2 bg-sidebar-green text-white rounded-lg shadow-sm hover:bg-opacity-90 transition-colors block">
+                                <button id="draw-aoi-btn"
+                                        class="w-full px-4 py-2 bg-sidebar-green text-white rounded-lg shadow-sm hover:bg-opacity-90 transition-colors block border border-gray-600">
                                     Draw Area
                                 </button>
+
+                                <!-- Shown after AOI is drawn -->
+                                <div id="aoi-scan-section" class="hidden mt-2">
+                                    <div class="bg-gray-800 border border-gray-600 rounded-lg p-3">
+                                        <p class="text-xs text-gray-300 mb-1">
+                                            Area: <span id="aoi-area">0.00</span> ha
+                                        </p>
+                                        <button id="scan-aoi-btn"
+                                                class="w-full px-3 py-2 bg-active-gold hover:bg-opacity-90 text-white text-xs font-semibold rounded-lg transition-colors">
+                                            Scan AOI
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                            
+
+                            <!-- Layer toggles -->
                             <div>
                                 <h4 class="text-sm font-semibold text-gray-300 mb-3">Map Layers</h4>
                                 <div class="space-y-2">
-                                    <button id="toggle-hls-layer" class="w-full px-4 py-2 bg-active-gold text-white rounded-lg shadow-sm hover:bg-opacity-90 transition-colors block">
-                                        HLS Imagery
-                                    </button>
-                                    <button id="toggle-detection-layer" class="w-full px-4 py-2 bg-active-gold text-white rounded-lg shadow-sm hover:bg-opacity-90 transition-colors block">
+                                    <button id="toggle-detection-layer"
+                                            class="w-full px-4 py-2 bg-active-gold text-white rounded-lg shadow-sm hover:bg-opacity-90 transition-colors block">
                                         Detections
                                     </button>
-                                    <button id="toggle-concession-layer" class="w-full px-4 py-2 bg-active-gold text-white rounded-lg shadow-sm hover:bg-opacity-90 transition-colors block">
+                                    <button id="toggle-concession-layer"
+                                            class="w-full px-4 py-2 bg-active-gold text-white rounded-lg shadow-sm hover:bg-opacity-90 transition-colors block">
                                         Concessions
                                     </button>
                                 </div>
                             </div>
-                            
+
+                            <!-- Coordinates -->
                             <div>
                                 <h4 class="text-sm font-semibold text-gray-300 mb-2">Coordinates</h4>
                                 <div class="bg-gray-800 px-3 py-2 rounded-lg text-sm text-gray-300 border border-gray-700">
