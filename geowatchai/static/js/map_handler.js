@@ -59,8 +59,7 @@ class MapHandler {
 
         console.log('Initializing MapboxDraw...');
         this.draw = new MapboxDraw({
-            displayControlsDefault: false,
-            controls: { polygon: true, trash: true }
+            displayControlsDefault: false
         });
         console.log('MapboxDraw initialized:', this.draw);
 
@@ -134,7 +133,7 @@ class MapHandler {
             })
             .catch(e => console.warn('[Map] Could not load concessions:', e));
 
-        // --- Detection layers ---
+        // --- Detection layers --- (must be added BEFORE the sites fetch so setData works)
         this.map.addSource('detections', {
             type: 'geojson',
             data: { type: 'FeatureCollection', features: [] }
@@ -170,8 +169,28 @@ class MapHandler {
             type: 'fill',
             source: 'detections',
             paint: { 'fill-color': '#f97316', 'fill-opacity': 0.6 },
-            filter: ['==', ['get', 'id'], '']
+            filter: ['==', ['get', 'site_id'], '']
         });
+
+        // Load existing detections from DB — runs AFTER source is added so setData works
+        fetch('/api/sites/', { credentials: 'include' })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                const features = (data && data.features) ? data.features : [];
+                if (features.length > 0) {
+                    this.map.getSource('detections').setData(data);
+                }
+                console.log('[Map] Loaded', features.length, 'existing detections');
+                if (typeof this._onDetectionsUpdated === 'function') {
+                    this._onDetectionsUpdated(features, { source: 'load' });
+                }
+            })
+            .catch(e => {
+                console.warn('[Map] Could not load existing detections:', e);
+                if (typeof this._onDetectionsUpdated === 'function') {
+                    this._onDetectionsUpdated([], { source: 'load' });
+                }
+            });
     }
 
     setupClickHandlers() {
@@ -180,12 +199,12 @@ class MapHandler {
         });
         this.map.on('mouseleave', 'detections-layer', () => {
             this.map.getCanvas().style.cursor = '';
-            this.map.setFilter('detections-hover', ['==', ['get', 'id'], '']);
+            this.map.setFilter('detections-hover', ['==', ['get', 'site_id'], '']);
         });
         this.map.on('mousemove', 'detections-layer', (e) => {
             if (e.features.length > 0) {
-                const id = e.features[0].properties.id || '';
-                this.map.setFilter('detections-hover', ['==', ['get', 'id'], id]);
+                const siteId = e.features[0].properties.site_id || '';
+                this.map.setFilter('detections-hover', ['==', ['get', 'site_id'], siteId]);
             }
         });
         this.map.on('click', 'detections-layer', (e) => {
@@ -200,6 +219,10 @@ class MapHandler {
 
     onSiteClick(callback) {
         this._onSiteClick = callback;
+    }
+
+    onDetectionsUpdated(callback) {
+        this._onDetectionsUpdated = callback;
     }
 
     toggleLayer(layerId) {
@@ -235,14 +258,16 @@ class MapHandler {
         }
         
         const data = this.draw.getAll();
-        if (data.features.length === 0) return;
+        if (data.features.length === 0) {
+            alert('Please draw an area on the map before scanning.');
+            return;
+        }
 
         const dateElement = document.getElementById('hls-date');
         const dateString = dateElement ? dateElement.textContent.trim() : null;
-        if (!dateString) throw new Error("Date not found in UI");
-
-        const endDate = dateString;
-        const startDate = new Date(dateString + 'T00:00:00Z');
+        // Fall back to today when the hls-date element isn't present on this page
+        const endDate = dateString || new Date().toISOString().split('T')[0];
+        const startDate = new Date(endDate + 'T00:00:00Z');
         startDate.setDate(startDate.getDate() - 30);
         const formattedStartDate = startDate.toISOString().split('T')[0];
 
@@ -360,18 +385,35 @@ class MapHandler {
             scanBtn.style.cursor = 'pointer';
         }
         
-        // Use detection data GeoJSON FeatureCollection from Job object
+        // Show alert based on job result
         const fc = data.detection_data;
-        if (fc && fc.type === 'FeatureCollection' && fc.features && fc.features.length > 0) {
-            console.log("Setting", fc.features.length, "detections on map");
-            this.map.getSource('detections').setData(fc);
-            const illegal = data.illegal_count || 0;
-            alert(`Scan complete: ${fc.features.length} site(s) detected (${illegal} illegal).`);
+        const newCount = (fc && fc.features) ? fc.features.length : 0;
+        const illegal = data.illegal_count || 0;
+        if (newCount > 0) {
+            alert(`Scan complete: ${newCount} site(s) detected (${illegal} illegal).`);
         } else {
-            console.log("No detections found in completed job");
-            this.map.getSource('detections').setData({ type: 'FeatureCollection', features: [] });
             alert("Scan complete: No mining sites detected in this area.");
         }
+
+        // Re-fetch all sites so the sidebar shows everything (not just the new scan)
+        fetch('/api/sites/', { credentials: 'include' })
+            .then(r => r.ok ? r.json() : null)
+            .then(allData => {
+                const allFeatures = (allData && allData.features) ? allData.features : [];
+                this.map.getSource('detections').setData(allData || { type: 'FeatureCollection', features: [] });
+                if (typeof this._onDetectionsUpdated === 'function') {
+                    this._onDetectionsUpdated(allFeatures, { source: 'scan' });
+                }
+            })
+            .catch(() => {
+                // Fallback: show at least the new scan's features
+                if (fc && fc.features && fc.features.length > 0) {
+                    this.map.getSource('detections').setData(fc);
+                    if (typeof this._onDetectionsUpdated === 'function') {
+                        this._onDetectionsUpdated(fc.features, { source: 'scan' });
+                    }
+                }
+            });
     }
 
     handleJobFailure(data) {
@@ -392,7 +434,7 @@ class MapHandler {
 
     updateConfidenceFilter(val) {
         if (this.map.getLayer('detections-layer')) {
-            this.map.setFilter('detections-layer', ['>=', ['get', 'confidence'], parseFloat(val)]);
+            this.map.setFilter('detections-layer', ['>=', ['get', 'confidence_score'], parseFloat(val)]);
         }
     }
 

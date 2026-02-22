@@ -37,6 +37,7 @@ def _get_dashboard_stats():
         from apps.detections.models import DetectedSite, Alert, ModelRun
         from apps.jobs.models import Job
         from django.db.models import Count, Avg, Sum, Q
+        from django.db.models.functions import TruncDate
 
         now = timezone.now()
         thirty_days_ago = now - timedelta(days=30)
@@ -82,28 +83,47 @@ def _get_dashboard_stats():
         ).aggregate(total=Sum('area_hectares'))
         total_area_ha = round(area_result['total'] or 0, 1)
 
-        # --- Model performance — use latest ModelRun if available ---
-        latest_run = ModelRun.objects.order_by('-created_at').first()
-        if latest_run:
-            precision = round((latest_run.val_precision or 0) * 100, 1)
-            recall    = round((latest_run.val_recall    or 0) * 100, 1)
-            iou       = round((latest_run.val_iou       or 0) * 100, 1) if latest_run.val_iou else None
-            f1        = round((latest_run.val_f1        or 0) * 100, 1) if latest_run.val_f1 else None
-            accuracy  = precision  # proxy — best available single metric
-            model_name = f"{latest_run.model_name} {latest_run.model_version}"
-        else:
-            # Fall back to known best-precision model values
-            precision = 72.4
-            recall    = 76.7
-            iou       = None
-            f1        = None
-            accuracy  = 72.4
-            model_name = "FPN-ResNet50 v1.0"
-
         # --- Jobs ---
         total_jobs     = Job.objects.count()
         completed_jobs = Job.objects.filter(status='completed').count()
         failed_jobs    = Job.objects.filter(status='failed').count()
+
+        # --- Detection trend: daily counts for last 30 days (Python-level grouping) ---
+        from collections import defaultdict
+        illegal_by_day = defaultdict(int)
+        legal_by_day   = defaultdict(int)
+        recent_all = DetectedSite.objects.filter(
+            created_at__gte=thirty_days_ago
+        ).values('legal_status', 'created_at')
+        for site in recent_all:
+            day = site['created_at'].date()
+            if site['legal_status'] == 'illegal':
+                illegal_by_day[day] += 1
+            else:
+                legal_by_day[day] += 1
+        trend_labels, trend_illegal, trend_legal = [], [], []
+        for i in range(29, -1, -1):
+            d = (now - timedelta(days=i)).date()
+            trend_labels.append(d.strftime('%d %b'))
+            trend_illegal.append(illegal_by_day.get(d, 0))
+            trend_legal.append(legal_by_day.get(d, 0))
+
+        # --- Top regions by detection count (all-time) ---
+        top_regions = list(
+            DetectedSite.objects
+            .filter(region__isnull=False)
+            .values('region__name')
+            .annotate(
+                total=Count('id'),
+                illegal=Count('id', filter=Q(legal_status='illegal')),
+            )
+            .order_by('-total')[:6]
+        )
+        if top_regions:
+            max_total = top_regions[0]['total']
+            for r in top_regions:
+                r['illegal_pct'] = round((r['illegal'] / r['total']) * 100) if r['total'] > 0 else 0
+                r['bar_pct'] = round((r['total'] / max_total) * 100) if max_total > 0 else 0
 
         # --- Recent sites for activity feed (last 5 by scan time) ---
         recent_sites = list(
@@ -128,16 +148,14 @@ def _get_dashboard_stats():
             'high_risk_zones': high_risk,
             'alerts_this_month': alerts_this_month,
             'total_area_ha': total_area_ha,
-            'model_accuracy': accuracy,
-            'model_name': model_name,
-            'precision': precision,
-            'recall': recall,
-            'iou': iou,
-            'f1': f1,
             'total_jobs': total_jobs,
             'completed_jobs': completed_jobs,
             'failed_jobs': failed_jobs,
             'recent_sites': recent_sites,
+            'top_regions': top_regions,
+            'trend_labels': trend_labels,
+            'trend_illegal': trend_illegal,
+            'trend_legal': trend_legal,
             'trends': {
                 'sites_change': sites_this_week,
                 'alerts_change': alerts_change_pct,
@@ -155,16 +173,14 @@ def _get_dashboard_stats():
             'high_risk_zones': 0,
             'alerts_this_month': 0,
             'total_area_ha': 0,
-            'model_accuracy': 72.4,
-            'model_name': 'FPN-ResNet50 v1.0',
-            'precision': 72.4,
-            'recall': 76.7,
-            'iou': None,
-            'f1': None,
             'total_jobs': 0,
             'completed_jobs': 0,
             'failed_jobs': 0,
             'recent_sites': [],
+            'top_regions': [],
+            'trend_labels': [],
+            'trend_illegal': [],
+            'trend_legal': [],
             'trends': {'sites_change': 0, 'alerts_change': 0},
             'has_data': False,
         }
