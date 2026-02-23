@@ -65,10 +65,7 @@ class InspectorAssignment(models.Model):
     
     class Status(models.TextChoices):
         PENDING = 'pending', 'Pending'
-        ACCEPTED = 'accepted', 'Accepted'
-        IN_PROGRESS = 'in_progress', 'In Progress'
-        COMPLETED = 'completed', 'Completed'
-        REJECTED = 'rejected', 'Rejected'
+        RESOLVED = 'resolved', 'Resolved'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     alert_id = models.UUIDField()  # Store alert ID as string
