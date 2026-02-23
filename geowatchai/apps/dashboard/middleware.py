@@ -42,6 +42,11 @@ class RoleBasedAccessMiddleware:
             '/media/',
             '/.well-known/',
         ]
+        
+        # API endpoints that bypass middleware checks
+        self.api_paths = [
+            '/dashboard/assignment/',  # Assignment status updates
+        ]
     
     def __call__(self, request):
         # Skip role checks for unauthenticated users
@@ -52,6 +57,11 @@ class RoleBasedAccessMiddleware:
         path = request.path
         for public_path in self.public_paths:
             if path.startswith(public_path):
+                return self.get_response(request)
+        
+        # Skip role checks for API endpoints (they handle their own auth)
+        for api_path in self.api_paths:
+            if path.startswith(api_path):
                 return self.get_response(request)
         
         # Get user role - default to ADMIN if no profile

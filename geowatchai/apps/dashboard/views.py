@@ -6,6 +6,7 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.urls import reverse_lazy
 from django.views.generic import CreateView
 from django.utils import timezone
+from django.http import JsonResponse
 from datetime import timedelta
 from django.contrib import messages
 from .forms import CustomUserCreationForm, RoleBasedLoginForm
@@ -355,16 +356,85 @@ def inspector_dashboard(request):
         from apps.accounts.models import InspectorAssignment
         from apps.detections.models import Alert
         
-        # Get inspector's assignments
+        # Get inspector's assignments with full alert details
         assignments = InspectorAssignment.objects.filter(
             inspector=request.user.profile
         ).order_by('-created_at')
         
+        # Fetch alert details for each assignment
+        assignment_data = []
+        for assignment in assignments:
+            try:
+                alert = Alert.objects.get(id=assignment.alert_id)
+                assignment_data.append({
+                    'assignment': assignment,
+                    'alert': alert,
+                    'site': alert.detected_site
+                })
+            except Alert.DoesNotExist:
+                assignment_data.append({
+                    'assignment': assignment,
+                    'alert': None,
+                    'site': None
+                })
+        
         return render(request, 'dashboard/inspector.html', {
-            'assignments': assignments
+            'assignments': assignment_data
         })
     except Exception as e:
         return render(request, 'dashboard/inspector.html', {
             'assignments': [],
             'error': str(e)
         })
+
+
+@login_required
+def update_assignment_status(request, assignment_id):
+    """Update assignment status via AJAX"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    
+    try:
+        from apps.accounts.models import InspectorAssignment
+        from apps.detections.models import Alert
+        
+        assignment = InspectorAssignment.objects.get(id=assignment_id, inspector=request.user.profile)
+        new_status = request.POST.get('status')
+        notes = request.POST.get('notes', '')
+        
+        # Validate status
+        valid_statuses = [s[0] for s in InspectorAssignment.Status.choices]
+        if new_status not in valid_statuses:
+            return JsonResponse({'error': 'Invalid status'}, status=400)
+        
+        # Update assignment
+        old_status = assignment.status
+        assignment.status = new_status
+        assignment.notes = notes
+        
+        # Update timestamps
+        if new_status == InspectorAssignment.Status.RESOLVED and old_status != InspectorAssignment.Status.RESOLVED:
+            assignment.completed_at = timezone.now()
+            
+            # Also update the Alert status to RESOLVED
+            try:
+                alert = Alert.objects.get(id=assignment.alert_id)
+                alert.status = Alert.AlertStatus.RESOLVED
+                alert.resolution_notes = f"Resolved by inspector {request.user.username}: {notes}"
+                alert.resolved_at = timezone.now()
+                alert.save()
+            except Alert.DoesNotExist:
+                pass
+        
+        assignment.save()
+        
+        return JsonResponse({
+            'success': True,
+            'new_status': assignment.get_status_display(),
+            'message': 'Status updated successfully'
+        })
+        
+    except InspectorAssignment.DoesNotExist:
+        return JsonResponse({'error': 'Assignment not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

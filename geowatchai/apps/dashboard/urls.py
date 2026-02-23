@@ -18,6 +18,7 @@ urlpatterns = [
     path('model-insights/', views.dashboard_model_insights, name='model_insights'),
     path('settings/', views.dashboard_settings, name='settings'),
     path('inspector/', views.inspector_dashboard, name='inspector'),
+    path('assignment/<uuid:assignment_id>/status/', views.update_assignment_status, name='update_assignment_status'),
     
     # Include accounts API URLs
     path('api/', include('apps.accounts.urls')),
