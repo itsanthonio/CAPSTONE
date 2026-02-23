@@ -610,7 +610,7 @@ window.assignInspector = assignInspector;
                         class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Acknowledge</button>`;
             } else if (a.status === 'acknowledged') {
                 actDiv.innerHTML += `
-                    <button onclick="window._alertsPage.action('${id}','dispatch');window._alertsPage.closeModal()"
+                    <button onclick="window._alertsPage.closeModal();window.openInspectorModal('${id}')"
                         class="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700">Dispatch Inspector</button>`;
             } else if (a.status === 'dispatched') {
                 actDiv.innerHTML += `

@@ -46,6 +46,13 @@ def is_inspector(user):
     return user.is_authenticated and hasattr(user, 'profile') and user.profile.role == UserProfile.Role.INSPECTOR
 
 
+def is_inspector_or_admin(user):
+    """Check if user has inspector or admin role"""
+    return user.is_authenticated and hasattr(user, 'profile') and user.profile.role in (
+        UserProfile.Role.ADMIN, UserProfile.Role.INSPECTOR
+    )
+
+
 class CustomLoginView(LoginView):
     form_class = AuthenticationForm
     template_name = 'registration/login.html'
@@ -335,19 +342,10 @@ def dashboard_model_insights(request):
     return render(request, 'dashboard/model_insights.html')
 
 
-@user_passes_test(is_admin)
+@user_passes_test(is_inspector_or_admin)
 def dashboard_settings(request):
-    """Admin-only settings view"""
+    """Settings view for all authenticated users"""
     return render(request, 'dashboard/settings.html')
-
-
-def is_inspector_or_admin(user):
-    """Check if user has inspector or admin role"""
-    if not user.is_authenticated:
-        return False
-    if not hasattr(user, 'profile'):
-        return False
-    return user.profile.role in [UserProfile.Role.INSPECTOR, UserProfile.Role.ADMIN]
 
 
 @user_passes_test(is_inspector_or_admin)
