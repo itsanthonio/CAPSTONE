@@ -1,34 +1,123 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import login
+from django.contrib.auth import login, authenticate
 from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.forms import AuthenticationForm
 from django.urls import reverse_lazy
 from django.views.generic import CreateView
 from django.utils import timezone
 from datetime import timedelta
-from .forms import CustomUserCreationForm
+from django.contrib import messages
+from .forms import CustomUserCreationForm, RoleBasedLoginForm
+from apps.accounts.models import UserProfile
+
+
+@login_required
+def dashboard_router(request):
+    """Gatekeeper view that redirects based on user role"""
+    try:
+        # Check if the user has a profile
+        role = request.user.profile.role
+        print(f"DEBUG: User {request.user.username} has role: {role}")
+    except Exception as e:
+        print(f"DEBUG: Profile missing for {request.user.username}: {e}")
+        # Create profile if missing
+        UserProfile.objects.create(user=request.user, role=UserProfile.Role.ADMIN)
+        return redirect('/dashboard/home/')
+    
+    if role == UserProfile.Role.ADMIN:
+        print(f"DEBUG: Redirecting admin {request.user.username} to admin dashboard")
+        return redirect('/dashboard/home/')
+    elif role == UserProfile.Role.INSPECTOR:
+        print(f"DEBUG: Redirecting inspector {request.user.username} to inspector dashboard")
+        return redirect('/dashboard/inspector/')
+    else:
+        print(f"DEBUG: Redirecting non-inspector {request.user.username} to admin dashboard")
+        return redirect('/dashboard/home/')
+
+
+def is_admin(user):
+    """Check if user has admin role"""
+    return user.is_authenticated and hasattr(user, 'profile') and user.profile.role == UserProfile.Role.ADMIN
+
+
+def is_inspector(user):
+    """Check if user has inspector role"""
+    return user.is_authenticated and hasattr(user, 'profile') and user.profile.role == UserProfile.Role.INSPECTOR
 
 
 class CustomLoginView(LoginView):
+    form_class = AuthenticationForm
     template_name = 'registration/login.html'
     redirect_authenticated_user = True
 
+    def dispatch(self, request, *args, **kwargs):
+        # Strip the next parameter completely to force role-based redirect
+        if 'next' in request.GET:
+            print(f"DEBUG: Removing next parameter: {request.GET['next']}")
+            # Create a mutable copy and remove next
+            request.GET = request.GET.copy()
+            del request.GET['next']
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_redirect_url(self):
+        """Override to completely ignore next parameter"""
+        return self.get_success_url()
+
     def get_success_url(self):
-        return reverse_lazy('dashboard:home')
+        # Completely ignore any 'next' parameter and use role-based redirect
+        print(f"DEBUG CustomLoginView: get_success_url called for {self.request.user}")
+        if self.request.user.is_authenticated:
+            try:
+                profile = self.request.user.profile
+                print(f"DEBUG CustomLoginView: role={profile.role}")
+                if profile.role == UserProfile.Role.INSPECTOR:
+                    print(f"DEBUG CustomLoginView: Redirecting to inspector")
+                    return '/dashboard/inspector/'
+                else:
+                    print(f"DEBUG dashboard_home: Role is {profile.role}, showing admin dashboard")
+                    return '/dashboard/home/'
+            except UserProfile.DoesNotExist:
+                # Create profile if missing - default to ADMIN
+                print(f"DEBUG CustomLoginView: No profile, creating ADMIN")
+                UserProfile.objects.create(user=self.request.user, role=UserProfile.Role.ADMIN)
+                return '/dashboard/home/'
+        print(f"DEBUG CustomLoginView: User not authenticated, redirecting to home")
+        return '/dashboard/home/'
+
+    def form_valid(self, form):
+        # Use Django's built-in login logic
+        return super().form_valid(form)
 
 
 class SignUpView(CreateView):
     form_class = CustomUserCreationForm
     template_name = 'registration/signup.html'
-    success_url = reverse_lazy('dashboard:home')
+    success_url = '/dashboard/home/'
 
     def form_valid(self, form):
         response = super().form_valid(form)
         login(self.request, self.object)
+        
+        # Create UserProfile with selected role
+        role = form.cleaned_data.get('role', UserProfile.Role.ADMIN)
+        organization = form.cleaned_data.get('organization', UserProfile.Organization.OTHER)
+        phone_number = form.cleaned_data.get('phone_number', '')
+        
+        UserProfile.objects.update_or_create(
+            user=self.object,
+            defaults={
+                'role': role,
+                'organization': organization,
+                'phone_number': phone_number
+            }
+        )
+        
         return response
 
 
 class CustomLogoutView(LogoutView):
-    next_page = reverse_lazy('dashboard:home')
+    next_page = '/accounts/login/'
 
 
 def _get_dashboard_stats():
@@ -187,17 +276,97 @@ def _get_dashboard_stats():
 
 
 def dashboard_home(request):
-    stats = _get_dashboard_stats()
+    """Admin-only dashboard home with automatic redirect for inspectors"""
+    print(f"DEBUG dashboard_home: user={request.user}, authenticated={request.user.is_authenticated}")
+    
+    if request.user.is_authenticated:
+        try:
+            profile = request.user.profile
+            print(f"DEBUG dashboard_home: profile.role={profile.role}")
+            if profile.role == UserProfile.Role.INSPECTOR:
+                print(f"DEBUG dashboard_home: Inspector detected, redirecting to inspector dashboard")
+                return redirect('/dashboard/inspector/')
+        except UserProfile.DoesNotExist:
+            print(f"DEBUG dashboard_home: No profile, creating ADMIN profile")
+            UserProfile.objects.create(user=request.user, role=UserProfile.Role.ADMIN)
+    
+    # Any non-inspector gets admin dashboard
+    try:
+        if request.user.profile.role == UserProfile.Role.INSPECTOR:
+            print(f"DEBUG dashboard_home: Inspector redirecting to inspector dashboard")
+            return redirect('/dashboard/inspector/')
+    except UserProfile.DoesNotExist:
+        pass
+    
+    print(f"DEBUG dashboard_home: Rendering admin dashboard")
+    try:
+        stats = _get_dashboard_stats()
+    except Exception as e:
+        # Fallback stats if there's an error
+        stats = {
+            'total_sites': 0,
+            'illegal_sites': 0,
+            'sites_this_week': 0,
+            'total_alerts': 0,
+            'alerts_this_week': 0,
+            'pending_assignments': 0,
+            'completed_assignments': 0,
+            'avg_processing_time': 0,
+            'top_regions': [],
+            'trend_labels': [],
+            'trend_illegal': [],
+            'trend_legal': [],
+            'trends': {'sites_change': 0, 'alerts_change': 0},
+            'has_data': False,
+        }
+    
     return render(request, 'dashboard/dashboard.html', {'stats': stats})
 
 
+@user_passes_test(is_admin)
 def dashboard_alerts(request):
+    """Admin-only alerts view"""
     return render(request, 'dashboard/alerts.html')
 
 
+@user_passes_test(is_admin)
 def dashboard_model_insights(request):
+    """Admin-only model insights view"""
     return render(request, 'dashboard/model_insights.html')
 
 
+@user_passes_test(is_admin)
 def dashboard_settings(request):
+    """Admin-only settings view"""
     return render(request, 'dashboard/settings.html')
+
+
+def is_inspector_or_admin(user):
+    """Check if user has inspector or admin role"""
+    if not user.is_authenticated:
+        return False
+    if not hasattr(user, 'profile'):
+        return False
+    return user.profile.role in [UserProfile.Role.INSPECTOR, UserProfile.Role.ADMIN]
+
+
+@user_passes_test(is_inspector_or_admin)
+def inspector_dashboard(request):
+    """Inspector-specific dashboard"""
+    try:
+        from apps.accounts.models import InspectorAssignment
+        from apps.detections.models import Alert
+        
+        # Get inspector's assignments
+        assignments = InspectorAssignment.objects.filter(
+            inspector=request.user.profile
+        ).order_by('-created_at')
+        
+        return render(request, 'dashboard/inspector.html', {
+            'assignments': assignments
+        })
+    except Exception as e:
+        return render(request, 'dashboard/inspector.html', {
+            'assignments': [],
+            'error': str(e)
+        })

@@ -11,9 +11,7 @@ class UserProfile(models.Model):
 
     class Role(models.TextChoices):
         ADMIN = 'admin', 'Admin'
-        ANALYST = 'analyst', 'Analyst'
         INSPECTOR = 'inspector', 'Inspector'
-        VIEWER = 'viewer', 'Viewer'
 
     class Organization(models.TextChoices):
         EPA = 'epa', 'Environmental Protection Agency'
@@ -31,7 +29,7 @@ class UserProfile(models.Model):
     role = models.CharField(
         max_length=20,
         choices=Role.choices,
-        default=Role.VIEWER
+        default=Role.ADMIN
     )
     organization = models.CharField(
         max_length=30,
@@ -41,6 +39,14 @@ class UserProfile(models.Model):
     phone_number = models.CharField(max_length=20, blank=True)
     receive_email_alerts = models.BooleanField(default=True)
     receive_sms_alerts = models.BooleanField(default=False)
+    is_available = models.BooleanField(default=True, help_text="Whether inspector is currently available for assignments")
+    current_assignment = models.OneToOneField(
+        'detections.Alert',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_alerts'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -50,3 +56,43 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.username} ({self.get_role_display()})"
+
+
+class InspectorAssignment(models.Model):
+    """
+    Tracks assignment of alerts to inspectors with status and history.
+    """
+    
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        ACCEPTED = 'accepted', 'Accepted'
+        IN_PROGRESS = 'in_progress', 'In Progress'
+        COMPLETED = 'completed', 'Completed'
+        REJECTED = 'rejected', 'Rejected'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    alert_id = models.UUIDField()  # Store alert ID as string
+    inspector = models.ForeignKey(
+        UserProfile,
+        on_delete=models.CASCADE,
+        related_name='inspector_assignments'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING
+    )
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Inspector Assignment'
+        verbose_name_plural = 'Inspector Assignments'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Alert {self.alert_id} → {self.inspector.user.username}"

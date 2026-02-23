@@ -56,7 +56,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     # Custom apps
-    'dashboard',
+    'apps.dashboard',
     'analysis',
     'uploads',
     # HLS Pipeline apps
@@ -67,10 +67,10 @@ INSTALLED_APPS = [
     'apps.postprocessing',
     'apps.results',
     'apps.core',
-    'apps.api',
     # Domain models
     'apps.accounts',
     'apps.detections',
+    'apps.api',
 ]
 
 MIDDLEWARE = [
@@ -83,6 +83,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'apps.dashboard.middleware.RoleBasedAccessMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -208,7 +209,7 @@ APP_NAME = 'GalamseyWatch AI'
 
 # Authentication Settings
 LOGIN_URL = '/accounts/login/'
-LOGIN_REDIRECT_URL = '/analysis/live-map/'
+LOGIN_REDIRECT_URL = '/dashboard/'  # Points to gatekeeper router
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 
 # Django REST Framework configuration

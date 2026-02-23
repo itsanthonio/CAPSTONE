@@ -19,14 +19,33 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import RedirectView
-from apps.dashboard.views import SignUpView
+from apps.dashboard.views import SignUpView, CustomLoginView, CustomLogoutView
+
+def root_view(request):
+    """Root view that redirects based on user role"""
+    if request.user.is_authenticated:
+        try:
+            from apps.accounts.models import UserProfile
+            profile = request.user.profile
+            if profile.role == UserProfile.Role.INSPECTOR:
+                from django.shortcuts import redirect
+                return redirect('/dashboard/inspector/')
+        except UserProfile.DoesNotExist:
+            pass
+    # Default to dashboard home for admins or non-authenticated users
+    from django.shortcuts import redirect
+    return redirect('/dashboard/home/')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('accounts/', include('django.contrib.auth.urls')),
+    # Custom auth URLs (must be before django.contrib.auth.urls)
+    path('accounts/login/', CustomLoginView.as_view(), name='login'),
+    path('accounts/logout/', CustomLogoutView.as_view(), name='logout'),
     path('accounts/signup/', SignUpView.as_view(), name='signup'),
-    path('', RedirectView.as_view(url='/analysis/live-map/', permanent=False)),
-    path('dashboard/', include('dashboard.urls')),
+    # Django auth URLs (for password reset, etc.)
+    path('accounts/', include('django.contrib.auth.urls')),
+    path('', root_view, name='root'),
+    path('dashboard/', include('apps.dashboard.urls')),
     path('analysis/', include('analysis.urls')),
     path('uploads/', include('uploads.urls')),
     # HLS Pipeline apps
@@ -38,6 +57,7 @@ urlpatterns = [
     path('results/', include('apps.results.urls')),
     # API endpoints
     path('api/', include('apps.api.urls')),
+    path('accounts/api/', include('apps.accounts.urls')),
     # Test page
     path('test-map/', lambda request: render(request, 'test_map.html'), name='test_map'),
 ]

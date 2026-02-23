@@ -1,13 +1,20 @@
 from django.shortcuts import render
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from django.contrib.auth.decorators import login_required
 import json
 from django.conf import settings
+from apps.accounts.models import UserProfile
 
+
+def is_admin(user):
+    """Check if user has admin role"""
+    return user.is_authenticated and hasattr(user, 'profile') and user.profile.role == UserProfile.Role.ADMIN
+
+@method_decorator(user_passes_test(is_admin), name='dispatch')
 class AnalysisView(LoginRequiredMixin, TemplateView):
     template_name = 'analysis/analysis.html'
     
