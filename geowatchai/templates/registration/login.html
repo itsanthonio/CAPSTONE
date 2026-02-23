@@ -34,9 +34,7 @@
                 </div>
             {% endif %}
             
-            {% if next %}
-                <input type="hidden" name="next" value="{{ next }}">
-            {% endif %}
+            <!-- Next parameter completely removed to force role-based redirect -->
             
             <div class="space-y-4">
                 <div>
@@ -67,6 +65,30 @@
                         placeholder="Enter your password"
                         autocomplete="current-password"
                     >
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Login as
+                    </label>
+                    <div class="space-y-2">
+                        <label class="flex items-center">
+                            <input type="radio" name="role" value="admin" 
+                                   {% if request.POST.role == 'admin' %}checked{% endif %}
+                                   class="h-4 w-4 text-gis-blue focus:ring-gis-blue border-gray-300">
+                            <span class="ml-2 text-sm text-gray-700">
+                                Administrator
+                            </span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="role" value="inspector" 
+                                   {% if request.POST.role == 'inspector' %}checked{% endif %}
+                                   class="h-4 w-4 text-gis-blue focus:ring-gis-blue border-gray-300">
+                            <span class="ml-2 text-sm text-gray-700">
+                                Inspector
+                            </span>
+                        </label>
+                    </div>
                 </div>
             </div>
             

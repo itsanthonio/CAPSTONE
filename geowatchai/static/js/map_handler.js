@@ -504,14 +504,26 @@ class MapHandler {
                 case '+':
                 case '=':
                     e.preventDefault();
-                    this.map.zoomIn();
+                    this.zoomIn();
                     break;
                 case '-':
                 case '_':
                     e.preventDefault();
-                    this.map.zoomOut();
+                    this.zoomOut();
                     break;
             }
         });
+    }
+
+    zoomIn() {
+        if (this.map) {
+            this.map.zoomIn();
+        }
+    }
+
+    zoomOut() {
+        if (this.map) {
+            this.map.zoomOut();
+        }
     }
 }

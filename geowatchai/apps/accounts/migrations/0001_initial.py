@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
             name='UserProfile',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('role', models.CharField(choices=[('admin', 'Admin'), ('analyst', 'Analyst'), ('inspector', 'Inspector'), ('viewer', 'Viewer')], default='viewer', max_length=20)),
+                ('role', models.CharField(choices=[('admin', 'Admin'), ('inspector', 'Inspector')], default='admin', max_length=20)),
                 ('organization', models.CharField(choices=[('epa', 'Environmental Protection Agency'), ('minerals_commission', 'Minerals Commission'), ('cersgis', 'CERSGIS'), ('forestry_commission', 'Forestry Commission'), ('other', 'Other')], default='other', max_length=30)),
                 ('phone_number', models.CharField(blank=True, max_length=20)),
                 ('receive_email_alerts', models.BooleanField(default=True)),

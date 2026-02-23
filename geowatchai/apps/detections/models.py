@@ -1,8 +1,10 @@
 import uuid
 from django.contrib.auth.models import User
 from django.contrib.gis.db import models
+from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 from apps.jobs.models import Job
+import uuid
 
 
 # ---------------------------------------------------------------------------
@@ -50,10 +52,6 @@ class Region(models.Model):
     class Meta:
         verbose_name = 'Region'
         verbose_name_plural = 'Regions'
-        indexes = [
-            models.Index(fields=['region_type']),
-            models.Index(fields=['is_active']),
-        ]
         ordering = ['name']
 
     def __str__(self):

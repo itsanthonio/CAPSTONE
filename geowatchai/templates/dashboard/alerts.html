@@ -67,6 +67,64 @@
         </div>
     </div>
 
+    <!-- Inspector Assignment Modal -->
+    <div id="inspector-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
+                <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">Assign Inspector</h3>
+                    <button onclick="closeInspectorModal()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="p-6">
+                    <!-- Inspector Search -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Search Inspectors</label>
+                        <div class="relative">
+                            <input type="text" id="inspector-search" 
+                                   placeholder="Search by name or organization..."
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0m-6 18l-6-6m6 6v6"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Inspector List -->
+                    <div id="inspector-list" class="max-h-60 overflow-y-auto border border border-gray-200 rounded-lg">
+                        <div class="p-2 text-sm text-gray-500">Loading inspectors...</div>
+                    </div>
+                    
+                    <!-- Assignment Notes -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Assignment Notes (Optional)</label>
+                        <textarea id="assignment-notes" rows="3" 
+                                  placeholder="Add any notes for the inspector..."
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex justify-end gap-3 px-6 pb-6">
+                    <button onclick="closeInspectorModal()" 
+                            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button onclick="assignInspector()" 
+                            class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                        Assign to Selected Inspector
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Table card -->
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -215,6 +273,137 @@
         <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 shrink-0" id="modal-actions"></div>
     </div>
 </div>
+
+<!-- Inspector Modal Functions - Defined Immediately -->
+<script>
+// Inspector Assignment Variables
+var selectedInspector = null;
+var currentAlertId = null;
+
+// Inspector Modal Functions - Immediately Available
+var openInspectorModal = function(alertId) {
+    currentAlertId = alertId;
+    var modal = document.getElementById('inspector-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        loadInspectors();
+    }
+};
+
+var closeInspectorModal = function() {
+    var modal = document.getElementById('inspector-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        selectedInspector = null;
+        currentAlertId = null;
+    }
+};
+
+var loadInspectors = function() {
+    fetch('/accounts/api/inspectors/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            var inspectorList = document.getElementById('inspector-list');
+            if (inspectorList) {
+                inspectorList.innerHTML = '';
+                
+                // Handle case where no inspectors are available
+                if (!data || data.length === 0) {
+                    inspectorList.innerHTML = '<div class="p-4 text-center text-gray-500">No inspectors available</div>';
+                    return;
+                }
+                
+                data.forEach(inspector => {
+                    var item = document.createElement('div');
+                    item.className = 'p-3 hover:bg-gray-50 cursor-pointer border border-gray-200 rounded-lg mb-2';
+                    item.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="font-medium text-gray-900">${inspector.user}</div>
+                                <div class="text-sm text-gray-500">${inspector.organization}</div>
+                                <div class="text-xs text-green-600">${inspector.is_available ? 'Available' : 'Busy'}</div>
+                            </div>
+                            <input type="radio" name="inspector" value="${inspector.user}" class="inspector-radio">
+                        </div>
+                    `;
+                    item.onclick = function() { selectInspector(inspector); };
+                    inspectorList.appendChild(item);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error loading inspectors:', error);
+            var inspectorList = document.getElementById('inspector-list');
+            if (inspectorList) {
+                inspectorList.innerHTML = '<div class="p-4 text-center text-red-500">Error loading inspectors. Please try again.</div>';
+            }
+        });
+};
+
+var selectInspector = function(inspector) {
+    selectedInspector = inspector;
+    var radios = document.querySelectorAll('.inspector-radio');
+    radios.forEach(function(radio) {
+        radio.checked = radio.value === inspector.user;
+    });
+};
+
+var assignInspector = function() {
+    if (!selectedInspector) {
+        alert('Please select an inspector first.');
+        return;
+    }
+    
+    fetch('/accounts/api/assignments/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            alert_id: currentAlertId,
+            inspector: selectedInspector.user,
+            notes: document.getElementById('assignment-notes').value
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        closeInspectorModal();
+        // Reload the page to refresh alerts list
+        window.location.reload();
+    })
+    .catch(error => console.error('Error creating assignment:', error));
+};
+
+// Helper function for CSRF token
+var getCookie = function(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+};
+
+// Make functions globally available
+window.openInspectorModal = openInspectorModal;
+window.closeInspectorModal = closeInspectorModal;
+window.loadInspectors = loadInspectors;
+window.selectInspector = selectInspector;
+window.assignInspector = assignInspector;
+</script>
+
 {% endblock %}
 
 
@@ -302,7 +491,7 @@
                             <button onclick="window._alertsPage.action('${a.id}','dismiss')"
                                     class="text-gray-400 hover:underline">Dismiss</button>
                         ` : a.status === 'acknowledged' ? `
-                            <button onclick="window._alertsPage.action('${a.id}','dispatch')"
+                            <button onclick="window.openInspectorModal('${a.id}')"
                                     class="text-purple-600 hover:underline">Dispatch Inspector</button>
                         ` : a.status === 'dispatched' ? `
                             <button onclick="window._alertsPage.action('${a.id}','resolve')"
@@ -489,6 +678,122 @@
             resolve:     'resolve',
         };
         const endpoint = endpointMap[verb] || verb;
+
+        // ── Inspector Modal ──────────────────────────────────────────────
+        let selectedInspector = null;
+        let currentAlertId = null;
+
+        function openInspectorModal(alertId) {
+            currentAlertId = alertId;
+            const modal = document.getElementById('inspector-modal');
+            modal.classList.remove('hidden');
+            loadInspectors();
+        }
+
+        function closeInspectorModal() {
+            const modal = document.getElementById('inspector-modal');
+            modal.classList.add('hidden');
+            selectedInspector = null;
+            currentAlertId = null;
+        }
+
+        async function loadInspectors() {
+            try {
+                const response = await fetch('/api/inspectors/', {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load inspectors');
+                
+                const inspectors = await response.json();
+                const listContainer = document.getElementById('inspector-list');
+                
+                listContainer.innerHTML = inspectors.map(inspector => `
+                    <div class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer inspector-item" 
+                         data-inspector-id="${inspector.id}" 
+                         onclick="selectInspector('${inspector.id}')">
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1">
+                                <div class="font-medium text-gray-900">${inspector.user__username}</div>
+                                <div class="text-sm text-gray-500">${inspector.organization} - ${inspector.get_role_display()}</div>
+                            </div>
+                            <div class="text-sm ${inspector.is_available ? 'text-green-600' : 'text-red-600'}">
+                                ${inspector.is_available ? 'Available' : 'Busy'}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading inspectors:', error);
+                const listContainer = document.getElementById('inspector-list');
+                listContainer.innerHTML = '<div class="p-2 text-sm text-red-600">Failed to load inspectors</div>';
+            }
+        }
+
+        function selectInspector(inspectorId) {
+            // Remove previous selection
+            document.querySelectorAll('.inspector-item').forEach(item => {
+                item.classList.remove('bg-purple-50', 'border-purple-200');
+            });
+            
+            // Add selection to clicked item
+            const selectedItem = document.querySelector(`[data-inspector-id="${inspectorId}"]`);
+            if (selectedItem) {
+                selectedItem.classList.add('bg-purple-50', 'border-purple-200');
+                selectedInspector = inspectorId;
+            }
+        }
+
+        async function assignInspector() {
+            if (!selectedInspector || !currentAlertId) {
+                alert('Please select an inspector and alert');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/assignments/', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                    },
+                    body: JSON.stringify({
+                        alert_id: currentAlertId,
+                        inspector_id: selectedInspector,
+                        notes: document.getElementById('assignment-notes').value
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to create assignment');
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Update alert status in UI
+                    window._alertsPage.refreshAlerts();
+                    closeInspectorModal();
+                    
+                    // Show success message
+                    const successMsg = document.createElement('div');
+                    successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+                    successMsg.textContent = 'Inspector assigned successfully!';
+                    document.body.appendChild(successMsg);
+                    
+                    setTimeout(() => {
+                        successMsg.remove();
+                    }, 3000);
+                } else {
+                    alert('Failed to assign inspector: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error assigning inspector:', error);
+                alert('Failed to assign inspector');
+            }
+        }
         try {
             const res = await fetch(`/api/alerts/${id}/${endpoint}/`, {
                 method: 'POST',
@@ -575,7 +880,17 @@
         });
     });
 
-    window._alertsPage = { openModal, closeModal, action, onSliderChange: (v) => renderTlFrame(parseInt(v, 10)) };
+    window._alertsPage = { 
+        openModal, 
+        closeModal, 
+        action, 
+        onSliderChange: (v) => renderTlFrame(parseInt(v, 10)),
+        openInspectorModal,
+        closeInspectorModal,
+        loadInspectors,
+        selectInspector,
+        assignInspector
+    };
 })();
 </script>
 {% endblock %}
