@@ -1,206 +1,231 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Inspector Dashboard — GalamseyWatch{% endblock %}
+{% block title %}My Assignments — GalamseyWatch{% endblock %}
+
+{% block extra_css %}
+<style>
+    .mini-map { height: 180px; border-radius: 0.5rem; overflow: hidden; }
+    .mini-map-wrap { position: relative; cursor: pointer; }
+    .mini-map-overlay {
+        position: absolute; inset: 0; z-index: 10;
+        display: flex; align-items: flex-end; justify-content: flex-end;
+        padding: 8px;
+    }
+    .mini-map-overlay span {
+        background: rgba(0,0,0,0.6); color: #fff;
+        font-size: 0.7rem; padding: 3px 8px; border-radius: 4px;
+    }
+    .tab-btn.active { background: #f59e0b; color: #fff; }
+    .assignment-card { display: none; }
+    .assignment-card.visible { display: block; }
+    .outcome-btn { transition: all 0.15s; }
+    input[type="file"]::file-selector-button {
+        background: #f3f4f6; border: 1px solid #d1d5db;
+        padding: 4px 10px; border-radius: 4px; cursor: pointer;
+        font-size: 0.8rem;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="p-6 space-y-6">
+
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Inspector Dashboard</h1>
-            <p class="text-gray-500 text-sm mt-0.5">Your assigned alerts and tasks</p>
+            <h1 class="text-2xl font-bold text-gray-900">My Assignments</h1>
+            <p class="text-gray-500 text-sm mt-0.5">Field verification tasks assigned to you</p>
         </div>
     </div>
 
-    <!-- Error Message -->
     {% if error %}
-    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-        <div class="flex">
-            <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 0116 0zm-1 8a1 1 0 102 0 1 1 0 012 0zM10 6a4 4 0 100-8 4 4 0 008 8zm-2 4a2 2 0 11-4 0 2 2 0 014 0z" clip-rule="evenodd"/>
-                </svg>
-            </div>
-            <div class="ml-3">
-                <h3 class="text-sm font-medium text-red-800">Error loading assignments</h3>
-                <div class="mt-2 text-sm text-red-700">
-                    {{ error }}
-                </div>
-            </div>
-        </div>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">
+        <strong>Error loading assignments:</strong> {{ error }}
     </div>
     {% endif %}
 
-    <!-- Assignments List -->
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
-        <div class="px-6 py-4 border-b border-gray-100">
-            <h2 class="text-lg font-semibold text-gray-900">My Assignments</h2>
+    <!-- Summary bar -->
+    <div class="grid grid-cols-3 gap-4">
+        <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center">
+            <div class="text-3xl font-bold text-yellow-700">{{ pending_count }}</div>
+            <div class="text-sm text-yellow-600 mt-1">Pending</div>
         </div>
-        
-        {% if assignments %}
-        <div class="divide-y divide-gray-200">
-            {% for assignment_data in assignments %}
-            {% with assignment=assignment_data.assignment alert=assignment_data.alert site=assignment_data.site %}
-            <div class="p-6 hover:bg-gray-50">
-                <div class="flex items-start justify-between">
-                    <div class="flex-1">
-                        <!-- Alert Info -->
-                        <div class="flex items-center space-x-3 mb-3">
-                            <div class="flex-shrink-0">
-                                <div class="w-2 h-2 rounded-full {% if assignment.status == 'pending' %}bg-yellow-400{% elif assignment.status == 'resolved' %}bg-green-400{% else %}bg-gray-400{% endif %}"></div>
-                            </div>
-                            <div>
-                                <div class="text-sm font-medium text-gray-900">
-                                    {% if alert %}
-                                        {{ alert.title }}
-                                    {% else %}
-                                        Alert {{ assignment.alert_id|truncatechars:8 }}
-                                    {% endif %}
-                                </div>
-                                <div class="text-sm text-gray-500">
-                                    Assigned: {{ assignment.assigned_at|date:"M d, Y H:i" }}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Site Details -->
-                        {% if site %}
-                        <div class="bg-gray-50 rounded-lg p-4 mb-3">
-                            <h4 class="text-sm font-medium text-gray-900 mb-2">Site Details</h4>
-                            <div class="grid grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <span class="text-gray-500">Confidence:</span>
-                                    <span class="ml-2 font-medium">{{ site.confidence_score|floatformat:2 }}%</span>
-                                </div>
-                                <div>
-                                    <span class="text-gray-500">Area:</span>
-                                    <span class="ml-2 font-medium">{{ site.area_hectares|floatformat:2 }} ha</span>
-                                </div>
-                                <div>
-                                    <span class="text-gray-500">Detection Date:</span>
-                                    <span class="ml-2 font-medium">{{ site.detection_date|date:"M d, Y" }}</span>
-                                </div>
-                                <div>
-                                    <span class="text-gray-500">Region:</span>
-                                    <span class="ml-2 font-medium">{{ site.region.name|default:"Unknown" }}</span>
-                                </div>
-                            </div>
-                            {% if site.description %}
-                            <div class="mt-2">
-                                <span class="text-gray-500 text-sm">Description:</span>
-                                <p class="text-sm text-gray-700 mt-1">{{ site.description }}</p>
-                            </div>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-
-                        <!-- Assignment Notes -->
-                        {% if assignment.notes %}
-                        <div class="text-sm text-gray-600 mb-3">
-                            <span class="font-medium">Notes:</span> {{ assignment.notes }}
-                        </div>
-                        {% endif %}
-
-                        <!-- Status Update Controls -->
-                        <div class="flex items-center space-x-3">
-                            {% if assignment.status == 'pending' %}
-                            <button onclick="markAsResolved('{{ assignment.id }}')" 
-                                    class="text-sm bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
-                                Mark as Resolved
-                            </button>
-                            {% else %}
-                            <span class="text-sm text-green-600 font-medium">✓ Resolved</span>
-                            {% endif %}
-                            <input type="text" id="notes-{{ assignment.id }}" placeholder="Add notes..." 
-                                   class="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                   value="{{ assignment.notes }}">
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-center space-x-2 ml-4">
-                        <span class="px-2 py-1 text-xs font-medium rounded-full {% if assignment.status == 'pending' %}bg-yellow-100 text-yellow-800{% elif assignment.status == 'resolved' %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
-                            {{ assignment.get_status_display }}
-                        </span>
-                        {% if alert %}
-                        <span class="px-2 py-1 text-xs font-medium rounded-full {% if alert.severity == 'low' %}bg-gray-100 text-gray-800{% elif alert.severity == 'medium' %}bg-yellow-100 text-yellow-800{% elif alert.severity == 'high' %}bg-orange-100 text-orange-800{% elif alert.severity == 'critical' %}bg-red-100 text-red-800{% endif %}">
-                            {{ alert.get_severity_display }}
-                        </span>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            {% endwith %}
-            {% endfor %}
+        <div class="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+            <div class="text-3xl font-bold text-green-700">{{ verified_count }}</div>
+            <div class="text-sm text-green-600 mt-1">Verified</div>
         </div>
-        {% else %}
-        <div class="p-12 text-center">
-            <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h2M9 5a2 2 0 012 0v10a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h2m-6 9l6 6m-6-6l6 6"/>
-            </svg>
-            <h3 class="text-lg font-medium text-gray-900 mb-2">No assignments yet</h3>
-            <p class="text-gray-500">You haven't been assigned any alerts yet. Check back later for new assignments.</p>
+        <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
+            <div class="text-3xl font-bold text-gray-600">{{ inconclusive_count }}</div>
+            <div class="text-sm text-gray-500 mt-1">Inconclusive</div>
         </div>
-        {% endif %}
     </div>
+
+    <!-- Tabs -->
+    <div class="flex space-x-2">
+        <button onclick="filterTab('all')" id="tab-all"
+                class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 bg-active-gold text-white">
+            All ({{ assignments|length }})
+        </button>
+        <button onclick="filterTab('pending')" id="tab-pending"
+                class="tab-btn px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50">
+            Pending ({{ pending_count }})
+        </button>
+        <button onclick="filterTab('verified')" id="tab-verified"
+                class="tab-btn px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50">
+            Verified ({{ verified_count }})
+        </button>
+        <button onclick="filterTab('inconclusive')" id="tab-inconclusive"
+                class="tab-btn px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50">
+            Inconclusive ({{ inconclusive_count }})
+        </button>
+    </div>
+
+    <!-- Assignment cards -->
+    {% if assignments %}
+    <div class="space-y-6" id="cards-container">
+        {% for d in assignments %}
+        {% with assignment=d.assignment alert=d.alert site=d.site %}
+
+        {# Determine card's tab class #}
+        {% if assignment.status == 'pending' %}
+            {% with card_tab='pending' %}
+            {% include 'dashboard/_inspector_card.html' %}
+            {% endwith %}
+        {% elif assignment.outcome == 'inconclusive' %}
+            {% with card_tab='inconclusive' %}
+            {% include 'dashboard/_inspector_card.html' %}
+            {% endwith %}
+        {% else %}
+            {% with card_tab='verified' %}
+            {% include 'dashboard/_inspector_card.html' %}
+            {% endwith %}
+        {% endif %}
+
+        {% endwith %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-white rounded-xl border border-gray-200 p-12 text-center">
+        <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">No assignments yet</h3>
+        <p class="text-gray-500">You haven't been assigned any alerts. Check back later.</p>
+    </div>
+    {% endif %}
+
 </div>
 
+<!-- Toast container -->
+<div id="toast-container" class="fixed top-4 right-4 space-y-2 z-50"></div>
+
 <script>
-function markAsResolved(assignmentId) {
-    const notes = document.getElementById(`notes-${assignmentId}`).value;
-    
-    fetch(`/dashboard/assignment/${assignmentId}/status/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: `status=resolved&notes=${encodeURIComponent(notes)}`
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Show success message
-            const toast = document.createElement('div');
-            toast.className = 'fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50';
-            toast.innerHTML = `<strong>Success!</strong> ${data.message}`;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
-            
-            // Reload page to show updated status
-            setTimeout(() => location.reload(), 1000);
+/* ---------- Tab filtering ---------- */
+function filterTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active', 'bg-active-gold', 'text-white');
+        b.classList.add('text-gray-600', 'hover:bg-gray-50');
+    });
+    const active = document.getElementById('tab-' + tab);
+    active.classList.add('active', 'bg-active-gold', 'text-white');
+    active.classList.remove('text-gray-600', 'hover:bg-gray-50');
+
+    document.querySelectorAll('.assignment-card').forEach(card => {
+        if (tab === 'all' || card.dataset.tab === tab) {
+            card.classList.add('visible');
         } else {
-            // Show error message
-            const toast = document.createElement('div');
-            toast.className = 'fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50';
-            toast.innerHTML = `<strong>Error!</strong> ${data.error}`;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
+            card.classList.remove('visible');
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        const toast = document.createElement('div');
-        toast.className = 'fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50';
-        toast.innerHTML = '<strong>Error!</strong> Failed to update status';
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
     });
 }
+filterTab('all');
 
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
+/* ---------- Mini-maps ---------- */
+function openInLiveMap(lng, lat) {
+    if (!lng || !lat) return;
+    window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+}
+
+// Initialise each mini-map after the browser has finished layout
+requestAnimationFrame(() => {
+    document.querySelectorAll('.mini-map').forEach(el => {
+        const lng = parseFloat(el.dataset.lng);
+        const lat = parseFloat(el.dataset.lat);
+        if (isNaN(lng) || isNaN(lat)) {
+            el.innerHTML = '<div class="flex items-center justify-center h-full bg-gray-100 text-gray-400 text-sm rounded-lg">No location data</div>';
+            return;
         }
+        const map = new maplibregl.Map({
+            container: el,
+            style: 'https://tiles.openfreemap.org/styles/liberty',
+            center: [lng, lat],
+            zoom: 13,
+            interactive: false,
+            attributionControl: false,
+        });
+        map.on('load', () => {
+            map.resize();
+            new maplibregl.Marker({ color: '#ef4444' }).setLngLat([lng, lat]).addTo(map);
+        });
+    });
+});
+
+/* ---------- Outcome selection ---------- */
+function selectOutcome(assignmentId, outcome) {
+    document.querySelectorAll(`[data-assignment="${assignmentId}"] .outcome-btn`).forEach(btn => {
+        btn.classList.remove('ring-2', 'ring-offset-1');
+        btn.style.opacity = '0.6';
+    });
+    const chosen = document.querySelector(`[data-assignment="${assignmentId}"] [data-outcome="${outcome}"]`);
+    if (chosen) {
+        chosen.classList.add('ring-2', 'ring-offset-1');
+        chosen.style.opacity = '1';
     }
-    return cookieValue;
+    document.getElementById(`outcome-input-${assignmentId}`).value = outcome;
+}
+
+/* ---------- Field report submit ---------- */
+function submitReport(assignmentId) {
+    const outcome = document.getElementById(`outcome-input-${assignmentId}`).value;
+    if (!outcome) { showToast('Please select an outcome.', 'error'); return; }
+
+    const form = document.getElementById(`report-form-${assignmentId}`);
+    const formData = new FormData(form);
+
+    fetch(`/dashboard/assignment/${assignmentId}/report/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: formData,
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+            setTimeout(() => location.reload(), 1200);
+        } else {
+            showToast(data.error || 'Failed to submit report.', 'error');
+        }
+    })
+    .catch(() => showToast('Network error. Please try again.', 'error'));
+}
+
+/* ---------- Toast ---------- */
+function showToast(msg, type) {
+    const t = document.createElement('div');
+    const bg = type === 'success' ? 'bg-green-100 border-green-400 text-green-800'
+                                   : 'bg-red-100 border-red-400 text-red-800';
+    t.className = `border px-4 py-3 rounded shadow-lg text-sm ${bg}`;
+    t.textContent = msg;
+    document.getElementById('toast-container').appendChild(t);
+    setTimeout(() => t.remove(), 4000);
+}
+
+/* ---------- Cookie helper ---------- */
+function getCookie(name) {
+    const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return v ? decodeURIComponent(v.pop()) : '';
 }
 </script>
 {% endblock %}

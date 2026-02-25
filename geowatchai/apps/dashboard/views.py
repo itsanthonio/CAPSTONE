@@ -7,8 +7,10 @@ from django.urls import reverse_lazy
 from django.views.generic import CreateView
 from django.utils import timezone
 from django.http import JsonResponse
-from datetime import timedelta
+from django.conf import settings as django_settings
+from datetime import timedelta, date
 from django.contrib import messages
+import os
 from .forms import CustomUserCreationForm, RoleBasedLoginForm
 from apps.accounts.models import UserProfile
 
@@ -355,85 +357,161 @@ def inspector_dashboard(request):
     try:
         from apps.accounts.models import InspectorAssignment
         from apps.detections.models import Alert
-        
-        # Get inspector's assignments with full alert details
+
         assignments = InspectorAssignment.objects.filter(
             inspector=request.user.profile
         ).order_by('-created_at')
-        
-        # Fetch alert details for each assignment
+
         assignment_data = []
         for assignment in assignments:
             try:
-                alert = Alert.objects.get(id=assignment.alert_id)
+                alert = Alert.objects.select_related('detected_site', 'detected_site__region').get(
+                    id=assignment.alert_id
+                )
+                site = alert.detected_site
+                centroid_lng = site.centroid.x if site and site.centroid else None
+                centroid_lat = site.centroid.y if site and site.centroid else None
+                timelapse = list(
+                    site.timelapse_frames.order_by('year').values(
+                        'year', 'thumbnail_url', 'acquisition_period'
+                    )
+                ) if site else []
                 assignment_data.append({
                     'assignment': assignment,
                     'alert': alert,
-                    'site': alert.detected_site
+                    'site': site,
+                    'centroid_lng': centroid_lng,
+                    'centroid_lat': centroid_lat,
+                    'timelapse_frames': timelapse,
+                    'photo_urls': [
+                        django_settings.MEDIA_URL + p for p in (assignment.evidence_photos or [])
+                    ],
                 })
             except Alert.DoesNotExist:
                 assignment_data.append({
                     'assignment': assignment,
                     'alert': None,
-                    'site': None
+                    'site': None,
+                    'centroid_lng': None,
+                    'centroid_lat': None,
+                    'timelapse_frames': [],
+                    'photo_urls': [],
                 })
-        
+
+        pending_count = sum(1 for d in assignment_data if d['assignment'].status == 'pending')
+        verified_count = sum(
+            1 for d in assignment_data
+            if d['assignment'].status == 'resolved'
+            and d['assignment'].outcome in ('mining_confirmed', 'false_positive')
+        )
+        inconclusive_count = sum(
+            1 for d in assignment_data
+            if d['assignment'].status == 'resolved'
+            and d['assignment'].outcome == 'inconclusive'
+        )
+
         return render(request, 'dashboard/inspector.html', {
-            'assignments': assignment_data
+            'assignments': assignment_data,
+            'pending_count': pending_count,
+            'verified_count': verified_count,
+            'inconclusive_count': inconclusive_count,
         })
     except Exception as e:
         return render(request, 'dashboard/inspector.html', {
             'assignments': [],
+            'pending_count': 0,
+            'verified_count': 0,
+            'inconclusive_count': 0,
             'error': str(e)
         })
 
 
 @login_required
-def update_assignment_status(request, assignment_id):
-    """Update assignment status via AJAX"""
+def submit_field_report(request, assignment_id):
+    """Inspector submits their field verification report (outcome, visit date, notes, photos)."""
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
-    
+
     try:
         from apps.accounts.models import InspectorAssignment
-        from apps.detections.models import Alert
-        
+        from apps.detections.models import Alert, DetectedSite
+
         assignment = InspectorAssignment.objects.get(id=assignment_id, inspector=request.user.profile)
-        new_status = request.POST.get('status')
-        notes = request.POST.get('notes', '')
-        
-        # Validate status
-        valid_statuses = [s[0] for s in InspectorAssignment.Status.choices]
-        if new_status not in valid_statuses:
-            return JsonResponse({'error': 'Invalid status'}, status=400)
-        
-        # Update assignment
-        old_status = assignment.status
-        assignment.status = new_status
-        assignment.notes = notes
-        
-        # Update timestamps
-        if new_status == InspectorAssignment.Status.RESOLVED and old_status != InspectorAssignment.Status.RESOLVED:
-            assignment.completed_at = timezone.now()
-            
-            # Also update the Alert status to RESOLVED
+
+        outcome = request.POST.get('outcome', '').strip()
+        visit_date_str = request.POST.get('visit_date', '').strip()
+        notes = request.POST.get('notes', '').strip()
+
+        valid_outcomes = [o[0] for o in InspectorAssignment.Outcome.choices]
+        if outcome not in valid_outcomes:
+            return JsonResponse({'error': 'Invalid outcome'}, status=400)
+
+        # Parse visit date
+        visit_date = None
+        if visit_date_str:
             try:
-                alert = Alert.objects.get(id=assignment.alert_id)
-                alert.status = Alert.AlertStatus.RESOLVED
-                alert.resolution_notes = f"Resolved by inspector {request.user.username}: {notes}"
-                alert.resolved_at = timezone.now()
-                alert.save()
-            except Alert.DoesNotExist:
-                pass
-        
+                from datetime import date as date_cls
+                visit_date = date_cls.fromisoformat(visit_date_str)
+            except ValueError:
+                return JsonResponse({'error': 'Invalid visit date format'}, status=400)
+
+        # Save uploaded photos
+        photos = request.FILES.getlist('evidence_photos')
+        photo_paths = list(assignment.evidence_photos or [])
+        if photos:
+            upload_dir = os.path.join(django_settings.MEDIA_ROOT, 'inspections', str(assignment_id))
+            os.makedirs(upload_dir, exist_ok=True)
+            for photo in photos:
+                safe_name = photo.name.replace(' ', '_')
+                dest = os.path.join(upload_dir, safe_name)
+                with open(dest, 'wb') as f:
+                    for chunk in photo.chunks():
+                        f.write(chunk)
+                photo_paths.append(f'inspections/{assignment_id}/{safe_name}')
+
+        # Update assignment
+        assignment.outcome = outcome
+        assignment.visit_date = visit_date
+        assignment.notes = notes
+        assignment.evidence_photos = photo_paths
+        assignment.status = InspectorAssignment.Status.RESOLVED
+        if not assignment.completed_at:
+            assignment.completed_at = timezone.now()
         assignment.save()
-        
+
+        # Update Alert
+        try:
+            alert = Alert.objects.get(id=assignment.alert_id)
+            alert.status = Alert.AlertStatus.RESOLVED
+            alert.resolved_at = timezone.now()
+            outcome_label = dict(InspectorAssignment.Outcome.choices).get(outcome, outcome)
+            alert.resolution_notes = (
+                f"Field report by {request.user.username} on "
+                f"{visit_date or 'unknown date'}: {outcome_label}. {notes}"
+            )
+            alert.save()
+
+            # Update DetectedSite status to match outcome
+            site = alert.detected_site
+            if outcome == 'mining_confirmed':
+                site.status = DetectedSite.Status.CONFIRMED_ILLEGAL
+            elif outcome == 'false_positive':
+                site.status = DetectedSite.Status.FALSE_POSITIVE
+            # inconclusive: leave site status unchanged
+            if outcome != 'inconclusive':
+                site.reviewed_by = request.user
+                site.reviewed_at = timezone.now()
+                site.review_notes = notes
+                site.save()
+        except Alert.DoesNotExist:
+            pass
+
         return JsonResponse({
             'success': True,
-            'new_status': assignment.get_status_display(),
-            'message': 'Status updated successfully'
+            'outcome': outcome,
+            'message': f'Field report submitted: {dict(InspectorAssignment.Outcome.choices).get(outcome)}'
         })
-        
+
     except InspectorAssignment.DoesNotExist:
         return JsonResponse({'error': 'Assignment not found'}, status=404)
     except Exception as e:

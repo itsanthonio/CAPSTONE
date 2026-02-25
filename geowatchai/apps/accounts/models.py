@@ -62,10 +62,15 @@ class InspectorAssignment(models.Model):
     """
     Tracks assignment of alerts to inspectors with status and history.
     """
-    
+
     class Status(models.TextChoices):
         PENDING = 'pending', 'Pending'
         RESOLVED = 'resolved', 'Resolved'
+
+    class Outcome(models.TextChoices):
+        MINING_CONFIRMED = 'mining_confirmed', 'Mining Confirmed'
+        FALSE_POSITIVE = 'false_positive', 'False Positive'
+        INCONCLUSIVE = 'inconclusive', 'Inconclusive'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     alert_id = models.UUIDField()  # Store alert ID as string
@@ -78,6 +83,22 @@ class InspectorAssignment(models.Model):
         max_length=20,
         choices=Status.choices,
         default=Status.PENDING
+    )
+    outcome = models.CharField(
+        max_length=25,
+        choices=Outcome.choices,
+        null=True,
+        blank=True,
+        help_text='Field verification outcome set by inspector after site visit'
+    )
+    visit_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text='Date the inspector physically visited the site'
+    )
+    evidence_photos = models.JSONField(
+        default=list,
+        help_text='List of media paths for photos taken at the site'
     )
     assigned_at = models.DateTimeField(auto_now_add=True)
     accepted_at = models.DateTimeField(null=True, blank=True)

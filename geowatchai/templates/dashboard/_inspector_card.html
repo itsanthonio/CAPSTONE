@@ -1,0 +1,280 @@
+{% load static %}
+{# Variables in scope: assignment, alert, site, d (full dict with centroid_lng, centroid_lat, timelapse_frames, photo_urls), card_tab #}
+<div class="assignment-card visible bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+     data-tab="{{ card_tab }}"
+     data-assignment="{{ assignment.id }}">
+
+    <!-- Card header -->
+    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <!-- Severity dot -->
+            <div class="w-2.5 h-2.5 rounded-full flex-shrink-0
+                {% if alert and alert.severity == 'critical' %}bg-red-500
+                {% elif alert and alert.severity == 'high' %}bg-orange-500
+                {% elif alert and alert.severity == 'medium' %}bg-yellow-400
+                {% else %}bg-gray-400{% endif %}"></div>
+            <div>
+                <h3 class="text-base font-semibold text-gray-900">
+                    {% if alert %}{{ alert.title }}{% else %}Assignment {{ assignment.id|truncatechars:8 }}{% endif %}
+                </h3>
+                <p class="text-xs text-gray-500 mt-0.5">Assigned {{ assignment.assigned_at|date:"M d, Y" }}</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+            {% if alert %}
+            <span class="px-2 py-0.5 text-xs font-medium rounded-full
+                {% if alert.severity == 'critical' %}bg-red-100 text-red-800
+                {% elif alert.severity == 'high' %}bg-orange-100 text-orange-800
+                {% elif alert.severity == 'medium' %}bg-yellow-100 text-yellow-800
+                {% else %}bg-gray-100 text-gray-700{% endif %}">
+                {{ alert.get_severity_display }}
+            </span>
+            {% endif %}
+            {% if assignment.status == 'pending' %}
+            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Pending</span>
+            {% elif assignment.outcome == 'mining_confirmed' %}
+            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800">Mining Confirmed</span>
+            {% elif assignment.outcome == 'false_positive' %}
+            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">False Positive</span>
+            {% elif assignment.outcome == 'inconclusive' %}
+            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">Inconclusive</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="p-6 space-y-5">
+
+        <!-- Two-column layout: site details + mini-map -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <!-- Site details -->
+            {% if site %}
+            <div class="bg-gray-50 rounded-lg p-4 space-y-2">
+                <h4 class="text-sm font-medium text-gray-900 mb-2">Site Details</h4>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                    <div class="text-gray-500">Confidence</div>
+                    <div class="font-medium text-gray-900">
+                        {% widthratio site.confidence_score 1 100 %}%
+                    </div>
+                    <div class="text-gray-500">Area</div>
+                    <div class="font-medium text-gray-900">{{ site.area_hectares|floatformat:2 }} ha</div>
+                    <div class="text-gray-500">Detection Date</div>
+                    <div class="font-medium text-gray-900">{{ site.detection_date|date:"M d, Y" }}</div>
+                    <div class="text-gray-500">Region</div>
+                    <div class="font-medium text-gray-900">{{ site.region.name|default:"Unknown" }}</div>
+                    <div class="text-gray-500">Legal Status</div>
+                    <div class="font-medium
+                        {% if site.legal_status == 'illegal' %}text-red-600
+                        {% elif site.legal_status == 'legal' %}text-green-600
+                        {% else %}text-gray-500{% endif %}">
+                        {{ site.get_legal_status_display }}
+                    </div>
+                    {% if site.recurrence_count > 1 %}
+                    <div class="text-gray-500">Recurrences</div>
+                    <div class="font-medium text-orange-600">{{ site.recurrence_count }}×</div>
+                    {% endif %}
+                </div>
+                {% if alert and alert.description %}
+                <p class="text-xs text-gray-500 pt-1 border-t border-gray-200 mt-2">{{ alert.description }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Mini-map -->
+            <div>
+                <h4 class="text-sm font-medium text-gray-900 mb-2">Site Location</h4>
+                <div class="mini-map-wrap rounded-lg"
+                     onclick="openInLiveMap('{{ d.centroid_lng|default:'' }}', '{{ d.centroid_lat|default:'' }}')">
+                    <div class="mini-map"
+                         data-lng="{{ d.centroid_lng|default:'' }}"
+                         data-lat="{{ d.centroid_lat|default:'' }}"
+                         id="map-{{ assignment.id }}">
+                    </div>
+                    {% if d.centroid_lng %}
+                    <div class="mini-map-overlay">
+                        <span>Open in Google Maps ↗</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Timelapse frames -->
+        {% if d.timelapse_frames %}
+        <div>
+            <h4 class="text-sm font-medium text-gray-900 mb-2">Satellite Timelapse</h4>
+            <div class="flex space-x-3 overflow-x-auto pb-2">
+                {% for frame in d.timelapse_frames %}
+                <div class="flex-shrink-0 text-center">
+                    {% if frame.thumbnail_url %}
+                    <img src="{{ frame.thumbnail_url }}" alt="{{ frame.year }}"
+                         class="w-28 h-20 object-cover rounded-lg border border-gray-200 bg-gray-100">
+                    {% else %}
+                    <div class="w-28 h-20 rounded-lg border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-xs text-gray-400">
+                        No image
+                    </div>
+                    {% endif %}
+                    <p class="text-xs text-gray-500 mt-1">{{ frame.year }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Dispatch notes from admin -->
+        {% if assignment.notes and assignment.status == 'pending' %}
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p class="text-xs font-medium text-blue-700 mb-1">Notes from dispatcher</p>
+            <p class="text-sm text-blue-800">{{ assignment.notes }}</p>
+        </div>
+        {% endif %}
+
+        <!-- ---- PENDING: field report form ---- -->
+        {% if assignment.status == 'pending' %}
+        <form id="report-form-{{ assignment.id }}" enctype="multipart/form-data" onsubmit="return false;">
+            {% csrf_token %}
+            <input type="hidden" id="outcome-input-{{ assignment.id }}" name="outcome" value="">
+
+            <h4 class="text-sm font-medium text-gray-900 mb-3">Submit Field Report</h4>
+
+            <!-- Outcome buttons -->
+            <div class="mb-4">
+                <label class="block text-xs text-gray-500 mb-2">What did you find at the site?</label>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button"
+                            data-outcome="mining_confirmed"
+                            onclick="selectOutcome('{{ assignment.id }}', 'mining_confirmed')"
+                            class="outcome-btn flex items-center space-x-2 px-4 py-2.5 border-2 border-red-300 bg-red-50 text-red-700 rounded-lg text-sm font-medium hover:bg-red-100"
+                            style="opacity:0.7">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                        </svg>
+                        <span>Mining Confirmed</span>
+                    </button>
+                    <button type="button"
+                            data-outcome="false_positive"
+                            onclick="selectOutcome('{{ assignment.id }}', 'false_positive')"
+                            class="outcome-btn flex items-center space-x-2 px-4 py-2.5 border-2 border-green-300 bg-green-50 text-green-700 rounded-lg text-sm font-medium hover:bg-green-100"
+                            style="opacity:0.7">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span>False Positive</span>
+                    </button>
+                    <button type="button"
+                            data-outcome="inconclusive"
+                            onclick="selectOutcome('{{ assignment.id }}', 'inconclusive')"
+                            class="outcome-btn flex items-center space-x-2 px-4 py-2.5 border-2 border-gray-300 bg-gray-50 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-100"
+                            style="opacity:0.7">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span>Inconclusive</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Visit date -->
+            <div class="mb-4">
+                <label for="visit-date-{{ assignment.id }}" class="block text-xs text-gray-500 mb-1">
+                    Date of Field Visit
+                </label>
+                <input type="date" id="visit-date-{{ assignment.id }}" name="visit_date"
+                       class="block w-full sm:w-48 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-active-gold focus:border-transparent">
+            </div>
+
+            <!-- Field notes -->
+            <div class="mb-4">
+                <label for="notes-{{ assignment.id }}" class="block text-xs text-gray-500 mb-1">
+                    Field Notes
+                </label>
+                <textarea id="notes-{{ assignment.id }}" name="notes" rows="3"
+                          placeholder="Describe what you observed at the site..."
+                          class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-active-gold focus:border-transparent"></textarea>
+            </div>
+
+            <!-- Evidence photos -->
+            <div class="mb-5">
+                <label class="block text-xs text-gray-500 mb-1">Evidence Photos (optional)</label>
+                <input type="file" name="evidence_photos" multiple accept="image/*"
+                       class="block text-sm text-gray-600">
+                <p class="text-xs text-gray-400 mt-1">You can select multiple photos at once.</p>
+            </div>
+
+            <!-- Submit -->
+            <button type="button" onclick="submitReport('{{ assignment.id }}')"
+                    class="px-5 py-2 bg-active-gold text-white rounded-lg text-sm font-semibold hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-active-gold transition-colors">
+                Submit Report
+            </button>
+        </form>
+
+        <!-- ---- RESOLVED: show outcome + report details ---- -->
+        {% else %}
+        <div class="border-t border-gray-100 pt-4 space-y-3">
+            <h4 class="text-sm font-medium text-gray-900">Field Report</h4>
+
+            <!-- Outcome banner -->
+            {% if assignment.outcome == 'mining_confirmed' %}
+            <div class="flex items-center space-x-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                <svg class="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                </svg>
+                <span class="text-sm font-semibold text-red-700">Mining Confirmed — Illegal activity verified on the ground</span>
+            </div>
+            {% elif assignment.outcome == 'false_positive' %}
+            <div class="flex items-center space-x-2 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+                <svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span class="text-sm font-semibold text-green-700">False Positive — No mining activity found</span>
+            </div>
+            {% elif assignment.outcome == 'inconclusive' %}
+            <div class="flex items-center space-x-2 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+                <svg class="w-5 h-5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="text-sm font-semibold text-gray-600">Inconclusive — Could not determine outcome</span>
+            </div>
+            {% endif %}
+
+            <!-- Visit date + notes -->
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                {% if assignment.visit_date %}
+                <div>
+                    <span class="text-gray-500">Visit Date:</span>
+                    <span class="ml-1 font-medium text-gray-900">{{ assignment.visit_date|date:"M d, Y" }}</span>
+                </div>
+                {% endif %}
+                <div>
+                    <span class="text-gray-500">Completed:</span>
+                    <span class="ml-1 font-medium text-gray-900">{{ assignment.completed_at|date:"M d, Y"|default:"—" }}</span>
+                </div>
+            </div>
+            {% if assignment.notes %}
+            <p class="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">{{ assignment.notes }}</p>
+            {% endif %}
+
+            <!-- Evidence photos -->
+            {% if d.photo_urls %}
+            <div>
+                <p class="text-xs text-gray-500 mb-2">Evidence Photos</p>
+                <div class="flex flex-wrap gap-2">
+                    {% for url in d.photo_urls %}
+                    <a href="{{ url }}" target="_blank">
+                        <img src="{{ url }}" alt="Evidence photo"
+                             class="w-24 h-16 object-cover rounded-lg border border-gray-200 hover:opacity-80 transition-opacity">
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+    </div>
+</div>
