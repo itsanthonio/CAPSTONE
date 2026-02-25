@@ -122,6 +122,62 @@ class MapHandler {
             paint: { 'line-color': '#16a34a', 'line-width': 1.2, 'line-dasharray': [3, 2] }
         });
 
+        // --- Water bodies layer (blue) ---
+        this.map.addSource('water-bodies', {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features: [] }
+        });
+        this.map.addLayer({
+            id: 'water-bodies-fill',
+            type: 'fill',
+            source: 'water-bodies',
+            paint: { 'fill-color': '#3b82f6', 'fill-opacity': 0.15 }
+        });
+        this.map.addLayer({
+            id: 'water-bodies-outline',
+            type: 'line',
+            source: 'water-bodies',
+            paint: { 'line-color': '#1d4ed8', 'line-width': 1.5 }
+        });
+
+        fetch('/api/regions/?type=water_body', { credentials: 'include' })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (data && data.features) {
+                    this.map.getSource('water-bodies').setData(data);
+                    console.log('[Map] Loaded', data.features.length, 'water body regions');
+                }
+            })
+            .catch(e => console.warn('[Map] Could not load water bodies:', e));
+
+        // --- Protected forests layer (dark green) ---
+        this.map.addSource('protected-forests', {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features: [] }
+        });
+        this.map.addLayer({
+            id: 'protected-forests-fill',
+            type: 'fill',
+            source: 'protected-forests',
+            paint: { 'fill-color': '#15803d', 'fill-opacity': 0.12 }
+        });
+        this.map.addLayer({
+            id: 'protected-forests-outline',
+            type: 'line',
+            source: 'protected-forests',
+            paint: { 'line-color': '#14532d', 'line-width': 1.5, 'line-dasharray': [4, 2] }
+        });
+
+        fetch('/api/regions/?type=protected_forest', { credentials: 'include' })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (data && data.features) {
+                    this.map.getSource('protected-forests').setData(data);
+                    console.log('[Map] Loaded', data.features.length, 'protected forest regions');
+                }
+            })
+            .catch(e => console.warn('[Map] Could not load protected forests:', e));
+
         // Fetch and populate concessions
         fetch('/api/concessions/', { credentials: 'include' })
             .then(r => r.ok ? r.json() : null)
@@ -229,6 +285,8 @@ class MapHandler {
         const layerMap = {
             'detections': ['detections-layer', 'detections-outline'],
             'concessions': ['concessions-fill', 'concessions-outline'],
+            'water-bodies': ['water-bodies-fill', 'water-bodies-outline'],
+            'protected-forests': ['protected-forests-fill', 'protected-forests-outline'],
         };
         const layers = layerMap[layerId] || [layerId];
         layers.forEach(id => {
@@ -241,13 +299,48 @@ class MapHandler {
 
     handleAOICreated(e) {
         const data = this.draw.getAll();
-        if (data.features.length > 0) {
-            const area = turf.area(data);
-            const hectares = (area / 10000).toFixed(2);
-            document.getElementById('aoi-scan-section').classList.remove('hidden');
-            document.getElementById('aoi-area').textContent = hectares;
+        if (data.features.length === 0) return;
+
+        const feature = data.features[0];
+        const area    = turf.area(feature);
+        const ha      = area / 10000;
+
+        document.getElementById('aoi-scan-section').classList.remove('hidden');
+        document.getElementById('aoi-area').textContent = ha.toFixed(2);
+
+        const scanBtn   = document.getElementById('scan-aoi-btn');
+        const warningEl = document.getElementById('aoi-warning');
+
+        if (ha < 100) {
+            if (warningEl) {
+                warningEl.textContent = `Area too small (${ha.toFixed(2)} ha). Minimum is 100 ha.`;
+                warningEl.classList.remove('hidden');
+            }
+            if (scanBtn) {
+                scanBtn.disabled = true;
+                scanBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                scanBtn.classList.remove('hover:bg-opacity-90');
+            }
+        } else if (ha > 1000) {
+            if (warningEl) {
+                warningEl.textContent = `Area too large (${ha.toFixed(2)} ha). Maximum is 1,000 ha.`;
+                warningEl.classList.remove('hidden');
+            }
+            if (scanBtn) {
+                scanBtn.disabled = true;
+                scanBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                scanBtn.classList.remove('hover:bg-opacity-90');
+            }
+        } else {
+            if (warningEl) warningEl.classList.add('hidden');
+            if (scanBtn) {
+                scanBtn.disabled = false;
+                scanBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                scanBtn.classList.add('hover:bg-opacity-90');
+            }
         }
     }
+
 
     async scanAOI() {
         // Strong debounce protection - prevent multiple simultaneous scans
@@ -256,10 +349,21 @@ class MapHandler {
             alert("Scan already in progress. Please wait for current scan to complete.");
             return;
         }
-        
+
         const data = this.draw.getAll();
         if (data.features.length === 0) {
             alert('Please draw an area on the map before scanning.');
+            return;
+        }
+
+        const area = turf.area(data.features[0]);
+        const ha   = area / 10000;
+        if (ha < 100) {
+            alert(`Area too small (${ha.toFixed(2)} ha). Please draw an area of at least 100 hectares.`);
+            return;
+        }
+        if (ha > 1000) {
+            alert(`Area too large (${ha.toFixed(2)} ha). Please draw an area no greater than 1,000 hectares.`);
             return;
         }
 
@@ -279,6 +383,7 @@ class MapHandler {
             scanBtn.style.cursor = 'not-allowed';
         }
 
+        this.isPolling = true; // Set BEFORE fetch so re-entrant calls are blocked immediately
         try {
             const response = await fetch('/api/jobs/', {
                 method: 'POST',
@@ -296,9 +401,9 @@ class MapHandler {
             });
             if (!response.ok) throw new Error('Server responded with ' + response.status);
             const job = await response.json();
-            this.isPolling = true; // Set polling state
             this.pollJobStatus(job.id);
         } catch (err) {
+            this.isPolling = false; // Release lock on error so user can retry
             console.error("Failed to start job:", err);
             alert("Error starting scan: Ensure you are logged in and CSRF is valid.");
         } finally {

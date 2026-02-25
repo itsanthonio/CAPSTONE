@@ -30,7 +30,7 @@ app.conf.update(
     worker_pool='solo',
     worker_pool_restarts=True,
     worker_prefetch_multiplier=1,
-    task_acks_late=True,
+    task_acks_late=False,   # Acknowledge immediately — prevents re-queue on connection drop
     worker_disable_rate_limits=True,
 )
 

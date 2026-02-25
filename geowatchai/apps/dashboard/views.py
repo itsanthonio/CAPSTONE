@@ -341,8 +341,114 @@ def dashboard_alerts(request):
 
 @user_passes_test(is_admin)
 def dashboard_model_insights(request):
-    """Admin-only model insights view"""
-    return render(request, 'dashboard/model_insights.html')
+    """Admin-only model insights view — live metrics driven by inspector field reports."""
+    import json
+    import calendar
+    from collections import defaultdict
+    from apps.accounts.models import InspectorAssignment
+    from apps.detections.models import DetectedSite
+
+    # ── Confidence distribution (all detections) ─────────────────────────────
+    scores = list(
+        DetectedSite.objects.filter(confidence_score__isnull=False)
+        .values_list('confidence_score', flat=True)
+    )
+    conf_total = len(scores)
+    conf_bins = [0, 0, 0, 0, 0]   # 50-60, 60-70, 70-80, 80-90, 90-100
+    for s in scores:
+        if s >= 0.5:
+            idx = min(int((s - 0.5) / 0.1), 4)
+            conf_bins[idx] += 1
+
+    # ── All field-verified outcomes, oldest first ─────────────────────────────
+    verified = list(
+        InspectorAssignment.objects.filter(
+            outcome__in=['mining_confirmed', 'false_positive'],
+            completed_at__isnull=False,
+        ).order_by('completed_at')
+    )
+
+    total_verified = len(verified)
+    total_tp = sum(1 for a in verified if a.outcome == 'mining_confirmed')
+    total_fp = sum(1 for a in verified if a.outcome == 'false_positive')
+    has_field_data = total_verified > 0
+
+    # ── Live Precision — rolling last 50 verified ─────────────────────────────
+    PRECISION_WINDOW = 50
+    recent = verified[-PRECISION_WINDOW:]
+    if recent:
+        w_tp = sum(1 for a in recent if a.outcome == 'mining_confirmed')
+        w_fp = sum(1 for a in recent if a.outcome == 'false_positive')
+        live_precision = round(w_tp / (w_tp + w_fp) * 100, 1) if (w_tp + w_fp) else 73.1
+    else:
+        live_precision = 73.1   # test-set fallback
+
+    # ── Live Accuracy — EMA starting from test-set baseline ──────────────────
+    ALPHA = 0.05            # each report carries ~5% weight
+    BASE_ACCURACY = 0.979   # FPN-ResNet50 test-set pixel accuracy
+    ema = BASE_ACCURACY
+    for a in verified:
+        ema = ALPHA * (1.0 if a.outcome == 'mining_confirmed' else 0.0) + (1 - ALPHA) * ema
+    live_accuracy = round(ema * 100, 1)
+
+    # ── Monthly chart data — last 12 months ──────────────────────────────────
+    now = timezone.now()
+    months = []
+    for i in range(11, -1, -1):
+        # Step back month by month
+        m = now.month - i
+        y = now.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        months.append((y, m))
+
+    # Bucket verified assignments into months
+    monthly_buckets = defaultdict(lambda: {'tp': 0, 'fp': 0})
+    for a in verified:
+        key = (a.completed_at.year, a.completed_at.month)
+        if a.outcome == 'mining_confirmed':
+            monthly_buckets[key]['tp'] += 1
+        else:
+            monthly_buckets[key]['fp'] += 1
+
+    monthly_labels     = []
+    monthly_precision  = []
+    monthly_accuracy   = []
+    running_ema        = BASE_ACCURACY
+
+    for y, m in months:
+        monthly_labels.append(f"{calendar.month_abbr[m]} '{str(y)[2:]}")
+        bucket = monthly_buckets.get((y, m), {'tp': 0, 'fp': 0})
+        m_tp, m_fp = bucket['tp'], bucket['fp']
+
+        # Apply EMA for every outcome in this month (chronological nudges)
+        for _ in range(m_tp):
+            running_ema = ALPHA * 1.0 + (1 - ALPHA) * running_ema
+        for _ in range(m_fp):
+            running_ema = ALPHA * 0.0 + (1 - ALPHA) * running_ema
+
+        monthly_accuracy.append(round(running_ema * 100, 1))
+        monthly_precision.append(
+            round(m_tp / (m_tp + m_fp) * 100, 1) if (m_tp + m_fp) else None
+        )
+
+    return render(request, 'dashboard/model_insights.html', {
+        # Live metrics
+        'live_precision':   live_precision,
+        'live_accuracy':    live_accuracy,
+        'has_field_data':   has_field_data,
+        'total_verified':   total_verified,
+        'total_tp':         total_tp,
+        'total_fp':         total_fp,
+        # Confidence distribution
+        'conf_bins':        conf_bins,
+        'conf_total':       conf_total,
+        # Chart series (JSON strings)
+        'monthly_labels':    json.dumps(monthly_labels),
+        'monthly_precision': json.dumps(monthly_precision),
+        'monthly_accuracy':  json.dumps(monthly_accuracy),
+    })
 
 
 @user_passes_test(is_inspector_or_admin)
@@ -504,6 +610,17 @@ def submit_field_report(request, assignment_id):
                 site.review_notes = notes
                 site.save()
         except Alert.DoesNotExist:
+            pass
+
+        try:
+            import threading
+            from apps.notifications.services import send_field_report_received
+            threading.Thread(
+                target=send_field_report_received,
+                args=(assignment, assignment.alert),
+                daemon=True
+            ).start()
+        except Exception:
             pass
 
         return JsonResponse({

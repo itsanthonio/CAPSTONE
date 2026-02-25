@@ -229,6 +229,21 @@ REST_FRAMEWORK = {
     ],
 }
 
+# Email Configuration
+# Set EMAIL_USE_CONSOLE=True to print emails to the terminal instead of sending them.
+# Set EMAIL_USE_CONSOLE=False (and fill in credentials below) to send real emails.
+if config('EMAIL_USE_CONSOLE', default=True, cast=bool):
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+EMAIL_HOST          = config('EMAIL_HOST',          default='smtp.gmail.com')
+EMAIL_PORT          = config('EMAIL_PORT',          default=587, cast=int)
+EMAIL_USE_TLS       = config('EMAIL_USE_TLS',       default=True, cast=bool)
+EMAIL_HOST_USER     = config('EMAIL_HOST_USER',     default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL  = config('DEFAULT_FROM_EMAIL',  default='GalamseyWatch AI <noreply@galamseywatch.ai>')
+
 # Celery Configuration
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
 CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
@@ -237,3 +252,14 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 CELERY_TASK_TRACK_STARTED = True
+
+from celery.schedules import crontab
+CELERY_BEAT_SCHEDULE = {
+    'check-overdue-assignments-daily': {
+        'task': 'notifications.check_overdue_assignments',
+        'schedule': crontab(hour=8, minute=0),  # Every day at 08:00 UTC
+    },
+}
+
+# Site URL (used for links in notification emails)
+SITE_URL = config('SITE_URL', default='http://localhost:8000')

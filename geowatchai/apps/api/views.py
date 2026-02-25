@@ -413,6 +413,40 @@ class ConcessionGeoJSONView(viewsets.ReadOnlyModelViewSet):
         })
 
 
+class RegionGeoJSONView(viewsets.ViewSet):
+    """
+    Returns Region boundaries (water bodies, protected forests) as GeoJSON.
+    GET /api/regions/?type=water_body
+    GET /api/regions/?type=protected_forest
+    """
+    permission_classes = [AllowAny]
+
+    def list(self, request, *args, **kwargs):
+        from apps.detections.models import Region
+        import json
+
+        region_type = request.query_params.get('type')
+        qs = Region.objects.filter(is_active=True)
+        if region_type:
+            qs = qs.filter(region_type=region_type)
+
+        features = []
+        for r in qs:
+            if r.geometry:
+                features.append({
+                    'type': 'Feature',
+                    'geometry': json.loads(r.geometry.geojson),
+                    'properties': {
+                        'id': str(r.id),
+                        'name': r.name,
+                        'region_type': r.region_type,
+                        'district': r.district,
+                    }
+                })
+
+        return Response({'type': 'FeatureCollection', 'features': features})
+
+
 class AlertViewSet(viewsets.ViewSet):
     """
     Alert listing and status-change actions.
@@ -486,9 +520,44 @@ class AlertViewSet(viewsets.ViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         from apps.detections.models import Alert
+        from apps.accounts.models import InspectorAssignment
         a = get_object_or_404(Alert, pk=kwargs['pk'])
         site = a.detected_site
         centroid = site.centroid
+
+        # Pull structured field verification data from InspectorAssignment
+        field_verification = None
+        try:
+            assignment = InspectorAssignment.objects.filter(
+                alert_id=a.id,
+                status=InspectorAssignment.Status.RESOLVED
+            ).select_related('inspector__user').order_by('-completed_at').first()
+            if assignment:
+                from django.conf import settings as _settings
+                photo_urls = [
+                    f"{_settings.MEDIA_URL}{p}"
+                    for p in (assignment.evidence_photos or [])
+                ]
+                field_verification = {
+                    'outcome': assignment.outcome,
+                    'outcome_display': dict(InspectorAssignment.Outcome.choices).get(
+                        assignment.outcome, assignment.outcome
+                    ),
+                    'inspector_name': (
+                        assignment.inspector.user.get_full_name()
+                        or assignment.inspector.user.username
+                    ),
+                    'visit_date': assignment.visit_date.isoformat() if assignment.visit_date else None,
+                    'notes': assignment.notes,
+                    'completed_at': (
+                        assignment.completed_at.strftime('%Y-%m-%d %H:%M')
+                        if assignment.completed_at else None
+                    ),
+                    'photos': photo_urls,
+                }
+        except Exception:
+            pass
+
         return Response({
             'id': str(a.id),
             'title': a.title,
@@ -499,7 +568,7 @@ class AlertViewSet(viewsets.ViewSet):
             'status': a.status,
             'status_display': a.get_status_display(),
             'created_at': a.created_at.isoformat(),
-            'resolution_notes': a.resolution_notes,
+            'field_verification': field_verification,
             'site': {
                 'id': str(site.id),
                 'confidence_pct': round(site.confidence_score * 100, 1),
