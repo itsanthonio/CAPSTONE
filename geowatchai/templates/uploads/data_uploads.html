@@ -1,281 +1,392 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Data Uploads - {{ settings.APP_NAME }}{% endblock %}
+{% block title %}Data Uploads — {{ settings.APP_NAME }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .drop-zone { transition: border-color 0.2s, background 0.2s; }
+    .drop-zone.dragover { border-color: #f59e0b; background: #fffbeb; }
+    .tab-btn.active { background: #f59e0b; color: #fff; border-color: #f59e0b; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="p-6">
-    <!-- Page Header -->
-    <div class="mb-6">
+<div class="p-6 space-y-6">
+
+    <!-- Header -->
+    <div>
         <h1 class="text-2xl font-bold text-gray-900">Data Uploads</h1>
-        <p class="text-gray-600 mt-1">Upload and preprocess HLS Optical imagery</p>
+        <p class="text-gray-500 text-sm mt-0.5">Import spatial reference data used to classify and monitor detections</p>
     </div>
-    
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- File Upload Section -->
-        <div class="lg:col-span-2">
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div class="p-6 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900">File Upload</h2>
-                    <p class="text-sm text-gray-600 mt-1">Upload HLS Optical data for analysis</p>
-                </div>
-                <div class="p-6">
-                    <!-- Drop Zone -->
-                    <div id="drop-zone" class="upload-zone border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gis-blue transition-colors cursor-pointer">
-                        <svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                        </svg>
-                        <p class="text-lg font-medium text-gray-900 mb-2">Drop files here or click to browse</p>
-                        <p class="text-sm text-gray-600 mb-4">Supported format: .zip (max 5GB) - HLS.L30 or HLS.S30 products</p>
-                        <button class="px-4 py-2 bg-gis-blue text-white rounded-lg hover:bg-opacity-90 transition-colors">
-                            Browse Files
+
+    <!-- Summary cards -->
+    <div class="grid grid-cols-3 gap-4">
+        <div class="bg-white border border-gray-200 rounded-xl p-4 flex items-center space-x-4">
+            <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                </svg>
+            </div>
+            <div>
+                <div class="text-2xl font-bold text-gray-900">{{ concession_count }}</div>
+                <div class="text-xs text-gray-500">Legal Concessions</div>
+            </div>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-xl p-4 flex items-center space-x-4">
+            <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
+                </svg>
+            </div>
+            <div>
+                <div class="text-2xl font-bold text-gray-900">{{ water_count }}</div>
+                <div class="text-xs text-gray-500">Water Body Boundaries</div>
+            </div>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-xl p-4 flex items-center space-x-4">
+            <div class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                </svg>
+            </div>
+            <div>
+                <div class="text-2xl font-bold text-gray-900">{{ forest_count }}</div>
+                <div class="text-xs text-gray-500">Protected Forest Boundaries</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex space-x-2">
+        <button onclick="switchTab('concessions')" id="tab-concessions"
+                class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium border border-transparent">
+            Legal Concessions
+        </button>
+        <button onclick="switchTab('water')" id="tab-water"
+                class="tab-btn px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50">
+            Water Bodies
+        </button>
+        <button onclick="switchTab('forest')" id="tab-forest"
+                class="tab-btn px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50">
+            Protected Forests
+        </button>
+    </div>
+
+    <!-- ===== CONCESSIONS PANEL ===== -->
+    <div id="panel-concessions" class="upload-panel">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 space-y-4">
+                <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100">
+                        <h2 class="text-base font-semibold text-gray-900">Legal Concessions — GeoJSON Upload</h2>
+                        <p class="text-sm text-gray-500 mt-0.5">
+                            Boundaries of licensed mining concessions from the Minerals Commission.
+                            Uploading replaces all existing concessions and automatically reclassifies every detection as legal or illegal.
+                        </p>
+                    </div>
+                    <div class="p-6">
+                        <div id="dz-concessions"
+                             class="drop-zone border-2 border-dashed border-gray-300 rounded-lg p-10 text-center cursor-pointer"
+                             onclick="document.getElementById('fi-concessions').click()"
+                             ondragover="handleDragOver(event, this)" ondragleave="handleDragLeave(this)"
+                             ondrop="handleDrop(event, 'fi-concessions', this)">
+                            <svg class="w-10 h-10 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                            </svg>
+                            <p class="text-sm font-medium text-gray-700 mb-1">Drop GeoJSON file here or click to browse</p>
+                            <p class="text-xs text-gray-400">Accepted: .geojson, .json &nbsp;·&nbsp; Polygon or MultiPolygon features</p>
+                        </div>
+                        <input type="file" id="fi-concessions" class="hidden" accept=".geojson,.json"
+                               onchange="previewFile(this, 'preview-concessions')">
+
+                        <div id="preview-concessions" class="hidden mt-4 bg-gray-50 rounded-lg p-4 text-sm">
+                            <p class="font-medium text-gray-900 mb-1" id="preview-concessions-name"></p>
+                            <p class="text-gray-500" id="preview-concessions-info"></p>
+                        </div>
+
+                        <button onclick="uploadFile('fi-concessions', '/uploads/upload/concessions/', 'result-concessions')"
+                                class="mt-4 px-5 py-2 bg-active-gold text-white rounded-lg text-sm font-semibold hover:bg-opacity-90 transition-colors">
+                            Import Concessions
                         </button>
                     </div>
-                    <input type="file" id="file-input" class="hidden" accept=".zip" />
                 </div>
+
+                <div id="result-concessions" class="hidden"></div>
             </div>
-            
-            <!-- Metadata Preview -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
-                <div class="p-6 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900">Metadata Preview</h2>
-                    <p class="text-sm text-gray-600 mt-1">Extracted file information</p>
-                </div>
-                <div class="p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="text-sm font-medium text-gray-600">Acquisition Date</label>
-                            <p class="text-sm text-gray-900 mt-1">2024-12-09</p>
-                        </div>
-                        <div>
-                            <label class="text-sm font-medium text-gray-600">Product</label>
-                            <p class="text-sm text-gray-900 mt-1">HLS.S30</p>
-                        </div>
-                        <div>
-                            <label class="text-sm font-medium text-gray-600">Cloud Cover %</label>
-                            <p class="text-sm text-gray-900 mt-1">12.5%</p>
-                        </div>
-                        <div>
-                            <label class="text-sm font-medium text-gray-600">Orbit</label>
-                            <p class="text-sm text-gray-900 mt-1">Descending</p>
-                        </div>
-                        <div>
-                            <label class="text-sm font-medium text-gray-600">Bands Available</label>
-                            <p class="text-sm text-gray-900 mt-1">Red, Green, Blue, NIR, SWIR</p>
-                        </div>
-                        <div>
-                            <label class="text-sm font-medium text-gray-600">Mode</label>
-                            <p class="text-sm text-gray-900 mt-1">30m (Landsat) / 10m (Sentinel-2)</p>
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="text-sm font-medium text-gray-600">Coverage Area</label>
-                            <p class="text-sm text-gray-900 mt-1">Ghana - Ashanti & Western Regions</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Processing Pipeline -->
-        <div class="lg:col-span-1">
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div class="p-6 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900">Preprocessing Pipeline</h2>
-                    <p class="text-sm text-gray-600 mt-1">Data processing status</p>
-                </div>
-                <div class="p-6">
-                    <!-- Overall Progress -->
-                    <div class="mb-6">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm font-medium text-gray-600">Overall Progress</span>
-                            <span class="text-sm font-medium text-gray-900">50%</span>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2">
-                            <div class="bg-gis-blue h-2 rounded-full" style="width: 50%"></div>
-                        </div>
-                    </div>
-                    
-                    <!-- Processing Steps -->
-                    <div class="space-y-4">
-                        <div class="flex items-center">
-                            <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
-                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                            </div>
-                            <div class="flex-1">
-                                <p class="text-sm font-medium text-gray-900">Cloud Mask Processing</p>
-                                <p class="text-xs text-green-600">Complete</p>
-                            </div>
-                        </div>
-                        
-                        <div class="flex items-center">
-                            <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
-                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                            </div>
-                            <div class="flex-1">
-                                <p class="text-sm font-medium text-gray-900">Speckle Filtering</p>
-                                <p class="text-xs text-green-600">Complete</p>
-                            </div>
-                        </div>
-                        
-                        <div class="flex items-center">
-                            <div class="w-5 h-5 bg-active-gold rounded-full flex items-center justify-center mr-3 animate-pulse">
-                                <div class="w-2 h-2 bg-white rounded-full"></div>
-                            </div>
-                            <div class="flex-1">
-                                <p class="text-sm font-medium text-gray-900">Terrain Correction</p>
-                                <p class="text-xs text-active-gold">In Progress</p>
-                            </div>
-                        </div>
-                        
-                        <div class="flex items-center opacity-50">
-                            <div class="w-5 h-5 bg-gray-300 rounded-full flex items-center justify-center mr-3">
-                                <div class="w-2 h-2 bg-white rounded-full"></div>
-                            </div>
-                            <div class="flex-1">
-                                <p class="text-sm font-medium text-gray-900">Feature Extraction</p>
-                                <p class="text-xs text-gray-500">Pending</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Preview Button -->
-                    <button class="w-full mt-6 px-4 py-2 bg-active-gold text-white rounded-lg hover:bg-opacity-90 transition-colors">
-                        Preview
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Recent Uploads -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
-                <div class="p-6 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900">Recent Uploads</h2>
-                    <p class="text-sm text-gray-600 mt-1">Previously uploaded files</p>
-                </div>
-                <div class="p-6">
-                    <div class="space-y-3">
-                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div>
-                                <p class="text-sm font-medium text-gray-900">S1A_IW_GRDH_2024_12_09.zip</p>
-                                <p class="text-xs text-gray-600">2024-12-09 14:30</p>
-                            </div>
-                            <span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                                Completed
-                            </span>
-                        </div>
-                        
-                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div>
-                                <p class="text-sm font-medium text-gray-900">S1B_IW_GRDH_2024_12_08.zip</p>
-                                <p class="text-xs text-gray-600">2024-12-08 09:15</p>
-                            </div>
-                            <span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                                Completed
-                            </span>
-                        </div>
-                        
-                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div>
-                                <p class="text-sm font-medium text-gray-900">S1A_IW_GRDH_2024_12_07.zip</p>
-                                <p class="text-xs text-gray-600">2024-12-07 16:45</p>
-                            </div>
-                            <span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                                Completed
-                            </span>
-                        </div>
+
+            <!-- Info card -->
+            <div class="lg:col-span-1">
+                <div class="bg-white border border-gray-200 rounded-xl p-5 space-y-4 text-sm">
+                    <h3 class="font-semibold text-gray-900">What happens on upload</h3>
+                    <ol class="space-y-3 text-gray-600">
+                        <li class="flex space-x-3">
+                            <span class="w-5 h-5 rounded-full bg-active-gold text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                            <span>All existing concession boundaries are replaced with the new file</span>
+                        </li>
+                        <li class="flex space-x-3">
+                            <span class="w-5 h-5 rounded-full bg-active-gold text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                            <span>Every detection is checked against the new boundaries using a spatial intersection</span>
+                        </li>
+                        <li class="flex space-x-3">
+                            <span class="w-5 h-5 rounded-full bg-active-gold text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+                            <span>Detections inside a concession → <strong>Legal</strong>. Outside → <strong>Illegal</strong></span>
+                        </li>
+                        <li class="flex space-x-3">
+                            <span class="w-5 h-5 rounded-full bg-active-gold text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">4</span>
+                            <span>The live map updates immediately to reflect the new classification</span>
+                        </li>
+                    </ol>
+                    <div class="border-t border-gray-100 pt-3">
+                        <p class="text-xs text-gray-400">Expected GeoJSON properties: <code>license_number</code>, <code>name</code>, <code>holder_name</code>, <code>license_type</code>. Missing fields use sensible defaults.</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- ===== WATER BODIES PANEL ===== -->
+    <div id="panel-water" class="upload-panel hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 space-y-4">
+                <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100">
+                        <h2 class="text-base font-semibold text-gray-900">River & Water Body Boundaries — GeoJSON Upload</h2>
+                        <p class="text-sm text-gray-500 mt-0.5">
+                            Rivers, lakes, and other water bodies. Used to flag detections near water sources — illegal mining
+                            near water causes mercury and sediment contamination.
+                        </p>
+                    </div>
+                    <div class="p-6">
+                        <div id="dz-water"
+                             class="drop-zone border-2 border-dashed border-gray-300 rounded-lg p-10 text-center cursor-pointer"
+                             onclick="document.getElementById('fi-water').click()"
+                             ondragover="handleDragOver(event, this)" ondragleave="handleDragLeave(this)"
+                             ondrop="handleDrop(event, 'fi-water', this)">
+                            <svg class="w-10 h-10 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                            </svg>
+                            <p class="text-sm font-medium text-gray-700 mb-1">Drop GeoJSON file here or click to browse</p>
+                            <p class="text-xs text-gray-400">Accepted: .geojson, .json</p>
+                        </div>
+                        <input type="file" id="fi-water" class="hidden" accept=".geojson,.json"
+                               onchange="previewFile(this, 'preview-water')">
+
+                        <div id="preview-water" class="hidden mt-4 bg-gray-50 rounded-lg p-4 text-sm">
+                            <p class="font-medium text-gray-900 mb-1" id="preview-water-name"></p>
+                            <p class="text-gray-500" id="preview-water-info"></p>
+                        </div>
+
+                        <button onclick="uploadFile('fi-water', '/uploads/upload/water-bodies/', 'result-water')"
+                                class="mt-4 px-5 py-2 bg-active-gold text-white rounded-lg text-sm font-semibold hover:bg-opacity-90 transition-colors">
+                            Import Water Bodies
+                        </button>
+                    </div>
+                </div>
+
+                <div id="result-water" class="hidden"></div>
+            </div>
+
+            <div class="lg:col-span-1">
+                <div class="bg-white border border-gray-200 rounded-xl p-5 space-y-3 text-sm text-gray-600">
+                    <h3 class="font-semibold text-gray-900">About this data</h3>
+                    <p>Water body boundaries are stored as monitoring regions. On the live map they can be toggled as a layer to visualise proximity of illegal mining to rivers and lakes.</p>
+                    <p>Uploading replaces all previously imported water body regions. Feature property <code>name</code> is used as the region name.</p>
+                    <p class="text-xs text-gray-400">Source suggestion: Ghana Water Resources Commission, OpenStreetMap rivers export, or HydroSHEDS.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== PROTECTED FORESTS PANEL ===== -->
+    <div id="panel-forest" class="upload-panel hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 space-y-4">
+                <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100">
+                        <h2 class="text-base font-semibold text-gray-900">Protected Forest Boundaries — GeoJSON Upload</h2>
+                        <p class="text-sm text-gray-500 mt-0.5">
+                            Ghana Forestry Commission forest reserves, national parks, and IUCN protected areas.
+                            Detections inside protected forests are treated as higher-priority violations.
+                        </p>
+                    </div>
+                    <div class="p-6">
+                        <div id="dz-forest"
+                             class="drop-zone border-2 border-dashed border-gray-300 rounded-lg p-10 text-center cursor-pointer"
+                             onclick="document.getElementById('fi-forest').click()"
+                             ondragover="handleDragOver(event, this)" ondragleave="handleDragLeave(this)"
+                             ondrop="handleDrop(event, 'fi-forest', this)">
+                            <svg class="w-10 h-10 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                            </svg>
+                            <p class="text-sm font-medium text-gray-700 mb-1">Drop GeoJSON file here or click to browse</p>
+                            <p class="text-xs text-gray-400">Accepted: .geojson, .json</p>
+                        </div>
+                        <input type="file" id="fi-forest" class="hidden" accept=".geojson,.json"
+                               onchange="previewFile(this, 'preview-forest')">
+
+                        <div id="preview-forest" class="hidden mt-4 bg-gray-50 rounded-lg p-4 text-sm">
+                            <p class="font-medium text-gray-900 mb-1" id="preview-forest-name"></p>
+                            <p class="text-gray-500" id="preview-forest-info"></p>
+                        </div>
+
+                        <button onclick="uploadFile('fi-forest', '/uploads/upload/protected-forests/', 'result-forest')"
+                                class="mt-4 px-5 py-2 bg-active-gold text-white rounded-lg text-sm font-semibold hover:bg-opacity-90 transition-colors">
+                            Import Protected Forests
+                        </button>
+                    </div>
+                </div>
+
+                <div id="result-forest" class="hidden"></div>
+            </div>
+
+            <div class="lg:col-span-1">
+                <div class="bg-white border border-gray-200 rounded-xl p-5 space-y-3 text-sm text-gray-600">
+                    <h3 class="font-semibold text-gray-900">About this data</h3>
+                    <p>Protected forest boundaries define high-sensitivity monitoring zones. Any detection falling inside a forest reserve or national park can be automatically flagged as a critical alert.</p>
+                    <p>Uploading replaces all previously imported protected forest regions. Feature property <code>name</code> is used as the region name.</p>
+                    <p class="text-xs text-gray-400">Source suggestion: Ghana Forestry Commission, WDPA (Protected Planet), or Global Forest Watch.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
+
+<!-- Toast -->
+<div id="upload-toast-container" class="fixed top-4 right-4 space-y-2 z-50"></div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    initializeFileUpload();
-    initializeProcessingPipeline();
-});
+/* ---------- Tab switching ---------- */
+function switchTab(name) {
+    document.querySelectorAll('.upload-panel').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active');
+        b.classList.add('text-gray-600', 'border-gray-200', 'hover:bg-gray-50');
+        b.classList.remove('border-transparent');
+    });
+    document.getElementById('panel-' + name).classList.remove('hidden');
+    const btn = document.getElementById('tab-' + name);
+    btn.classList.add('active');
+    btn.classList.remove('text-gray-600', 'border-gray-200', 'hover:bg-gray-50');
+    btn.classList.add('border-transparent');
+}
 
-function initializeFileUpload() {
-    const dropZone = document.getElementById('drop-zone');
-    const fileInput = document.getElementById('file-input');
-    
-    if (dropZone && fileInput) {
-        // Click to browse
-        dropZone.addEventListener('click', () => fileInput.click());
-        
-        // Drag and drop
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('dragover');
-        });
-        
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('dragover');
-        });
-        
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('dragover');
-            handleFiles(e.dataTransfer.files);
-        });
-        
-        // File input change
-        fileInput.addEventListener('change', (e) => {
-            handleFiles(e.target.files);
-        });
+/* ---------- Drag and drop ---------- */
+function handleDragOver(e, el) {
+    e.preventDefault();
+    el.classList.add('dragover');
+}
+function handleDragLeave(el) {
+    el.classList.remove('dragover');
+}
+function handleDrop(e, inputId, dropEl) {
+    e.preventDefault();
+    dropEl.classList.remove('dragover');
+    const files = e.dataTransfer.files;
+    if (files.length) {
+        const input = document.getElementById(inputId);
+        const previewId = inputId.replace('fi-', 'preview-');
+        // Assign file to input (DataTransfer trick)
+        const dt = new DataTransfer();
+        dt.items.add(files[0]);
+        input.files = dt.files;
+        previewFile(input, previewId);
     }
 }
 
-function handleFiles(files) {
-    if (files.length > 0) {
-        const file = files[0];
-        console.log('File uploaded:', file.name);
-        
-        // Show loading state
-        const dropZone = document.getElementById('drop-zone');
-        dropZone.innerHTML = `
-            <div class="text-center">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gis-blue mx-auto mb-4"></div>
-                <p class="text-sm font-medium text-gray-900">Uploading ${file.name}...</p>
-                <div class="mt-4">
-                    <div class="w-full bg-gray-200 rounded-full h-2">
-                        <div class="bg-gis-blue h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // Simulate upload progress
-        let progress = 0;
-        const progressBar = dropZone.querySelector('.bg-gis-blue');
-        const interval = setInterval(() => {
-            progress += 10;
-            if (progressBar) {
-                progressBar.style.width = progress + '%';
-            }
-            if (progress >= 100) {
-                clearInterval(interval);
-                setTimeout(() => {
-                    location.reload();
-                }, 1000);
-            }
-        }, 200);
-    }
+/* ---------- File preview ---------- */
+function previewFile(input, previewId) {
+    const file = input.files[0];
+    if (!file) return;
+    const preview = document.getElementById(previewId);
+    preview.classList.remove('hidden');
+    document.getElementById(previewId + '-name').textContent = file.name;
+    document.getElementById(previewId + '-info').textContent =
+        `${(file.size / 1024).toFixed(1)} KB  ·  ${file.type || 'application/json'}`;
+    // Quick feature count
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const geojson = JSON.parse(e.target.result);
+            const count = geojson.features ? geojson.features.length : '?';
+            document.getElementById(previewId + '-info').textContent += `  ·  ${count} feature(s)`;
+        } catch {}
+    };
+    reader.readAsText(file);
 }
 
-function initializeProcessingPipeline() {
-    // Handle preview button
-    const previewButton = document.querySelector('.bg-active-gold');
-    if (previewButton) {
-        previewButton.addEventListener('click', () => {
-            console.log('Preview processing results');
-        });
+/* ---------- Upload ---------- */
+function uploadFile(inputId, url, resultId) {
+    const input = document.getElementById(inputId);
+    if (!input.files.length) {
+        showToast('Please select a file first.', 'error');
+        return;
     }
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const resultEl = document.getElementById(resultId);
+    resultEl.classList.remove('hidden');
+    resultEl.innerHTML = `
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800 flex items-center space-x-3">
+            <div class="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin flex-shrink-0"></div>
+            <span>Uploading and processing <strong>${file.name}</strong>…</span>
+        </div>`;
+
+    fetch(url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: formData,
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            resultEl.innerHTML = `
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-800">
+                    <p class="font-semibold mb-1">Import complete</p>
+                    <p>${data.message}</p>
+                </div>`;
+            showToast('Import successful.', 'success');
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            resultEl.innerHTML = `
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">
+                    <p class="font-semibold mb-1">Import failed</p>
+                    <p>${data.error}</p>
+                </div>`;
+            showToast('Import failed. See details below.', 'error');
+        }
+    })
+    .catch(err => {
+        resultEl.innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">
+                <p class="font-semibold mb-1">Network error</p>
+                <p>${err.message}</p>
+            </div>`;
+        showToast('Network error.', 'error');
+    });
+}
+
+/* ---------- Toast ---------- */
+function showToast(msg, type) {
+    const el = document.createElement('div');
+    const cls = type === 'success'
+        ? 'bg-green-100 border-green-400 text-green-800'
+        : 'bg-red-100 border-red-400 text-red-800';
+    el.className = `border px-4 py-3 rounded shadow text-sm ${cls}`;
+    el.textContent = msg;
+    document.getElementById('upload-toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+}
+
+function getCookie(name) {
+    const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return v ? decodeURIComponent(v.pop()) : '';
 }
 </script>
 {% endblock %}

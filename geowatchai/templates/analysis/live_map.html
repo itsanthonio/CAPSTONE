@@ -430,14 +430,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    const scanBtn = document.getElementById('scan-aoi-btn');
-    if (scanBtn) scanBtn.addEventListener('click', () => window.mapHandler.scanAOI());
-
     // Layer toggles (buttons in base.html left sidebar)
     const detBtn = document.getElementById('toggle-detection-layer');
     if (detBtn) detBtn.addEventListener('click', () => window.mapHandler.toggleLayer('detections'));
     const conBtn = document.getElementById('toggle-concession-layer');
     if (conBtn) conBtn.addEventListener('click', () => window.mapHandler.toggleLayer('concessions'));
+    const waterBtn = document.getElementById('toggle-water-layer');
+    if (waterBtn) waterBtn.addEventListener('click', () => window.mapHandler.toggleLayer('water-bodies'));
+    const forestBtn = document.getElementById('toggle-forest-layer');
+    if (forestBtn) forestBtn.addEventListener('click', () => window.mapHandler.toggleLayer('protected-forests'));
 
     const slider = document.getElementById('confidence-slider');
     if (slider) {

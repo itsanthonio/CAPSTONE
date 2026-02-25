@@ -120,6 +120,12 @@ class MiningDetectionPipeline:
             )
             logger.info(f"[Pipeline] Completed job {job_id} — {len(detected_sites)} sites")
 
+            try:
+                from apps.notifications.services import send_scan_completed
+                send_scan_completed(job)
+            except Exception:
+                pass
+
             return {
                 'status': 'completed',
                 'job_id': job_id,
@@ -134,6 +140,14 @@ class MiningDetectionPipeline:
                 JobService.update_job_status(job_id, Job.Status.FAILED, failure_reason=str(exc))
             except Exception:
                 pass
+            try:
+                from apps.jobs.models import Job as _Job
+                from apps.notifications.services import send_scan_failed
+                _job = _Job.objects.filter(id=job_id).first()
+                if _job:
+                    send_scan_failed(_job)
+            except Exception:
+                pass
             return {'status': 'failed', 'job_id': job_id, 'error': str(exc)}
 
     # ------------------------------------------------------------------
@@ -142,10 +156,11 @@ class MiningDetectionPipeline:
 
     def _validate_job(self, job_id: str) -> Job:
         job = Job.objects.get(id=job_id)
-        valid = [Job.Status.QUEUED, Job.Status.EXPORTING]
-        if job.status not in valid:
+        # Only accept QUEUED — if the job is already past this point it means
+        # the pipeline is already running (e.g. a retried Celery task).
+        if job.status != Job.Status.QUEUED:
             raise ValueError(
-                f"Job {job_id} has status '{job.status}', expected one of {valid}"
+                f"Job {job_id} already processing (status='{job.status}'). Aborting duplicate run."
             )
         JobService.update_job_status(job_id, Job.Status.VALIDATING)
         return job

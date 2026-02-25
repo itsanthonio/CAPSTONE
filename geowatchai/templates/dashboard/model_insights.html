@@ -28,24 +28,34 @@
     <!-- 6 Metric Cards -->
     <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
 
-        <!-- Pixel Accuracy -->
-        <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
+        <!-- Accuracy — live EMA from field reports -->
+        <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm relative overflow-hidden">
+            {% if has_field_data %}
+            <span class="absolute top-2 right-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-50 text-green-700 border border-green-200">
+                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Live
+            </span>
+            {% endif %}
             <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Accuracy</p>
-            <p class="text-2xl font-bold text-gray-900">97.9<span class="text-base font-semibold text-gray-400">%</span></p>
+            <p class="text-2xl font-bold text-gray-900">{{ live_accuracy }}<span class="text-base font-semibold text-gray-400">%</span></p>
             <div class="mt-2 w-full bg-gray-100 rounded-full h-1">
-                <div class="bg-green-500 h-1 rounded-full" style="width:97.9%"></div>
+                <div class="bg-green-500 h-1 rounded-full" style="width:{{ live_accuracy }}%"></div>
             </div>
-            <p class="text-xs text-green-600 font-medium mt-1.5">Excellent</p>
+            <p class="text-xs text-green-600 font-medium mt-1.5">{% if has_field_data %}Field-adjusted{% else %}Test set{% endif %}</p>
         </div>
 
-        <!-- Precision -->
-        <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
+        <!-- Precision — rolling last 50 verified -->
+        <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm relative overflow-hidden">
+            {% if has_field_data %}
+            <span class="absolute top-2 right-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-50 text-green-700 border border-green-200">
+                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Live
+            </span>
+            {% endif %}
             <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Precision</p>
-            <p class="text-2xl font-bold text-gray-900">73.1<span class="text-base font-semibold text-gray-400">%</span></p>
+            <p class="text-2xl font-bold text-gray-900">{{ live_precision }}<span class="text-base font-semibold text-gray-400">%</span></p>
             <div class="mt-2 w-full bg-gray-100 rounded-full h-1">
-                <div class="bg-blue-500 h-1 rounded-full" style="width:73.1%"></div>
+                <div class="bg-blue-500 h-1 rounded-full" style="width:{{ live_precision }}%"></div>
             </div>
-            <p class="text-xs text-blue-600 font-medium mt-1.5">Detection</p>
+            <p class="text-xs text-blue-600 font-medium mt-1.5">{% if has_field_data %}Last {{ total_verified|default:50 }} verified{% else %}Test set{% endif %}</p>
         </div>
 
         <!-- Recall -->
@@ -99,9 +109,21 @@
             <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <div>
                     <h2 class="text-sm font-semibold text-gray-900">Performance Over Time</h2>
-                    <p class="text-xs text-gray-400 mt-0.5">Model version progression &mdash; IoU, Precision &amp; Recall</p>
+                    <p class="text-xs text-gray-400 mt-0.5">
+                        {% if has_field_data %}
+                            Field-verified Accuracy &amp; Precision &mdash; last 12 months
+                        {% else %}
+                            No field reports yet &mdash; showing test-set baseline
+                        {% endif %}
+                    </p>
                 </div>
-                <span class="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded border border-gray-100">Hardcoded &middot; v0.3 &rarr; v1.0</span>
+                {% if has_field_data %}
+                <span class="inline-flex items-center gap-1 text-xs font-semibold bg-green-50 text-green-700 border border-green-200 px-2 py-1 rounded">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Live data
+                </span>
+                {% else %}
+                <span class="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded border border-gray-100">Test set &middot; v0.3 &rarr; v1.0</span>
+                {% endif %}
             </div>
             <div class="p-5" style="height:300px;">
                 <canvas id="performance-chart"></canvas>
@@ -136,6 +158,44 @@
 
     </div>
 
+    <!-- Field Verification Summary -->
+    {% if has_field_data %}
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div>
+                <h2 class="text-sm font-semibold text-gray-900">Field Verification Summary</h2>
+                <p class="text-xs text-gray-400 mt-0.5">Inspector-confirmed outcomes driving live metrics</p>
+            </div>
+            <span class="inline-flex items-center gap-1 text-xs font-semibold bg-green-50 text-green-700 border border-green-200 px-2 py-1 rounded">
+                {{ total_verified }} verified
+            </span>
+        </div>
+        <div class="p-5 grid grid-cols-3 gap-4">
+            <!-- Total verified -->
+            <div class="text-center">
+                <p class="text-3xl font-bold text-gray-900">{{ total_verified }}</p>
+                <p class="text-xs text-gray-500 mt-1">Sites verified</p>
+            </div>
+            <!-- True positives -->
+            <div class="text-center">
+                <p class="text-3xl font-bold text-green-600">{{ total_tp }}</p>
+                <p class="text-xs text-gray-500 mt-1">Confirmed mining</p>
+                <div class="mt-2 w-full bg-gray-100 rounded-full h-1.5">
+                    <div class="bg-green-500 h-1.5 rounded-full" style="width:{% if total_verified %}{{ total_tp|floatformat:0 }}{% else %}0{% endif %}%"></div>
+                </div>
+            </div>
+            <!-- False positives -->
+            <div class="text-center">
+                <p class="text-3xl font-bold text-red-500">{{ total_fp }}</p>
+                <p class="text-xs text-gray-500 mt-1">False positives</p>
+                <div class="mt-2 w-full bg-gray-100 rounded-full h-1.5">
+                    <div class="bg-red-400 h-1.5 rounded-full" style="width:{% if total_verified %}{{ total_fp|floatformat:0 }}{% else %}0{% endif %}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Metric Detail Breakdown -->
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
         <div class="px-5 py-4 border-b border-gray-100">
@@ -157,13 +217,13 @@
 
             <div>
                 <div class="flex justify-between text-sm mb-1.5">
-                    <span class="font-medium text-gray-700">Precision</span>
-                    <span class="font-bold text-gray-900">73.07%</span>
+                    <span class="font-medium text-gray-700">Precision {% if has_field_data %}<span class="text-[10px] font-semibold text-green-600 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded ml-1">Live</span>{% endif %}</span>
+                    <span class="font-bold text-gray-900">{{ live_precision }}%</span>
                 </div>
                 <div class="w-full bg-gray-100 rounded-full h-2">
-                    <div class="bg-blue-500 h-2 rounded-full" style="width:73.07%"></div>
+                    <div class="bg-blue-500 h-2 rounded-full" style="width:{{ live_precision }}%"></div>
                 </div>
-                <p class="text-xs text-gray-400 mt-1">Of all predicted mining pixels, how many are truly mining</p>
+                <p class="text-xs text-gray-400 mt-1">{% if has_field_data %}Field-verified: last {{ total_verified }} inspector reports{% else %}Of all predicted mining pixels, how many are truly mining{% endif %}</p>
             </div>
 
             <div>
@@ -224,43 +284,69 @@ document.addEventListener('DOMContentLoaded', function () {
     // ── Performance Over Time ──
     const perfCtx = document.getElementById('performance-chart');
     if (perfCtx) {
+        const hasFieldData = {{ has_field_data|yesno:"true,false" }};
+        const monthlyLabels    = {{ monthly_labels|safe }};
+        const monthlyPrecision = {{ monthly_precision|safe }};
+        const monthlyAccuracy  = {{ monthly_accuracy|safe }};
+
+        let chartLabels, chartDatasets;
+
+        if (hasFieldData) {
+            chartLabels = monthlyLabels;
+            chartDatasets = [
+                {
+                    label: 'Accuracy (EMA)',
+                    data: monthlyAccuracy,
+                    borderColor: '#22c55e',
+                    backgroundColor: 'rgba(34,197,94,0.08)',
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    tension: 0.35,
+                    fill: false,
+                },
+                {
+                    label: 'Precision (rolling)',
+                    data: monthlyPrecision,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59,130,246,0.08)',
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    tension: 0.35,
+                    fill: false,
+                    spanGaps: true,   // connect across months with no data
+                },
+            ];
+        } else {
+            // Fallback: hardcoded test-set version progression
+            chartLabels = ['v0.3', 'v0.5', 'v0.7', 'v0.9', 'v1.0'];
+            chartDatasets = [
+                {
+                    label: 'IoU',
+                    data: [42, 50, 55, 58, 60],
+                    borderColor: '#f97316',
+                    backgroundColor: 'rgba(249,115,22,0.08)',
+                    borderWidth: 2, pointRadius: 4, tension: 0.35, fill: false,
+                },
+                {
+                    label: 'Precision',
+                    data: [55, 63, 68, 71, 73.1],
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59,130,246,0.08)',
+                    borderWidth: 2, pointRadius: 4, tension: 0.35, fill: false,
+                },
+                {
+                    label: 'Recall',
+                    data: [60, 67, 72, 75, 77.1],
+                    borderColor: '#8b5cf6',
+                    backgroundColor: 'rgba(139,92,246,0.08)',
+                    borderWidth: 2, pointRadius: 4, tension: 0.35, fill: false,
+                },
+            ];
+        }
+
         new Chart(perfCtx, {
             type: 'line',
-            data: {
-                labels: ['v0.3', 'v0.5', 'v0.7', 'v0.9', 'v1.0'],
-                datasets: [
-                    {
-                        label: 'IoU',
-                        data: [42, 50, 55, 58, 60],
-                        borderColor: '#f97316',
-                        backgroundColor: 'rgba(249,115,22,0.08)',
-                        borderWidth: 2,
-                        pointRadius: 4,
-                        tension: 0.35,
-                        fill: false,
-                    },
-                    {
-                        label: 'Precision',
-                        data: [55, 63, 68, 71, 73.1],
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59,130,246,0.08)',
-                        borderWidth: 2,
-                        pointRadius: 4,
-                        tension: 0.35,
-                        fill: false,
-                    },
-                    {
-                        label: 'Recall',
-                        data: [60, 67, 72, 75, 77.1],
-                        borderColor: '#8b5cf6',
-                        backgroundColor: 'rgba(139,92,246,0.08)',
-                        borderWidth: 2,
-                        pointRadius: 4,
-                        tension: 0.35,
-                        fill: false,
-                    }
-                ]
-            },
+            data: { labels: chartLabels, datasets: chartDatasets },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -269,7 +355,15 @@ document.addEventListener('DOMContentLoaded', function () {
                         position: 'bottom',
                         labels: { font: { size: 11 }, color: '#6b7280', boxWidth: 14, padding: 16 }
                     },
-                    tooltip: { mode: 'index', intersect: false }
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: ctx => ctx.raw !== null
+                                ? ` ${ctx.dataset.label}: ${ctx.raw}%`
+                                : ` ${ctx.dataset.label}: no data`
+                        }
+                    }
                 },
                 scales: {
                     x: {

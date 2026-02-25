@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views import JobViewSet, ResultViewSet, DetectedSiteViewSet, ConcessionGeoJSONView, AlertViewSet
+from .views import JobViewSet, ResultViewSet, DetectedSiteViewSet, ConcessionGeoJSONView, AlertViewSet, RegionGeoJSONView
 
 router = DefaultRouter()
 router.register(r'jobs', JobViewSet, basename='job')
@@ -13,6 +13,7 @@ app_name = 'api'
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('regions/', RegionGeoJSONView.as_view({'get': 'list'}), name='regions'),
     path('alerts/', AlertViewSet.as_view({'get': 'list'}), name='alert-list'),
     path('alerts/<pk>/', AlertViewSet.as_view({'get': 'retrieve'}), name='alert-detail'),
     path('alerts/<pk>/acknowledge/', AlertViewSet.as_view({'post': 'acknowledge'}), name='alert-acknowledge'),

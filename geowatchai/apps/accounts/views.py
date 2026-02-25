@@ -69,6 +69,7 @@ def create_assignment(request):
         )
         
         # Update the alert status to dispatched
+        alert = None
         try:
             alert = Alert.objects.get(id=alert_id)
             alert.status = 'dispatched'
@@ -76,7 +77,16 @@ def create_assignment(request):
             alert.save()
         except Alert.DoesNotExist:
             pass  # Alert might not exist, but assignment is still created
-        
+
+        try:
+            import threading
+            from apps.notifications.services import send_new_assignment
+            threading.Thread(
+                target=send_new_assignment, args=(assignment, alert), daemon=True
+            ).start()
+        except Exception:
+            pass
+
         serializer = InspectorAssignmentSerializer(assignment)
         return Response({
             'success': True,

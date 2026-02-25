@@ -248,7 +248,9 @@
                                         <p class="text-xs text-gray-300 mb-1">
                                             Area: <span id="aoi-area">0.00</span> ha
                                         </p>
+                                        <p id="aoi-warning" class="hidden text-xs text-red-400 mb-2"></p>
                                         <button id="scan-aoi-btn"
+                                                onclick="if (window.mapHandler) window.mapHandler.scanAOI();"
                                                 class="w-full px-3 py-2 bg-active-gold hover:bg-opacity-90 text-white text-xs font-semibold rounded-lg transition-colors">
                                             Scan AOI
                                         </button>
@@ -267,6 +269,14 @@
                                     <button id="toggle-concession-layer"
                                             class="w-full px-4 py-2 bg-active-gold text-white rounded-lg shadow-sm hover:bg-opacity-90 transition-colors block">
                                         Concessions
+                                    </button>
+                                    <button id="toggle-water-layer"
+                                            class="w-full px-4 py-2 bg-active-gold text-white rounded-lg shadow-sm hover:bg-opacity-90 transition-colors block">
+                                        Water Bodies
+                                    </button>
+                                    <button id="toggle-forest-layer"
+                                            class="w-full px-4 py-2 bg-active-gold text-white rounded-lg shadow-sm hover:bg-opacity-90 transition-colors block">
+                                        Protected Forests
                                     </button>
                                 </div>
                             </div>
