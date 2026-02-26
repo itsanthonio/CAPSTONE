@@ -306,6 +306,9 @@
                                 {% if site.region__name %}{{ site.region__name }}{% else %}Outside monitored zones{% endif %}
                             </p>
                             <p class="text-xs text-gray-400 mt-0.5">{{ site.created_at|date:"d M Y" }} · {{ site.area_hectares|floatformat:1 }} ha · {{ site.confidence_pct }}% conf</p>
+                            {% if site.job__created_by__username %}
+                            <p class="text-xs text-gray-400 mt-0.5">by {{ site.job__created_by__username }}</p>
+                            {% endif %}
                         </div>
                         <div class="shrink-0 ml-3">
                             {% if site.legal_status == 'illegal' %}

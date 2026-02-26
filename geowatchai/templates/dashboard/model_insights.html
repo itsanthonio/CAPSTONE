@@ -61,9 +61,9 @@
         <!-- Recall -->
         <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
             <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Recall</p>
-            <p class="text-2xl font-bold text-gray-900">77.1<span class="text-base font-semibold text-gray-400">%</span></p>
+            <p class="text-2xl font-bold text-gray-900">{{ model_metrics.recall }}<span class="text-base font-semibold text-gray-400">%</span></p>
             <div class="mt-2 w-full bg-gray-100 rounded-full h-1">
-                <div class="bg-blue-500 h-1 rounded-full" style="width:77.1%"></div>
+                <div class="bg-blue-500 h-1 rounded-full" style="width:{{ model_metrics.recall }}%"></div>
             </div>
             <p class="text-xs text-blue-600 font-medium mt-1.5">Coverage</p>
         </div>
@@ -71,9 +71,9 @@
         <!-- F1 / Dice -->
         <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
             <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">F1 / Dice</p>
-            <p class="text-2xl font-bold text-gray-900">75.0<span class="text-base font-semibold text-gray-400">%</span></p>
+            <p class="text-2xl font-bold text-gray-900">{{ model_metrics.f1 }}<span class="text-base font-semibold text-gray-400">%</span></p>
             <div class="mt-2 w-full bg-gray-100 rounded-full h-1">
-                <div class="bg-indigo-500 h-1 rounded-full" style="width:75%"></div>
+                <div class="bg-indigo-500 h-1 rounded-full" style="width:{{ model_metrics.f1 }}%"></div>
             </div>
             <p class="text-xs text-indigo-600 font-medium mt-1.5">Balance</p>
         </div>
@@ -81,9 +81,9 @@
         <!-- IoU -->
         <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
             <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">IoU</p>
-            <p class="text-2xl font-bold text-gray-900">60.0<span class="text-base font-semibold text-gray-400">%</span></p>
+            <p class="text-2xl font-bold text-gray-900">{{ model_metrics.iou }}<span class="text-base font-semibold text-gray-400">%</span></p>
             <div class="mt-2 w-full bg-gray-100 rounded-full h-1">
-                <div class="bg-orange-400 h-1 rounded-full" style="width:60%"></div>
+                <div class="bg-orange-400 h-1 rounded-full" style="width:{{ model_metrics.iou }}%"></div>
             </div>
             <p class="text-xs text-orange-600 font-medium mt-1.5">Overlap</p>
         </div>
@@ -91,10 +91,10 @@
         <!-- Loss -->
         <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
             <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Test Loss</p>
-            <p class="text-2xl font-bold text-gray-900">0.12<span class="text-base font-semibold text-gray-400">46</span></p>
+            <p class="text-2xl font-bold text-gray-900">{{ model_metrics.loss }}</p>
             <div class="mt-2 w-full bg-gray-100 rounded-full h-1">
-                <!-- Lower is better — fill from right -->
-                <div class="bg-green-400 h-1 rounded-full" style="width:{{ model_metrics.loss|floatformat:0 }}%;max-width:25%"></div>
+                <!-- Lower is better — cap bar at 25% so it reads as "low" -->
+                <div class="bg-green-400 h-1 rounded-full" style="width:12.46%;max-width:25%"></div>
             </div>
             <p class="text-xs text-green-600 font-medium mt-1.5">Low &darr;</p>
         </div>
@@ -236,7 +236,7 @@
                     </svg>
                 </div>
                 <div>
-                    <p class="text-sm font-semibold text-gray-800">77.1% Recall</p>
+                    <p class="text-sm font-semibold text-gray-800">{{ model_metrics.recall }}% Recall</p>
                     <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">The model detects <strong>~3 in 4 actual mining sites</strong>. Roughly 1 in 4 real sites may be missed in any given scan — human review of borderline zones matters.</p>
                 </div>
             </div>
@@ -247,8 +247,8 @@
                     </svg>
                 </div>
                 <div>
-                    <p class="text-sm font-semibold text-gray-800">60.0% IoU</p>
-                    <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">On average, the model's predicted mining boundary overlaps <strong>60% with the actual site footprint</strong>. Useful for area estimates but not precise enough for legal boundary demarcation.</p>
+                    <p class="text-sm font-semibold text-gray-800">{{ model_metrics.iou }}% IoU</p>
+                    <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">On average, the model's predicted mining boundary overlaps <strong>{{ model_metrics.iou }}% with the actual site footprint</strong>. Useful for area estimates but not precise enough for legal boundary demarcation.</p>
                 </div>
             </div>
         </div>
@@ -298,26 +298,29 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
             ];
         } else {
-            // Fallback: hardcoded test-set version progression
+            // Fallback: test-set version progression (final values from settings)
+            const iouFinal       = {{ model_metrics.iou }};
+            const precisionFinal = {{ model_metrics.precision_fallback }};
+            const recallFinal    = {{ model_metrics.recall }};
             chartLabels = ['v0.3', 'v0.5', 'v0.7', 'v0.9', 'v1.0'];
             chartDatasets = [
                 {
                     label: 'IoU',
-                    data: [42, 50, 55, 58, 60],
+                    data: [42, 50, 55, 58, iouFinal],
                     borderColor: '#f97316',
                     backgroundColor: 'rgba(249,115,22,0.08)',
                     borderWidth: 2, pointRadius: 4, tension: 0.35, fill: false,
                 },
                 {
                     label: 'Precision',
-                    data: [55, 63, 68, 71, 73.1],
+                    data: [55, 63, 68, 71, precisionFinal],
                     borderColor: '#3b82f6',
                     backgroundColor: 'rgba(59,130,246,0.08)',
                     borderWidth: 2, pointRadius: 4, tension: 0.35, fill: false,
                 },
                 {
                     label: 'Recall',
-                    data: [60, 67, 72, 75, 77.1],
+                    data: [60, 67, 72, 75, recallFinal],
                     borderColor: '#8b5cf6',
                     backgroundColor: 'rgba(139,92,246,0.08)',
                     borderWidth: 2, pointRadius: 4, tension: 0.35, fill: false,

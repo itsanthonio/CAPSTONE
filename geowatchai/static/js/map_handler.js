@@ -517,10 +517,11 @@ class MapHandler {
         const fc = data.detection_data;
         const newCount = (fc && fc.features) ? fc.features.length : 0;
         const illegal = data.illegal_count || 0;
+        const byLine = data.created_by ? `\nTriggered by: ${data.created_by}` : '';
         if (newCount > 0) {
-            alert(`Scan complete: ${newCount} site(s) detected (${illegal} illegal).`);
+            alert(`Scan complete: ${newCount} site(s) detected (${illegal} illegal).${byLine}`);
         } else {
-            alert("Scan complete: No mining sites detected in this area.");
+            alert(`Scan complete: No mining sites detected in this area.${byLine}`);
         }
 
         // Re-fetch all sites so the sidebar shows everything (not just the new scan)

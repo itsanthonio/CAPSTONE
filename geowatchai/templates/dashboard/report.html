@@ -424,7 +424,7 @@
 
         <!-- ── 7. Scan Jobs ── -->
         <div class="section-title">Scan Job Summary</div>
-        <div class="stat-grid">
+        <div class="stat-grid" style="margin-bottom:16px;">
             <div class="stat-card">
                 <div class="label">Total Jobs</div>
                 <div class="value">{{ stats.total_jobs }}</div>
@@ -448,6 +448,37 @@
                 </div>
             </div>
         </div>
+        {% if recent_jobs %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Job ID</th>
+                    <th>Triggered By</th>
+                    <th>Status</th>
+                    <th>Started</th>
+                    <th>Detections</th>
+                    <th>Illegal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for j in recent_jobs %}
+                <tr>
+                    <td style="font-family:monospace;font-size:11px;">{{ j.id }}</td>
+                    <td>{{ j.created_by__username|default:"—" }}</td>
+                    <td>
+                        {% if j.status == 'completed' %}<span class="badge badge-green">Completed</span>
+                        {% elif j.status == 'failed' %}<span class="badge badge-red">Failed</span>
+                        {% else %}<span class="badge badge-gray">{{ j.status|capfirst }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ j.created_at|date:"d M Y H:i" }}</td>
+                    <td>{{ j.total_detections }}</td>
+                    <td>{{ j.illegal_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
 
     </div><!-- /.report-body -->
 
