@@ -459,8 +459,8 @@ function applyDetectionFilter() {
 // ── Init ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
     window.mapHandler = new MapHandler('live-map', {
-        center: [-1.6244, 6.6885],
-        zoom: 8,
+        center: {{ settings.MAP_DEFAULT_CENTER }},
+        zoom: {{ settings.MAP_DEFAULT_ZOOM }},
         drawing: true
     });
 

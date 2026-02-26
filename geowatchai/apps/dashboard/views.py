@@ -1,4 +1,7 @@
+import logging
 from django.shortcuts import render, redirect
+
+logger = logging.getLogger(__name__)
 from django.contrib.auth import login, authenticate, get_user_model
 from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -31,21 +34,21 @@ def dashboard_router(request):
     try:
         # Check if the user has a profile
         role = request.user.profile.role
-        print(f"DEBUG: User {request.user.username} has role: {role}")
+        logger.debug(f": User {request.user.username} has role: {role}")
     except Exception as e:
-        print(f"DEBUG: Profile missing for {request.user.username}: {e}")
+        logger.debug(f": Profile missing for {request.user.username}: {e}")
         # Create profile if missing
         UserProfile.objects.create(user=request.user, role=UserProfile.Role.ADMIN)
         return redirect('/dashboard/home/')
     
     if role == UserProfile.Role.ADMIN:
-        print(f"DEBUG: Redirecting admin {request.user.username} to admin dashboard")
+        logger.debug(f": Redirecting admin {request.user.username} to admin dashboard")
         return redirect('/dashboard/home/')
     elif role == UserProfile.Role.INSPECTOR:
-        print(f"DEBUG: Redirecting inspector {request.user.username} to inspector dashboard")
+        logger.debug(f": Redirecting inspector {request.user.username} to inspector dashboard")
         return redirect('/dashboard/inspector/')
     else:
-        print(f"DEBUG: Redirecting non-inspector {request.user.username} to admin dashboard")
+        logger.debug(f": Redirecting non-inspector {request.user.username} to admin dashboard")
         return redirect('/dashboard/home/')
 
 
@@ -74,7 +77,7 @@ class CustomLoginView(LoginView):
     def dispatch(self, request, *args, **kwargs):
         # Strip the next parameter completely to force role-based redirect
         if 'next' in request.GET:
-            print(f"DEBUG: Removing next parameter: {request.GET['next']}")
+            logger.debug(f": Removing next parameter: {request.GET['next']}")
             # Create a mutable copy and remove next
             request.GET = request.GET.copy()
             del request.GET['next']
@@ -86,23 +89,23 @@ class CustomLoginView(LoginView):
 
     def get_success_url(self):
         # Completely ignore any 'next' parameter and use role-based redirect
-        print(f"DEBUG CustomLoginView: get_success_url called for {self.request.user}")
+        logger.debug(f" CustomLoginView: get_success_url called for {self.request.user}")
         if self.request.user.is_authenticated:
             try:
                 profile = self.request.user.profile
-                print(f"DEBUG CustomLoginView: role={profile.role}")
+                logger.debug(f" CustomLoginView: role={profile.role}")
                 if profile.role == UserProfile.Role.INSPECTOR:
-                    print(f"DEBUG CustomLoginView: Redirecting to inspector")
+                    logger.debug(f" CustomLoginView: Redirecting to inspector")
                     return '/dashboard/inspector/'
                 else:
-                    print(f"DEBUG dashboard_home: Role is {profile.role}, showing admin dashboard")
+                    logger.debug(f" dashboard_home: Role is {profile.role}, showing admin dashboard")
                     return '/dashboard/home/'
             except UserProfile.DoesNotExist:
                 # Create profile if missing - default to ADMIN
-                print(f"DEBUG CustomLoginView: No profile, creating ADMIN")
+                logger.debug(f" CustomLoginView: No profile, creating ADMIN")
                 UserProfile.objects.create(user=self.request.user, role=UserProfile.Role.ADMIN)
                 return '/dashboard/home/'
-        print(f"DEBUG CustomLoginView: User not authenticated, redirecting to home")
+        logger.debug(f" CustomLoginView: User not authenticated, redirecting to home")
         return '/dashboard/home/'
 
     def form_valid(self, form):
@@ -164,7 +167,10 @@ class CustomLogoutView(LogoutView):
 
 
 def _get_dashboard_stats():
-    """Query real stats from DetectedSite, Alert, and ModelRun."""
+    """Query real stats from DetectedSite, Alert, and ModelRun. Cached for 5 minutes."""
+    cached = cache.get('dashboard_stats')
+    if cached is not None:
+        return cached
     try:
         from apps.detections.models import DetectedSite, Alert, ModelRun
         from apps.jobs.models import Job
@@ -220,19 +226,24 @@ def _get_dashboard_stats():
         completed_jobs = Job.objects.filter(status='completed').count()
         failed_jobs    = Job.objects.filter(status='failed').count()
 
-        # --- Detection trend: daily counts for last 30 days (Python-level grouping) ---
-        from collections import defaultdict
-        illegal_by_day = defaultdict(int)
-        legal_by_day   = defaultdict(int)
-        recent_all = DetectedSite.objects.filter(
-            created_at__gte=thirty_days_ago
-        ).values('legal_status', 'created_at')
-        for site in recent_all:
-            day = site['created_at'].date()
-            if site['legal_status'] == 'illegal':
-                illegal_by_day[day] += 1
+        # --- Detection trend: daily counts for last 30 days (DB-level aggregation) ---
+        from django.db.models.functions import TruncDate as _TruncDate
+        trend_rows = (
+            DetectedSite.objects
+            .filter(created_at__gte=thirty_days_ago)
+            .annotate(day=_TruncDate('created_at'))
+            .values('day', 'legal_status')
+            .annotate(cnt=Count('id'))
+            .order_by('day')
+        )
+        illegal_by_day = {}
+        legal_by_day   = {}
+        for row in trend_rows:
+            d = row['day']
+            if row['legal_status'] == 'illegal':
+                illegal_by_day[d] = row['cnt']
             else:
-                legal_by_day[day] += 1
+                legal_by_day[d] = row['cnt']
         trend_labels, trend_illegal, trend_legal = [], [], []
         for i in range(29, -1, -1):
             d = (now - timedelta(days=i)).date()
@@ -259,12 +270,13 @@ def _get_dashboard_stats():
 
         # --- Recent sites for activity feed (last 5 by scan time) ---
         recent_sites = list(
-            DetectedSite.objects.select_related('region')
+            DetectedSite.objects.select_related('region', 'job__created_by')
             .order_by('-created_at')[:5]
             .values(
                 'id', 'detection_date', 'created_at', 'legal_status',
                 'confidence_score', 'area_hectares',
-                'region__name', 'recurrence_count'
+                'region__name', 'recurrence_count',
+                'job__created_by__username',
             )
         )
         for s in recent_sites:
@@ -279,24 +291,25 @@ def _get_dashboard_stats():
         avg_confidence_pct = round((avg_conf_result['avg'] or 0) * 100, 1)
 
         # --- Detection velocity: illegal site count per week for last 8 weeks ---
+        from django.db.models.functions import TruncWeek as _TruncWeek
         eight_weeks_ago = now - timedelta(weeks=8)
-        velocity_raw = defaultdict(int)
-        for s in DetectedSite.objects.filter(
-            legal_status='illegal',
-            created_at__gte=eight_weeks_ago,
-        ).values('created_at'):
-            # ISO week number as key
-            week_key = s['created_at'].strftime('%Y-W%W')
-            velocity_raw[week_key] += 1
-
+        velocity_rows = (
+            DetectedSite.objects
+            .filter(legal_status='illegal', created_at__gte=eight_weeks_ago)
+            .annotate(week=_TruncWeek('created_at'))
+            .values('week')
+            .annotate(cnt=Count('id'))
+            .order_by('week')
+        )
+        velocity_by_week = {row['week'].strftime('%Y-W%W'): row['cnt'] for row in velocity_rows}
         velocity_labels, velocity_data = [], []
         for i in range(7, -1, -1):
             week_start = now - timedelta(weeks=i)
             key = week_start.strftime('%Y-W%W')
             velocity_labels.append('W' + week_start.strftime('%W'))
-            velocity_data.append(velocity_raw.get(key, 0))
+            velocity_data.append(velocity_by_week.get(key, 0))
 
-        return {
+        result = {
             'total_detected_sites': total_sites,
             'illegal_sites': illegal_sites,
             'open_alerts': open_alerts,
@@ -322,6 +335,8 @@ def _get_dashboard_stats():
             },
             'has_data': total_sites > 0,
         }
+        cache.set('dashboard_stats', result, 300)  # 5-minute cache
+        return result
     except Exception:
         # Models not yet migrated or DB empty — return safe defaults
         return {
@@ -352,28 +367,28 @@ def _get_dashboard_stats():
 @login_required
 def dashboard_home(request):
     """Admin-only dashboard home with automatic redirect for inspectors"""
-    print(f"DEBUG dashboard_home: user={request.user}, authenticated={request.user.is_authenticated}")
+    logger.debug(f"dashboard_home: user={request.user}, authenticated={request.user.is_authenticated}")
     
     if request.user.is_authenticated:
         try:
             profile = request.user.profile
-            print(f"DEBUG dashboard_home: profile.role={profile.role}")
+            logger.debug(f" dashboard_home: profile.role={profile.role}")
             if profile.role == UserProfile.Role.INSPECTOR:
-                print(f"DEBUG dashboard_home: Inspector detected, redirecting to inspector dashboard")
+                logger.debug(f" dashboard_home: Inspector detected, redirecting to inspector dashboard")
                 return redirect('/dashboard/inspector/')
         except UserProfile.DoesNotExist:
-            print(f"DEBUG dashboard_home: No profile, creating ADMIN profile")
+            logger.debug(f" dashboard_home: No profile, creating ADMIN profile")
             UserProfile.objects.create(user=request.user, role=UserProfile.Role.ADMIN)
     
     # Any non-inspector gets admin dashboard
     try:
         if request.user.profile.role == UserProfile.Role.INSPECTOR:
-            print(f"DEBUG dashboard_home: Inspector redirecting to inspector dashboard")
+            logger.debug(f" dashboard_home: Inspector redirecting to inspector dashboard")
             return redirect('/dashboard/inspector/')
     except UserProfile.DoesNotExist:
         pass
     
-    print(f"DEBUG dashboard_home: Rendering admin dashboard")
+    logger.debug(f"dashboard_home: Rendering admin dashboard")
     try:
         stats = _get_dashboard_stats()
     except Exception as e:
@@ -401,7 +416,80 @@ def dashboard_home(request):
 @user_passes_test(is_admin)
 def dashboard_alerts(request):
     """Admin-only alerts view"""
-    return render(request, 'dashboard/alerts.html')
+    from apps.detections.models import Alert
+    from django.db.models import Count
+
+    rows = Alert.objects.values('status', 'severity').annotate(cnt=Count('id'))
+    by_status, by_severity = {}, {}
+    for row in rows:
+        by_status[row['status']] = by_status.get(row['status'], 0) + row['cnt']
+        by_severity[row['severity']] = by_severity.get(row['severity'], 0) + row['cnt']
+
+    summary = {
+        'total':        sum(by_status.values()),
+        'open':         by_status.get('open', 0),
+        'acknowledged': by_status.get('acknowledged', 0),
+        'dispatched':   by_status.get('dispatched', 0),
+        'resolved':     by_status.get('resolved', 0),
+        'dismissed':    by_status.get('dismissed', 0),
+        'critical':     by_severity.get('critical', 0),
+        'high':         by_severity.get('high', 0),
+    }
+    return render(request, 'dashboard/alerts.html', {'summary': summary})
+
+
+@user_passes_test(is_admin)
+def dashboard_audit(request):
+    """Audit trail page — filterable log of all significant system actions."""
+    from apps.detections.models import AuditLog
+
+    qs = AuditLog.objects.select_related('user').order_by('-timestamp')
+
+    # Filters
+    action_filter = request.GET.get('action', '').strip()
+    user_filter   = request.GET.get('user', '').strip()
+    date_from     = request.GET.get('date_from', '').strip()
+    date_to       = request.GET.get('date_to', '').strip()
+
+    if action_filter:
+        qs = qs.filter(action=action_filter)
+    if user_filter == '__system__':
+        qs = qs.filter(user__isnull=True)
+    elif user_filter:
+        qs = qs.filter(user__username=user_filter)
+    if date_from:
+        qs = qs.filter(timestamp__date__gte=date_from)
+    if date_to:
+        qs = qs.filter(timestamp__date__lte=date_to)
+
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(qs, 50)
+    page_num  = request.GET.get('page', 1)
+    page_obj  = paginator.get_page(page_num)
+
+    # Distinct action types and users for the filter dropdowns
+    action_choices = (
+        AuditLog.objects.values_list('action', flat=True)
+        .distinct().order_by('action')
+    )
+    user_choices = (
+        AuditLog.objects.filter(user__isnull=False)
+        .values_list('user__username', flat=True)
+        .distinct().order_by('user__username')
+    )
+
+    return render(request, 'dashboard/audit.html', {
+        'page_obj':      page_obj,
+        'action_choices': action_choices,
+        'user_choices':  user_choices,
+        'filters': {
+            'action':    action_filter,
+            'user':      user_filter,
+            'date_from': date_from,
+            'date_to':   date_to,
+        },
+    })
 
 
 @user_passes_test(is_admin)
@@ -438,6 +526,20 @@ def dashboard_report(request):
         outcome='false_positive'
     ).count()
 
+    # Recent jobs for the report scan summary table
+    from apps.jobs.models import Job as ScanJob
+    recent_jobs = list(
+        ScanJob.objects.select_related('created_by')
+        .order_by('-created_at')[:10]
+        .values(
+            'id', 'status', 'created_at', 'completed_at',
+            'total_detections', 'illegal_count',
+            'created_by__username',
+        )
+    )
+    for j in recent_jobs:
+        j['id'] = str(j['id'])[:8].upper()
+
     return render(request, 'dashboard/report.html', {
         'stats': stats,
         'alerts_by_severity': alerts_by_severity,
@@ -445,6 +547,7 @@ def dashboard_report(request):
         'resolved_assignments': resolved_assignments,
         'confirmed_mining': confirmed_mining,
         'false_positives': false_positives,
+        'recent_jobs': recent_jobs,
         'report_date': now,
         'period_start': thirty_days_ago,
     })
@@ -484,19 +587,20 @@ def dashboard_model_insights(request):
     total_fp = sum(1 for a in verified if a.outcome == 'false_positive')
     has_field_data = total_verified > 0
 
-    # ── Live Precision — rolling last 50 verified ─────────────────────────────
-    PRECISION_WINDOW = 50
+    # ── Live Precision — rolling last N verified ──────────────────────────────
+    PRECISION_WINDOW = django_settings.MODEL_PRECISION_WINDOW
+    _precision_fallback = django_settings.MODEL_TEST_METRICS['precision_fallback']
     recent = verified[-PRECISION_WINDOW:]
     if recent:
         w_tp = sum(1 for a in recent if a.outcome == 'mining_confirmed')
         w_fp = sum(1 for a in recent if a.outcome == 'false_positive')
-        live_precision = round(w_tp / (w_tp + w_fp) * 100, 1) if (w_tp + w_fp) else 73.1
+        live_precision = round(w_tp / (w_tp + w_fp) * 100, 1) if (w_tp + w_fp) else _precision_fallback
     else:
-        live_precision = 73.1   # test-set fallback
+        live_precision = _precision_fallback   # test-set fallback
 
     # ── Live Accuracy — EMA starting from test-set baseline ──────────────────
     ALPHA = 0.05            # each report carries ~5% weight
-    BASE_ACCURACY = 0.979   # FPN-ResNet50 test-set pixel accuracy
+    BASE_ACCURACY = django_settings.MODEL_BASE_ACCURACY
     ema = BASE_ACCURACY
     for a in verified:
         ema = ALPHA * (1.0 if a.outcome == 'mining_confirmed' else 0.0) + (1 - ALPHA) * ema
@@ -526,7 +630,7 @@ def dashboard_model_insights(request):
     monthly_labels     = []
     monthly_precision  = []
     monthly_accuracy   = []
-    running_ema        = BASE_ACCURACY
+    running_ema        = BASE_ACCURACY  # already read from settings above
 
     for y, m in months:
         monthly_labels.append(f"{calendar.month_abbr[m]} '{str(y)[2:]}")
@@ -552,6 +656,8 @@ def dashboard_model_insights(request):
         'total_verified':   total_verified,
         'total_tp':         total_tp,
         'total_fp':         total_fp,
+        # Static test-set metrics (from settings)
+        'model_metrics':    django_settings.MODEL_TEST_METRICS,
         # Confidence distribution
         'conf_bins':        conf_bins,
         'conf_total':       conf_total,
@@ -679,7 +785,7 @@ def submit_field_report(request, assignment_id):
             upload_dir = os.path.join(django_settings.MEDIA_ROOT, 'inspections', str(assignment_id))
             os.makedirs(upload_dir, exist_ok=True)
             for photo in photos:
-                safe_name = photo.name.replace(' ', '_')
+                safe_name = os.path.basename(photo.name).replace(' ', '_')
                 dest = os.path.join(upload_dir, safe_name)
                 with open(dest, 'wb') as f:
                     for chunk in photo.chunks():

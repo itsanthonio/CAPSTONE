@@ -34,6 +34,54 @@
         </button>
     </div>
 
+    <!-- Summary strip -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3">
+            <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">Total</p>
+            <p class="text-2xl font-bold text-gray-900 mt-0.5">{{ summary.total }}</p>
+        </div>
+
+        <div class="bg-red-50 rounded-xl border border-red-100 shadow-sm px-4 py-3 cursor-pointer hover:border-red-300 transition-colors"
+             onclick="document.getElementById('filter-status').value='open'; document.getElementById('apply-filters').click();">
+            <p class="text-xs font-medium text-red-400 uppercase tracking-wide">Open</p>
+            <p class="text-2xl font-bold text-red-600 mt-0.5">{{ summary.open }}</p>
+            {% if summary.critical %}<p class="text-xs text-red-400 mt-0.5">{{ summary.critical }} critical</p>{% endif %}
+        </div>
+
+        <div class="bg-amber-50 rounded-xl border border-amber-100 shadow-sm px-4 py-3 cursor-pointer hover:border-amber-300 transition-colors"
+             onclick="document.getElementById('filter-status').value='acknowledged'; document.getElementById('apply-filters').click();">
+            <p class="text-xs font-medium text-amber-500 uppercase tracking-wide">Acknowledged</p>
+            <p class="text-2xl font-bold text-amber-600 mt-0.5">{{ summary.acknowledged }}</p>
+        </div>
+
+        <div class="bg-purple-50 rounded-xl border border-purple-100 shadow-sm px-4 py-3 cursor-pointer hover:border-purple-300 transition-colors"
+             onclick="document.getElementById('filter-status').value='dispatched'; document.getElementById('apply-filters').click();">
+            <p class="text-xs font-medium text-purple-400 uppercase tracking-wide">Dispatched</p>
+            <p class="text-2xl font-bold text-purple-600 mt-0.5">{{ summary.dispatched }}</p>
+        </div>
+
+        <div class="bg-green-50 rounded-xl border border-green-100 shadow-sm px-4 py-3 cursor-pointer hover:border-green-300 transition-colors"
+             onclick="document.getElementById('filter-status').value='resolved'; document.getElementById('apply-filters').click();">
+            <p class="text-xs font-medium text-green-500 uppercase tracking-wide">Resolved</p>
+            <p class="text-2xl font-bold text-green-600 mt-0.5">{{ summary.resolved }}</p>
+        </div>
+
+        <div class="bg-gray-50 rounded-xl border border-gray-200 shadow-sm px-4 py-3 cursor-pointer hover:border-gray-300 transition-colors"
+             onclick="document.getElementById('filter-status').value='dismissed'; document.getElementById('apply-filters').click();">
+            <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">Dismissed</p>
+            <p class="text-2xl font-bold text-gray-500 mt-0.5">{{ summary.dismissed }}</p>
+        </div>
+
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 cursor-pointer hover:border-amber-300 transition-colors"
+             onclick="document.getElementById('filter-severity').value='high'; document.getElementById('apply-filters').click();">
+            <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">High+</p>
+            <p class="text-2xl font-bold text-orange-500 mt-0.5">{{ summary.critical|add:summary.high }}</p>
+            <p class="text-xs text-gray-400 mt-0.5">need action</p>
+        </div>
+
+    </div>
+
     <!-- Filters -->
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -14,6 +14,7 @@ from apps.results.models import Result
 
 
 class JobSerializer(serializers.ModelSerializer):
+    created_by = serializers.SlugRelatedField(slug_field='username', read_only=True)
     """
     Serializer for Job model with progress tracking.
     

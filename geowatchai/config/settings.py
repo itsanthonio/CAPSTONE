@@ -272,3 +272,18 @@ SITE_URL = config('SITE_URL', default='http://localhost:8000')
 # Override in .env: OPS_EMAILS=ops@example.com,manager@example.com
 _ops_raw = config('OPS_EMAILS', default='')
 OPS_EMAILS = [e.strip() for e in _ops_raw.split(',') if e.strip()]
+
+# ML Model constants — FPN-ResNet50 v1.0 (HLS optical, Ghana mining belt)
+MODEL_BASE_ACCURACY = 0.979        # test-set pixel accuracy; EMA starting point
+MODEL_PRECISION_WINDOW = 50        # rolling window for live precision calculation
+MODEL_TEST_METRICS = {
+    'precision_fallback': 73.1,    # test-set precision (used before any field data)
+    'recall': 77.1,
+    'f1': 75.0,
+    'iou': 60.0,
+    'loss': 0.1246,
+}
+
+# Map defaults — Ghana mining belt centroid
+MAP_DEFAULT_CENTER = [-1.6244, 6.6885]   # [lng, lat]
+MAP_DEFAULT_ZOOM = 7

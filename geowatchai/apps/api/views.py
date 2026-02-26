@@ -13,7 +13,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from apps.jobs.models import Job
 from apps.results.models import Result
@@ -53,7 +53,7 @@ class JobViewSet(viewsets.ModelViewSet):
 
     queryset = Job.objects.all()
     serializer_class = JobSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
         """
@@ -193,7 +193,7 @@ class ResultViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = ResultSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         """
@@ -305,7 +305,7 @@ class DetectedSiteViewSet(viewsets.ReadOnlyModelViewSet):
     Read-only ViewSet for DetectedSite.
     Provides site detail and timelapse frames for the map panel.
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         from apps.detections.models import DetectedSite
@@ -314,9 +314,24 @@ class DetectedSiteViewSet(viewsets.ReadOnlyModelViewSet):
         ).all()
 
     def list(self, request, *args, **kwargs):
-        """Return all detected sites as a GeoJSON FeatureCollection for map + sidebar."""
+        """Return detected sites as a GeoJSON FeatureCollection.
+
+        Optional pagination: ?page=1&per_page=200
+        Without those params returns up to 2 000 sites (suitable for the map).
+        """
         import json as _json
-        qs = self.get_queryset().filter(geometry__isnull=False).order_by('-created_at')[:500]
+        qs = self.get_queryset().filter(geometry__isnull=False).order_by('-created_at')
+
+        page     = request.query_params.get('page')
+        per_page = min(int(request.query_params.get('per_page', 200)), 500)
+        total    = qs.count()
+
+        if page is not None:
+            page = max(1, int(page))
+            qs   = qs[(page - 1) * per_page: page * per_page]
+        else:
+            qs = qs[:2000]  # map mode: all sites up to 2 000
+
         features = []
         for site in qs:
             centroid = site.centroid
@@ -334,7 +349,12 @@ class DetectedSiteViewSet(viewsets.ReadOnlyModelViewSet):
                     'lng': round(centroid.x, 4) if centroid else None,
                 }
             })
-        return Response({'type': 'FeatureCollection', 'features': features})
+        resp = {'type': 'FeatureCollection', 'features': features, 'total': total}
+        if page is not None:
+            resp['page']        = page
+            resp['per_page']    = per_page
+            resp['total_pages'] = max(1, (total + per_page - 1) // per_page)
+        return Response(resp)
 
     def retrieve(self, request, *args, **kwargs):
         from apps.detections.models import DetectedSite
@@ -392,7 +412,7 @@ class ConcessionGeoJSONView(viewsets.ReadOnlyModelViewSet):
     Returns legal concessions as GeoJSON for map display.
     Lightweight — only geometry + label fields, no heavy data.
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         from apps.detections.models import LegalConcession
@@ -435,7 +455,7 @@ class RegionGeoJSONView(viewsets.ViewSet):
     GET /api/regions/?type=water_body
     GET /api/regions/?type=protected_forest
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def list(self, request, *args, **kwargs):
         from apps.detections.models import Region
@@ -472,7 +492,7 @@ class AlertViewSet(viewsets.ViewSet):
     POST /api/alerts/{id}/dismiss/
     POST /api/alerts/{id}/dispatch/
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         from apps.detections.models import Alert
