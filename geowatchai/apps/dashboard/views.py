@@ -285,6 +285,7 @@ def _get_dashboard_stats():
         }
 
 
+@login_required
 def dashboard_home(request):
     """Admin-only dashboard home with automatic redirect for inspectors"""
     print(f"DEBUG dashboard_home: user={request.user}, authenticated={request.user.is_authenticated}")
