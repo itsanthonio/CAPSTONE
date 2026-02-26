@@ -4,6 +4,18 @@
 {% block title %}Alerts — GalamseyWatch{% endblock %}
 
 {% block content %}
+<!-- New-alerts banner (shown by polling JS) -->
+<div id="new-alerts-banner"
+     class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-amber-50 border border-amber-300 rounded-xl px-5 py-3 shadow-lg flex items-center gap-3 text-sm text-amber-900">
+    <span id="new-alerts-text"></span>
+    <button onclick="document.getElementById('new-alerts-banner').classList.add('hidden'); window._alertsPage.refreshAlerts();"
+            class="px-3 py-1 bg-amber-500 text-white rounded-lg text-xs font-semibold hover:bg-amber-600 transition-colors">
+        Refresh
+    </button>
+    <button onclick="document.getElementById('new-alerts-banner').classList.add('hidden');"
+            class="text-amber-600 hover:text-amber-900 text-xs ml-1">✕</button>
+</div>
+
 <div class="p-6 space-y-5">
 
     <!-- Header -->
@@ -190,6 +202,15 @@
     <button id="bulk-acknowledge" class="hidden px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg transition-colors">Acknowledge</button>
     <button id="bulk-dispatch"    class="hidden px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-lg transition-colors">Dispatch</button>
     <button id="bulk-dismiss"     class="hidden px-3 py-1.5 bg-gray-600 hover:bg-gray-500 text-white text-xs font-semibold rounded-lg transition-colors">Dismiss</button>
+    <!-- Bulk assign inspector -->
+    <select id="bulk-inspector-select"
+            class="hidden px-2 py-1.5 bg-gray-800 border border-gray-600 text-white text-xs rounded-lg focus:outline-none">
+        <option value="">Assign inspector…</option>
+    </select>
+    <button id="bulk-assign-inspector-btn"
+            class="hidden px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-semibold rounded-lg transition-colors">
+        Assign
+    </button>
     <button id="bulk-cancel" class="ml-2 text-gray-400 hover:text-white text-sm transition-colors" title="Clear selection">✕</button>
 </div>
 
@@ -931,9 +952,11 @@ window.assignInspector = assignInspector;
     function updateBulkBar() {
         const bar   = document.getElementById('bulk-bar');
         const count = document.getElementById('bulk-count');
-        const btnAck  = document.getElementById('bulk-acknowledge');
-        const btnDis  = document.getElementById('bulk-dispatch');
-        const btnDism = document.getElementById('bulk-dismiss');
+        const btnAck   = document.getElementById('bulk-acknowledge');
+        const btnDis   = document.getElementById('bulk-dispatch');
+        const btnDism  = document.getElementById('bulk-dismiss');
+        const selInsp  = document.getElementById('bulk-inspector-select');
+        const btnAssign = document.getElementById('bulk-assign-inspector-btn');
         if (!bar) return;
 
         const n = selectedIds.size;
@@ -945,10 +968,55 @@ window.assignInspector = assignInspector;
         const allOpen = [...statuses].every(s => s === 'open');
         const allAck  = [...statuses].every(s => s === 'acknowledged');
         const mixed   = !allOpen && !allAck;
+        const assignable = allOpen || allAck;
 
-        btnAck.classList.toggle('hidden',  !allOpen);
-        btnDis.classList.toggle('hidden',  !allAck);
-        btnDism.classList.toggle('hidden', mixed);
+        btnAck.classList.toggle('hidden',   !allOpen);
+        btnDis.classList.toggle('hidden',   !allAck);
+        btnDism.classList.toggle('hidden',  mixed);
+        selInsp.classList.toggle('hidden',  !assignable);
+        btnAssign.classList.toggle('hidden', !assignable);
+    }
+
+    // ── Bulk inspector assignment ──
+    async function populateBulkInspectorDropdown() {
+        const sel = document.getElementById('bulk-inspector-select');
+        if (!sel) return;
+        try {
+            const res = await fetch('/accounts/api/inspectors/', { credentials: 'include' });
+            if (!res.ok) return;
+            const inspectors = await res.json();
+            // Keep the placeholder option, then add one per inspector
+            sel.innerHTML = '<option value="">Assign inspector…</option>';
+            inspectors.forEach(ins => {
+                const opt = document.createElement('option');
+                opt.value = ins.user;
+                opt.textContent = `${ins.user}${ins.is_available ? '' : ' (busy)'}`;
+                sel.appendChild(opt);
+            });
+        } catch(_) {}
+    }
+
+    async function bulkAssignInspector() {
+        const inspector = document.getElementById('bulk-inspector-select')?.value;
+        if (!inspector) { alert('Please select an inspector first.'); return; }
+        if (!selectedIds.size) return;
+        try {
+            const res = await fetch('/api/alerts/bulk-assign-inspector/', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                body: JSON.stringify({ alert_ids: [...selectedIds], inspector_username: inspector }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                selectedIds.clear();
+                selectedStatuses = {};
+                document.getElementById('bulk-inspector-select').value = '';
+                loadAlerts(currentPage);
+            } else {
+                alert(data.error || 'Failed to assign inspector.');
+            }
+        } catch(e) { console.error('Bulk assign failed:', e); }
     }
 
     async function bulkAction(verb) {
@@ -1079,10 +1147,14 @@ window.assignInspector = assignInspector;
             });
         });
 
+        // Populate bulk inspector dropdown once
+        populateBulkInspectorDropdown();
+
         // Bulk bar buttons
         document.getElementById('bulk-acknowledge').addEventListener('click', () => bulkAction('acknowledged'));
         document.getElementById('bulk-dispatch').addEventListener('click',    () => bulkAction('dispatched'));
         document.getElementById('bulk-dismiss').addEventListener('click',     () => bulkAction('dismissed'));
+        document.getElementById('bulk-assign-inspector-btn').addEventListener('click', bulkAssignInspector);
         document.getElementById('bulk-cancel').addEventListener('click', () => {
             selectedIds.clear(); selectedStatuses = {};
             document.querySelectorAll('.row-cb').forEach(c => c.checked = false);
@@ -1124,6 +1196,25 @@ window.assignInspector = assignInspector;
         assignInspector,
         refreshAlerts: () => loadAlerts(currentPage),
     };
+
+    // ── Real-time polling: show banner when open alert count changes ──
+    let _lastOpenCount = null;
+    setInterval(async function () {
+        try {
+            const r = await fetch('/api/alerts/?status=open&per_page=1', { credentials: 'include' });
+            if (!r.ok) return;
+            const d = await r.json();
+            if (_lastOpenCount !== null && d.total !== _lastOpenCount) {
+                const diff = d.total - _lastOpenCount;
+                document.getElementById('new-alerts-text').textContent =
+                    diff > 0
+                        ? `${diff} new alert${diff > 1 ? 's' : ''} arrived`
+                        : `Alert count updated (${d.total} open)`;
+                document.getElementById('new-alerts-banner').classList.remove('hidden');
+            }
+            _lastOpenCount = d.total;
+        } catch (_) {}
+    }, 30000);
 })();
 </script>
 {% endblock %}

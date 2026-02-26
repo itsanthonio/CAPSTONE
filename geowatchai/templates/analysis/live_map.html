@@ -24,6 +24,15 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
                 </svg>
             </button>
+            <!-- Locate Me -->
+            <button id="locate-me-btn" onclick="locateMe()" title="Center map on my location"
+                    class="bg-white bg-opacity-90 rounded-lg shadow-sm p-2 hover:bg-opacity-100 transition-all">
+                <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="3" stroke-width="2"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
+                </svg>
+            </button>
         </div>
 
         <!-- Legend -->
@@ -319,29 +328,65 @@ function closeSiteModal() {
     document.getElementById('site-modal').classList.add('hidden');
 }
 
+// ── Locate Me ──────────────────────────────────────────────────────────────
+let _locationMarker = null;
+
+function locateMe() {
+    if (!navigator.geolocation) {
+        alert('Geolocation is not supported by your browser.');
+        return;
+    }
+    const btn = document.getElementById('locate-me-btn');
+    if (btn) btn.classList.add('opacity-50', 'pointer-events-none');
+
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            if (btn) btn.classList.remove('opacity-50', 'pointer-events-none');
+            const { longitude: lng, latitude: lat } = pos.coords;
+            window.mapHandler.map.flyTo({ center: [lng, lat], zoom: 14, duration: 1200 });
+
+            if (_locationMarker) _locationMarker.remove();
+            const el = document.createElement('div');
+            el.style.cssText = 'width:14px;height:14px;background:#3b82f6;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 5px rgba(59,130,246,0.25)';
+            _locationMarker = new maplibregl.Marker({ element: el })
+                .setLngLat([lng, lat])
+                .addTo(window.mapHandler.map);
+        },
+        err => {
+            if (btn) btn.classList.remove('opacity-50', 'pointer-events-none');
+            if (err.code === 1)
+                alert('Location access denied. Allow location access in your browser settings and try again.');
+            else
+                alert('Unable to determine your location. Please try again.');
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+    );
+}
+
 // ── Sidebar rendering ──────────────────────────────────────────────────────
 let _allFeatures = [];
-let _sortNewestFirst = false;
 
 function renderDetectionSidebar(features, meta) {
     _allFeatures = features;
-    _sortNewestFirst = meta && meta.source === 'scan';
     applyDetectionFilter();
 }
 
 function applyDetectionFilter() {
     const minConf = (document.getElementById('confidence-slider')?.value || 0) / 100;
 
+    // Keep map layer filter in sync with the sidebar slider
+    window.mapHandler?.updateConfidenceFilter(minConf);
+
     let filtered = _allFeatures.filter(f => {
         const conf = (f.properties || {}).confidence_score || 0;
         return conf >= minConf;
     });
 
-    // Sort: oldest-first on page load, newest-first after a scan
+    // Always newest-first for consistency
     filtered = filtered.slice().sort((a, b) => {
         const da = new Date((a.properties || {}).detection_date || 0);
         const db = new Date((b.properties || {}).detection_date || 0);
-        return _sortNewestFirst ? db - da : da - db;
+        return db - da;
     });
 
     document.getElementById('detection-count').textContent = filtered.length;
@@ -422,13 +467,30 @@ document.addEventListener('DOMContentLoaded', function () {
     window.mapHandler.onDetectionsUpdated(renderDetectionSidebar);
     window.mapHandler.onSiteClick(openSiteModal);
 
+    // Start background polling — begins 5s after load so initial fetch settles first
+    setTimeout(() => window.mapHandler.startSitePolling(60000), 5000);
+
     // draw-aoi-btn lives in base.html left sidebar
     const drawBtn = document.getElementById('draw-aoi-btn');
-    if (drawBtn) drawBtn.addEventListener('click', function () {
-        if (window.mapHandler && window.mapHandler.toggleDrawingMode) {
-            window.mapHandler.toggleDrawingMode();
+    const drawInstructions = document.getElementById('aoi-draw-instructions');
+    if (drawBtn) {
+        drawBtn.addEventListener('click', function () {
+            if (window.mapHandler && window.mapHandler.toggleDrawingMode) {
+                window.mapHandler.toggleDrawingMode();
+            }
+            // Sync instructions with new button state (classes updated synchronously by toggleDrawingMode)
+            if (drawInstructions) {
+                drawInstructions.classList.toggle('hidden', !drawBtn.classList.contains('bg-red-600'));
+            }
+        });
+
+        // Also hide instructions when polygon auto-closes (map_handler resets button classes)
+        if (drawInstructions) {
+            new MutationObserver(() => {
+                drawInstructions.classList.toggle('hidden', !drawBtn.classList.contains('bg-red-600'));
+            }).observe(drawBtn, { attributes: true, attributeFilter: ['class'] });
         }
-    });
+    }
 
     // Layer toggles (buttons in base.html left sidebar)
     const detBtn = document.getElementById('toggle-detection-layer');
@@ -442,8 +504,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const slider = document.getElementById('confidence-slider');
     if (slider) {
+        // Restore saved preference
+        const saved = localStorage.getItem('confidenceSlider');
+        if (saved !== null) {
+            slider.value = saved;
+            const lbl = document.getElementById('confidence-value');
+            if (lbl) lbl.textContent = saved + '%';
+        }
+
         slider.addEventListener('input', function () {
             document.getElementById('confidence-value').textContent = this.value + '%';
+            localStorage.setItem('confidenceSlider', this.value);
             window.mapHandler.updateConfidenceFilter(this.value / 100);
             applyDetectionFilter();
         });

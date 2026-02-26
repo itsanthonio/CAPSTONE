@@ -260,6 +260,15 @@
                                     Draw Area
                                 </button>
 
+                                <!-- Drawing mode instructions — shown while draw mode is active -->
+                                <div id="aoi-draw-instructions"
+                                     class="hidden mt-2 rounded-lg border border-amber-500 border-opacity-60 bg-gray-800 px-3 py-2.5 text-xs text-gray-300 space-y-1">
+                                    <p class="font-semibold text-amber-400 mb-1">Drawing mode active</p>
+                                    <p>Click on the map to place vertices.</p>
+                                    <p>Closes automatically after <strong class="text-white">4 clicks</strong>, or press <kbd class="bg-gray-700 text-amber-300 px-1 rounded text-xs">Enter</kbd> after 3.</p>
+                                    <p class="text-gray-500 mt-1">Press "Stop Drawing" to cancel.</p>
+                                </div>
+
                                 <!-- Shown after AOI is drawn -->
                                 <div id="aoi-scan-section" class="hidden mt-2">
                                     <div class="bg-gray-800 border border-gray-600 rounded-lg p-3">

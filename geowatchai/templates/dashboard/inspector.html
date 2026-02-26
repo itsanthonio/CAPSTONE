@@ -33,6 +33,16 @@
 {% block content %}
 <div class="p-6 space-y-6">
 
+    <!-- New-assignment banner (shown by polling JS) -->
+    <div id="new-assignment-banner"
+         class="hidden bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center justify-between text-sm text-blue-800">
+        <span>New assignment available.</span>
+        <button onclick="location.reload()"
+                class="ml-4 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors">
+            Reload
+        </button>
+    </div>
+
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div>
@@ -300,7 +310,15 @@ function initTimelapse() {
 
         function showFrame(idx) {
             current = idx;
-            thumbs.forEach((t, i) => t.classList.toggle('active', i === idx));
+            thumbs.forEach((t, i) => {
+                const isActive = i === idx;
+                t.classList.toggle('active', isActive);
+                // Apply ring to wrapper div — outline on the img itself is clipped by overflow-hidden
+                if (t.parentElement) {
+                    t.parentElement.style.outline = isActive ? '2px solid #f59e0b' : '';
+                    t.parentElement.style.outlineOffset = isActive ? '1px' : '';
+                }
+            });
             featured.src = thumbs[idx].dataset.src;
             if (yearLabel) yearLabel.textContent = thumbs[idx].dataset.year;
         }
@@ -347,5 +365,20 @@ function getCookie(name) {
     const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
     return v ? decodeURIComponent(v.pop()) : '';
 }
+
+/* ---------- Real-time polling — new assignments ---------- */
+(function () {
+    let knownPending = {{ pending_count }};
+    setInterval(async function () {
+        try {
+            const r = await fetch('/api/my-assignments/', { credentials: 'include' });
+            if (!r.ok) return;
+            const d = await r.json();
+            if (d.count > knownPending) {
+                document.getElementById('new-assignment-banner').classList.remove('hidden');
+            }
+        } catch (_) {}
+    }, 30000);
+})();
 </script>
 {% endblock %}

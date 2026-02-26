@@ -259,7 +259,16 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'notifications.check_overdue_assignments',
         'schedule': crontab(hour=8, minute=0),  # Every day at 08:00 UTC
     },
+    'escalate-stale-critical-alerts': {
+        'task': 'apps.core.tasks.escalate_stale_alerts',
+        'schedule': crontab(minute=0),  # Every hour
+    },
 }
 
 # Site URL (used for links in notification emails)
 SITE_URL = config('SITE_URL', default='http://localhost:8000')
+
+# Ops team email addresses for critical alert escalation
+# Override in .env: OPS_EMAILS=ops@example.com,manager@example.com
+_ops_raw = config('OPS_EMAILS', default='')
+OPS_EMAILS = [e.strip() for e in _ops_raw.split(',') if e.strip()]

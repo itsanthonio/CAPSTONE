@@ -30,6 +30,7 @@ class JobSerializer(serializers.ModelSerializer):
             'start_date',
             'end_date',
             'model_version',
+            'created_by',
             'created_at',
             'total_detections',
             'illegal_count',
@@ -37,8 +38,8 @@ class JobSerializer(serializers.ModelSerializer):
             'failure_reason',
             'result_id',
         ]
-        read_only_fields = ['id', 'created_at', 'total_detections', 'illegal_count',
-                            'detection_data', 'failure_reason', 'result_id']
+        read_only_fields = ['id', 'created_by', 'created_at', 'total_detections',
+                            'illegal_count', 'detection_data', 'failure_reason', 'result_id']
     
     def to_representation(self, instance):
         """
@@ -154,45 +155,43 @@ class JobCreateSerializer(serializers.Serializer):
     )
     
     def validate_aoi_geometry(self, value):
-        """
-        Validate AOI geometry format.
-        
-        Args:
-            value: GeoJSON geometry
-            
-        Returns:
-            dict: Validated geometry
-            
-        Raises:
-            ValidationError: If geometry is invalid
-        """
         if not isinstance(value, dict):
             raise serializers.ValidationError("AOI geometry must be a valid GeoJSON object")
-        
+
         if value.get('type') not in ['Polygon', 'MultiPolygon']:
             raise serializers.ValidationError("AOI geometry must be a Polygon or MultiPolygon")
-        
+
+        # Area validation: 100 ha minimum, 1 000 ha maximum
+        try:
+            import json
+            from django.contrib.gis.geos import GEOSGeometry
+            geom = GEOSGeometry(json.dumps(value))
+            geom.srid = 4326
+            # UTM zone 30N (EPSG:32630) gives accurate metric areas for Ghana
+            geom_metric = geom.transform(32630, clone=True)
+            area_ha = geom_metric.area / 10_000
+            if area_ha < 100:
+                raise serializers.ValidationError(
+                    f"AOI is too small ({area_ha:.1f} ha). Minimum is 100 ha."
+                )
+            if area_ha > 1_000:
+                raise serializers.ValidationError(
+                    f"AOI is too large ({area_ha:.1f} ha). Maximum is 1,000 ha."
+                )
+        except serializers.ValidationError:
+            raise
+        except Exception:
+            pass  # geometry shape already validated above; area check is best-effort
+
         return value
-    
-    def validate_date_range(self, attrs):
-        """
-        Validate that end_date is after start_date.
-        
-        Args:
-            attrs: Serializer attributes
-            
-        Returns:
-            dict: Validated attributes
-            
-        Raises:
-            ValidationError: If date range is invalid
-        """
+
+    def validate(self, attrs):
         start_date = attrs.get('start_date')
         end_date = attrs.get('end_date')
-        
         if start_date and end_date and end_date <= start_date:
-            raise serializers.ValidationError("End date must be after start date")
-        
+            raise serializers.ValidationError(
+                {"end_date": "End date must be after start date."}
+            )
         return attrs
     
     def create(self, validated_data):

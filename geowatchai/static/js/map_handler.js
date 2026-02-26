@@ -75,32 +75,47 @@ class MapHandler {
 
         this.map.on('click', (e) => {
             if (!this.draw || this.draw.getMode() !== 'draw_polygon') return;
-
             this._drawClickCount++;
             this._drawCoords.push([e.lngLat.lng, e.lngLat.lat]);
 
+            // Auto-close after 4 clicks
             if (this._drawClickCount >= 4) {
-                const ring = [...this._drawCoords, this._drawCoords[0]];
-                this._drawClickCount = 0;
-                this._drawCoords = [];
-
-                setTimeout(() => {
-                    this.draw.deleteAll();
-                    const ids = this.draw.add({
-                        type: 'Feature',
-                        geometry: { type: 'Polygon', coordinates: [ring] }
-                    });
-                    this.draw.changeMode('simple_select', { featureIds: ids });
-                    this.handleAOICreated({ features: this.draw.getAll().features });
-
-                    document.querySelectorAll('#draw-aoi-btn').forEach(btn => {
-                        btn.textContent = btn.textContent.includes('AOI') ? 'Draw AOI' : 'Draw Area';
-                        btn.classList.remove('bg-red-600');
-                        btn.classList.add('bg-sidebar-green');
-                    });
-                }, 50);
+                this._finalizePolygon();
             }
         });
+
+        // Intercept Enter on keyup in capture phase — fires before MapboxDraw's canvas
+        // handler so we can stopPropagation and handle the finalization ourselves.
+        this._drawKeyHandler = (e) => {
+            if (e.key !== 'Enter') return;
+            if (!this.draw || this.draw.getMode() !== 'draw_polygon') return;
+            if (this._drawCoords.length < 3) return;
+            e.stopPropagation(); // prevent MapboxDraw from silently cancelling the draw
+            this._finalizePolygon();
+        };
+        document.addEventListener('keyup', this._drawKeyHandler, true); // capture phase
+    }
+
+    _finalizePolygon() {
+        const ring = [...this._drawCoords, this._drawCoords[0]];
+        this._drawClickCount = 0;
+        this._drawCoords = [];
+
+        setTimeout(() => {
+            this.draw.deleteAll();
+            const ids = this.draw.add({
+                type: 'Feature',
+                geometry: { type: 'Polygon', coordinates: [ring] }
+            });
+            this.draw.changeMode('simple_select', { featureIds: ids });
+            this.handleAOICreated({ features: this.draw.getAll().features });
+
+            document.querySelectorAll('#draw-aoi-btn').forEach(btn => {
+                btn.textContent = 'Draw Area';
+                btn.classList.remove('bg-red-600');
+                btn.classList.add('bg-sidebar-green');
+            });
+        }, 50);
     }
 
     setupMapLayers() {
@@ -300,6 +315,14 @@ class MapHandler {
     handleAOICreated(e) {
         const data = this.draw.getAll();
         if (data.features.length === 0) return;
+
+        // Reset draw button regardless of how the polygon was completed
+        // (4-click auto-close, Enter key, or MapboxDraw double-click)
+        document.querySelectorAll('#draw-aoi-btn').forEach(btn => {
+            btn.textContent = 'Draw Area';
+            btn.classList.remove('bg-red-600');
+            btn.classList.add('bg-sidebar-green');
+        });
 
         const feature = data.features[0];
         const area    = turf.area(feature);
@@ -630,5 +653,27 @@ class MapHandler {
         if (this.map) {
             this.map.zoomOut();
         }
+    }
+
+    startSitePolling(intervalMs = 60000) {
+        // Polls /api/sites/ and silently updates the map + sidebar if the
+        // detection count changes (e.g. another admin ran a scan).
+        let knownCount = null;
+        this.sitePollingInterval = setInterval(async () => {
+            if (this.isPolling) return;  // skip if a job scan is in progress
+            try {
+                const r = await fetch('/api/sites/', { credentials: 'include' });
+                if (!r.ok) return;
+                const data = await r.json();
+                const features = data.features || [];
+                if (knownCount !== null && features.length !== knownCount) {
+                    this.map.getSource('detections').setData(data);
+                    if (typeof this._onDetectionsUpdated === 'function') {
+                        this._onDetectionsUpdated(features, { source: 'poll' });
+                    }
+                }
+                knownCount = features.length;
+            } catch (_) {}
+        }, intervalMs);
     }
 }

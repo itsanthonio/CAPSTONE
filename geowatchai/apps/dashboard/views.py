@@ -271,6 +271,31 @@ def _get_dashboard_stats():
             s['confidence_pct'] = round(s['confidence_score'] * 100, 1)
             s['id'] = str(s['id'])
 
+        # --- Average confidence of illegal detections ---
+        from django.db.models import Avg
+        avg_conf_result = DetectedSite.objects.filter(
+            legal_status='illegal'
+        ).aggregate(avg=Avg('confidence_score'))
+        avg_confidence_pct = round((avg_conf_result['avg'] or 0) * 100, 1)
+
+        # --- Detection velocity: illegal site count per week for last 8 weeks ---
+        eight_weeks_ago = now - timedelta(weeks=8)
+        velocity_raw = defaultdict(int)
+        for s in DetectedSite.objects.filter(
+            legal_status='illegal',
+            created_at__gte=eight_weeks_ago,
+        ).values('created_at'):
+            # ISO week number as key
+            week_key = s['created_at'].strftime('%Y-W%W')
+            velocity_raw[week_key] += 1
+
+        velocity_labels, velocity_data = [], []
+        for i in range(7, -1, -1):
+            week_start = now - timedelta(weeks=i)
+            key = week_start.strftime('%Y-W%W')
+            velocity_labels.append('W' + week_start.strftime('%W'))
+            velocity_data.append(velocity_raw.get(key, 0))
+
         return {
             'total_detected_sites': total_sites,
             'illegal_sites': illegal_sites,
@@ -288,6 +313,9 @@ def _get_dashboard_stats():
             'trend_labels': trend_labels,
             'trend_illegal': trend_illegal,
             'trend_legal': trend_legal,
+            'avg_confidence_pct': avg_confidence_pct,
+            'velocity_labels': velocity_labels,
+            'velocity_data': velocity_data,
             'trends': {
                 'sites_change': sites_this_week,
                 'alerts_change': alerts_change_pct,
@@ -313,6 +341,9 @@ def _get_dashboard_stats():
             'trend_labels': [],
             'trend_illegal': [],
             'trend_legal': [],
+            'avg_confidence_pct': 0,
+            'velocity_labels': [],
+            'velocity_data': [],
             'trends': {'sites_change': 0, 'alerts_change': 0},
             'has_data': False,
         }
@@ -371,6 +402,52 @@ def dashboard_home(request):
 def dashboard_alerts(request):
     """Admin-only alerts view"""
     return render(request, 'dashboard/alerts.html')
+
+
+@user_passes_test(is_admin)
+def dashboard_report(request):
+    """Printable monthly overview report for stakeholders."""
+    from apps.detections.models import DetectedSite, Alert
+    from apps.accounts.models import InspectorAssignment
+    from django.db.models import Count, Q
+
+    now = timezone.now()
+    thirty_days_ago = now - timedelta(days=30)
+
+    # Re-use the full stats dict
+    stats = _get_dashboard_stats()
+
+    # Extra report-specific data
+    alerts_by_severity = {
+        row['severity']: row['cnt']
+        for row in Alert.objects.values('severity')
+                                .annotate(cnt=Count('id'))
+    }
+    alerts_by_status = {
+        row['status']: row['cnt']
+        for row in Alert.objects.values('status')
+                                .annotate(cnt=Count('id'))
+    }
+    resolved_assignments = InspectorAssignment.objects.filter(
+        status='resolved'
+    ).count()
+    confirmed_mining = InspectorAssignment.objects.filter(
+        outcome='mining_confirmed'
+    ).count()
+    false_positives = InspectorAssignment.objects.filter(
+        outcome='false_positive'
+    ).count()
+
+    return render(request, 'dashboard/report.html', {
+        'stats': stats,
+        'alerts_by_severity': alerts_by_severity,
+        'alerts_by_status': alerts_by_status,
+        'resolved_assignments': resolved_assignments,
+        'confirmed_mining': confirmed_mining,
+        'false_positives': false_positives,
+        'report_date': now,
+        'period_start': thirty_days_ago,
+    })
 
 
 @user_passes_test(is_admin)
@@ -622,14 +699,36 @@ def submit_field_report(request, assignment_id):
         # Update Alert
         try:
             alert = Alert.objects.get(id=assignment.alert_id)
-            alert.status = Alert.AlertStatus.RESOLVED
-            alert.resolved_at = timezone.now()
+            if outcome == 'inconclusive':
+                # Stay open so it can be reassigned or re-scanned
+                alert.status = Alert.AlertStatus.OPEN
+                alert.resolved_at = None
+            else:
+                alert.status = Alert.AlertStatus.RESOLVED
+                alert.resolved_at = timezone.now()
             outcome_label = dict(InspectorAssignment.Outcome.choices).get(outcome, outcome)
             alert.resolution_notes = (
                 f"Field report by {request.user.username} on "
                 f"{visit_date or 'unknown date'}: {outcome_label}. {notes}"
             )
             alert.save()
+
+            # Audit the field report submission
+            try:
+                from apps.detections.models import AuditLog
+                AuditLog.objects.create(
+                    user=request.user,
+                    action='assignment.field_report',
+                    object_id=str(assignment.id),
+                    detail={
+                        'outcome': outcome,
+                        'alert_id': str(alert.id),
+                        'inspector': request.user.username,
+                        'visit_date': str(visit_date) if visit_date else None,
+                    },
+                )
+            except Exception:
+                pass
 
             # Update DetectedSite status to match outcome
             site = alert.detected_site

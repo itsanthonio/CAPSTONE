@@ -342,6 +342,21 @@ class MiningDetectionPipeline:
 
             area_ha = props.get('area', 0.0) / 10_000.0
 
+            # Deduplication: if an existing site centroid is within 500 m,
+            # increment its recurrence counter instead of creating a duplicate.
+            from django.contrib.gis.measure import D
+            existing = DetectedSite.objects.filter(
+                centroid__dwithin=(geom.centroid, D(m=500))
+            ).exclude(job=job).order_by('-detection_date').first()
+
+            if existing:
+                existing.recurrence_count += 1
+                existing.detection_date = job.end_date
+                existing.save(update_fields=['recurrence_count', 'detection_date', 'updated_at'])
+                logger.info(f"[Pipeline] Dedup: merged new detection into existing site {existing.id}")
+                sites.append(existing)
+                continue
+
             site = DetectedSite.objects.create(
                 geometry=geom,
                 confidence_score=props.get('confidence_score', 0.0),
