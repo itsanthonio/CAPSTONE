@@ -497,6 +497,7 @@ class Alert(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     acknowledged_at = models.DateTimeField(null=True, blank=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
+    escalated_at = models.DateTimeField(null=True, blank=True)
     resolution_notes = models.TextField(blank=True)
 
     class Meta:
@@ -652,3 +653,51 @@ class SiteTimelapse(models.Model):
 
     def __str__(self):
         return f"Timelapse {self.detected_site_id} — {self.year}"
+
+
+# ---------------------------------------------------------------------------
+# 8. Audit Log
+# ---------------------------------------------------------------------------
+
+class AuditLog(models.Model):
+    """
+    Immutable record of significant system actions for compliance.
+    Written on alert status changes, assignments, and site updates.
+    Never updated or deleted — append-only.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        'auth.User',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='audit_logs',
+    )
+    action = models.CharField(
+        max_length=64,
+        db_index=True,
+        help_text='Dot-separated action descriptor, e.g. alert.acknowledged',
+    )
+    object_id = models.CharField(
+        max_length=64,
+        blank=True,
+        db_index=True,
+        help_text='UUID of the primary object affected',
+    )
+    detail = models.JSONField(
+        default=dict,
+        help_text='Extra context, e.g. previous status, inspector name',
+    )
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = 'Audit Log'
+        verbose_name_plural = 'Audit Logs'
+        ordering = ['-timestamp']
+        # Prevent accidental updates
+        default_permissions = ('add', 'view')
+
+    def __str__(self):
+        actor = self.user.username if self.user_id else 'system'
+        return f"[{self.timestamp:%Y-%m-%d %H:%M}] {actor} — {self.action} ({self.object_id})"

@@ -27,6 +27,20 @@ from apps.api.serializers import (
 logger = logging.getLogger(__name__)
 
 
+def _audit(user, action, obj_id, **detail):
+    """Write a single AuditLog row. Silently no-ops if the table isn't ready."""
+    try:
+        from apps.detections.models import AuditLog
+        AuditLog.objects.create(
+            user=user if (user and user.is_authenticated) else None,
+            action=action,
+            object_id=str(obj_id),
+            detail=detail,
+        )
+    except Exception:
+        pass
+
+
 class JobViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Job model with creation and status tracking.
@@ -68,7 +82,9 @@ class JobViewSet(viewsets.ModelViewSet):
 
             # Create job within transaction
             with transaction.atomic():
-                job = serializer.save()
+                job = serializer.save(
+                    created_by=request.user if request.user.is_authenticated else None
+                )
 
             logger.info(f"Created new job {job.id} via API")
 
@@ -595,6 +611,7 @@ class AlertViewSet(viewsets.ViewSet):
         from apps.detections.models import Alert
         from django.utils import timezone
         a = get_object_or_404(Alert, pk=pk)
+        prev_status = a.status
         a.status = new_status
         if new_status == 'acknowledged':
             a.acknowledged_at = timezone.now()
@@ -602,6 +619,8 @@ class AlertViewSet(viewsets.ViewSet):
             a.resolved_at = timezone.now()
             a.resolution_notes = request.data.get('resolution_notes', '')
         a.save()
+        _audit(request.user, f'alert.{new_status}', a.id,
+               prev_status=prev_status, severity=a.severity)
         return Response({'id': str(a.id), 'status': a.status})
 
     @action(detail=True, methods=['post'])
@@ -655,7 +674,48 @@ class AlertViewSet(viewsets.ViewSet):
         else:
             updated = qs.update(status=verb)
 
+        _audit(request.user, f'alert.bulk_{verb}', '',
+               alert_ids=ids, updated=updated)
         return Response({'updated': updated})
+
+    @action(detail=False, methods=['post'])
+    def bulk_assign_inspector(self, request):
+        from apps.detections.models import Alert
+        from apps.accounts.models import InspectorAssignment, UserProfile
+        from django.utils import timezone
+
+        alert_ids        = request.data.get('alert_ids', [])
+        inspector_username = request.data.get('inspector_username', '')
+
+        if not alert_ids:
+            return Response({'error': 'No alert IDs provided.'}, status=400)
+        if not inspector_username:
+            return Response({'error': 'inspector_username is required.'}, status=400)
+
+        try:
+            inspector = UserProfile.objects.get(
+                user__username=inspector_username,
+                role=UserProfile.Role.INSPECTOR,
+            )
+        except UserProfile.DoesNotExist:
+            return Response({'error': 'Inspector not found.'}, status=404)
+
+        alerts = Alert.objects.filter(id__in=alert_ids, status__in=['open', 'acknowledged'])
+        created = 0
+        for alert in alerts:
+            InspectorAssignment.objects.create(
+                alert_id=alert.id,
+                inspector=inspector,
+                status=InspectorAssignment.Status.PENDING,
+            )
+            alert.status = 'dispatched'
+            alert.assigned_to = inspector.user
+            alert.save(update_fields=['status', 'assigned_to'])
+            _audit(request.user, 'alert.assigned', alert.id,
+                   inspector=inspector_username)
+            created += 1
+
+        return Response({'assigned': created, 'inspector': inspector_username})
 
 
 from django.contrib.auth.decorators import login_required

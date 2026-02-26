@@ -1,0 +1,463 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GalamseyWatch AI — Monthly Report</title>
+    <style>
+        /* ── Base ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-size: 13px;
+            color: #1f2937;
+            background: #f9fafb;
+            line-height: 1.5;
+        }
+
+        /* ── Page shell ── */
+        .page {
+            max-width: 900px;
+            margin: 24px auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 4px 16px rgba(0,0,0,.06);
+            overflow: hidden;
+        }
+
+        /* ── Header band ── */
+        .report-header {
+            background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
+            color: #fff;
+            padding: 32px 40px 28px;
+        }
+        .report-header .logo-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .report-header .logo-badge {
+            width: 40px; height: 40px;
+            background: rgba(245,158,11,0.25);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+        }
+        .report-header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+        .report-header .subtitle { font-size: 13px; opacity: .75; margin-top: 2px; }
+        .report-header .meta-row {
+            display: flex;
+            gap: 24px;
+            margin-top: 16px;
+            font-size: 12px;
+            opacity: .85;
+        }
+        .report-header .meta-row span strong { font-weight: 600; }
+
+        /* ── Body ── */
+        .report-body { padding: 32px 40px 40px; }
+
+        /* Section headings */
+        .section-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            color: #6b7280;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 6px;
+            margin-bottom: 16px;
+            margin-top: 32px;
+        }
+        .section-title:first-child { margin-top: 0; }
+
+        /* ── Stat grid ── */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+        }
+        .stat-card {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 16px 14px;
+        }
+        .stat-card .label {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            color: #9ca3af;
+        }
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: 800;
+            color: #111827;
+            line-height: 1.1;
+            margin-top: 4px;
+        }
+        .stat-card .sub { font-size: 11px; color: #6b7280; margin-top: 3px; }
+        .stat-card.red   .value { color: #dc2626; }
+        .stat-card.amber .value { color: #d97706; }
+        .stat-card.green .value { color: #16a34a; }
+        .stat-card.blue  .value { color: #2563eb; }
+
+        /* ── Two-column layout ── */
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+        /* ── Table ── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        thead th {
+            text-align: left;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            color: #6b7280;
+            padding: 6px 10px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        tbody tr:nth-child(even) { background: #f9fafb; }
+        tbody td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #f3f4f6;
+            color: #374151;
+            vertical-align: middle;
+        }
+        tbody tr:last-child td { border-bottom: none; }
+
+        /* ── Badge pills ── */
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        .badge-red    { background: #fee2e2; color: #b91c1c; }
+        .badge-amber  { background: #fef3c7; color: #92400e; }
+        .badge-green  { background: #dcfce7; color: #15803d; }
+        .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+        .badge-gray   { background: #f3f4f6; color: #4b5563; }
+
+        /* ── Bar chart (CSS only) ── */
+        .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .bar-label { width: 130px; font-size: 11px; color: #374151; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; flex-shrink: 0; }
+        .bar-track { flex: 1; height: 12px; background: #f3f4f6; border-radius: 6px; overflow: hidden; }
+        .bar-fill  { height: 100%; background: linear-gradient(90deg, #1b4332, #4ade80); border-radius: 6px; min-width: 2px; }
+        .bar-count { width: 36px; text-align: right; font-size: 11px; font-weight: 600; color: #374151; flex-shrink: 0; }
+
+        /* ── Trend sparkline grid ── */
+        .trend-table { display: flex; gap: 2px; align-items: flex-end; height: 60px; margin-top: 8px; }
+        .trend-bar   { flex: 1; border-radius: 2px 2px 0 0; min-height: 2px; }
+        .trend-bar.illegal { background: #ef4444; }
+        .trend-bar.legal   { background: #22c55e; }
+
+        /* ── Print action bar ── */
+        .print-bar {
+            background: #1b4332;
+            color: #fff;
+            padding: 12px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+        }
+        .print-bar a { color: #86efac; text-decoration: none; font-size: 12px; }
+        .print-bar a:hover { text-decoration: underline; }
+        .btn-print {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 18px;
+            background: #f59e0b;
+            color: #1c1917;
+            font-size: 12px;
+            font-weight: 700;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .btn-print:hover { background: #d97706; }
+
+        /* ── Footer ── */
+        .report-footer {
+            border-top: 1px solid #e5e7eb;
+            padding: 14px 40px;
+            font-size: 10px;
+            color: #9ca3af;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* ── Print styles ── */
+        @media print {
+            body { background: #fff; }
+            .page { box-shadow: none; margin: 0; border-radius: 0; max-width: 100%; }
+            .print-bar { display: none !important; }
+            @page { margin: 14mm 14mm 14mm 14mm; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="page">
+
+    <!-- Print / back bar (hidden on print) -->
+    <div class="print-bar no-print">
+        <a href="/dashboard/home/">&larr; Back to Dashboard</a>
+        <button class="btn-print" onclick="window.print()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a1 1 0 001-1v-5a1 1 0 00-1-1H9a1 1 0 00-1 1v5a1 1 0 001 1zm1-16v4h4V5l-4-4H9z"/>
+            </svg>
+            Print / Export PDF
+        </button>
+    </div>
+
+    <!-- Header -->
+    <div class="report-header">
+        <div class="logo-row">
+            <div class="logo-badge">&#x1F6F0;</div>
+            <div>
+                <div style="font-size:11px;opacity:.7;text-transform:uppercase;letter-spacing:.8px;">GalamseyWatch AI</div>
+                <div style="font-size:17px;font-weight:700;line-height:1.2;">Illegal Mining Detection Report</div>
+            </div>
+        </div>
+        <div class="meta-row">
+            <span><strong>Report Date:</strong> {{ report_date|date:"N j, Y" }}</span>
+            <span><strong>Period:</strong> {{ period_start|date:"N j, Y" }} — {{ report_date|date:"N j, Y" }}</span>
+            <span><strong>Coverage:</strong> Ghana</span>
+        </div>
+    </div>
+
+    <!-- Body -->
+    <div class="report-body">
+
+        <!-- ── 1. Executive Summary ── -->
+        <div class="section-title">Executive Summary</div>
+        <div class="stat-grid">
+            <div class="stat-card red">
+                <div class="label">Illegal Sites</div>
+                <div class="value">{{ stats.illegal_sites }}</div>
+                <div class="sub">of {{ stats.total_detected_sites }} total detected</div>
+            </div>
+            <div class="stat-card amber">
+                <div class="label">Open Alerts</div>
+                <div class="value">{{ stats.open_alerts }}</div>
+                <div class="sub">{{ stats.critical_alerts }} critical · {{ stats.high_alerts }} high</div>
+            </div>
+            <div class="stat-card blue">
+                <div class="label">Total Area Affected</div>
+                <div class="value">{{ stats.total_area_ha }}</div>
+                <div class="sub">hectares (illegal sites)</div>
+            </div>
+            <div class="stat-card green">
+                <div class="label">High-Risk Zones</div>
+                <div class="value">{{ stats.high_risk_zones }}</div>
+                <div class="sub">recurring or critical sites</div>
+            </div>
+        </div>
+
+        <!-- ── 2. Alert Status Breakdown ── -->
+        <div class="section-title">Alert Status &amp; Severity</div>
+        <div class="two-col">
+            <div>
+                <table>
+                    <thead><tr><th>Status</th><th>Count</th></tr></thead>
+                    <tbody>
+                        {% for status, cnt in alerts_by_status.items %}
+                        <tr>
+                            <td>
+                                {% if status == 'open' %}<span class="badge badge-red">Open</span>
+                                {% elif status == 'acknowledged' %}<span class="badge badge-amber">Acknowledged</span>
+                                {% elif status == 'dispatched' %}<span class="badge badge-blue">Dispatched</span>
+                                {% elif status == 'resolved' %}<span class="badge badge-green">Resolved</span>
+                                {% elif status == 'dismissed' %}<span class="badge badge-gray">Dismissed</span>
+                                {% else %}<span class="badge badge-gray">{{ status|capfirst }}</span>
+                                {% endif %}
+                            </td>
+                            <td style="font-weight:600;">{{ cnt }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="2" style="color:#9ca3af;">No alert data</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div>
+                <table>
+                    <thead><tr><th>Severity</th><th>Count</th></tr></thead>
+                    <tbody>
+                        {% for sev, cnt in alerts_by_severity.items %}
+                        <tr>
+                            <td>
+                                {% if sev == 'critical' %}<span class="badge badge-red">Critical</span>
+                                {% elif sev == 'high' %}<span class="badge badge-amber">High</span>
+                                {% elif sev == 'medium' %}<span class="badge badge-blue">Medium</span>
+                                {% else %}<span class="badge badge-gray">{{ sev|capfirst }}</span>
+                                {% endif %}
+                            </td>
+                            <td style="font-weight:600;">{{ cnt }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="2" style="color:#9ca3af;">No alert data</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ── 3. Inspector Field Verification ── -->
+        <div class="section-title">Field Verification Outcomes</div>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="label">Assignments Resolved</div>
+                <div class="value">{{ resolved_assignments }}</div>
+            </div>
+            <div class="stat-card red">
+                <div class="label">Mining Confirmed</div>
+                <div class="value">{{ confirmed_mining }}</div>
+            </div>
+            <div class="stat-card green">
+                <div class="label">False Positives</div>
+                <div class="value">{{ false_positives }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Model Accuracy</div>
+                <div class="value">
+                    {% if resolved_assignments > 0 %}
+                        {{ confirmed_mining|floatformat:0 }}/{{ resolved_assignments }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </div>
+                <div class="sub">confirmed vs resolved</div>
+            </div>
+        </div>
+
+        <!-- ── 4. Top Regions ── -->
+        {% if stats.top_regions %}
+        <div class="section-title">Top Regions by Detection Count</div>
+        {% for region in stats.top_regions %}
+        <div class="bar-row">
+            <div class="bar-label" title="{{ region.region__name }}">{{ region.region__name|default:"Unknown" }}</div>
+            <div class="bar-track">
+                <div class="bar-fill" style="width:{{ region.bar_pct }}%"></div>
+            </div>
+            <div class="bar-count">{{ region.total }}</div>
+            <span class="badge badge-red" style="width:44px;text-align:center;">{{ region.illegal_pct }}%</span>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <!-- ── 5. Detection Trend (last 30 days) ── -->
+        {% if stats.trend_labels %}
+        <div class="section-title">Detection Trend — Last 30 Days</div>
+        <div id="trend-sparkline" style="display:flex;gap:2px;align-items:flex-end;height:64px;margin-bottom:4px;">
+            {% for val in stats.trend_illegal %}
+            <div class="trend-bar illegal" data-val="{{ val }}" style="flex:1;border-radius:2px 2px 0 0;min-height:2px;background:#ef4444;" title="Illegal: {{ val }}"></div>
+            {% endfor %}
+        </div>
+        <div style="font-size:10px;color:#9ca3af;display:flex;justify-content:space-between;">
+            <span>{{ stats.trend_labels.0 }}</span>
+            <span style="color:#ef4444;font-weight:600;">&#9632; Illegal detections</span>
+            <span>{{ stats.trend_labels|last }}</span>
+        </div>
+        <script>
+        (function(){
+            var bars = document.querySelectorAll('#trend-sparkline .trend-bar');
+            var max = 0;
+            bars.forEach(function(b){ var v = parseInt(b.dataset.val,10)||0; if(v>max) max=v; });
+            if(max === 0) max = 1;
+            bars.forEach(function(b){ b.style.height = Math.max(2, Math.round(parseInt(b.dataset.val,10)/max*64)) + 'px'; });
+        })();
+        </script>
+        {% endif %}
+
+        <!-- ── 6. Recent Activity ── -->
+        {% if stats.recent_sites %}
+        <div class="section-title">Recent Detected Sites</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Region</th>
+                    <th>Status</th>
+                    <th>Confidence</th>
+                    <th>Area (ha)</th>
+                    <th>Recurrences</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for site in stats.recent_sites %}
+                <tr>
+                    <td>{{ site.detection_date }}</td>
+                    <td>{{ site.region__name|default:"—" }}</td>
+                    <td>
+                        {% if site.legal_status == 'illegal' %}
+                            <span class="badge badge-red">Illegal</span>
+                        {% else %}
+                            <span class="badge badge-green">Legal</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ site.confidence_pct }}%</td>
+                    <td>{{ site.area_hectares|floatformat:1 }}</td>
+                    <td>{{ site.recurrence_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+
+        <!-- ── 7. Scan Jobs ── -->
+        <div class="section-title">Scan Job Summary</div>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="label">Total Jobs</div>
+                <div class="value">{{ stats.total_jobs }}</div>
+            </div>
+            <div class="stat-card green">
+                <div class="label">Completed</div>
+                <div class="value">{{ stats.completed_jobs }}</div>
+            </div>
+            <div class="stat-card red">
+                <div class="label">Failed</div>
+                <div class="value">{{ stats.failed_jobs }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Success Rate</div>
+                <div class="value">
+                    {% if stats.total_jobs > 0 %}
+                        {% widthratio stats.completed_jobs stats.total_jobs 100 %}%
+                    {% else %}
+                        —
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /.report-body -->
+
+    <!-- Footer -->
+    <div class="report-footer">
+        <span>GalamseyWatch AI &mdash; Confidential &mdash; For Authorized Use Only</span>
+        <span>Generated {{ report_date|date:"N j, Y \a\t g:i A" }}</span>
+    </div>
+
+</div><!-- /.page -->
+
+</body>
+</html>

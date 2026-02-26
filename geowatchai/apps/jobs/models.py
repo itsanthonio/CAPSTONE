@@ -1,4 +1,5 @@
 import uuid
+from django.contrib.auth.models import User
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import Polygon
 from django.utils import timezone
@@ -36,6 +37,14 @@ class Job(models.Model):
     end_date = models.DateField(help_text="End date for imagery analysis")
     model_version = models.CharField(max_length=50, help_text="ML model version used")
     preprocessing_version = models.CharField(max_length=50, help_text="Preprocessing version")
+    created_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='jobs',
+        help_text='Admin user who triggered this scan',
+    )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)

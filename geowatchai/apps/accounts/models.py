@@ -73,7 +73,12 @@ class InspectorAssignment(models.Model):
         INCONCLUSIVE = 'inconclusive', 'Inconclusive'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    alert_id = models.UUIDField()  # Store alert ID as string
+    alert = models.ForeignKey(
+        'detections.Alert',
+        on_delete=models.CASCADE,
+        related_name='assignments',
+        db_column='alert_id',
+    )
     inspector = models.ForeignKey(
         UserProfile,
         on_delete=models.CASCADE,

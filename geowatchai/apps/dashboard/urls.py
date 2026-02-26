@@ -19,6 +19,7 @@ urlpatterns = [
     # Dashboard URLs
     path('home/', views.dashboard_home, name='home'),
     path('alerts/', views.dashboard_alerts, name='alerts'),
+    path('report/', views.dashboard_report, name='report'),
     path('model-insights/', views.dashboard_model_insights, name='model_insights'),
     path('settings/', views.dashboard_settings, name='settings'),
     path('inspector/', views.inspector_dashboard, name='inspector'),
