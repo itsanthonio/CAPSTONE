@@ -609,4 +609,11 @@ class AlertViewSet(viewsets.ViewSet):
 
     @action(detail=True, methods=['post'])
     def resolve(self, request, pk=None):
+        from apps.detections.models import Alert
+        a = get_object_or_404(Alert, pk=pk)
+        if a.status == 'dispatched':
+            return Response(
+                {'error': 'This alert has an inspector dispatched. Resolution must come from their field report.'},
+                status=400
+            )
         return self._change_status(request, pk, 'resolved')

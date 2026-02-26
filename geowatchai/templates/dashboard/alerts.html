@@ -524,8 +524,7 @@ window.assignInspector = assignInspector;
                             <button onclick="window.openInspectorModal('${a.id}')"
                                     class="text-purple-600 hover:underline">Dispatch Inspector</button>
                         ` : a.status === 'dispatched' ? `
-                            <button onclick="window._alertsPage.action('${a.id}','resolve')"
-                                    class="text-green-600 hover:underline">Mark Resolved</button>
+                            <span class="text-xs text-gray-400 italic">Awaiting inspector report</span>
                         ` : `<span class="text-gray-300">—</span>`}
                     </div>
                 </td>
@@ -683,8 +682,12 @@ window.assignInspector = assignInspector;
                         class="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700">Dispatch Inspector</button>`;
             } else if (a.status === 'dispatched') {
                 actDiv.innerHTML += `
-                    <button onclick="window._alertsPage.action('${id}','resolve');window._alertsPage.closeModal()"
-                        class="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">Mark Resolved</button>`;
+                    <div class="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 text-gray-500 text-sm rounded-lg">
+                        <svg class="w-4 h-4 text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Awaiting inspector field report
+                    </div>`;
             }
 
             // Load timelapse for the detected site

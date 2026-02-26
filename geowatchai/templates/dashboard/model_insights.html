@@ -131,7 +131,7 @@
         </div>
 
         <!-- Confidence Distribution (1/3) -->
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col">
             <div class="px-5 py-4 border-b border-gray-100">
                 <h2 class="text-sm font-semibold text-gray-900">Confidence Distribution</h2>
                 <p class="text-xs text-gray-400 mt-0.5">
@@ -142,7 +142,7 @@
                     {% endif %}
                 </p>
             </div>
-            <div class="p-5" style="height:300px;">
+            <div class="p-5 flex-1" style="height:240px;">
                 {% if conf_total > 0 %}
                     <canvas id="confidence-chart"></canvas>
                 {% else %}
@@ -154,6 +154,12 @@
                     </div>
                 {% endif %}
             </div>
+            {% if conf_total > 0 %}
+            <div class="px-5 pb-4 border-t border-gray-50 pt-3 flex justify-between text-[11px] text-gray-400">
+                <span>Lower confidence</span>
+                <span>Higher confidence</span>
+            </div>
+            {% endif %}
         </div>
 
     </div>
@@ -167,112 +173,87 @@
                 <p class="text-xs text-gray-400 mt-0.5">Inspector-confirmed outcomes driving live metrics</p>
             </div>
             <span class="inline-flex items-center gap-1 text-xs font-semibold bg-green-50 text-green-700 border border-green-200 px-2 py-1 rounded">
-                {{ total_verified }} verified
+                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>{{ total_verified }} verified
             </span>
         </div>
-        <div class="p-5 grid grid-cols-3 gap-4">
+        <div class="p-5 grid grid-cols-1 sm:grid-cols-3 gap-6">
             <!-- Total verified -->
-            <div class="text-center">
+            <div class="flex flex-col justify-center">
                 <p class="text-3xl font-bold text-gray-900">{{ total_verified }}</p>
-                <p class="text-xs text-gray-500 mt-1">Sites verified</p>
+                <p class="text-sm text-gray-500 mt-1">Sites field-verified</p>
+                <p class="text-xs text-gray-400 mt-2 leading-relaxed">Each inspector report updates the live Accuracy &amp; Precision metrics shown above.</p>
             </div>
             <!-- True positives -->
-            <div class="text-center">
-                <p class="text-3xl font-bold text-green-600">{{ total_tp }}</p>
-                <p class="text-xs text-gray-500 mt-1">Confirmed mining</p>
-                <div class="mt-2 w-full bg-gray-100 rounded-full h-1.5">
-                    <div class="bg-green-500 h-1.5 rounded-full" style="width:{% if total_verified %}{{ total_tp|floatformat:0 }}{% else %}0{% endif %}%"></div>
+            <div>
+                <div class="flex items-baseline gap-2 mb-1">
+                    <p class="text-3xl font-bold text-gray-900">{{ total_tp }}</p>
+                    <p class="text-sm text-gray-400">confirmed</p>
                 </div>
+                <p class="text-xs text-gray-500 mb-2">Illegal mining sites confirmed by inspector</p>
+                <div class="w-full bg-gray-100 rounded-full h-2">
+                    <div class="bg-gray-700 h-2 rounded-full transition-all" style="width:{% if total_verified %}{% widthratio total_tp total_verified 100 %}{% else %}0{% endif %}%"></div>
+                </div>
+                <p class="text-xs text-gray-400 mt-1">{% if total_verified %}{% widthratio total_tp total_verified 100 %}{% else %}0{% endif %}% of verified sites</p>
             </div>
             <!-- False positives -->
-            <div class="text-center">
-                <p class="text-3xl font-bold text-red-500">{{ total_fp }}</p>
-                <p class="text-xs text-gray-500 mt-1">False positives</p>
-                <div class="mt-2 w-full bg-gray-100 rounded-full h-1.5">
-                    <div class="bg-red-400 h-1.5 rounded-full" style="width:{% if total_verified %}{{ total_fp|floatformat:0 }}{% else %}0{% endif %}%"></div>
+            <div>
+                <div class="flex items-baseline gap-2 mb-1">
+                    <p class="text-3xl font-bold text-gray-900">{{ total_fp }}</p>
+                    <p class="text-sm text-gray-400">false positives</p>
                 </div>
+                <p class="text-xs text-gray-500 mb-2">Sites flagged by model but cleared on the ground</p>
+                <div class="w-full bg-gray-100 rounded-full h-2">
+                    <div class="bg-gray-400 h-2 rounded-full transition-all" style="width:{% if total_verified %}{% widthratio total_fp total_verified 100 %}{% else %}0{% endif %}%"></div>
+                </div>
+                <p class="text-xs text-gray-400 mt-1">{% if total_verified %}{% widthratio total_fp total_verified 100 %}{% else %}0{% endif %}% false positive rate</p>
             </div>
         </div>
     </div>
     {% endif %}
 
-    <!-- Metric Detail Breakdown -->
+    <!-- Model Interpretation -->
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
         <div class="px-5 py-4 border-b border-gray-100">
-            <h2 class="text-sm font-semibold text-gray-900">Metric Breakdown</h2>
-            <p class="text-xs text-gray-400 mt-0.5">FPN-ResNet50 v1.0 &middot; Best Precision Checkpoint &middot; Test Set</p>
+            <h2 class="text-sm font-semibold text-gray-900">What these numbers mean in practice</h2>
+            <p class="text-xs text-gray-400 mt-0.5">Plain-language interpretation of model behaviour</p>
         </div>
-        <div class="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-
-            <div>
-                <div class="flex justify-between text-sm mb-1.5">
-                    <span class="font-medium text-gray-700">Pixel Accuracy</span>
-                    <span class="font-bold text-gray-900">97.90%</span>
+        <div class="p-5 grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div class="flex gap-3">
+                <div class="mt-0.5 w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
                 </div>
-                <div class="w-full bg-gray-100 rounded-full h-2">
-                    <div class="bg-green-500 h-2 rounded-full" style="width:97.9%"></div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-800">{{ live_precision }}% Precision</p>
+                    <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">When the model flags a site as illegal mining, it is correct roughly <strong>{{ live_precision|floatformat:0 }} times out of 100</strong>. Every false dispatch wastes inspector time.</p>
                 </div>
-                <p class="text-xs text-gray-400 mt-1">Fraction of correctly classified pixels across all classes</p>
             </div>
-
-            <div>
-                <div class="flex justify-between text-sm mb-1.5">
-                    <span class="font-medium text-gray-700">Precision {% if has_field_data %}<span class="text-[10px] font-semibold text-green-600 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded ml-1">Live</span>{% endif %}</span>
-                    <span class="font-bold text-gray-900">{{ live_precision }}%</span>
+            <div class="flex gap-3">
+                <div class="mt-0.5 w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                    </svg>
                 </div>
-                <div class="w-full bg-gray-100 rounded-full h-2">
-                    <div class="bg-blue-500 h-2 rounded-full" style="width:{{ live_precision }}%"></div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-800">77.1% Recall</p>
+                    <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">The model detects <strong>~3 in 4 actual mining sites</strong>. Roughly 1 in 4 real sites may be missed in any given scan — human review of borderline zones matters.</p>
                 </div>
-                <p class="text-xs text-gray-400 mt-1">{% if has_field_data %}Field-verified: last {{ total_verified }} inspector reports{% else %}Of all predicted mining pixels, how many are truly mining{% endif %}</p>
             </div>
-
-            <div>
-                <div class="flex justify-between text-sm mb-1.5">
-                    <span class="font-medium text-gray-700">Recall</span>
-                    <span class="font-bold text-gray-900">77.09%</span>
+            <div class="flex gap-3">
+                <div class="mt-0.5 w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
                 </div>
-                <div class="w-full bg-gray-100 rounded-full h-2">
-                    <div class="bg-blue-400 h-2 rounded-full" style="width:77.09%"></div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-800">60.0% IoU</p>
+                    <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">On average, the model's predicted mining boundary overlaps <strong>60% with the actual site footprint</strong>. Useful for area estimates but not precise enough for legal boundary demarcation.</p>
                 </div>
-                <p class="text-xs text-gray-400 mt-1">Of all actual mining pixels, how many were detected</p>
             </div>
-
-            <div>
-                <div class="flex justify-between text-sm mb-1.5">
-                    <span class="font-medium text-gray-700">F1 Score / Dice</span>
-                    <span class="font-bold text-gray-900">75.02%</span>
-                </div>
-                <div class="w-full bg-gray-100 rounded-full h-2">
-                    <div class="bg-indigo-500 h-2 rounded-full" style="width:75.02%"></div>
-                </div>
-                <p class="text-xs text-gray-400 mt-1">Harmonic mean of precision and recall</p>
-            </div>
-
-            <div>
-                <div class="flex justify-between text-sm mb-1.5">
-                    <span class="font-medium text-gray-700">IoU (Jaccard)</span>
-                    <span class="font-bold text-gray-900">60.03%</span>
-                </div>
-                <div class="w-full bg-gray-100 rounded-full h-2">
-                    <div class="bg-orange-400 h-2 rounded-full" style="width:60.03%"></div>
-                </div>
-                <p class="text-xs text-gray-400 mt-1">Overlap between predicted and ground truth masks</p>
-            </div>
-
-            <div>
-                <div class="flex justify-between text-sm mb-1.5">
-                    <span class="font-medium text-gray-700">Test Loss</span>
-                    <span class="font-bold text-gray-900">0.1246</span>
-                </div>
-                <div class="w-full bg-gray-100 rounded-full h-2">
-                    <!-- Visual: lower loss = thinner bar (scaled: 0.1246 / 0.5 max = ~25%) -->
-                    <div class="bg-green-400 h-2 rounded-full" style="width:24.9%"></div>
-                </div>
-                <p class="text-xs text-gray-400 mt-1">Combined BCE + Dice loss on held-out test imagery</p>
-            </div>
-
         </div>
     </div>
+
 
 </div>
 {% endblock %}
@@ -389,6 +370,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const confCtx = document.getElementById('confidence-chart');
     if (confCtx) {
         const confBins = [{% for b in conf_bins %}{{ b }}{% if not forloop.last %},{% endif %}{% endfor %}];
+        // Use opacity steps of a single green to keep it clean
         new Chart(confCtx, {
             type: 'bar',
             data: {
@@ -397,11 +379,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     label: 'Detections',
                     data: confBins,
                     backgroundColor: [
-                        'rgba(239,68,68,0.7)',
-                        'rgba(249,115,22,0.7)',
-                        'rgba(234,179,8,0.7)',
-                        'rgba(59,130,246,0.7)',
-                        'rgba(16,185,129,0.7)',
+                        'rgba(27,67,50,0.25)',
+                        'rgba(27,67,50,0.40)',
+                        'rgba(27,67,50,0.55)',
+                        'rgba(27,67,50,0.72)',
+                        'rgba(27,67,50,0.90)',
                     ],
                     borderWidth: 0,
                     borderRadius: 4,
@@ -412,7 +394,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
-                    tooltip: { callbacks: { label: ctx => ` ${ctx.raw} detection${ctx.raw !== 1 ? 's' : ''}` } }
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ` ${ctx.raw} detection${ctx.raw !== 1 ? 's' : ''}`,
+                            title: ctx => `Confidence ${ctx[0].label}`,
+                        }
+                    }
                 },
                 scales: {
                     x: {
