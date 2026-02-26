@@ -135,6 +135,10 @@
                                 <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-50 text-gray-500">Bulk Dismiss</span>
                             {% elif action == 'assignment.field_report' %}
                                 <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Field Report</span>
+                            {% elif action == 'assignment.sla_escalated' %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-700">SLA Escalated</span>
+                            {% elif action == 'job.created' %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-100 text-teal-700">Scan Initiated</span>
                             {% else %}
                                 <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 font-mono">{{ action }}</span>
                             {% endif %}

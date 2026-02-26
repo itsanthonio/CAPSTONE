@@ -109,6 +109,19 @@ class InspectorAssignment(models.Model):
     accepted_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True)
+    # SLA tracking
+    due_date = models.DateField(
+        null=True, blank=True,
+        help_text='SLA deadline for completing this assignment'
+    )
+    sla_reminder_sent = models.BooleanField(
+        default=False,
+        help_text='Whether the SLA reminder email has been sent to the inspector'
+    )
+    sla_escalated = models.BooleanField(
+        default=False,
+        help_text='Whether this overdue assignment has been escalated to admins'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -119,3 +132,42 @@ class InspectorAssignment(models.Model):
 
     def __str__(self):
         return f"Alert {self.alert_id} → {self.inspector.user.username}"
+
+
+class EvidencePhoto(models.Model):
+    """
+    One record per evidence photo uploaded with a field report.
+    Replaces the evidence_photos JSONField on InspectorAssignment for new uploads.
+    Stores SHA-256 hash for deduplication and integrity verification.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    assignment = models.ForeignKey(
+        InspectorAssignment,
+        on_delete=models.CASCADE,
+        related_name='evidence_photo_set'
+    )
+    file = models.ImageField(
+        upload_to='inspections/%Y/%m/',
+        help_text='Uploaded evidence photo'
+    )
+    sha256_hash = models.CharField(
+        max_length=64,
+        blank=True,
+        db_index=True,
+        help_text='SHA-256 of the file bytes for deduplication and integrity checks'
+    )
+    original_name = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text='Original filename as uploaded by the inspector'
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Evidence Photo'
+        verbose_name_plural = 'Evidence Photos'
+        ordering = ['uploaded_at']
+
+    def __str__(self):
+        return f"Photo {self.id} — assignment {self.assignment_id}"

@@ -137,6 +137,9 @@
                                 <p class="text-xs text-gray-500">{{ user.email }}</p>
                             </div>
                             <div class="py-1">
+                                <a href="{% url 'dashboard:my_account' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    My Account
+                                </a>
                                 <a href="{% url 'password_change' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                     Change Password
                                 </a>
@@ -366,22 +369,28 @@
     <!-- Notification Bell Script -->
     <script>
     (function () {
+        {% if not user.is_authenticated %}return;{% endif %}
+
+        const NOTIF_API      = '/api/notifications/';
+        const MARK_READ_API  = '/api/notifications/mark-read/';
         {% if user.is_authenticated and user.profile.role == 'inspector' %}
-        const NOTIF_API   = '/api/my-assignments/';
-        const NOTIF_LINK  = '/dashboard/inspector/';
-        const IS_INSPECTOR = true;
+        const FOOTER_LINK = '/dashboard/inspector/';
         {% else %}
-        const NOTIF_API   = '/api/alerts/?status=open&per_page=5&ordering=-created_at';
-        const NOTIF_LINK  = '/dashboard/alerts/';
-        const IS_INSPECTOR = false;
+        const FOOTER_LINK = '/dashboard/alerts/';
         {% endif %}
 
-        const SEV_CLASS = {
-            critical: 'bg-red-100 text-red-700',
-            high:     'bg-orange-100 text-orange-700',
-            medium:   'bg-yellow-100 text-yellow-700',
-            low:      'bg-gray-100 text-gray-600',
+        const KIND_COLOR = {
+            assignment: 'text-purple-600',
+            alert:      'text-red-600',
+            sla:        'text-amber-600',
+            report:     'text-green-600',
+            system:     'text-gray-500',
         };
+
+        function getCsrf() {
+            const m = document.cookie.match(/csrftoken=([^;]+)/);
+            return m ? m[1] : '';
+        }
 
         function setBadge(count) {
             const badge = document.getElementById('notif-badge');
@@ -399,7 +408,19 @@
                 const res = await fetch(NOTIF_API, { credentials: 'include' });
                 if (!res.ok) return;
                 const data = await res.json();
-                setBadge(IS_INSPECTOR ? data.count : (data.total || 0));
+                setBadge(data.unread || 0);
+            } catch (_) {}
+        }
+
+        async function markAllRead() {
+            try {
+                await fetch(MARK_READ_API, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+                    body: '{}',
+                });
+                setBadge(0);
             } catch (_) {}
         }
 
@@ -412,40 +433,38 @@
                 const res = await fetch(NOTIF_API, { credentials: 'include' });
                 if (!res.ok) throw new Error();
                 const data = await res.json();
+                const unread = data.unread || 0;
+                const items  = data.items  || [];
 
-                const total = IS_INSPECTOR ? data.count : (data.total || 0);
-                const items = IS_INSPECTOR ? data.items : (data.results || []);
-                if (label) label.textContent = total > 0 ? `${total} pending` : 'All clear';
-                setBadge(total);
+                if (label) label.textContent = unread > 0 ? `${unread} unread` : 'All read';
+                setBadge(unread);
 
                 if (!items.length) {
-                    list.innerHTML = '<div class="px-4 py-6 text-center text-sm text-gray-400">No pending notifications</div>';
+                    list.innerHTML = '<div class="px-4 py-6 text-center text-sm text-gray-400">No notifications yet</div>';
                     return;
                 }
 
                 list.innerHTML = items.map(item => {
-                    if (IS_INSPECTOR) {
-                        const when = item.assigned_at || '';
-                        return `<a href="${NOTIF_LINK}" class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors block">
-                            <span class="mt-0.5 w-2 h-2 rounded-full bg-purple-400 shrink-0 mt-2"></span>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-sm font-medium text-gray-900">New field assignment</p>
-                                <p class="text-xs text-gray-400 mt-0.5">${when}</p>
-                            </div>
-                        </a>`;
-                    } else {
-                        const sevCls = SEV_CLASS[item.severity] || 'bg-gray-100 text-gray-600';
-                        const region = item.site && item.site.region ? ' · ' + item.site.region : '';
-                        const link   = `/dashboard/alerts/?highlight=${item.id}`;
-                        return `<a href="${link}" class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors block">
-                            <span class="mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${sevCls} shrink-0">${item.severity}</span>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-sm font-medium text-gray-900 truncate">${item.title}</p>
-                                <p class="text-xs text-gray-400 mt-0.5">${item.created_at}${region}</p>
-                            </div>
-                        </a>`;
-                    }
+                    const kindColor  = KIND_COLOR[item.kind] || KIND_COLOR.system;
+                    const dotColor   = item.is_read ? 'bg-transparent' : 'bg-blue-500';
+                    const rowBg      = item.is_read ? '' : 'style="background:#eff6ff;"';
+                    const titleCls   = item.is_read ? 'font-medium' : 'font-semibold';
+                    const href       = item.link || FOOTER_LINK;
+                    const bodyHtml   = item.body
+                        ? `<p class="text-xs text-gray-400 mt-0.5 truncate">${item.body}</p>`
+                        : '';
+                    return `<a href="${href}" class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors" ${rowBg}>
+                        <span class="mt-2 w-2 h-2 rounded-full ${dotColor} shrink-0 flex-none"></span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm ${titleCls} text-gray-900 truncate">${item.title}</p>
+                            ${bodyHtml}
+                            <p class="text-xs ${kindColor} mt-0.5">${item.kind} &middot; ${item.created_at}</p>
+                        </div>
+                    </a>`;
                 }).join('');
+
+                // Mark all as read after rendering
+                if (unread > 0) markAllRead();
             } catch (_) {
                 list.innerHTML = '<div class="px-4 py-4 text-center text-xs text-gray-400">Failed to load</div>';
             }
@@ -456,12 +475,11 @@
             const dd  = document.getElementById('notif-dropdown');
             if (!btn || !dd) return;
 
-            // Load count on every page load
+            // Load badge count on every page load, refresh every 60s
             loadNotifCount();
-            // Refresh count every 60s
             setInterval(loadNotifCount, 60000);
 
-            // Toggle dropdown
+            // Toggle dropdown; load items when opening
             btn.addEventListener('click', function (e) {
                 e.stopPropagation();
                 const isOpen = !dd.classList.contains('hidden');

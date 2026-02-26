@@ -41,6 +41,14 @@ def _audit(user, action, obj_id, **detail):
         pass
 
 
+def _is_admin(user):
+    """Return True if the user has the admin role."""
+    try:
+        return user.is_authenticated and user.profile.role == 'admin'
+    except Exception:
+        return False
+
+
 class JobViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Job model with creation and status tracking.
@@ -87,6 +95,7 @@ class JobViewSet(viewsets.ModelViewSet):
                 )
 
             logger.info(f"Created new job {job.id} via API")
+            _audit(request.user, 'job.created', job.id, status=job.status)
 
             # Trigger detection pipeline asynchronously
             try:
@@ -630,6 +639,7 @@ class AlertViewSet(viewsets.ViewSet):
     def _change_status(self, request, pk, new_status, extra=None):
         from apps.detections.models import Alert
         from django.utils import timezone
+        from django.core.cache import cache
         a = get_object_or_404(Alert, pk=pk)
         prev_status = a.status
         a.status = new_status
@@ -639,26 +649,42 @@ class AlertViewSet(viewsets.ViewSet):
             a.resolved_at = timezone.now()
             a.resolution_notes = request.data.get('resolution_notes', '')
         a.save()
+        cache.delete_many([f'dashboard_stats_{w}' for w in range(2, 53)])
         _audit(request.user, f'alert.{new_status}', a.id,
                prev_status=prev_status, severity=a.severity)
         return Response({'id': str(a.id), 'status': a.status})
 
     @action(detail=True, methods=['post'])
     def acknowledge(self, request, pk=None):
+        if not _is_admin(request.user):
+            return Response({'error': 'Admin access required.'}, status=403)
         return self._change_status(request, pk, 'acknowledged')
 
     @action(detail=True, methods=['post'])
     def dismiss(self, request, pk=None):
+        if not _is_admin(request.user):
+            return Response({'error': 'Admin access required.'}, status=403)
         return self._change_status(request, pk, 'dismissed')
 
     @action(detail=True, methods=['post'])
     def dispatch_alert(self, request, pk=None):
+        if not _is_admin(request.user):
+            return Response({'error': 'Admin access required.'}, status=403)
         return self._change_status(request, pk, 'dispatched')
 
     @action(detail=True, methods=['post'])
     def resolve(self, request, pk=None):
         from apps.detections.models import Alert
         a = get_object_or_404(Alert, pk=pk)
+
+        # Admins can resolve anything; inspectors can only resolve their own dispatched alerts
+        if not _is_admin(request.user):
+            if a.assigned_to != request.user:
+                return Response(
+                    {'error': 'You can only resolve alerts assigned to you.'},
+                    status=403
+                )
+
         if a.status == 'dispatched':
             return Response(
                 {'error': 'This alert has an inspector dispatched. Resolution must come from their field report.'},
@@ -668,6 +694,9 @@ class AlertViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['post'])
     def bulk_action(self, request):
+        if not _is_admin(request.user):
+            return Response({'error': 'Admin access required.'}, status=403)
+
         from apps.detections.models import Alert
         from django.utils import timezone
 
@@ -694,17 +723,24 @@ class AlertViewSet(viewsets.ViewSet):
         else:
             updated = qs.update(status=verb)
 
+        from django.core.cache import cache
+        cache.delete_many([f'dashboard_stats_{w}' for w in range(2, 53)])
         _audit(request.user, f'alert.bulk_{verb}', '',
                alert_ids=ids, updated=updated)
         return Response({'updated': updated})
 
     @action(detail=False, methods=['post'])
     def bulk_assign_inspector(self, request):
+        if not _is_admin(request.user):
+            return Response({'error': 'Admin access required.'}, status=403)
+
         from apps.detections.models import Alert
         from apps.accounts.models import InspectorAssignment, UserProfile
         from django.utils import timezone
+        from datetime import timedelta
+        from django.conf import settings as _settings
 
-        alert_ids        = request.data.get('alert_ids', [])
+        alert_ids          = request.data.get('alert_ids', [])
         inspector_username = request.data.get('inspector_username', '')
 
         if not alert_ids:
@@ -720,20 +756,86 @@ class AlertViewSet(viewsets.ViewSet):
         except UserProfile.DoesNotExist:
             return Response({'error': 'Inspector not found.'}, status=404)
 
-        alerts = Alert.objects.filter(id__in=alert_ids, status__in=['open', 'acknowledged'])
+        # Availability check
+        if not inspector.is_available:
+            return Response({'error': 'Inspector is not currently available for assignments.'}, status=400)
+
+        max_pending = getattr(_settings, 'INSPECTOR_MAX_PENDING_ASSIGNMENTS', 3)
+        current_pending = InspectorAssignment.objects.filter(
+            inspector=inspector,
+            status=InspectorAssignment.Status.PENDING,
+        ).count()
+        if current_pending >= max_pending:
+            return Response({
+                'error': f'Inspector already has {current_pending} pending assignment(s) (maximum {max_pending}).'
+            }, status=400)
+
+        sla_days = getattr(_settings, 'INSPECTOR_SLA_DAYS', 5)
+        due_date = (timezone.now() + timedelta(days=sla_days)).date()
+
+        # Fetch and route-optimise alerts using nearest-neighbour sort
+        alerts = list(
+            Alert.objects.filter(
+                id__in=alert_ids, status__in=['open', 'acknowledged']
+            ).select_related('detected_site')
+        )
+
+        # Separate alerts with/without centroids then do greedy nearest-neighbour
+        with_coords  = [(a, a.detected_site.centroid.x, a.detected_site.centroid.y)
+                        for a in alerts
+                        if a.detected_site and a.detected_site.centroid]
+        without_coords = [a for a in alerts
+                          if not (a.detected_site and a.detected_site.centroid)]
+
+        if len(with_coords) > 1:
+            sorted_alerts = []
+            remaining = list(with_coords)
+            current = remaining.pop(0)
+            sorted_alerts.append(current[0])
+            while remaining:
+                cx, cy = current[1], current[2]
+                nearest_idx = min(
+                    range(len(remaining)),
+                    key=lambda i: (remaining[i][1] - cx) ** 2 + (remaining[i][2] - cy) ** 2
+                )
+                current = remaining.pop(nearest_idx)
+                sorted_alerts.append(current[0])
+            alerts = sorted_alerts + without_coords
+        else:
+            alerts = [item[0] for item in with_coords] + without_coords
+
         created = 0
-        for alert in alerts:
-            InspectorAssignment.objects.create(
-                alert_id=alert.id,
-                inspector=inspector,
-                status=InspectorAssignment.Status.PENDING,
+        with transaction.atomic():
+            for alert in alerts:
+                InspectorAssignment.objects.create(
+                    alert_id=alert.id,
+                    inspector=inspector,
+                    status=InspectorAssignment.Status.PENDING,
+                    due_date=due_date,
+                )
+                alert.status = 'dispatched'
+                alert.assigned_to = inspector.user
+                alert.save(update_fields=['status', 'assigned_to'])
+                _audit(request.user, 'alert.assigned', alert.id,
+                       inspector=inspector_username)
+                created += 1
+
+        from django.core.cache import cache
+        cache.delete_many([f'dashboard_stats_{w}' for w in range(2, 53)])
+
+        # Push a single in-app notification summarising all newly assigned alerts
+        try:
+            from apps.notifications.services import push_notification
+            n = created
+            push_notification(
+                user=inspector.user,
+                title=f'New field assignment{"s" if n > 1 else ""} — {n} alert{"s" if n > 1 else ""} assigned',
+                body='Open your inspector dashboard to view and submit field reports.',
+                link='/dashboard/inspector/',
+                kind='assignment',
             )
-            alert.status = 'dispatched'
-            alert.assigned_to = inspector.user
-            alert.save(update_fields=['status', 'assigned_to'])
-            _audit(request.user, 'alert.assigned', alert.id,
-                   inspector=inspector_username)
-            created += 1
+        except Exception:
+            pass
 
         return Response({'assigned': created, 'inspector': inspector_username})
 

@@ -50,6 +50,14 @@
             </p>
         </div>
 
+        {% if messages %}
+        {% for msg in messages %}
+        <div class="{% if msg.tags == 'success' %}bg-green-50 border-green-200{% elif msg.tags == 'warning' %}bg-amber-50 border-amber-200{% else %}bg-red-50 border-red-200{% endif %} border rounded-lg p-4">
+            <p class="text-sm {% if msg.tags == 'success' %}text-green-800{% elif msg.tags == 'warning' %}text-amber-800{% else %}text-red-800{% endif %}">{{ msg }}</p>
+        </div>
+        {% endfor %}
+        {% endif %}
+
         {% if error %}
         <div class="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
             <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,7 +87,7 @@
                 <!-- Hidden full PIN field submitted with form -->
                 <input type="hidden" id="pin" name="pin">
                 <p class="mt-3 text-center text-xs text-gray-400">
-                    Didn't get it? Check your spam folder · Code expires in 24 hours
+                    Code expires in 24 hours · Check your spam folder
                 </p>
             </div>
 
@@ -89,11 +97,24 @@
             </button>
         </form>
 
-        <p class="text-center text-sm text-gray-500">
+        <!-- Resend code -->
+        <div class="text-center">
+            <p class="text-sm text-gray-500 mb-1">Didn't receive it?</p>
+            <a href="{% url 'dashboard:resend_activation_pin' %}?email={{ email }}"
+               class="inline-flex items-center gap-1.5 text-sm font-medium text-gis-blue hover:text-blue-700">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Resend code
+            </a>
+        </div>
+
+        <p class="text-center text-sm text-gray-400">
             Wrong email?
-            <a href="{% url 'signup' %}" class="font-medium text-gis-blue hover:text-blue-600">Sign up again</a>
+            <a href="{% url 'signup' %}" class="text-gis-blue hover:text-blue-600">Sign up again</a>
             &nbsp;·&nbsp;
-            <a href="{% url 'login' %}" class="text-gray-400 hover:text-gray-600">Back to sign in</a>
+            <a href="{% url 'login' %}" class="hover:text-gray-600">Back to sign in</a>
         </p>
     </div>
 </div>

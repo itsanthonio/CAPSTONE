@@ -81,6 +81,81 @@ def escalate_stale_alerts():
     return {'escalated': count}
 
 
+@shared_task
+def check_assignment_sla():
+    """
+    Periodic task: check all pending assignments for SLA violations.
+
+    - Reminder: due_date passed + sla_reminder_sent=False → email inspector
+    - Escalation: 2+ days past due_date + sla_escalated=False → email admins + audit log
+    """
+    from datetime import date, timedelta
+    from apps.accounts.models import InspectorAssignment
+    from apps.detections.models import Alert, AuditLog
+
+    today = date.today()
+    reminded = 0
+    escalated = 0
+
+    # ── Reminder: any overdue assignment not yet reminded ─────────────────────
+    overdue = InspectorAssignment.objects.filter(
+        status=InspectorAssignment.Status.PENDING,
+        due_date__lte=today,
+        sla_reminder_sent=False,
+        sla_escalated=False,
+    ).select_related('inspector__user', 'alert__detected_site__region')
+
+    for assignment in overdue:
+        days_overdue = (today - assignment.due_date).days
+        try:
+            alert = Alert.objects.get(id=assignment.alert_id)
+            from apps.notifications.services import send_sla_reminder
+            send_sla_reminder(assignment, alert, days_overdue)
+        except Exception as exc:
+            logger.warning(f'SLA reminder failed for assignment {assignment.id}: {exc}')
+        assignment.sla_reminder_sent = True
+        assignment.save(update_fields=['sla_reminder_sent'])
+        reminded += 1
+
+    # ── Escalation: 2+ days overdue, not yet escalated ───────────────────────
+    escalation_threshold = today - timedelta(days=2)
+    critical_overdue = InspectorAssignment.objects.filter(
+        status=InspectorAssignment.Status.PENDING,
+        due_date__lte=escalation_threshold,
+        sla_escalated=False,
+    ).select_related('inspector__user', 'alert__detected_site__region')
+
+    for assignment in critical_overdue:
+        days_overdue = (today - assignment.due_date).days
+        try:
+            alert = Alert.objects.get(id=assignment.alert_id)
+            from apps.notifications.services import send_sla_escalation
+            send_sla_escalation(assignment, alert, days_overdue)
+        except Exception as exc:
+            logger.warning(f'SLA escalation email failed for assignment {assignment.id}: {exc}')
+
+        assignment.sla_escalated = True
+        assignment.save(update_fields=['sla_escalated'])
+
+        try:
+            AuditLog.objects.create(
+                user=None,
+                action='assignment.sla_escalated',
+                object_id=str(assignment.id),
+                detail={
+                    'inspector': assignment.inspector.user.username,
+                    'days_overdue': days_overdue,
+                    'due_date': str(assignment.due_date),
+                },
+            )
+        except Exception:
+            pass
+        escalated += 1
+
+    logger.info(f'SLA check: {reminded} reminded, {escalated} escalated.')
+    return {'reminded': reminded, 'escalated': escalated}
+
+
 @shared_task(bind=True, max_retries=3)
 def run_detection_task(self, job_id: str, threshold: float = 0.5, min_area: float = 100.0):
     """

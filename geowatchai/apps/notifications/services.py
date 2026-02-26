@@ -166,6 +166,24 @@ def _notes_block(notes):
 
 
 # ─────────────────────────────────────────────
+# In-app notification helper
+# ─────────────────────────────────────────────
+
+def push_notification(user, title, body='', link='', kind='system'):
+    """Write one row to NotificationInbox.  Silent on failure — never crashes the caller.
+    Safe to call from daemon threads: closes any stale DB connection first."""
+    try:
+        from django.db import close_old_connections
+        close_old_connections()
+        from apps.notifications.models import NotificationInbox
+        NotificationInbox.objects.create(
+            user=user, title=title, body=body, link=link, kind=kind
+        )
+    except Exception as exc:
+        logger.warning(f'[Notifications] push_notification failed: {exc}')
+
+
+# ─────────────────────────────────────────────
 # Recipient helpers
 # ─────────────────────────────────────────────
 
@@ -180,6 +198,19 @@ def _admin_recipients():
         return [p.user.email for p in profiles if p.user.email]
     except Exception as exc:
         logger.warning(f'[Notifications] Could not fetch admin recipients: {exc}')
+        return []
+
+
+def _admin_users():
+    """Return User objects for all admins (for in-app notification delivery)."""
+    try:
+        from apps.accounts.models import UserProfile
+        return [
+            p.user for p in
+            UserProfile.objects.filter(role=UserProfile.Role.ADMIN).select_related('user')
+        ]
+    except Exception as exc:
+        logger.warning(f'[Notifications] Could not fetch admin users: {exc}')
         return []
 
 
@@ -243,6 +274,10 @@ def send_scan_completed(job):
 
     _send(subject, plain, _wrap(body, f'{total} sites detected, {illegal} illegal'), recipients, tag='scan_completed')
 
+    notif_body = f'{illegal} illegal site(s) flagged.' if illegal > 0 else 'No illegal sites detected.'
+    for u in _admin_users():
+        push_notification(u, f'Scan complete — {total} site(s) detected', notif_body, '/dashboard/alerts/', 'alert')
+
 
 # ─────────────────────────────────────────────
 # 2. Scan failed (Admin)
@@ -278,6 +313,9 @@ def send_scan_failed(job):
     )
 
     _send(subject, plain, _wrap(body, 'A scan job has failed and requires attention'), recipients, tag='scan_failed')
+
+    for u in _admin_users():
+        push_notification(u, 'Satellite scan failed', f'Job {job.id}: {str(reason)[:120]}', '/dashboard/home/', 'system')
 
 
 # ─────────────────────────────────────────────
@@ -340,6 +378,9 @@ def send_field_report_received(assignment, alert):
     )
 
     _send(subject, plain, _wrap(body, f'Field report: {outcome_display} by {inspector_name}'), recipients, tag='field_report_received')
+
+    for u in _admin_users():
+        push_notification(u, f'Field report: {outcome_display}', f'Submitted by {inspector_name}.', '/dashboard/alerts/', 'report')
 
 
 # ─────────────────────────────────────────────
@@ -406,6 +447,14 @@ def send_new_assignment(assignment, alert):
 
     _send(subject, plain, _wrap(body, f'New {severity} field assignment in {region}'), [recipient], tag='new_assignment')
 
+    push_notification(
+        assignment.inspector.user,
+        f'New field assignment — {severity} alert',
+        f'Site in {region}. Please visit and submit your report.',
+        '/dashboard/inspector/',
+        'assignment',
+    )
+
 
 # ─────────────────────────────────────────────
 # 5. Assignment reminder (Inspector)
@@ -453,6 +502,135 @@ def send_assignment_reminder(assignment, alert, days_pending):
     )
 
     _send(subject, plain, _wrap(body, f'Field report pending for {days_pending} days'), [recipient], tag='assignment_reminder')
+
+    push_notification(
+        assignment.inspector.user,
+        f'Reminder: field report pending {days_pending} day{"s" if days_pending != 1 else ""}',
+        f'Your assignment in {region} has not been submitted yet.',
+        '/dashboard/inspector/',
+        'sla',
+    )
+
+
+# ─────────────────────────────────────────────
+# 6. SLA reminder — inspector overdue (Inspector)
+# ─────────────────────────────────────────────
+
+def send_sla_reminder(assignment, alert, days_overdue):
+    """Notify an inspector that their assignment is past its SLA deadline."""
+    recipient = _inspector_recipient(assignment.inspector)
+    if not recipient:
+        return
+
+    inspector_name = (
+        assignment.inspector.user.get_full_name()
+        or assignment.inspector.user.username
+    )
+
+    site     = getattr(alert, 'detected_site', None) if alert else None
+    severity = alert.get_severity_display() if alert else '—'
+    region   = site.region.name if site and site.region else '—'
+    due      = assignment.due_date.strftime('%d %b %Y') if assignment.due_date else '—'
+
+    subject = f'Action Required: Field Assignment Overdue ({days_overdue} day{"s" if days_overdue != 1 else ""}) | {APP_NAME}'
+
+    body = (
+        f'<p style="margin:0 0 4px;font-size:15px;color:#374151;">Hello <strong>{inspector_name}</strong>,</p>'
+        + '<p style="margin:0 0 24px;font-size:14px;color:#6b7280;">Your field assignment has passed its deadline. Please submit your report immediately.</p>'
+        + _alert_box(
+            f'This assignment is <strong>{days_overdue} day{"s" if days_overdue != 1 else ""} overdue</strong> '
+            f'(deadline was <strong>{due}</strong>). Failure to submit will trigger an escalation.',
+            'danger'
+        )
+        + _detail_table([
+            ('Deadline',        due),
+            ('Days overdue',    str(days_overdue)),
+            ('Alert severity',  severity),
+            ('Region',          region),
+        ])
+        + _cta_button(_site_url('/dashboard/inspector/'), 'Submit Field Report Now &rarr;')
+    )
+
+    plain = (
+        f"Hello {inspector_name},\n\n"
+        f"Your field assignment is {days_overdue} day(s) overdue (deadline: {due}).\n\n"
+        f"Severity: {severity}\nRegion: {region}\n\n"
+        f"Please submit your report immediately: {_site_url('/dashboard/inspector/')}"
+    )
+
+    _send(subject, plain, _wrap(body, f'Assignment {days_overdue}d overdue — action required'), [recipient], tag='sla_reminder')
+
+    push_notification(
+        assignment.inspector.user,
+        f'Assignment overdue — {days_overdue} day{"s" if days_overdue != 1 else ""}',
+        f'Your field report for {region} is past its deadline ({due}).',
+        '/dashboard/inspector/',
+        'sla',
+    )
+
+
+# ─────────────────────────────────────────────
+# 7. SLA escalation — overdue to admins (Admin)
+# ─────────────────────────────────────────────
+
+def send_sla_escalation(assignment, alert, days_overdue):
+    """Notify admins that an inspector's assignment is significantly overdue."""
+    recipients = _admin_recipients()
+    if not recipients:
+        return
+
+    inspector_name = (
+        assignment.inspector.user.get_full_name()
+        or assignment.inspector.user.username
+    )
+    inspector_username = assignment.inspector.user.username
+
+    site     = getattr(alert, 'detected_site', None) if alert else None
+    severity = alert.get_severity_display() if alert else '—'
+    region   = site.region.name if site and site.region else '—'
+    due      = assignment.due_date.strftime('%d %b %Y') if assignment.due_date else '—'
+    assigned = assignment.assigned_at.strftime('%d %b %Y') if assignment.assigned_at else '—'
+
+    subject = f'SLA Breach: Inspector Assignment Escalated | {APP_NAME}'
+
+    body = (
+        _heading('SLA Breach — Inspector Assignment Escalated')
+        + _subheading(f'Inspector: {inspector_name} &nbsp;·&nbsp; {days_overdue} days overdue')
+        + _alert_box(
+            f'<strong>{inspector_name}</strong> ({inspector_username}) has not submitted their field report. '
+            f'The assignment is <strong>{days_overdue} day{"s" if days_overdue != 1 else ""} past deadline</strong>. '
+            f'Please follow up or reassign.',
+            'danger'
+        )
+        + _detail_table([
+            ('Inspector',    f'{inspector_name} ({inspector_username})'),
+            ('Assigned on',  assigned),
+            ('Deadline',     due),
+            ('Days overdue', str(days_overdue)),
+            ('Severity',     severity),
+            ('Region',       region),
+        ])
+        + _cta_button(_site_url('/dashboard/alerts/'), 'View Alerts &rarr;')
+    )
+
+    plain = (
+        f"SLA Breach — inspector assignment escalated.\n\n"
+        f"Inspector: {inspector_name} ({inspector_username})\n"
+        f"Assigned: {assigned}\nDeadline: {due}\nDays overdue: {days_overdue}\n"
+        f"Severity: {severity}\nRegion: {region}\n\n"
+        f"Please follow up or reassign: {_site_url('/dashboard/alerts/')}"
+    )
+
+    _send(subject, plain, _wrap(body, f'SLA breach: {inspector_name} {days_overdue}d overdue'), recipients, tag='sla_escalation')
+
+    for u in _admin_users():
+        push_notification(
+            u,
+            f'SLA breach: {inspector_name} — {days_overdue}d overdue',
+            f'Assignment in {region} not submitted. Please follow up or reassign.',
+            '/dashboard/alerts/',
+            'sla',
+        )
 
 
 # ─────────────────────────────────────────────

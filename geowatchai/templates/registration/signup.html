@@ -88,20 +88,6 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Account Type</label>
-                    <div class="space-y-2">
-                        {% for choice in form.role.field.choices %}
-                        <label class="flex items-center">
-                            <input type="radio" name="role" value="{{ choice.0 }}"
-                                   {% if form.role.value == choice.0 %}checked{% endif %}
-                                   class="h-4 w-4 text-active-gold border-gray-300">
-                            <span class="ml-2 text-sm text-gray-700">{{ choice.1 }}</span>
-                        </label>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <div>
                     <label for="id_organization" class="block text-sm font-medium text-gray-700">Organization</label>
                     <select id="id_organization" name="organization" required
                             class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-active-gold focus:border-transparent sm:text-sm">

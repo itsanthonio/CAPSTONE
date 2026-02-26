@@ -11,6 +11,7 @@ urlpatterns = [
     # Email verification
     path('activation-sent/', views.activation_sent, name='activation_sent'),
     path('activation-pin/', views.activation_pin_entry, name='activation_pin_entry'),
+    path('activation-pin/resend/', views.resend_activation_pin, name='resend_activation_pin'),
     path('accounts/activate/<uidb64>/<token>/', views.activate_account, name='activate'),
     
     # Gatekeeper router - handles role-based redirection
@@ -20,11 +21,13 @@ urlpatterns = [
     path('home/', views.dashboard_home, name='home'),
     path('alerts/', views.dashboard_alerts, name='alerts'),
     path('report/', views.dashboard_report, name='report'),
+    path('report/pdf/', views.dashboard_report_pdf, name='report_pdf'),
     path('audit/', views.dashboard_audit, name='audit'),
     path('model-insights/', views.dashboard_model_insights, name='model_insights'),
     path('settings/', views.dashboard_settings, name='settings'),
     path('inspector/', views.inspector_dashboard, name='inspector'),
     path('assignment/<uuid:assignment_id>/report/', views.submit_field_report, name='submit_field_report'),
+    path('account/', views.my_account, name='my_account'),
     
     # Include accounts API URLs
     path('api/', include('apps.accounts.urls')),

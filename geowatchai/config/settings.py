@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     'apps.accounts',
     'apps.detections',
     'apps.api',
+    'apps.notifications',
 ]
 
 MIDDLEWARE = [
@@ -255,9 +256,9 @@ CELERY_TASK_TRACK_STARTED = True
 
 from celery.schedules import crontab
 CELERY_BEAT_SCHEDULE = {
-    'check-overdue-assignments-daily': {
-        'task': 'notifications.check_overdue_assignments',
-        'schedule': crontab(hour=8, minute=0),  # Every day at 08:00 UTC
+    'check-assignment-sla-daily': {
+        'task': 'apps.core.tasks.check_assignment_sla',
+        'schedule': crontab(hour=7, minute=0),  # Every day at 07:00 UTC
     },
     'escalate-stale-critical-alerts': {
         'task': 'apps.core.tasks.escalate_stale_alerts',
@@ -287,3 +288,8 @@ MODEL_TEST_METRICS = {
 # Map defaults — Ghana mining belt centroid
 MAP_DEFAULT_CENTER = [-1.6244, 6.6885]   # [lng, lat]
 MAP_DEFAULT_ZOOM = 7
+
+# Inspector workflow thresholds
+INSPECTOR_SLA_DAYS = 5                       # days from assignment to SLA deadline
+INSPECTOR_MAX_PENDING_ASSIGNMENTS = 10       # max pending before inspector is blocked
+ALERT_INCONCLUSIVE_ESCALATION_COUNT = 3     # inconclusives before alert auto-escalates to CRITICAL

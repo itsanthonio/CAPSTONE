@@ -494,6 +494,10 @@ class Alert(models.Model):
     )
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    inspection_count = models.PositiveIntegerField(
+        default=0,
+        help_text='Number of inconclusive field inspections submitted for this alert'
+    )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     acknowledged_at = models.DateTimeField(null=True, blank=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
