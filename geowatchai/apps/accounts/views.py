@@ -59,13 +59,33 @@ def create_assignment(request):
                 'success': False,
                 'error': 'Inspector is not available for assignment'
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+
+        # Check max pending assignments
+        from django.conf import settings as _django_settings
+        max_pending = getattr(_django_settings, 'INSPECTOR_MAX_PENDING_ASSIGNMENTS', 3)
+        current_pending = InspectorAssignment.objects.filter(
+            inspector=inspector,
+            status=InspectorAssignment.Status.PENDING,
+        ).count()
+        if current_pending >= max_pending:
+            return Response({
+                'success': False,
+                'error': f'Inspector already has {current_pending} pending assignment(s) (maximum {max_pending}).'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Compute SLA due date
+        from datetime import timedelta
+        from django.utils import timezone as _tz
+        sla_days = getattr(_django_settings, 'INSPECTOR_SLA_DAYS', 5)
+        due_date = (_tz.now() + timedelta(days=sla_days)).date()
+
         # Create assignment
         assignment = InspectorAssignment.objects.create(
             alert_id=alert_id,
             inspector=inspector,
             status=InspectorAssignment.Status.PENDING,
-            notes=notes
+            notes=notes,
+            due_date=due_date,
         )
         
         # Update the alert status to dispatched
@@ -77,6 +97,18 @@ def create_assignment(request):
             alert.save()
         except Alert.DoesNotExist:
             pass  # Alert might not exist, but assignment is still created
+
+        # Audit log
+        try:
+            from apps.detections.models import AuditLog
+            AuditLog.objects.create(
+                user=request.user if request.user.is_authenticated else None,
+                action='alert.assigned',
+                object_id=str(alert_id),
+                detail={'inspector': inspector_username, 'assignment_id': str(assignment.id)},
+            )
+        except Exception:
+            pass
 
         try:
             import threading

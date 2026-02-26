@@ -49,6 +49,25 @@
             <h1 class="text-2xl font-bold text-gray-900">My Assignments</h1>
             <p class="text-gray-500 text-sm mt-0.5">Field verification tasks assigned to you</p>
         </div>
+
+        <!-- Availability toggle -->
+        <div class="flex items-center gap-3">
+            <div id="availability-status" class="flex items-center gap-2 text-sm font-medium
+                {% if is_available %}text-green-700{% else %}text-gray-500{% endif %}">
+                <span id="availability-dot" class="w-2.5 h-2.5 rounded-full flex-shrink-0
+                    {% if is_available %}bg-green-500{% else %}bg-gray-400{% endif %}"></span>
+                <span id="availability-label">
+                    {% if is_available %}Available{% else %}Unavailable{% endif %}
+                </span>
+            </div>
+            <button id="availability-btn"
+                    onclick="toggleAvailability()"
+                    class="px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors
+                        {% if is_available %}border-red-200 text-red-600 bg-red-50 hover:bg-red-100
+                        {% else %}border-green-200 text-green-700 bg-green-50 hover:bg-green-100{% endif %}">
+                {% if is_available %}Go Unavailable{% else %}Go Available{% endif %}
+            </button>
+        </div>
     </div>
 
     {% if error %}
@@ -135,6 +154,64 @@
 
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+/* ---------- Availability toggle ---------- */
+let _availabilityBusy = false;
+
+function toggleAvailability() {
+    if (_availabilityBusy) return;
+    _availabilityBusy = true;
+
+    const btn    = document.getElementById('availability-btn');
+    const dot    = document.getElementById('availability-dot');
+    const label  = document.getElementById('availability-label');
+    const status = document.getElementById('availability-status');
+
+    // Determine the NEW state (flip from current button text)
+    const goingAvailable = btn.textContent.trim() === 'Go Available';
+    btn.textContent = 'Saving…';
+    btn.disabled = true;
+
+    fetch('/accounts/api/availability/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '',
+        },
+        body: JSON.stringify({ is_available: goingAvailable }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success !== false) {
+            const available = data.is_available ?? goingAvailable;
+            // Update dot colour
+            dot.className = 'w-2.5 h-2.5 rounded-full flex-shrink-0 ' +
+                (available ? 'bg-green-500' : 'bg-gray-400');
+            // Update label colour + text
+            status.className = 'flex items-center gap-2 text-sm font-medium ' +
+                (available ? 'text-green-700' : 'text-gray-500');
+            label.textContent = available ? 'Available' : 'Unavailable';
+            // Update button
+            btn.textContent = available ? 'Go Unavailable' : 'Go Available';
+            btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors ' +
+                (available
+                    ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100'
+                    : 'border-green-200 text-green-700 bg-green-50 hover:bg-green-100');
+            showToast(available ? 'You are now available for new assignments.' : 'You are now unavailable.', available ? 'success' : 'info');
+        } else {
+            showToast(data.error || 'Could not update availability.', 'error');
+            btn.textContent = goingAvailable ? 'Go Available' : 'Go Unavailable';
+        }
+    })
+    .catch(() => {
+        showToast('Network error — please try again.', 'error');
+        btn.textContent = goingAvailable ? 'Go Available' : 'Go Unavailable';
+    })
+    .finally(() => {
+        btn.disabled = false;
+        _availabilityBusy = false;
+    });
+}
+
 /* ---------- Tab filtering ---------- */
 function filterTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(b => {

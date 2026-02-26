@@ -17,7 +17,19 @@
                 <h3 class="text-base font-semibold text-gray-900">
                     {% if alert %}{{ alert.title }}{% else %}Assignment {{ assignment.id|truncatechars:8 }}{% endif %}
                 </h3>
-                <p class="text-xs text-gray-500 mt-0.5">Assigned {{ assignment.assigned_at|date:"M d, Y" }}</p>
+                <p class="text-xs text-gray-500 mt-0.5">
+                    Assigned {{ assignment.assigned_at|date:"M d, Y" }}
+                    {% if assignment.status == 'pending' and assignment.due_date %}
+                        &nbsp;·&nbsp;
+                        {% if assignment.sla_escalated %}
+                            <span class="text-rose-600 font-semibold">SLA breached</span>
+                        {% elif assignment.sla_reminder_sent %}
+                            <span class="text-orange-600 font-semibold">Overdue — due {{ assignment.due_date|date:"M d" }}</span>
+                        {% else %}
+                            Due {{ assignment.due_date|date:"M d" }}
+                        {% endif %}
+                    {% endif %}
+                </p>
             </div>
         </div>
         <div class="flex items-center space-x-2">
@@ -30,7 +42,9 @@
                 {{ alert.get_severity_display }}
             </span>
             {% endif %}
-            {% if assignment.status == 'pending' %}
+            {% if assignment.status == 'pending' and assignment.outcome == 'inconclusive' %}
+            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">Inconclusive — Update Required</span>
+            {% elif assignment.status == 'pending' %}
             <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Pending</span>
             {% elif assignment.outcome == 'mining_confirmed' %}
             <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800">Mining Confirmed</span>
@@ -171,6 +185,19 @@
             <input type="hidden" id="outcome-input-{{ assignment.id }}" name="outcome" value="">
 
             <h4 class="text-sm font-medium text-gray-900 mb-3">Submit Field Report</h4>
+
+            {% if assignment.outcome == 'inconclusive' %}
+            <div class="mb-4 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                <svg class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                </svg>
+                <div>
+                    <p class="text-xs font-semibold text-amber-700">Previous submission: Inconclusive</p>
+                    <p class="text-xs text-amber-600 mt-0.5">You can update your report below when you have more information.</p>
+                </div>
+            </div>
+            {% endif %}
 
             <!-- Outcome buttons -->
             <div class="mb-4">

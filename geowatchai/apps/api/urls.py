@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
+
 from .views import JobViewSet, ResultViewSet, DetectedSiteViewSet, ConcessionGeoJSONView, AlertViewSet, RegionGeoJSONView, my_assignments_notifications
 
 router = DefaultRouter()
@@ -23,4 +24,5 @@ urlpatterns = [
     path('alerts/<pk>/dispatch/', AlertViewSet.as_view({'post': 'dispatch_alert'}), name='alert-dispatch'),
     path('alerts/<pk>/resolve/', AlertViewSet.as_view({'post': 'resolve'}), name='alert-resolve'),
     path('my-assignments/', my_assignments_notifications, name='my-assignments'),
+    path('notifications/', include('apps.notifications.urls')),
 ]

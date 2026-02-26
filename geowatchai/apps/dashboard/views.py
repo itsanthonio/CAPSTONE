@@ -18,6 +18,7 @@ from django.core.mail import send_mail
 from django.core.cache import cache
 from django.template.loader import render_to_string
 from datetime import timedelta, date
+from django.db.models import Q
 from django.contrib import messages
 import os
 import random
@@ -37,8 +38,8 @@ def dashboard_router(request):
         logger.debug(f": User {request.user.username} has role: {role}")
     except Exception as e:
         logger.debug(f": Profile missing for {request.user.username}: {e}")
-        # Create profile if missing
-        UserProfile.objects.create(user=request.user, role=UserProfile.Role.ADMIN)
+        # Create profile if missing — default to INSPECTOR (safest fallback)
+        UserProfile.objects.create(user=request.user, role=UserProfile.Role.INSPECTOR)
         return redirect('/dashboard/home/')
     
     if role == UserProfile.Role.ADMIN:
@@ -69,12 +70,33 @@ def is_inspector_or_admin(user):
     )
 
 
+def _get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        return x_forwarded_for.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR', '0.0.0.0')
+
+
+_LOGIN_MAX_ATTEMPTS = 5
+_LOGIN_LOCKOUT_SECONDS = 600   # 10 minutes
+
+
 class CustomLoginView(LoginView):
     form_class = AuthenticationForm
     template_name = 'registration/login.html'
     redirect_authenticated_user = True
 
     def dispatch(self, request, *args, **kwargs):
+        # Rate-limit: block IPs that have exceeded the threshold
+        if request.method == 'POST':
+            ip = _get_client_ip(request)
+            if cache.get(f'login_fail_{ip}', 0) >= _LOGIN_MAX_ATTEMPTS:
+                form = AuthenticationForm(request)
+                form.add_error(
+                    None,
+                    'Too many failed login attempts. Please wait 10 minutes before trying again.'
+                )
+                return self.render_to_response(self.get_context_data(form=form))
         # Strip the next parameter completely to force role-based redirect
         if 'next' in request.GET:
             logger.debug(f": Removing next parameter: {request.GET['next']}")
@@ -101,9 +123,9 @@ class CustomLoginView(LoginView):
                     logger.debug(f" dashboard_home: Role is {profile.role}, showing admin dashboard")
                     return '/dashboard/home/'
             except UserProfile.DoesNotExist:
-                # Create profile if missing - default to ADMIN
-                logger.debug(f" CustomLoginView: No profile, creating ADMIN")
-                UserProfile.objects.create(user=self.request.user, role=UserProfile.Role.ADMIN)
+                # Create profile if missing — default to INSPECTOR (safest fallback)
+                logger.debug(f" CustomLoginView: No profile, creating INSPECTOR")
+                UserProfile.objects.create(user=self.request.user, role=UserProfile.Role.INSPECTOR)
                 return '/dashboard/home/'
         logger.debug(f" CustomLoginView: User not authenticated, redirecting to home")
         return '/dashboard/home/'
@@ -117,6 +139,17 @@ class CustomLoginView(LoginView):
         return response
 
     def form_invalid(self, form):
+        # Increment rate-limit counter for this IP
+        ip = _get_client_ip(self.request)
+        key = f'login_fail_{ip}'
+        attempts = cache.get(key, 0) + 1
+        cache.set(key, attempts, timeout=_LOGIN_LOCKOUT_SECONDS)
+        remaining = _LOGIN_MAX_ATTEMPTS - attempts
+        if remaining > 0:
+            form.add_error(
+                None,
+                f'Invalid credentials. {remaining} attempt{"s" if remaining != 1 else ""} remaining before lockout.'
+            )
         # Give a specific, helpful message when the account is unverified
         username = self.request.POST.get('username', '')
         try:
@@ -139,8 +172,9 @@ class SignUpView(CreateView):
         user.is_active = False
         user.save()
 
-        # Create UserProfile with selected role
-        role = form.cleaned_data.get('role', UserProfile.Role.ADMIN)
+        # Self-registration always creates INSPECTOR accounts.
+        # Admin accounts are created by existing admins only.
+        role = UserProfile.Role.INSPECTOR
         organization = form.cleaned_data.get('organization', UserProfile.Organization.OTHER)
         phone_number = form.cleaned_data.get('phone_number', '')
 
@@ -166,9 +200,14 @@ class CustomLogoutView(LogoutView):
     next_page = '/accounts/login/'
 
 
-def _get_dashboard_stats():
-    """Query real stats from DetectedSite, Alert, and ModelRun. Cached for 5 minutes."""
-    cached = cache.get('dashboard_stats')
+def _get_dashboard_stats(velocity_weeks=8):
+    """Query real stats from DetectedSite, Alert, and ModelRun. Cached for 5 minutes.
+
+    velocity_weeks: lookback window for the detection velocity sparkline (2–52).
+    """
+    velocity_weeks = max(2, min(int(velocity_weeks), 52))
+    cache_key = f'dashboard_stats_{velocity_weeks}'
+    cached = cache.get(cache_key)
     if cached is not None:
         return cached
     try:
@@ -290,12 +329,13 @@ def _get_dashboard_stats():
         ).aggregate(avg=Avg('confidence_score'))
         avg_confidence_pct = round((avg_conf_result['avg'] or 0) * 100, 1)
 
-        # --- Detection velocity: illegal site count per week for last 8 weeks ---
+        # --- Detection velocity: illegal site count per week (configurable window) ---
         from django.db.models.functions import TruncWeek as _TruncWeek
-        eight_weeks_ago = now - timedelta(weeks=8)
+        velocity_week_count = velocity_weeks   # already validated above
+        velocity_start = now - timedelta(weeks=velocity_week_count)
         velocity_rows = (
             DetectedSite.objects
-            .filter(legal_status='illegal', created_at__gte=eight_weeks_ago)
+            .filter(legal_status='illegal', created_at__gte=velocity_start)
             .annotate(week=_TruncWeek('created_at'))
             .values('week')
             .annotate(cnt=Count('id'))
@@ -303,7 +343,7 @@ def _get_dashboard_stats():
         )
         velocity_by_week = {row['week'].strftime('%Y-W%W'): row['cnt'] for row in velocity_rows}
         velocity_labels, velocity_data = [], []
-        for i in range(7, -1, -1):
+        for i in range(velocity_week_count - 1, -1, -1):
             week_start = now - timedelta(weeks=i)
             key = week_start.strftime('%Y-W%W')
             velocity_labels.append('W' + week_start.strftime('%W'))
@@ -335,7 +375,7 @@ def _get_dashboard_stats():
             },
             'has_data': total_sites > 0,
         }
-        cache.set('dashboard_stats', result, 300)  # 5-minute cache
+        cache.set(cache_key, result, 300)  # 5-minute cache
         return result
     except Exception:
         # Models not yet migrated or DB empty — return safe defaults
@@ -390,7 +430,11 @@ def dashboard_home(request):
     
     logger.debug(f"dashboard_home: Rendering admin dashboard")
     try:
-        stats = _get_dashboard_stats()
+        try:
+            _vw = int(request.GET.get('velocity_weeks', 8))
+        except (ValueError, TypeError):
+            _vw = 8
+        stats = _get_dashboard_stats(velocity_weeks=_vw)
     except Exception as e:
         # Fallback stats if there's an error
         stats = {
@@ -410,7 +454,7 @@ def dashboard_home(request):
             'has_data': False,
         }
     
-    return render(request, 'dashboard/dashboard.html', {'stats': stats})
+    return render(request, 'dashboard/dashboard.html', {'stats': stats, 'velocity_weeks': _vw})
 
 
 @user_passes_test(is_admin)
@@ -468,15 +512,17 @@ def dashboard_audit(request):
     page_num  = request.GET.get('page', 1)
     page_obj  = paginator.get_page(page_num)
 
-    # Distinct action types and users for the filter dropdowns
+    # Distinct action types for the filter dropdown
     action_choices = (
         AuditLog.objects.values_list('action', flat=True)
         .distinct().order_by('action')
     )
+    # Source users from UserProfile so new admins/inspectors appear even before
+    # they've performed any auditable actions
     user_choices = (
-        AuditLog.objects.filter(user__isnull=False)
+        UserProfile.objects.select_related('user')
         .values_list('user__username', flat=True)
-        .distinct().order_by('user__username')
+        .order_by('user__username')
     )
 
     return render(request, 'dashboard/audit.html', {
@@ -494,42 +540,112 @@ def dashboard_audit(request):
 
 @user_passes_test(is_admin)
 def dashboard_report(request):
-    """Printable monthly overview report for stakeholders."""
+    """Printable/downloadable overview report for stakeholders.
+
+    Accepts optional ?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD.
+    Defaults to the last 30 days.
+    """
     from apps.detections.models import DetectedSite, Alert
     from apps.accounts.models import InspectorAssignment
-    from django.db.models import Count, Q
+    from django.db.models import Count, Sum, Q
 
     now = timezone.now()
-    thirty_days_ago = now - timedelta(days=30)
 
-    # Re-use the full stats dict
-    stats = _get_dashboard_stats()
+    # ── Parse date range ────────────────────────────────────────────────────
+    try:
+        period_start = date.fromisoformat(request.GET['start_date'])
+    except (KeyError, ValueError):
+        period_start = (now - timedelta(days=30)).date()
+    try:
+        period_end = date.fromisoformat(request.GET['end_date'])
+    except (KeyError, ValueError):
+        period_end = now.date()
 
-    # Extra report-specific data
+    # Clamp so start ≤ end
+    if period_start > period_end:
+        period_start, period_end = period_end, period_start
+
+    # ── Period-scoped site stats ─────────────────────────────────────────────
+    sites_qs = DetectedSite.objects.filter(
+        detection_date__gte=period_start,
+        detection_date__lte=period_end,
+    )
+    total_sites    = sites_qs.count()
+    illegal_sites  = sites_qs.filter(legal_status='illegal').count()
+    total_area_ha  = round(
+        sites_qs.filter(legal_status='illegal')
+        .aggregate(t=Sum('area_hectares'))['t'] or 0, 1
+    )
+    high_risk = sites_qs.filter(
+        Q(recurrence_count__gt=1) | Q(alerts__severity='critical')
+    ).distinct().count()
+
+    # Top regions for the period
+    top_regions = list(
+        sites_qs.filter(region__isnull=False)
+        .values('region__name')
+        .annotate(total=Count('id'), illegal=Count('id', filter=Q(legal_status='illegal')))
+        .order_by('-total')[:6]
+    )
+    if top_regions:
+        max_total = top_regions[0]['total']
+        for r in top_regions:
+            r['illegal_pct'] = round((r['illegal'] / r['total']) * 100) if r['total'] else 0
+            r['bar_pct'] = round((r['total'] / max_total) * 100) if max_total else 0
+
+    # Recent sites in period
+    recent_sites = list(
+        sites_qs.select_related('region')
+        .order_by('-detection_date')[:10]
+        .values(
+            'id', 'detection_date', 'legal_status',
+            'confidence_score', 'area_hectares',
+            'region__name', 'recurrence_count',
+        )
+    )
+    for s in recent_sites:
+        s['confidence_pct'] = round(s['confidence_score'] * 100, 1)
+        s['id'] = str(s['id'])
+
+    # ── Period-scoped alert stats ────────────────────────────────────────────
+    alerts_qs = Alert.objects.filter(
+        created_at__date__gte=period_start,
+        created_at__date__lte=period_end,
+    )
+    open_alerts     = alerts_qs.filter(status='open').count()
+    critical_alerts = alerts_qs.filter(status='open', severity='critical').count()
+    high_alerts     = alerts_qs.filter(status='open', severity='high').count()
+
     alerts_by_severity = {
         row['severity']: row['cnt']
-        for row in Alert.objects.values('severity')
-                                .annotate(cnt=Count('id'))
+        for row in alerts_qs.values('severity').annotate(cnt=Count('id'))
     }
     alerts_by_status = {
         row['status']: row['cnt']
-        for row in Alert.objects.values('status')
-                                .annotate(cnt=Count('id'))
+        for row in alerts_qs.values('status').annotate(cnt=Count('id'))
     }
-    resolved_assignments = InspectorAssignment.objects.filter(
-        status='resolved'
-    ).count()
-    confirmed_mining = InspectorAssignment.objects.filter(
-        outcome='mining_confirmed'
-    ).count()
-    false_positives = InspectorAssignment.objects.filter(
-        outcome='false_positive'
-    ).count()
 
-    # Recent jobs for the report scan summary table
+    # ── Period-scoped inspector stats ───────────────────────────────────────
+    assign_qs = InspectorAssignment.objects.filter(
+        completed_at__date__gte=period_start,
+        completed_at__date__lte=period_end,
+    )
+    resolved_assignments = assign_qs.filter(status='resolved').count()
+    confirmed_mining     = assign_qs.filter(outcome='mining_confirmed').count()
+    false_positives      = assign_qs.filter(outcome='false_positive').count()
+
+    # ── Scan jobs in period ──────────────────────────────────────────────────
     from apps.jobs.models import Job as ScanJob
+    jobs_qs     = ScanJob.objects.filter(
+        created_at__date__gte=period_start,
+        created_at__date__lte=period_end,
+    )
+    total_jobs     = jobs_qs.count()
+    completed_jobs = jobs_qs.filter(status='completed').count()
+    failed_jobs    = jobs_qs.filter(status='failed').count()
+
     recent_jobs = list(
-        ScanJob.objects.select_related('created_by')
+        jobs_qs.select_related('created_by')
         .order_by('-created_at')[:10]
         .values(
             'id', 'status', 'created_at', 'completed_at',
@@ -540,17 +656,90 @@ def dashboard_report(request):
     for j in recent_jobs:
         j['id'] = str(j['id'])[:8].upper()
 
+    # ── 30-day detection trend for sparkline (within selected period) ────────
+    from django.db.models.functions import TruncDate as _TD
+    trend_rows = (
+        sites_qs
+        .annotate(day=_TD('detection_date'))
+        .values('day', 'legal_status')
+        .annotate(cnt=Count('id'))
+        .order_by('day')
+    )
+    illegal_by_day, legal_by_day = {}, {}
+    for row in trend_rows:
+        d = row['day']
+        if row['legal_status'] == 'illegal':
+            illegal_by_day[d] = row['cnt']
+        else:
+            legal_by_day[d] = row['cnt']
+
+    delta_days = (period_end - period_start).days
+    trend_labels, trend_illegal, trend_legal = [], [], []
+    for i in range(delta_days + 1):
+        d = period_start + timedelta(days=i)
+        trend_labels.append(d.strftime('%d %b'))
+        trend_illegal.append(illegal_by_day.get(d, 0))
+        trend_legal.append(legal_by_day.get(d, 0))
+
+    stats = {
+        'total_detected_sites': total_sites,
+        'illegal_sites':        illegal_sites,
+        'open_alerts':          open_alerts,
+        'critical_alerts':      critical_alerts,
+        'high_alerts':          high_alerts,
+        'high_risk_zones':      high_risk,
+        'total_area_ha':        total_area_ha,
+        'total_jobs':           total_jobs,
+        'completed_jobs':       completed_jobs,
+        'failed_jobs':          failed_jobs,
+        'top_regions':          top_regions,
+        'recent_sites':         recent_sites,
+        'trend_labels':         trend_labels,
+        'trend_illegal':        trend_illegal,
+        'trend_legal':          trend_legal,
+    }
+
     return render(request, 'dashboard/report.html', {
-        'stats': stats,
+        'stats':              stats,
         'alerts_by_severity': alerts_by_severity,
-        'alerts_by_status': alerts_by_status,
+        'alerts_by_status':   alerts_by_status,
         'resolved_assignments': resolved_assignments,
-        'confirmed_mining': confirmed_mining,
-        'false_positives': false_positives,
-        'recent_jobs': recent_jobs,
-        'report_date': now,
-        'period_start': thirty_days_ago,
+        'confirmed_mining':   confirmed_mining,
+        'false_positives':    false_positives,
+        'recent_jobs':        recent_jobs,
+        'report_date':        now,
+        'period_start':       period_start,
+        'period_end':         period_end,
     })
+
+
+@user_passes_test(is_admin)
+def dashboard_report_pdf(request):
+    """Generate a server-side PDF of the report using xhtml2pdf.
+    Accepts the same start_date / end_date params as dashboard_report.
+    """
+    import io
+    from django.http import HttpResponse
+    from django.template.loader import render_to_string
+
+    # Reuse the same context-building logic — forward request to dashboard_report
+    # then re-render as PDF
+    report_response = dashboard_report(request)
+    html_string = report_response.content.decode('utf-8')
+
+    try:
+        from xhtml2pdf import pisa
+        pdf_buffer = io.BytesIO()
+        pisa_status = pisa.CreatePDF(html_string, dest=pdf_buffer)
+        if pisa_status.err:
+            return HttpResponse('PDF generation failed.', status=500)
+        pdf_buffer.seek(0)
+        filename = f"GalamseyWatch_Report_{date.today().isoformat()}.pdf"
+        response = HttpResponse(pdf_buffer, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    except ImportError:
+        return HttpResponse('xhtml2pdf is not installed.', status=500)
 
 
 @user_passes_test(is_admin)
@@ -678,19 +867,42 @@ def dashboard_settings(request):
 def inspector_dashboard(request):
     """Inspector-specific dashboard"""
     try:
-        from apps.accounts.models import InspectorAssignment
+        from apps.accounts.models import InspectorAssignment, EvidencePhoto
         from apps.detections.models import Alert
 
-        assignments = InspectorAssignment.objects.filter(
-            inspector=request.user.profile
-        ).order_by('-created_at')
+        thirty_days_ago = timezone.now() - timedelta(days=30)
+        profile = request.user.profile
+
+        # Load PENDING + last-30-days RESOLVED; use select_related to avoid N+1
+        assignments = (
+            InspectorAssignment.objects
+            .filter(
+                inspector=profile,
+            )
+            .filter(
+                Q(status=InspectorAssignment.Status.PENDING)
+                | Q(
+                    status=InspectorAssignment.Status.RESOLVED,
+                    completed_at__gte=thirty_days_ago,
+                )
+            )
+            .select_related('inspector__user')
+            .prefetch_related('evidence_photo_set')
+            .order_by('-created_at')
+        )
 
         assignment_data = []
+        alert_ids = [a.alert_id for a in assignments]
+        alerts_map = {
+            a.id: a
+            for a in Alert.objects.filter(id__in=alert_ids)
+            .select_related('detected_site', 'detected_site__region')
+            .prefetch_related('detected_site__timelapse_frames')
+        }
+
         for assignment in assignments:
-            try:
-                alert = Alert.objects.select_related('detected_site', 'detected_site__region').get(
-                    id=assignment.alert_id
-                )
+            alert = alerts_map.get(assignment.alert_id)
+            if alert:
                 site = alert.detected_site
                 centroid_lng = site.centroid.x if site and site.centroid else None
                 centroid_lat = site.centroid.y if site and site.centroid else None
@@ -699,6 +911,16 @@ def inspector_dashboard(request):
                         'year', 'thumbnail_url', 'acquisition_period'
                     )
                 ) if site else []
+
+                # Prefer EvidencePhoto records; fall back to legacy JSONField paths
+                evidence_photos = list(assignment.evidence_photo_set.all())
+                if evidence_photos:
+                    photo_urls = [django_settings.MEDIA_URL + ep.file.name for ep in evidence_photos]
+                else:
+                    photo_urls = [
+                        django_settings.MEDIA_URL + p for p in (assignment.evidence_photos or [])
+                    ]
+
                 assignment_data.append({
                     'assignment': assignment,
                     'alert': alert,
@@ -706,11 +928,9 @@ def inspector_dashboard(request):
                     'centroid_lng': centroid_lng,
                     'centroid_lat': centroid_lat,
                     'timelapse_frames': timelapse,
-                    'photo_urls': [
-                        django_settings.MEDIA_URL + p for p in (assignment.evidence_photos or [])
-                    ],
+                    'photo_urls': photo_urls,
                 })
-            except Alert.DoesNotExist:
+            else:
                 assignment_data.append({
                     'assignment': assignment,
                     'alert': None,
@@ -738,6 +958,7 @@ def inspector_dashboard(request):
             'pending_count': pending_count,
             'verified_count': verified_count,
             'inconclusive_count': inconclusive_count,
+            'is_available': profile.is_available,
         })
     except Exception as e:
         return render(request, 'dashboard/inspector.html', {
@@ -745,6 +966,7 @@ def inspector_dashboard(request):
             'pending_count': 0,
             'verified_count': 0,
             'inconclusive_count': 0,
+            'is_available': True,
             'error': str(e)
         })
 
@@ -756,10 +978,19 @@ def submit_field_report(request, assignment_id):
         return JsonResponse({'error': 'POST required'}, status=405)
 
     try:
-        from apps.accounts.models import InspectorAssignment
+        from apps.accounts.models import InspectorAssignment, EvidencePhoto
         from apps.detections.models import Alert, DetectedSite
 
         assignment = InspectorAssignment.objects.get(id=assignment_id, inspector=request.user.profile)
+
+        # Prevent re-submission of a definitively resolved assignment
+        # (inconclusive stays PENDING so the inspector can resubmit)
+        if (assignment.status == InspectorAssignment.Status.RESOLVED
+                and assignment.outcome in ('mining_confirmed', 'false_positive')):
+            return JsonResponse(
+                {'error': 'Field report already submitted for this assignment.'},
+                status=409
+            )
 
         outcome = request.POST.get('outcome', '').strip()
         visit_date_str = request.POST.get('visit_date', '').strip()
@@ -778,7 +1009,8 @@ def submit_field_report(request, assignment_id):
             except ValueError:
                 return JsonResponse({'error': 'Invalid visit date format'}, status=400)
 
-        # Save uploaded photos
+        # Save uploaded photos and create EvidencePhoto records
+        import hashlib
         photos = request.FILES.getlist('evidence_photos')
         photo_paths = list(assignment.evidence_photos or [])
         if photos:
@@ -787,28 +1019,61 @@ def submit_field_report(request, assignment_id):
             for photo in photos:
                 safe_name = os.path.basename(photo.name).replace(' ', '_')
                 dest = os.path.join(upload_dir, safe_name)
+                content = photo.read()
+                sha256 = hashlib.sha256(content).hexdigest()
                 with open(dest, 'wb') as f:
-                    for chunk in photo.chunks():
-                        f.write(chunk)
-                photo_paths.append(f'inspections/{assignment_id}/{safe_name}')
+                    f.write(content)
+                rel_path = f'inspections/{assignment_id}/{safe_name}'
+                photo_paths.append(rel_path)
+                try:
+                    EvidencePhoto.objects.create(
+                        assignment=assignment,
+                        file=rel_path,
+                        sha256_hash=sha256,
+                        original_name=photo.name,
+                    )
+                except Exception:
+                    pass
 
         # Update assignment
         assignment.outcome = outcome
         assignment.visit_date = visit_date
         assignment.notes = notes
         assignment.evidence_photos = photo_paths
-        assignment.status = InspectorAssignment.Status.RESOLVED
-        if not assignment.completed_at:
-            assignment.completed_at = timezone.now()
+        # Inconclusive stays PENDING so the inspector can come back and resubmit
+        if outcome in ('mining_confirmed', 'false_positive'):
+            assignment.status = InspectorAssignment.Status.RESOLVED
+            if not assignment.completed_at:
+                assignment.completed_at = timezone.now()
         assignment.save()
 
         # Update Alert
         try:
             alert = Alert.objects.get(id=assignment.alert_id)
             if outcome == 'inconclusive':
-                # Stay open so it can be reassigned or re-scanned
+                # Increment inconclusive counter; auto-escalate if limit reached
+                alert.inspection_count = (alert.inspection_count or 0) + 1
                 alert.status = Alert.AlertStatus.OPEN
                 alert.resolved_at = None
+
+                inconclusive_limit = getattr(django_settings, 'ALERT_INCONCLUSIVE_ESCALATION_COUNT', 3)
+                if alert.inspection_count >= inconclusive_limit:
+                    alert.severity = Alert.Severity.CRITICAL
+                    alert.escalated_at = timezone.now()
+                    try:
+                        from apps.detections.models import AuditLog
+                        AuditLog.objects.create(
+                            user=None,
+                            action='alert.escalated',
+                            object_id=str(alert.id),
+                            detail={
+                                'reason': 'inconclusive_limit_reached',
+                                'inspection_count': alert.inspection_count,
+                                'inspector': request.user.username,
+                            },
+                        )
+                    except Exception:
+                        pass
             else:
                 alert.status = Alert.AlertStatus.RESOLVED
                 alert.resolved_at = timezone.now()
@@ -862,6 +1127,7 @@ def submit_field_report(request, assignment_id):
         except Exception:
             pass
 
+        cache.delete_many([f'dashboard_stats_{w}' for w in range(2, 53)])
         return JsonResponse({
             'success': True,
             'outcome': outcome,
@@ -935,6 +1201,43 @@ def activation_pin_entry(request):
         else:
             error = 'That code is incorrect or has expired.'
     return render(request, 'registration/activation_pin.html', {'email': email, 'error': error})
+
+
+def resend_activation_pin(request):
+    """Regenerate a 6-digit activation PIN and re-send it.
+    Rate-limited to one resend per 60 seconds per email address."""
+    email = request.GET.get('email', '').strip().lower()
+    if not email:
+        return redirect(reverse('dashboard:activation_pin_entry'))
+
+    # Rate limit: one resend per 60 s
+    rl_key = f'resend_pin_rl_{email}'
+    if cache.get(rl_key):
+        messages.warning(request, 'Please wait a moment before requesting another code.')
+        return redirect(f'/dashboard/activation-pin/?email={email}')
+
+    data = cache.get(f'activation_pin_{email}')
+    if not data:
+        messages.error(request, 'No pending activation found. Please sign up again.')
+        return redirect(reverse('dashboard:signup'))
+
+    try:
+        user = User.objects.get(pk=data['user_pk'])
+    except User.DoesNotExist:
+        messages.error(request, 'Account not found. Please sign up again.')
+        return redirect(reverse('dashboard:signup'))
+
+    # Generate a fresh PIN, reset the 24-hour TTL, and set rate-limit flag
+    pin = str(random.randint(100000, 999999))
+    cache.set(f'activation_pin_{email}', {'pin': pin, 'user_pk': str(user.pk)}, timeout=86400)
+    cache.set(rl_key, True, timeout=60)
+
+    threading.Thread(
+        target=_send_activation_pin_email, args=(user, pin), daemon=True
+    ).start()
+
+    messages.success(request, 'A new code has been sent. Check your inbox (and spam folder).')
+    return redirect(f'/dashboard/activation-pin/?email={email}')
 
 
 def activate_account(request, uidb64, token):
@@ -1028,3 +1331,60 @@ def password_reset_new_password(request):
             return redirect('login')
 
     return render(request, 'registration/password_reset_new.html', {'error': error})
+
+
+# ---------------------------------------------------------------------------
+# My Account
+# ---------------------------------------------------------------------------
+
+@login_required
+def my_account(request):
+    """Let any authenticated user update their email, name, organisation,
+    and phone number.  Password change is delegated to Django's built-in
+    password_change view."""
+    from django.core.validators import validate_email as _validate_email
+    from django.core.exceptions import ValidationError as _ValidationError
+
+    profile = request.user.profile
+    errors = {}
+
+    if request.method == 'POST':
+        new_email      = request.POST.get('email', '').strip()
+        new_first      = request.POST.get('first_name', '').strip()
+        new_last       = request.POST.get('last_name', '').strip()
+        new_org        = request.POST.get('organization', '').strip()
+        new_phone      = request.POST.get('phone_number', '').strip()
+
+        # Validate email
+        if new_email:
+            try:
+                _validate_email(new_email)
+            except _ValidationError:
+                errors['email'] = 'Enter a valid email address.'
+            else:
+                if User.objects.filter(email=new_email).exclude(pk=request.user.pk).exists():
+                    errors['email'] = 'That email address is already in use.'
+
+        # Validate organisation
+        valid_orgs = [c[0] for c in UserProfile.Organization.choices]
+        if new_org and new_org not in valid_orgs:
+            errors['organization'] = 'Select a valid organisation.'
+
+        if not errors:
+            request.user.email      = new_email
+            request.user.first_name = new_first
+            request.user.last_name  = new_last
+            request.user.save()
+
+            profile.organization  = new_org or profile.organization
+            profile.phone_number  = new_phone
+            profile.save()
+
+            messages.success(request, 'Your account has been updated.')
+            return redirect(reverse('dashboard:my_account'))
+
+    return render(request, 'dashboard/my_account.html', {
+        'profile': profile,
+        'org_choices': UserProfile.Organization.choices,
+        'errors': errors,
+    })

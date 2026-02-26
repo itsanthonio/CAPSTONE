@@ -176,13 +176,24 @@
             <div class="flex items-start justify-between mb-3">
                 <div>
                     <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Detection Velocity</p>
-                    <p class="text-xs text-gray-500 mt-0.5">Illegal sites per week — last 8 weeks</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Illegal sites per week — last {{ velocity_weeks }} weeks</p>
                 </div>
-                <div class="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
-                    <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                    </svg>
+                <div class="flex items-center gap-2 shrink-0">
+                    <select id="velocity-window-select"
+                            class="text-xs border border-gray-200 rounded-md px-2 py-1 bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-gis-blue cursor-pointer"
+                            title="Lookback window">
+                        <option value="4"  {% if velocity_weeks == 4  %}selected{% endif %}>4W</option>
+                        <option value="8"  {% if velocity_weeks == 8  %}selected{% endif %}>8W</option>
+                        <option value="12" {% if velocity_weeks == 12 %}selected{% endif %}>12W</option>
+                        <option value="26" {% if velocity_weeks == 26 %}selected{% endif %}>26W</option>
+                        <option value="52" {% if velocity_weeks == 52 %}selected{% endif %}>52W</option>
+                    </select>
+                    <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                        </svg>
+                    </div>
                 </div>
             </div>
             {% if stats.velocity_data %}
@@ -207,9 +218,21 @@
                 if (max === 0) max = 1;
                 bars.forEach(function(b){ b.style.height = Math.max(2, Math.round(parseInt(b.dataset.val,10)/max*44)) + 'px'; });
             })();
+            document.getElementById('velocity-window-select').addEventListener('change', function() {
+                var url = new URL(window.location.href);
+                url.searchParams.set('velocity_weeks', this.value);
+                window.location.href = url.toString();
+            });
             </script>
             {% else %}
-            <p class="text-sm text-gray-400 italic">No detections in the last 8 weeks.</p>
+            <p class="text-sm text-gray-400 italic">No detections in the last {{ velocity_weeks }} weeks.</p>
+            <script>
+            document.getElementById('velocity-window-select').addEventListener('change', function() {
+                var url = new URL(window.location.href);
+                url.searchParams.set('velocity_weeks', this.value);
+                window.location.href = url.toString();
+            });
+            </script>
             {% endif %}
         </div>
 

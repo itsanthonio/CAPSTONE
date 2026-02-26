@@ -215,16 +215,41 @@
 
 <div class="page">
 
-    <!-- Print / back bar (hidden on print) -->
+    <!-- Control bar (hidden on print) -->
     <div class="print-bar no-print">
         <a href="/dashboard/home/">&larr; Back to Dashboard</a>
-        <button class="btn-print" onclick="window.print()">
-            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a1 1 0 001-1v-5a1 1 0 00-1-1H9a1 1 0 00-1 1v5a1 1 0 001 1zm1-16v4h4V5l-4-4H9z"/>
-            </svg>
-            Print / Export PDF
-        </button>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <!-- Date-range form -->
+            <form method="get" style="display:flex;align-items:center;gap:6px;">
+                <label style="font-size:11px;opacity:.8;">From</label>
+                <input type="date" name="start_date" value="{{ period_start|date:'Y-m-d' }}"
+                       style="padding:5px 8px;border:none;border-radius:6px;font-size:12px;background:rgba(255,255,255,0.15);color:#fff;colorscheme:dark;">
+                <label style="font-size:11px;opacity:.8;">To</label>
+                <input type="date" name="end_date" value="{{ period_end|date:'Y-m-d' }}"
+                       style="padding:5px 8px;border:none;border-radius:6px;font-size:12px;background:rgba(255,255,255,0.15);color:#fff;colorscheme:dark;">
+                <button type="submit"
+                        style="padding:5px 14px;background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">
+                    Apply
+                </button>
+            </form>
+            <!-- Download PDF -->
+            <a class="btn-print"
+               href="/dashboard/report/pdf/?start_date={{ period_start|date:'Y-m-d' }}&end_date={{ period_end|date:'Y-m-d' }}">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                Download PDF
+            </a>
+            <!-- Browser print fallback -->
+            <button class="btn-print" onclick="window.print()" style="background:#2d6a4f;">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a1 1 0 001-1v-5a1 1 0 00-1-1H9a1 1 0 00-1 1v5a1 1 0 001 1zm1-16v4h4V5l-4-4H9z"/>
+                </svg>
+                Print
+            </button>
+        </div>
     </div>
 
     <!-- Header -->
@@ -238,7 +263,7 @@
         </div>
         <div class="meta-row">
             <span><strong>Report Date:</strong> {{ report_date|date:"N j, Y" }}</span>
-            <span><strong>Period:</strong> {{ period_start|date:"N j, Y" }} — {{ report_date|date:"N j, Y" }}</span>
+            <span><strong>Period:</strong> {{ period_start|date:"N j, Y" }} — {{ period_end|date:"N j, Y" }}</span>
             <span><strong>Coverage:</strong> Ghana</span>
         </div>
     </div>
