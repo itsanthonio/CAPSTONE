@@ -474,6 +474,15 @@ class AlertViewSet(viewsets.ViewSet):
     def list(self, request, *args, **kwargs):
         from apps.detections.models import Alert
         qs      = self.get_queryset()
+
+        ALLOWED_ORDERINGS = {
+            '-created_at', 'created_at',
+            '-detected_site__confidence_score', 'detected_site__confidence_score',
+        }
+        ordering = request.query_params.get('ordering', '-created_at')
+        if ordering in ALLOWED_ORDERINGS:
+            qs = qs.order_by(ordering)
+
         page    = int(request.query_params.get('page', 1))
         per_page = min(int(request.query_params.get('per_page', 20)), 10000)
         total   = qs.count()
@@ -617,3 +626,61 @@ class AlertViewSet(viewsets.ViewSet):
                 status=400
             )
         return self._change_status(request, pk, 'resolved')
+
+    @action(detail=False, methods=['post'])
+    def bulk_action(self, request):
+        from apps.detections.models import Alert
+        from django.utils import timezone
+
+        ids    = request.data.get('ids', [])
+        verb   = request.data.get('action', '')
+
+        VALID_ACTIONS = ('acknowledged', 'dismissed', 'dispatched')
+        if verb not in VALID_ACTIONS:
+            return Response({'error': 'Invalid action.'}, status=400)
+        if not ids:
+            return Response({'error': 'No alert IDs provided.'}, status=400)
+
+        # Each action is only valid from certain source statuses
+        SOURCE_STATUSES = {
+            'acknowledged': ['open'],
+            'dispatched':   ['acknowledged'],
+            'dismissed':    ['open', 'acknowledged'],
+        }
+        qs = Alert.objects.filter(id__in=ids, status__in=SOURCE_STATUSES[verb])
+
+        now = timezone.now()
+        if verb == 'acknowledged':
+            updated = qs.update(status='acknowledged', acknowledged_at=now)
+        else:
+            updated = qs.update(status=verb)
+
+        return Response({'updated': updated})
+
+
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+
+@login_required
+def my_assignments_notifications(request):
+    """Returns pending assignment count + 5 most recent for the notification bell (inspector role)."""
+    try:
+        from apps.accounts.models import InspectorAssignment
+        profile = request.user.profile
+        qs = InspectorAssignment.objects.filter(
+            inspector=profile,
+            status=InspectorAssignment.Status.PENDING,
+        ).select_related('inspector__user').order_by('-assigned_at')
+
+        total = qs.count()
+        items = []
+        for a in qs[:5]:
+            items.append({
+                'id': str(a.id),
+                'alert_id': str(a.alert_id),
+                'region': None,
+                'assigned_at': a.assigned_at.strftime('%Y-%m-%d %H:%M') if a.assigned_at else None,
+            })
+        return JsonResponse({'count': total, 'items': items})
+    except Exception as exc:
+        return JsonResponse({'count': 0, 'items': [], 'error': str(exc)})

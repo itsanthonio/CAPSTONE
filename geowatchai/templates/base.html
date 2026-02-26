@@ -87,12 +87,30 @@
                 {% endif %}
 
                 <!-- Notifications -->
-                <button class="relative p-2 text-gray-600 hover:text-gray-900 transition-colors" aria-label="Notifications">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-                    </svg>
-                    <span class="absolute top-1 right-1 w-2 h-2 bg-alert-red rounded-full"></span>
-                </button>
+                <div class="relative" id="notif-wrapper">
+                    <button id="notif-btn" class="relative p-2 text-gray-600 hover:text-gray-900 transition-colors" aria-label="Notifications">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                        </svg>
+                        <span id="notif-badge" class="hidden absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center px-1 leading-none"></span>
+                    </button>
+
+                    <!-- Dropdown -->
+                    <div id="notif-dropdown" class="hidden absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+                        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                            <span class="text-sm font-semibold text-gray-900">Notifications</span>
+                            <span id="notif-count-label" class="text-xs text-gray-400"></span>
+                        </div>
+                        <div id="notif-list" class="divide-y divide-gray-50 max-h-72 overflow-y-auto"></div>
+                        <div class="px-4 py-3 border-t border-gray-100 bg-gray-50">
+                            {% if user.is_authenticated and user.profile.role == 'inspector' %}
+                            <a href="{% url 'dashboard:inspector' %}" class="text-xs font-semibold text-blue-600 hover:underline">View my assignments →</a>
+                            {% else %}
+                            <a href="{% url 'dashboard:alerts' %}" class="text-xs font-semibold text-blue-600 hover:underline">View all alerts →</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
 
                 <!-- User Profile Dropdown -->
                 <div class="relative">
@@ -326,6 +344,122 @@
                 }
             });
         }
+    </script>
+
+    <!-- Notification Bell Script -->
+    <script>
+    (function () {
+        {% if user.is_authenticated and user.profile.role == 'inspector' %}
+        const NOTIF_API   = '/api/my-assignments/';
+        const NOTIF_LINK  = '/dashboard/inspector/';
+        const IS_INSPECTOR = true;
+        {% else %}
+        const NOTIF_API   = '/api/alerts/?status=open&per_page=5&ordering=-created_at';
+        const NOTIF_LINK  = '/dashboard/alerts/';
+        const IS_INSPECTOR = false;
+        {% endif %}
+
+        const SEV_CLASS = {
+            critical: 'bg-red-100 text-red-700',
+            high:     'bg-orange-100 text-orange-700',
+            medium:   'bg-yellow-100 text-yellow-700',
+            low:      'bg-gray-100 text-gray-600',
+        };
+
+        function setBadge(count) {
+            const badge = document.getElementById('notif-badge');
+            if (!badge) return;
+            if (count > 0) {
+                badge.textContent = count > 99 ? '99+' : count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        async function loadNotifCount() {
+            try {
+                const res = await fetch(NOTIF_API, { credentials: 'include' });
+                if (!res.ok) return;
+                const data = await res.json();
+                setBadge(IS_INSPECTOR ? data.count : (data.total || 0));
+            } catch (_) {}
+        }
+
+        async function loadNotifications() {
+            const list  = document.getElementById('notif-list');
+            const label = document.getElementById('notif-count-label');
+            if (!list) return;
+            list.innerHTML = '<div class="px-4 py-4 text-center text-xs text-gray-400">Loading…</div>';
+            try {
+                const res = await fetch(NOTIF_API, { credentials: 'include' });
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+
+                const total = IS_INSPECTOR ? data.count : (data.total || 0);
+                const items = IS_INSPECTOR ? data.items : (data.results || []);
+                if (label) label.textContent = total > 0 ? `${total} pending` : 'All clear';
+                setBadge(total);
+
+                if (!items.length) {
+                    list.innerHTML = '<div class="px-4 py-6 text-center text-sm text-gray-400">No pending notifications</div>';
+                    return;
+                }
+
+                list.innerHTML = items.map(item => {
+                    if (IS_INSPECTOR) {
+                        const when = item.assigned_at || '';
+                        return `<a href="${NOTIF_LINK}" class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors block">
+                            <span class="mt-0.5 w-2 h-2 rounded-full bg-purple-400 shrink-0 mt-2"></span>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm font-medium text-gray-900">New field assignment</p>
+                                <p class="text-xs text-gray-400 mt-0.5">${when}</p>
+                            </div>
+                        </a>`;
+                    } else {
+                        const sevCls = SEV_CLASS[item.severity] || 'bg-gray-100 text-gray-600';
+                        const region = item.site && item.site.region ? ' · ' + item.site.region : '';
+                        const link   = `/dashboard/alerts/?highlight=${item.id}`;
+                        return `<a href="${link}" class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors block">
+                            <span class="mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${sevCls} shrink-0">${item.severity}</span>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm font-medium text-gray-900 truncate">${item.title}</p>
+                                <p class="text-xs text-gray-400 mt-0.5">${item.created_at}${region}</p>
+                            </div>
+                        </a>`;
+                    }
+                }).join('');
+            } catch (_) {
+                list.innerHTML = '<div class="px-4 py-4 text-center text-xs text-gray-400">Failed to load</div>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const btn = document.getElementById('notif-btn');
+            const dd  = document.getElementById('notif-dropdown');
+            if (!btn || !dd) return;
+
+            // Load count on every page load
+            loadNotifCount();
+            // Refresh count every 60s
+            setInterval(loadNotifCount, 60000);
+
+            // Toggle dropdown
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                const isOpen = !dd.classList.contains('hidden');
+                dd.classList.toggle('hidden');
+                if (!isOpen) loadNotifications();
+            });
+
+            // Close on outside click
+            document.addEventListener('click', function (e) {
+                if (!e.target.closest('#notif-wrapper')) {
+                    dd.classList.add('hidden');
+                }
+            });
+        });
+    })();
     </script>
 
     {% block extra_js %}{% endblock %}

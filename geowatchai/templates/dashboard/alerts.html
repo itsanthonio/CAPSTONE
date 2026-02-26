@@ -152,14 +152,23 @@
             <table class="min-w-full divide-y divide-gray-100">
                 <thead class="bg-gray-50">
                     <tr>
+                        <th class="px-3 py-3 w-8">
+                            <input type="checkbox" id="select-all-cb" class="rounded border-gray-300 text-blue-600 cursor-pointer">
+                        </th>
                         <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                         <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Severity</th>
+                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none group" data-sort="severity">
+                            Severity <span class="sort-icon text-gray-300 group-hover:text-gray-500 ml-0.5">↕</span>
+                        </th>
                         <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                         <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidence</th>
+                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none group" data-sort="-detected_site__confidence_score">
+                            Confidence <span class="sort-icon text-gray-300 group-hover:text-gray-500 ml-0.5">↕</span>
+                        </th>
                         <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none group" data-sort="-created_at">
+                            Created <span class="sort-icon text-gray-300 group-hover:text-gray-500 ml-0.5">↓</span>
+                        </th>
                         <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
@@ -173,6 +182,15 @@
             <div class="flex gap-1" id="pagination-buttons"></div>
         </div>
     </div>
+</div>
+
+<!-- ── Bulk Action Bar ── -->
+<div id="bulk-bar" class="hidden fixed bottom-16 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-2xl border border-gray-700">
+    <span id="bulk-count" class="text-sm font-semibold mr-2 text-gray-200"></span>
+    <button id="bulk-acknowledge" class="hidden px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg transition-colors">Acknowledge</button>
+    <button id="bulk-dispatch"    class="hidden px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-lg transition-colors">Dispatch</button>
+    <button id="bulk-dismiss"     class="hidden px-3 py-1.5 bg-gray-600 hover:bg-gray-500 text-white text-xs font-semibold rounded-lg transition-colors">Dismiss</button>
+    <button id="bulk-cancel" class="ml-2 text-gray-400 hover:text-white text-sm transition-colors" title="Clear selection">✕</button>
 </div>
 
 <!-- ── Alert Detail Modal ── -->
@@ -440,10 +458,13 @@ window.assignInspector = assignInspector;
 {% block extra_js %}
 <script>
 (function () {
-    let currentPage  = 1;
+    let currentPage   = 1;
     let activeFilters = {};
-    let _alerts      = [];
-    let _currentId   = null;
+    let currentOrdering = '-created_at';
+    let _alerts       = [];
+    let _currentId    = null;
+    let selectedIds   = new Set();
+    let selectedStatuses = {};   // id → status
 
     // ── Severity / status styling ──
     const SEVERITY_CLASS = {
@@ -463,9 +484,13 @@ window.assignInspector = assignInspector;
     // ── Fetch ──
     async function loadAlerts(page = 1) {
         currentPage = page;
+        // Clear selection on each load
+        selectedIds.clear();
+        selectedStatuses = {};
+        updateBulkBar();
         showLoading();
 
-        const params = new URLSearchParams({ page, ...activeFilters });
+        const params = new URLSearchParams({ page, ordering: currentOrdering, ...activeFilters });
         try {
             const res  = await fetch(`/api/alerts/?${params}`, { credentials: 'include' });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -492,8 +517,14 @@ window.assignInspector = assignInspector;
             const locStr = a.site.lat != null
                 ? `${a.site.lat}° N, ${Math.abs(a.site.lng)}° W`
                 : (a.site.region || '—');
+            const isSelectable = a.status === 'open' || a.status === 'acknowledged';
 
-            return `<tr class="hover:bg-gray-50 cursor-pointer" data-id="${a.id}" onclick="window._alertsPage.openModal('${a.id}')">
+            return `<tr class="hover:bg-gray-50 cursor-pointer" data-id="${a.id}" data-status="${a.status}" onclick="window._alertsPage.openModal('${a.id}')">
+                <td class="px-3 py-3 w-8" onclick="event.stopPropagation()">
+                    ${isSelectable ? `<input type="checkbox" class="row-cb rounded border-gray-300 text-blue-600 cursor-pointer"
+                        data-id="${a.id}" data-status="${a.status}"
+                        onchange="window._alertsPage.onRowCheck(this)">` : ''}
+                </td>
                 <td class="px-5 py-3 text-xs font-mono text-gray-500">${a.short_id}</td>
                 <td class="px-5 py-3 text-sm font-medium text-gray-900 max-w-xs truncate">${a.title}</td>
                 <td class="px-5 py-3">
@@ -588,7 +619,7 @@ window.assignInspector = assignInspector;
     // ── Detail modal ──
     let _tlFrames = [];
 
-    async function openModal(id) {
+    async function openModal(id, prefetchedData) {
         _currentId = id;
         _tlFrames  = [];
         document.getElementById('alert-modal').classList.remove('hidden');
@@ -598,9 +629,7 @@ window.assignInspector = assignInspector;
         document.getElementById('modal-tl-viewer').classList.add('hidden');
 
         try {
-            const res  = await fetch(`/api/alerts/${id}/`, { credentials: 'include' });
-            if (!res.ok) throw new Error();
-            const a = await res.json();
+            const a = prefetchedData || await fetch(`/api/alerts/${id}/`, { credentials: 'include' }).then(r => { if (!r.ok) throw new Error(); return r.json(); });
             const site = a.site;
 
             document.getElementById('modal-title').textContent       = a.title;
@@ -880,6 +909,77 @@ window.assignInspector = assignInspector;
         } catch(e) { console.error('Action failed:', e); }
     }
 
+    // ── Bulk selection ──
+    function onRowCheck(cb) {
+        const id     = cb.dataset.id;
+        const status = cb.dataset.status;
+        if (cb.checked) { selectedIds.add(id); selectedStatuses[id] = status; }
+        else            { selectedIds.delete(id); delete selectedStatuses[id]; }
+        syncSelectAll();
+        updateBulkBar();
+    }
+
+    function syncSelectAll() {
+        const allCbs = document.querySelectorAll('.row-cb');
+        const selectAll = document.getElementById('select-all-cb');
+        if (!selectAll) return;
+        const checked = [...allCbs].filter(c => c.checked).length;
+        selectAll.checked       = checked > 0 && checked === allCbs.length;
+        selectAll.indeterminate = checked > 0 && checked < allCbs.length;
+    }
+
+    function updateBulkBar() {
+        const bar   = document.getElementById('bulk-bar');
+        const count = document.getElementById('bulk-count');
+        const btnAck  = document.getElementById('bulk-acknowledge');
+        const btnDis  = document.getElementById('bulk-dispatch');
+        const btnDism = document.getElementById('bulk-dismiss');
+        if (!bar) return;
+
+        const n = selectedIds.size;
+        if (n === 0) { bar.classList.add('hidden'); return; }
+        bar.classList.remove('hidden');
+        count.textContent = `${n} selected`;
+
+        const statuses = new Set(Object.values(selectedStatuses));
+        const allOpen = [...statuses].every(s => s === 'open');
+        const allAck  = [...statuses].every(s => s === 'acknowledged');
+        const mixed   = !allOpen && !allAck;
+
+        btnAck.classList.toggle('hidden',  !allOpen);
+        btnDis.classList.toggle('hidden',  !allAck);
+        btnDism.classList.toggle('hidden', mixed);
+    }
+
+    async function bulkAction(verb) {
+        if (!selectedIds.size) return;
+        try {
+            const res = await fetch('/api/alerts/bulk_action/', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                body: JSON.stringify({ ids: [...selectedIds], action: verb }),
+            });
+            if (res.ok) {
+                selectedIds.clear();
+                selectedStatuses = {};
+                loadAlerts(currentPage);
+            }
+        } catch(e) { console.error('Bulk action failed:', e); }
+    }
+
+    // ── Sorting ──
+    function updateSortIcons() {
+        document.querySelectorAll('th[data-sort]').forEach(th => {
+            const col  = th.dataset.sort.replace(/^-/, '');
+            const icon = th.querySelector('.sort-icon');
+            if (!icon) return;
+            if (currentOrdering === col)   icon.textContent = '↑';
+            else if (currentOrdering === '-' + col) icon.textContent = '↓';
+            else icon.textContent = '↕';
+        });
+    }
+
     // ── CSV export ──
     async function exportCSV() {
         const params = new URLSearchParams({ ...activeFilters, page: 1, per_page: 10000 });
@@ -924,7 +1024,28 @@ window.assignInspector = assignInspector;
 
     // ── Init ──
     document.addEventListener('DOMContentLoaded', function () {
+
+        // Restore saved filters from localStorage
+        try {
+            const saved = localStorage.getItem('gw_alert_filters');
+            if (saved) {
+                activeFilters = JSON.parse(saved);
+                if (activeFilters.status)      document.getElementById('filter-status').value   = activeFilters.status;
+                if (activeFilters.severity)    document.getElementById('filter-severity').value = activeFilters.severity;
+                if (activeFilters.alert_type)  document.getElementById('filter-type').value     = activeFilters.alert_type;
+            }
+        } catch(_) {}
+
         loadAlerts(1);
+
+        // Handle ?highlight= param — fetch alert by ID and open its modal
+        const highlightId = new URLSearchParams(window.location.search).get('highlight');
+        if (highlightId) {
+            fetch(`/api/alerts/${highlightId}/`, { credentials: 'include' })
+                .then(r => r.ok ? r.json() : null)
+                .then(data => { if (data) openModal(highlightId, data); })
+                .catch(() => {});
+        }
 
         document.getElementById('apply-filters').addEventListener('click', () => {
             activeFilters = {};
@@ -934,6 +1055,7 @@ window.assignInspector = assignInspector;
             if (status)   activeFilters.status      = status;
             if (severity) activeFilters.severity    = severity;
             if (atype)    activeFilters.alert_type  = atype;
+            localStorage.setItem('gw_alert_filters', JSON.stringify(activeFilters));
             loadAlerts(1);
         });
 
@@ -942,7 +1064,42 @@ window.assignInspector = assignInspector;
             document.getElementById('filter-severity').value = '';
             document.getElementById('filter-type').value     = '';
             activeFilters = {};
+            localStorage.removeItem('gw_alert_filters');
             loadAlerts(1);
+        });
+
+        // Sort header clicks
+        document.querySelectorAll('th[data-sort]').forEach(th => {
+            th.addEventListener('click', () => {
+                const col = th.dataset.sort.replace(/^-/, '');
+                if (currentOrdering === '-' + col) currentOrdering = col;
+                else currentOrdering = '-' + col;
+                updateSortIcons();
+                loadAlerts(1);
+            });
+        });
+
+        // Bulk bar buttons
+        document.getElementById('bulk-acknowledge').addEventListener('click', () => bulkAction('acknowledged'));
+        document.getElementById('bulk-dispatch').addEventListener('click',    () => bulkAction('dispatched'));
+        document.getElementById('bulk-dismiss').addEventListener('click',     () => bulkAction('dismissed'));
+        document.getElementById('bulk-cancel').addEventListener('click', () => {
+            selectedIds.clear(); selectedStatuses = {};
+            document.querySelectorAll('.row-cb').forEach(c => c.checked = false);
+            const sa = document.getElementById('select-all-cb');
+            if (sa) { sa.checked = false; sa.indeterminate = false; }
+            updateBulkBar();
+        });
+
+        // Select-all checkbox
+        document.getElementById('select-all-cb').addEventListener('change', function () {
+            document.querySelectorAll('.row-cb').forEach(cb => {
+                cb.checked = this.checked;
+                const id = cb.dataset.id, st = cb.dataset.status;
+                if (this.checked) { selectedIds.add(id); selectedStatuses[id] = st; }
+                else              { selectedIds.delete(id); delete selectedStatuses[id]; }
+            });
+            updateBulkBar();
         });
 
         document.getElementById('export-csv-btn').addEventListener('click', exportCSV);
@@ -950,18 +1107,22 @@ window.assignInspector = assignInspector;
         document.getElementById('alert-modal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });
+
+        updateSortIcons();
     });
 
-    window._alertsPage = { 
-        openModal, 
-        closeModal, 
-        action, 
+    window._alertsPage = {
+        openModal,
+        closeModal,
+        action,
+        onRowCheck,
         onSliderChange: (v) => renderTlFrame(parseInt(v, 10)),
         openInspectorModal,
         closeInspectorModal,
         loadInspectors,
         selectInspector,
-        assignInspector
+        assignInspector,
+        refreshAlerts: () => loadAlerts(currentPage),
     };
 })();
 </script>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f3f4f6; font-family: 'Helvetica Neue', Arial, sans-serif; }
+  .wrapper { padding: 40px 16px; }
+  .card {
+    max-width: 520px; margin: 0 auto;
+    background: #ffffff; border-radius: 16px;
+    overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+  /* Header */
+  .header {
+    background: #062d1f;
+    padding: 32px 40px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .logo-box {
+    width: 44px; height: 44px;
+    background: #f59e0b; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .logo-box span { color: #fff; font-weight: 800; font-size: 22px; }
+  .header-text h1 { color: #ffffff; font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .header-text p { color: #6ee7b7; font-size: 13px; margin-top: 2px; }
+  /* Body */
+  .body { padding: 40px; }
+  .greeting { font-size: 15px; color: #374151; margin-bottom: 16px; }
+  .body p { font-size: 14px; color: #6b7280; line-height: 1.7; margin-bottom: 14px; }
+  /* Hero */
+  .hero {
+    text-align: center; margin: 28px 0;
+  }
+  .hero h2 { font-size: 22px; font-weight: 700; color: #111827; margin-bottom: 8px; }
+  .hero p { font-size: 14px; color: #6b7280; }
+  /* CTA button */
+  .cta-wrap { text-align: center; margin: 28px 0; }
+  .cta-btn {
+    display: inline-block;
+    background: #f59e0b; color: #ffffff;
+    font-weight: 700; font-size: 15px;
+    padding: 14px 36px; border-radius: 10px;
+    text-decoration: none; letter-spacing: 0.2px;
+  }
+  /* Divider */
+  .divider { border: none; border-top: 1px solid #e5e7eb; margin: 24px 0; }
+  /* Link fallback */
+  .link-fallback { font-size: 12px; color: #9ca3af; }
+  .link-text { font-size: 12px; color: #3b82f6; word-break: break-all; }
+  /* Warning */
+  .warning {
+    background: #fef9c3; border: 1px solid #fde047;
+    border-radius: 10px; padding: 12px 16px;
+    font-size: 13px; color: #713f12; margin-top: 8px;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .warning svg { flex-shrink: 0; margin-top: 1px; }
+  /* Footer */
+  .footer {
+    background: #f9fafb; border-top: 1px solid #e5e7eb;
+    padding: 24px 40px; text-align: center;
+  }
+  .footer p { font-size: 12px; color: #9ca3af; line-height: 1.6; }
+  .footer strong { color: #6b7280; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="card">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="logo-box"><span>G</span></div>
+      <div class="header-text">
+        <h1>GalamseyWatch AI</h1>
+        <p>Environmental Monitoring &amp; Detection</p>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="body">
+      <p class="greeting">Hi{% if user %} <strong>{{ user.username }}</strong>{% endif %},</p>
+      <p>
+        Welcome to <strong>GalamseyWatch AI</strong> — Ghana's AI-powered illegal mining
+        detection platform. You're almost ready to start monitoring.
+      </p>
+
+      <div class="hero">
+        <h2>Confirm your email address</h2>
+        <p>Click the button below to activate your account.<br>This link expires in <strong>24 hours</strong>.</p>
+      </div>
+
+      <div class="cta-wrap">
+        <a href="{{ link }}" class="cta-btn">Activate My Account</a>
+      </div>
+
+      <hr class="divider">
+
+      <p class="link-fallback">If the button doesn't work, copy and paste this link into your browser:</p>
+      <p class="link-text">{{ link }}</p>
+
+      <div class="warning" style="margin-top: 24px;">
+        <svg width="16" height="16" fill="none" stroke="#92400e" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        </svg>
+        <span>If you didn't create a GalamseyWatch AI account, you can safely ignore this email.</span>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>&copy; GalamseyWatch AI &mdash; Illegal Mining Detection Platform<br>
+         <strong>This is an automated message. Please do not reply.</strong></p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

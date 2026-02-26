@@ -19,7 +19,10 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import RedirectView
-from apps.dashboard.views import SignUpView, CustomLoginView, CustomLogoutView
+from apps.dashboard.views import (
+    SignUpView, CustomLoginView, CustomLogoutView,
+    password_reset_request, password_reset_pin_entry, password_reset_new_password,
+)
 
 def root_view(request):
     """Root view that redirects based on user role"""
@@ -42,7 +45,11 @@ urlpatterns = [
     path('accounts/login/', CustomLoginView.as_view(), name='login'),
     path('accounts/logout/', CustomLogoutView.as_view(), name='logout'),
     path('accounts/signup/', SignUpView.as_view(), name='signup'),
-    # Django auth URLs (for password reset, etc.)
+    # PIN-based password reset (overrides Django's built-in link-based reset)
+    path('accounts/password_reset/', password_reset_request, name='password_reset'),
+    path('accounts/password_reset/pin/', password_reset_pin_entry, name='password_reset_pin_entry'),
+    path('accounts/password_reset/new/', password_reset_new_password, name='password_reset_new_password'),
+    # Django auth URLs (password change, etc.)
     path('accounts/', include('django.contrib.auth.urls')),
     path('', root_view, name='root'),
     path('dashboard/', include('apps.dashboard.urls')),

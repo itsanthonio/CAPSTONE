@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f3f4f6; font-family: 'Helvetica Neue', Arial, sans-serif; }
+  .wrapper { padding: 40px 16px; }
+  .card {
+    max-width: 520px; margin: 0 auto;
+    background: #ffffff; border-radius: 16px;
+    overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+  /* Header */
+  .header {
+    background: #062d1f;
+    padding: 32px 40px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .logo-box {
+    width: 44px; height: 44px;
+    background: #f59e0b; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .logo-box span { color: #fff; font-weight: 800; font-size: 22px; }
+  .header-text h1 { color: #ffffff; font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .header-text p { color: #6ee7b7; font-size: 13px; margin-top: 2px; }
+  /* Body */
+  .body { padding: 40px; }
+  .greeting { font-size: 15px; color: #374151; margin-bottom: 16px; }
+  .body p { font-size: 14px; color: #6b7280; line-height: 1.7; margin-bottom: 12px; }
+  /* Welcome banner */
+  .welcome {
+    background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
+    border-radius: 12px; padding: 20px 24px; margin-bottom: 28px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .welcome-icon {
+    width: 40px; height: 40px; background: rgba(255,255,255,0.15);
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .welcome h2 { color: #ffffff; font-size: 16px; font-weight: 700; margin-bottom: 3px; }
+  .welcome p { color: #a7f3d0; font-size: 13px; margin: 0; }
+  /* PIN box */
+  .pin-section { margin: 28px 0; text-align: center; }
+  .pin-label { font-size: 12px; font-weight: 600; text-transform: uppercase;
+               letter-spacing: 1px; color: #9ca3af; margin-bottom: 12px; }
+  .pin-box {
+    display: inline-block;
+    background: #f0fdf4; border: 2px solid #bbf7d0;
+    border-radius: 14px; padding: 24px 48px;
+  }
+  .pin-code { font-size: 48px; font-weight: 800; letter-spacing: 10px;
+              color: #062d1f; font-variant-numeric: tabular-nums; }
+  .expiry-note {
+    margin-top: 12px; font-size: 12px; color: #9ca3af;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  /* Warning */
+  .warning {
+    background: #fef9c3; border: 1px solid #fde047;
+    border-radius: 10px; padding: 14px 16px;
+    font-size: 13px; color: #713f12; margin-top: 24px;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .warning svg { flex-shrink: 0; margin-top: 1px; }
+  /* Footer */
+  .footer {
+    background: #f9fafb; border-top: 1px solid #e5e7eb;
+    padding: 24px 40px; text-align: center;
+  }
+  .footer p { font-size: 12px; color: #9ca3af; line-height: 1.6; }
+  .footer strong { color: #6b7280; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="card">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="logo-box"><span>G</span></div>
+      <div class="header-text">
+        <h1>GalamseyWatch AI</h1>
+        <p>Environmental Monitoring &amp; Detection</p>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="body">
+      <p class="greeting">Hi{% if user %} <strong>{{ user.username }}</strong>{% endif %},</p>
+
+      <!-- Welcome banner -->
+      <div class="welcome">
+        <div class="welcome-icon">
+          <svg width="20" height="20" fill="none" stroke="#ffffff" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M5 13l4 4L19 7"/>
+          </svg>
+        </div>
+        <div>
+          <h2>Welcome to GalamseyWatch AI</h2>
+          <p>One step away from protecting Ghana's environment</p>
+        </div>
+      </div>
+
+      <p>You're almost in. Enter the code below to verify your email address and activate your account.</p>
+
+      <!-- PIN -->
+      <div class="pin-section">
+        <p class="pin-label">Your activation code</p>
+        <div class="pin-box">
+          <div class="pin-code">{{ pin }}</div>
+        </div>
+        <div class="expiry-note">
+          <svg width="14" height="14" fill="none" stroke="#9ca3af" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" stroke-width="2"/>
+            <path d="M12 6v6l4 2" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          This code expires in <strong>24 hours</strong>
+        </div>
+      </div>
+
+      <div class="warning">
+        <svg width="16" height="16" fill="none" stroke="#92400e" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        </svg>
+        <span>If you didn't create a GalamseyWatch AI account, please ignore this email. Do not share this code with anyone.</span>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>&copy; GalamseyWatch AI &mdash; Illegal Mining Detection Platform<br>
+         <strong>This is an automated message. Please do not reply.</strong></p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
