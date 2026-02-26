@@ -143,8 +143,8 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         <!-- Map (2 cols) -->
-        <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
                 <div>
                     <h2 class="text-sm font-semibold text-gray-900">Detection Map</h2>
                     <p class="text-xs text-gray-500 mt-0.5">Click a polygon to inspect · Zoom to explore</p>
@@ -162,7 +162,7 @@
                     </button>
                 </div>
             </div>
-            <div id="dashboard-map" style="height:420px;"></div>
+            <div id="dashboard-map" style="flex:1; min-height:320px;"></div>
             <div id="map-empty-state" class="hidden px-6 py-10 flex flex-col items-center justify-center text-center border-t border-gray-100">
                 <svg class="w-10 h-10 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
@@ -217,7 +217,10 @@
 
             <!-- Recent detections feed -->
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                <h2 class="text-sm font-semibold text-gray-900 mb-3">Recent Detections</h2>
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-sm font-semibold text-gray-900">Recent Detections</h2>
+                    <a href="{% url 'dashboard:alerts' %}" class="text-xs font-medium text-blue-600 hover:underline">View all →</a>
+                </div>
                 {% if stats.recent_sites %}
                 <div class="space-y-2">
                     {% for site in stats.recent_sites %}
@@ -468,6 +471,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const dashboardMap = new MapHandler('dashboard-map', { center: [-1.6244, 6.6885], zoom: 7 });
     dashboardMap.onSiteClick(siteId => window._sitePanel.load(siteId));
+    // Resize after DOM settles so MapLibre fills the flex container
+    setTimeout(() => dashboardMap.map.resize(), 0);
 
     dashboardMap.map.on('load', async function () {
         try {
@@ -598,15 +603,29 @@ document.addEventListener('DOMContentLoaded', function () {
     (function () {
         const ctx = document.getElementById('trend-chart');
         if (!ctx) return;
-        const trendLabels  = [{% for l in stats.trend_labels %}"{{ l }}"{% if not forloop.last %},{% endif %}{% endfor %}];
-        const trendIllegal = [{% for v in stats.trend_illegal %}{{ v }}{% if not forloop.last %},{% endif %}{% endfor %}];
-        const trendLegal   = [{% for v in stats.trend_legal %}{{ v }}{% if not forloop.last %},{% endif %}{% endfor %}];
-        console.log('[Trend] illegal total:', trendIllegal.reduce((a,b)=>a+b,0), 'legal total:', trendLegal.reduce((a,b)=>a+b,0));
+        let trendLabels  = [{% for l in stats.trend_labels %}"{{ l }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+        let trendIllegal = [{% for v in stats.trend_illegal %}{{ v }}{% if not forloop.last %},{% endif %}{% endfor %}];
+        let trendLegal   = [{% for v in stats.trend_legal %}{{ v }}{% if not forloop.last %},{% endif %}{% endfor %}];
+
         const isEmpty = !trendIllegal.some(v => v > 0) && !trendLegal.some(v => v > 0);
         if (isEmpty) {
             document.getElementById('trend-empty')?.classList.remove('hidden');
             return;
         }
+
+        // Trim leading zero days so bars don't bunch up on the right
+        let firstNonZero = 0;
+        while (firstNonZero < trendLabels.length - 1
+               && trendIllegal[firstNonZero] === 0
+               && trendLegal[firstNonZero] === 0) {
+            firstNonZero++;
+        }
+        // Keep at least 7 days for context
+        firstNonZero = Math.max(0, firstNonZero - 2);
+        trendLabels  = trendLabels.slice(firstNonZero);
+        trendIllegal = trendIllegal.slice(firstNonZero);
+        trendLegal   = trendLegal.slice(firstNonZero);
+
         new Chart(ctx, {
             type: 'bar',
             data: {
@@ -617,6 +636,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         data: trendIllegal,
                         backgroundColor: 'rgba(239, 68, 68, 0.75)',
                         borderWidth: 0,
+                        borderRadius: 3,
                         stack: 'detections',
                     },
                     {
@@ -624,6 +644,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         data: trendLegal,
                         backgroundColor: 'rgba(59, 130, 246, 0.65)',
                         borderWidth: 0,
+                        borderRadius: 3,
                         stack: 'detections',
                     }
                 ]
@@ -639,7 +660,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     x: {
                         stacked: true,
                         grid: { display: false },
-                        ticks: { font: { size: 10 }, color: '#9ca3af', maxTicksLimit: 8 }
+                        ticks: { font: { size: 10 }, color: '#9ca3af', maxTicksLimit: 10 }
                     },
                     y: {
                         stacked: true,

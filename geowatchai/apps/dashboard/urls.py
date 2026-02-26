@@ -8,6 +8,10 @@ urlpatterns = [
     path('signup/', views.SignUpView.as_view(), name='signup'),
     path('login/', views.CustomLoginView.as_view(), name='login'),
     path('logout/', views.CustomLogoutView.as_view(), name='logout'),
+    # Email verification
+    path('activation-sent/', views.activation_sent, name='activation_sent'),
+    path('activation-pin/', views.activation_pin_entry, name='activation_pin_entry'),
+    path('accounts/activate/<uidb64>/<token>/', views.activate_account, name='activate'),
     
     # Gatekeeper router - handles role-based redirection
     path('', views.dashboard_router, name='dashboard_router'),

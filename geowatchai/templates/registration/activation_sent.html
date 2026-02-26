@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check Your Email — GalamseyWatch AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'gis-blue': '#3b82f6',
+                        'active-gold': '#f59e0b',
+                        'sidebar-green': '#062d1f',
+                    },
+                    fontFamily: { 'sans': ['Inter', 'ui-sans-serif', 'system-ui'] }
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 font-sans antialiased">
+
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full text-center space-y-6">
+        <div class="mx-auto h-16 w-16 bg-amber-100 rounded-full flex items-center justify-center">
+            <svg class="w-8 h-8 text-active-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+        </div>
+
+        <div>
+            <h2 class="text-3xl font-extrabold text-gray-900">Check your inbox</h2>
+            <p class="mt-3 text-gray-600">
+                We sent a confirmation link to your email address.<br>
+                Click it to activate your account and sign in.
+            </p>
+        </div>
+
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800 text-left">
+            <p class="font-medium mb-1">Didn't receive it?</p>
+            <ul class="list-disc list-inside space-y-1 text-blue-700">
+                <li>Check your spam or junk folder</li>
+                <li>The link expires in 24 hours</li>
+                <li>If you used the wrong email, <a href="{% url 'signup' %}" class="underline hover:text-blue-900">sign up again</a></li>
+            </ul>
+        </div>
+
+        <a href="{% url 'login' %}"
+           class="inline-block text-sm text-gray-500 hover:text-gray-700 underline">
+            Back to sign in
+        </a>
+    </div>
+</div>
+
+</body>
+</html>

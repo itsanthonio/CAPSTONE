@@ -4,27 +4,29 @@
 {% block title %}My Assignments — GalamseyWatch{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
     .mini-map { height: 180px; border-radius: 0.5rem; overflow: hidden; }
     .mini-map-wrap { position: relative; cursor: pointer; }
     .mini-map-overlay {
-        position: absolute; inset: 0; z-index: 10;
-        display: flex; align-items: flex-end; justify-content: flex-end;
-        padding: 8px;
+        position: absolute; bottom: 0; right: 0; z-index: 800;
+        padding: 8px; pointer-events: none;
     }
     .mini-map-overlay span {
         background: rgba(0,0,0,0.6); color: #fff;
         font-size: 0.7rem; padding: 3px 8px; border-radius: 4px;
+        pointer-events: auto; cursor: pointer;
     }
     .tab-btn.active { background: #f59e0b; color: #fff; }
     .assignment-card { display: none; }
     .assignment-card.visible { display: block; }
     .outcome-btn { transition: all 0.15s; }
-    input[type="file"]::file-selector-button {
-        background: #f3f4f6; border: 1px solid #d1d5db;
-        padding: 4px 10px; border-radius: 4px; cursor: pointer;
-        font-size: 0.8rem;
-    }
+    /* Drop zone styles */
+    .drop-zone.drag-over { border-color: #f59e0b; background: #fffbeb; }
+    /* Timelapse thumbnail active state — ring managed on wrapper div by JS */
+    .tl-thumb { opacity: 0.55; cursor: pointer; transition: opacity 0.15s; }
+    .tl-thumb:hover { opacity: 0.85; }
+    .tl-thumb.active { opacity: 1; }
 </style>
 {% endblock %}
 
@@ -83,7 +85,7 @@
 
     <!-- Assignment cards -->
     {% if assignments %}
-    <div class="space-y-6" id="cards-container">
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6" id="cards-container">
         {% for d in assignments %}
         {% with assignment=d.assignment alert=d.alert site=d.site %}
 
@@ -121,6 +123,7 @@
 <!-- Toast container -->
 <div id="toast-container" class="fixed top-4 right-4 space-y-2 z-50"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 /* ---------- Tab filtering ---------- */
 function filterTab(tab) {
@@ -142,14 +145,20 @@ function filterTab(tab) {
 }
 filterTab('all');
 
-/* ---------- Mini-maps ---------- */
+/* ---------- Mini-maps (Leaflet — no WebGL context limit) ---------- */
 function openInLiveMap(lng, lat) {
     if (!lng || !lat) return;
     window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
 }
 
-// Initialise each mini-map after the browser has finished layout
 requestAnimationFrame(() => {
+    if (typeof L === 'undefined') {
+        console.error('Leaflet failed to load — check network/CDN');
+        document.querySelectorAll('.mini-map').forEach(el => {
+            el.innerHTML = '<div class="flex items-center justify-center h-full bg-gray-100 text-gray-400 text-sm rounded-lg">Map unavailable</div>';
+        });
+        return;
+    }
     document.querySelectorAll('.mini-map').forEach(el => {
         const lng = parseFloat(el.dataset.lng);
         const lat = parseFloat(el.dataset.lat);
@@ -157,18 +166,27 @@ requestAnimationFrame(() => {
             el.innerHTML = '<div class="flex items-center justify-center h-full bg-gray-100 text-gray-400 text-sm rounded-lg">No location data</div>';
             return;
         }
-        const map = new maplibregl.Map({
-            container: el,
-            style: 'https://tiles.openfreemap.org/styles/liberty',
-            center: [lng, lat],
-            zoom: 13,
-            interactive: false,
+        const m = L.map(el, {
+            zoomControl: false,
             attributionControl: false,
-        });
-        map.on('load', () => {
-            map.resize();
-            new maplibregl.Marker({ color: '#ef4444' }).setLngLat([lng, lat]).addTo(map);
-        });
+            dragging: false,
+            scrollWheelZoom: false,
+            doubleClickZoom: false,
+            keyboard: false,
+        }).setView([lat, lng], 13);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19,
+            subdomains: 'abcd',
+        }).addTo(m);
+        L.circleMarker([lat, lng], {
+            radius: 8,
+            color: '#ef4444',
+            fillColor: '#ef4444',
+            fillOpacity: 0.85,
+            weight: 2,
+        }).addTo(m);
+        // Force reflow after a tick in case container was hidden during init
+        setTimeout(() => m.invalidateSize(), 150);
     });
 });
 
@@ -186,6 +204,59 @@ function selectOutcome(assignmentId, outcome) {
     document.getElementById(`outcome-input-${assignmentId}`).value = outcome;
 }
 
+/* ---------- Drag-and-drop photo upload ---------- */
+window._draftFiles = {};   // assignmentId → File[]
+
+function initDropZones() {
+    document.querySelectorAll('.drop-zone').forEach(zone => {
+        const aid = zone.dataset.assignment;
+        const fileInput = document.getElementById(`file-input-${aid}`);
+        const preview   = document.getElementById(`photo-preview-${aid}`);
+        if (!_draftFiles[aid]) _draftFiles[aid] = [];
+
+        zone.addEventListener('click', () => fileInput.click());
+
+        zone.addEventListener('dragover', e => {
+            e.preventDefault();
+            zone.classList.add('drag-over');
+        });
+        zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+        zone.addEventListener('drop', e => {
+            e.preventDefault();
+            zone.classList.remove('drag-over');
+            addFiles(aid, e.dataTransfer.files, preview);
+        });
+        fileInput.addEventListener('change', () => {
+            addFiles(aid, fileInput.files, preview);
+            fileInput.value = '';   // reset so same file can be re-added
+        });
+    });
+}
+
+function addFiles(aid, fileList, previewEl) {
+    Array.from(fileList).forEach(file => {
+        if (!file.type.startsWith('image/')) return;
+        _draftFiles[aid].push(file);
+        const wrap = document.createElement('div');
+        wrap.className = 'relative';
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        img.className = 'w-16 h-12 object-cover rounded-lg border border-gray-200';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'absolute -top-1 -right-1 w-4 h-4 bg-gray-700 text-white rounded-full text-xs flex items-center justify-center leading-none hover:bg-red-600';
+        btn.textContent = '×';
+        const idx = _draftFiles[aid].length - 1;
+        btn.addEventListener('click', () => {
+            _draftFiles[aid].splice(idx, 1);
+            wrap.remove();
+        });
+        wrap.appendChild(img);
+        wrap.appendChild(btn);
+        previewEl.appendChild(wrap);
+    });
+}
+
 /* ---------- Field report submit ---------- */
 function submitReport(assignmentId) {
     const outcome = document.getElementById(`outcome-input-${assignmentId}`).value;
@@ -193,6 +264,9 @@ function submitReport(assignmentId) {
 
     const form = document.getElementById(`report-form-${assignmentId}`);
     const formData = new FormData(form);
+
+    // Append drag-and-drop files (hidden input won't have them)
+    (_draftFiles[assignmentId] || []).forEach(f => formData.append('evidence_photos', f));
 
     fetch(`/dashboard/assignment/${assignmentId}/report/`, {
         method: 'POST',
@@ -210,6 +284,52 @@ function submitReport(assignmentId) {
     })
     .catch(() => showToast('Network error. Please try again.', 'error'));
 }
+
+/* ---------- Timelapse slideshow ---------- */
+function initTimelapse() {
+    document.querySelectorAll('[data-tl-assignment]').forEach(container => {
+        const aid = container.dataset.tlAssignment;
+        const featured = document.getElementById(`tl-featured-${aid}`);
+        const yearLabel = document.getElementById(`tl-year-${aid}`);
+        const playBtn   = document.getElementById(`tl-play-${aid}`);
+        const thumbs    = Array.from(container.querySelectorAll('.tl-thumb'));
+        if (!featured || thumbs.length === 0) return;
+
+        let current = 0;
+        let timer = null;
+
+        function showFrame(idx) {
+            current = idx;
+            thumbs.forEach((t, i) => t.classList.toggle('active', i === idx));
+            featured.src = thumbs[idx].dataset.src;
+            if (yearLabel) yearLabel.textContent = thumbs[idx].dataset.year;
+        }
+        showFrame(0);
+
+        thumbs.forEach((t, i) => t.addEventListener('click', () => {
+            if (timer) { clearInterval(timer); timer = null; playBtn.textContent = '▶ Play'; }
+            showFrame(i);
+        }));
+
+        if (playBtn) {
+            playBtn.addEventListener('click', () => {
+                if (timer) {
+                    clearInterval(timer); timer = null;
+                    playBtn.textContent = '▶ Play';
+                } else {
+                    timer = setInterval(() => showFrame((current + 1) % thumbs.length), 800);
+                    playBtn.textContent = '⏸ Pause';
+                }
+            });
+        }
+    });
+}
+
+// Initialise interactive components once DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    initDropZones();
+    initTimelapse();
+});
 
 /* ---------- Toast ---------- */
 function showToast(msg, type) {

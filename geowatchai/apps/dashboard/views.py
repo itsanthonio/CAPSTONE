@@ -1,18 +1,28 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import login, authenticate
+from django.contrib.auth import login, authenticate, get_user_model
 from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.forms import AuthenticationForm
-from django.urls import reverse_lazy
+from django.contrib.auth.tokens import default_token_generator
+from django.urls import reverse_lazy, reverse
 from django.views.generic import CreateView
 from django.utils import timezone
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.http import JsonResponse
 from django.conf import settings as django_settings
+from django.core.mail import send_mail
+from django.core.cache import cache
+from django.template.loader import render_to_string
 from datetime import timedelta, date
 from django.contrib import messages
 import os
+import random
+import threading
 from .forms import CustomUserCreationForm, RoleBasedLoginForm
 from apps.accounts.models import UserProfile
+
+User = get_user_model()
 
 
 @login_required
@@ -96,8 +106,23 @@ class CustomLoginView(LoginView):
         return '/dashboard/home/'
 
     def form_valid(self, form):
-        # Use Django's built-in login logic
-        return super().form_valid(form)
+        response = super().form_valid(form)   # calls login(), creates session
+        if self.request.POST.get('remember_me'):
+            self.request.session.set_expiry(1209600)   # 14 days
+        else:
+            self.request.session.set_expiry(0)         # ends on browser close
+        return response
+
+    def form_invalid(self, form):
+        # Give a specific, helpful message when the account is unverified
+        username = self.request.POST.get('username', '')
+        try:
+            u = User.objects.get(username=username)
+            if not u.is_active:
+                form.add_error(None, 'Please verify your email address before signing in.')
+        except User.DoesNotExist:
+            pass
+        return super().form_invalid(form)
 
 
 class SignUpView(CreateView):
@@ -106,24 +131,32 @@ class SignUpView(CreateView):
     success_url = '/dashboard/home/'
 
     def form_valid(self, form):
-        response = super().form_valid(form)
-        login(self.request, self.object)
-        
+        # Save user but keep inactive until email is confirmed
+        user = form.save(commit=False)
+        user.is_active = False
+        user.save()
+
         # Create UserProfile with selected role
         role = form.cleaned_data.get('role', UserProfile.Role.ADMIN)
         organization = form.cleaned_data.get('organization', UserProfile.Organization.OTHER)
         phone_number = form.cleaned_data.get('phone_number', '')
-        
+
         UserProfile.objects.update_or_create(
-            user=self.object,
+            user=user,
             defaults={
                 'role': role,
                 'organization': organization,
                 'phone_number': phone_number
             }
         )
-        
-        return response
+
+        # Generate activation PIN and send in background
+        pin = str(random.randint(100000, 999999))
+        cache.set(f'activation_pin_{user.email.lower()}', {'pin': pin, 'user_pk': str(user.pk)}, timeout=86400)
+        threading.Thread(
+            target=_send_activation_pin_email, args=(user, pin), daemon=True
+        ).start()
+        return redirect(f'/dashboard/activation-pin/?email={user.email}')
 
 
 class CustomLogoutView(LogoutView):
@@ -634,3 +667,159 @@ def submit_field_report(request, assignment_id):
         return JsonResponse({'error': 'Assignment not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+# ---------------------------------------------------------------------------
+# Email verification helpers & views
+# ---------------------------------------------------------------------------
+
+def _send_activation_email(request, user):
+    """Send an account activation email to the given user."""
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+    relative_url = reverse('dashboard:activate', kwargs={'uidb64': uid, 'token': token})
+    link = request.build_absolute_uri(relative_url)
+    subject = "Confirm your GalamseyWatch AI account"
+    plain_body = f"Hi {user.username},\n\nClick the link to activate your account:\n{link}\n\nThis link expires in 24 hours."
+    html_body = render_to_string('registration/activation_email.html', {'link': link, 'user': user})
+    send_mail(
+        subject=subject,
+        message=plain_body,
+        from_email=django_settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
+        html_message=html_body,
+        fail_silently=True,
+    )
+
+
+def activation_sent(request):
+    return render(request, 'registration/activation_sent.html')
+
+
+def _send_activation_pin_email(user, pin):
+    """Send a 6-digit activation PIN to a newly registered user."""
+    subject = "Your GalamseyWatch AI account activation code"
+    plain_body = f"Hi {user.username},\n\nYour activation code is: {pin}\n\nThis code expires in 24 hours."
+    html_body = render_to_string('registration/activation_pin_email.html', {'pin': pin, 'user': user})
+    send_mail(
+        subject=subject,
+        message=plain_body,
+        from_email=django_settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
+        html_message=html_body,
+        fail_silently=True,
+    )
+
+
+def activation_pin_entry(request):
+    email = (request.GET.get('email') or request.POST.get('email', '')).strip().lower()
+    error = None
+    if request.method == 'POST':
+        pin = request.POST.get('pin', '').strip()
+        data = cache.get(f'activation_pin_{email}')
+        if data and data['pin'] == pin:
+            try:
+                user = User.objects.get(pk=data['user_pk'])
+                user.is_active = True
+                user.save()
+                cache.delete(f'activation_pin_{email}')
+                messages.success(request, 'Account activated! You can now sign in.')
+                return redirect('login')
+            except User.DoesNotExist:
+                error = 'Something went wrong. Please sign up again.'
+        else:
+            error = 'That code is incorrect or has expired.'
+    return render(request, 'registration/activation_pin.html', {'email': email, 'error': error})
+
+
+def activate_account(request, uidb64, token):
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    if user is not None and default_token_generator.check_token(user, token):
+        user.is_active = True
+        user.save()
+        messages.success(request, 'Email confirmed! You can now sign in.')
+        return redirect('login')
+
+    return render(request, 'registration/activation_invalid.html')
+
+
+# ---------------------------------------------------------------------------
+# PIN-based password reset
+# ---------------------------------------------------------------------------
+
+def _send_pin_email(user, pin):
+    """Send a 6-digit PIN to the user for password reset."""
+    subject = "Your GalamseyWatch AI password reset code"
+    plain_body = f"Hi {user.username},\n\nYour password reset code is: {pin}\n\nThis code expires in 10 minutes.\n\nIf you didn't request this, ignore this email."
+    html_body = render_to_string('registration/pin_email.html', {'pin': pin, 'user': user})
+    send_mail(
+        subject=subject,
+        message=plain_body,
+        from_email=django_settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
+        html_message=html_body,
+        fail_silently=True,
+    )
+
+
+def password_reset_request(request):
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip().lower()
+        try:
+            user = User.objects.get(email__iexact=email, is_active=True)
+            pin = str(random.randint(100000, 999999))
+            cache.set(f'pwd_reset_{email}', {'pin': pin, 'user_pk': str(user.pk)}, timeout=600)
+            threading.Thread(target=_send_pin_email, args=(user, pin), daemon=True).start()
+        except User.DoesNotExist:
+            pass  # Don't reveal if email exists
+        return redirect(f'/accounts/password_reset/pin/?email={email}')
+    return render(request, 'registration/password_reset_form.html')
+
+
+def password_reset_pin_entry(request):
+    email = (request.GET.get('email') or request.POST.get('email', '')).lower()
+    error = None
+    if request.method == 'POST':
+        pin = request.POST.get('pin', '').strip()
+        data = cache.get(f'pwd_reset_{email}')
+        if data and data['pin'] == pin:
+            request.session['pwd_reset_user_pk'] = data['user_pk']
+            cache.delete(f'pwd_reset_{email}')
+            return redirect('/accounts/password_reset/new/')
+        else:
+            error = 'That code is incorrect or has expired. Please try again.'
+    return render(request, 'registration/password_reset_pin.html', {'email': email, 'error': error})
+
+
+def password_reset_new_password(request):
+    user_pk = request.session.get('pwd_reset_user_pk')
+    if not user_pk:
+        return redirect('/accounts/password_reset/')
+    try:
+        user = User.objects.get(pk=user_pk)
+    except User.DoesNotExist:
+        return redirect('/accounts/password_reset/')
+
+    error = None
+    if request.method == 'POST':
+        p1 = request.POST.get('new_password1', '')
+        p2 = request.POST.get('new_password2', '')
+        if not p1:
+            error = 'Please enter a new password.'
+        elif p1 != p2:
+            error = 'Passwords do not match.'
+        elif len(p1) < 8:
+            error = 'Password must be at least 8 characters.'
+        else:
+            user.set_password(p1)
+            user.save()
+            del request.session['pwd_reset_user_pk']
+            messages.success(request, 'Password changed! You can now sign in.')
+            return redirect('login')
+
+    return render(request, 'registration/password_reset_new.html', {'error': error})
