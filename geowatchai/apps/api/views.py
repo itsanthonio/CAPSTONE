@@ -13,7 +13,20 @@ from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission
+
+
+class IsAdminRole(BasePermission):
+    """Grants access only to users whose UserProfile.role == 'admin'."""
+    message = 'Admin access required.'
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        try:
+            return request.user.profile.role == 'admin'
+        except Exception:
+            return False
 
 from apps.jobs.models import Job
 from apps.results.models import Result
@@ -49,6 +62,14 @@ def _is_admin(user):
         return False
 
 
+from rest_framework.throttling import UserRateThrottle
+
+
+class JobCreateThrottle(UserRateThrottle):
+    """Tight per-user throttle for job creation — each job burns GEE quota."""
+    scope = 'job_create'
+
+
 class JobViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Job model with creation and status tracking.
@@ -62,6 +83,11 @@ class JobViewSet(viewsets.ModelViewSet):
     queryset = Job.objects.all()
     serializer_class = JobSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_throttles(self):
+        if self.action == 'create':
+            return [JobCreateThrottle()]
+        return super().get_throttles()
 
     def get_serializer_class(self):
         """
@@ -117,7 +143,7 @@ class JobViewSet(viewsets.ModelViewSet):
                 )
 
             except Exception as e:
-                logger.error(f"Failed to trigger pipeline for job {job.id}: {str(e)}")
+                logger.exception(f"Failed to trigger pipeline for job {job.id}")
 
                 # Update job status to failed
                 job.status = Job.Status.FAILED
@@ -125,20 +151,16 @@ class JobViewSet(viewsets.ModelViewSet):
 
                 return Response(
                     {
-                        'error': 'Failed to start detection pipeline',
-                        'details': str(e),
+                        'error': 'Failed to start detection pipeline.',
                         'job_id': str(job.id)
                     },
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
 
         except Exception as e:
-            logger.error(f"Job creation failed: {str(e)}")
+            logger.exception("Job creation failed")
             return Response(
-                {
-                    'error': 'Job creation failed',
-                    'details': str(e)
-                },
+                {'error': 'Job creation failed. Please check your request and try again.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -496,12 +518,22 @@ class AlertViewSet(viewsets.ViewSet):
     """
     Alert listing and status-change actions.
     GET  /api/alerts/          — list with filter params: status, severity, alert_type
-    GET  /api/alerts/{id}/     — detail
-    POST /api/alerts/{id}/acknowledge/
-    POST /api/alerts/{id}/dismiss/
-    POST /api/alerts/{id}/dispatch/
+    GET  /api/alerts/{id}/     — detail (any authenticated user)
+    POST /api/alerts/{id}/acknowledge/  — admin only
+    POST /api/alerts/{id}/dismiss/      — admin only
+    POST /api/alerts/{id}/dispatch/     — admin only
+    POST /api/alerts/{id}/resolve/      — admin or assigned inspector
     """
-    permission_classes = [IsAuthenticated]
+    # Default: admin-only.  list/retrieve override to IsAuthenticated below.
+    permission_classes = [IsAdminRole]
+
+    def get_permissions(self):
+        if self.action in ('list', 'retrieve'):
+            return [IsAuthenticated()]
+        if self.action == 'resolve':
+            # resolve is handled per-object inside the method; require login only
+            return [IsAuthenticated()]
+        return [IsAdminRole()]
 
     def get_queryset(self):
         from apps.detections.models import Alert
@@ -656,20 +688,14 @@ class AlertViewSet(viewsets.ViewSet):
 
     @action(detail=True, methods=['post'])
     def acknowledge(self, request, pk=None):
-        if not _is_admin(request.user):
-            return Response({'error': 'Admin access required.'}, status=403)
         return self._change_status(request, pk, 'acknowledged')
 
     @action(detail=True, methods=['post'])
     def dismiss(self, request, pk=None):
-        if not _is_admin(request.user):
-            return Response({'error': 'Admin access required.'}, status=403)
         return self._change_status(request, pk, 'dismissed')
 
     @action(detail=True, methods=['post'])
     def dispatch_alert(self, request, pk=None):
-        if not _is_admin(request.user):
-            return Response({'error': 'Admin access required.'}, status=403)
         return self._change_status(request, pk, 'dispatched')
 
     @action(detail=True, methods=['post'])
@@ -694,8 +720,6 @@ class AlertViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['post'])
     def bulk_action(self, request):
-        if not _is_admin(request.user):
-            return Response({'error': 'Admin access required.'}, status=403)
 
         from apps.detections.models import Alert
         from django.utils import timezone
@@ -731,8 +755,6 @@ class AlertViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['post'])
     def bulk_assign_inspector(self, request):
-        if not _is_admin(request.user):
-            return Response({'error': 'Admin access required.'}, status=403)
 
         from apps.detections.models import Alert
         from apps.accounts.models import InspectorAssignment, UserProfile

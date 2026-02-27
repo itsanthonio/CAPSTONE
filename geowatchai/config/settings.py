@@ -85,6 +85,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'apps.dashboard.middleware.RoleBasedAccessMiddleware',
+    'csp.middleware.CSPMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -109,9 +110,16 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 
 if platform.system() == 'Windows':
-    GDAL_LIBRARY_PATH = r'C:\Program Files\QGIS 3.44.7\bin\gdal312.dll'
-    GEOS_LIBRARY_PATH = r'C:\Program Files\QGIS 3.44.7\bin\geos_c.dll'
-    os.environ['PROJ_LIB'] = r'C:\Program Files\QGIS 3.44.7\share\proj'
+    # Override via .env to avoid hardcoding one machine's QGIS install path.
+    # Defaults keep existing behaviour when the env vars are not set.
+    _gdal = config('GDAL_LIBRARY_PATH', default=r'C:\Program Files\QGIS 3.44.7\bin\gdal312.dll')
+    _geos = config('GEOS_LIBRARY_PATH', default=r'C:\Program Files\QGIS 3.44.7\bin\geos_c.dll')
+    _proj = config('PROJ_LIB',          default=r'C:\Program Files\QGIS 3.44.7\share\proj')
+    if _gdal: GDAL_LIBRARY_PATH = _gdal
+    if _geos: GEOS_LIBRARY_PATH = _geos
+    if _proj:
+        os.environ['PROJ_LIB']  = _proj   # PROJ < 9
+        os.environ['PROJ_DATA'] = _proj   # PROJ >= 9 (QGIS 3.x uses PROJ 9)
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
@@ -186,12 +194,43 @@ CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False
 
-# Content Security Policy
+# Content Security Policy (enforced by csp.middleware.CSPMiddleware).
+# unsafe-inline is retained while inline scripts/styles are still present;
+# migrate to per-request nonces (django-csp nonce support) to remove it.
 CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'", "https://api.mapbox.com", "https://tiles.mapbox.com")
-CSP_STYLE_SRC = ("'self'", "'unsafe-inline'", "https://api.mapbox.com", "https://tiles.mapbox.com")
-CSP_IMG_SRC = ("'self'", "data:", "https://api.mapbox.com", "https://tiles.mapbox.com")
-CSP_CONNECT_SRC = ("'self'", "https://api.mapbox.com", "https://tiles.mapbox.com")
+CSP_SCRIPT_SRC = (
+    "'self'", "'unsafe-inline'",
+    "https://cdn.tailwindcss.com",
+    "https://unpkg.com",
+    "https://api.mapbox.com",
+    "https://cdn.jsdelivr.net",
+)
+CSP_STYLE_SRC = (
+    "'self'", "'unsafe-inline'",
+    "https://fonts.googleapis.com",
+    "https://unpkg.com",
+    "https://api.mapbox.com",
+    "https://cdn.tailwindcss.com",
+)
+CSP_FONT_SRC = (
+    "'self'",
+    "https://fonts.gstatic.com",
+    "https://fonts.googleapis.com",
+)
+CSP_IMG_SRC = (
+    "'self'", "data:", "blob:",
+    "https://api.mapbox.com",
+    "https://tile.openstreetmap.org",
+    "https://*.basemaps.cartocdn.com",
+)
+CSP_CONNECT_SRC = (
+    "'self'",
+    "https://api.mapbox.com",
+    "https://events.mapbox.com",
+    "https://earthengine.googleapis.com",
+)
+CSP_WORKER_SRC  = ("'self'", "blob:")
+CSP_CHILD_SRC   = ("'self'", "blob:")
 
 # CORS Settings
 CORS_ALLOWED_ORIGINS = [
@@ -216,8 +255,10 @@ LOGOUT_REDIRECT_URL = '/accounts/login/'
 
 # Django REST Framework configuration
 REST_FRAMEWORK = {
+    # Default: require authentication.  Views that need public access must
+    # explicitly set permission_classes = [AllowAny].
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
@@ -228,6 +269,16 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
     ],
+    # Rate limiting — prevents GEE quota exhaustion, brute-force, and audit spam.
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '20/minute',   # unauthenticated callers (very tight)
+        'user': '60/minute',   # authenticated users (general API)
+        'job_create': '5/minute',  # job creation — burns GEE quota
+    },
 }
 
 # Email Configuration
