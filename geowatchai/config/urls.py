@@ -14,15 +14,37 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+import mimetypes
+import os
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib.auth.decorators import login_required
+from django.http import FileResponse, Http404, HttpResponseForbidden
 from django.views.generic import RedirectView
 from apps.dashboard.views import (
     SignUpView, CustomLoginView, CustomLogoutView,
     password_reset_request, password_reset_pin_entry, password_reset_new_password,
 )
+
+
+@login_required
+def protected_media(request, path):
+    """Serve media files only to authenticated users.
+    Prevents unauthenticated access to evidence photos and other uploads."""
+    media_root = os.path.realpath(settings.MEDIA_ROOT)
+    full_path  = os.path.realpath(os.path.join(media_root, path))
+    # Block path traversal (e.g. ../../etc/passwd)
+    if not full_path.startswith(media_root + os.sep) and full_path != media_root:
+        return HttpResponseForbidden()
+    if not os.path.isfile(full_path):
+        raise Http404
+    content_type, _ = mimetypes.guess_type(full_path)
+    return FileResponse(
+        open(full_path, 'rb'),
+        content_type=content_type or 'application/octet-stream',
+    )
 
 def root_view(request):
     """Root view that redirects based on user role"""
@@ -65,11 +87,12 @@ urlpatterns = [
     # API endpoints
     path('api/', include('apps.api.urls')),
     path('accounts/api/', include('apps.accounts.urls')),
+    # Authenticated media serving (replaces unauthenticated static() in DEBUG too)
+    path('media/<path:path>', protected_media, name='protected_media'),
     # Test page
     path('test-map/', lambda request: render(request, 'test_map.html'), name='test_map'),
 ]
 
-# Serve static and media files during development
+# Serve static files during development (media served via protected_media view above)
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -61,13 +61,13 @@ class ModelSingleton:
                 self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                 self._model = self._model.to(self._device)
 
-                # Fix for checkpoints saved on Linux/Mac being loaded on Windows:
-                # PosixPath objects in the checkpoint can't be instantiated on Windows.
-                import pathlib
-                pathlib.PosixPath = pathlib.WindowsPath
-
-                # Load checkpoint with map_location to handle both CPU and CUDA
-                checkpoint = torch.load(model_path, map_location=self._device, weights_only=False)
+                # Load checkpoint safely — weights_only=True rejects any non-tensor
+                # pickle objects (PosixPath, lambdas, etc.), eliminating the
+                # supply-chain attack surface from a tampered .pth file.
+                # The checkpoint must contain only serialized tensors; if it was
+                # saved with optimizer state or path objects, re-export it as:
+                #   torch.save({'model_state_dict': model.state_dict()}, path)
+                checkpoint = torch.load(model_path, map_location=self._device, weights_only=True)
 
                 # Load model state dict
                 self._model.load_state_dict(checkpoint['model_state_dict'])
