@@ -6,10 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="GalamseyWatch AI - Illegal Mining Detection System for Government Agencies">
     <title>{% block title %}{{ settings.APP_NAME }}{% endblock %}</title>
-
+    
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}">
-
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -17,66 +17,35 @@
             theme: {
                 extend: {
                     colors: {
-                        /* Surface scale */
-                        'surface-base': 'var(--surface-base)',
-                        'surface-1':    'var(--surface-1)',
-                        'surface-2':    'var(--surface-2)',
-                        'surface-3':    'var(--surface-3)',
-                        'surface-4':    'var(--surface-4)',
-                        /* Text */
-                        'fg-primary':   'var(--text-primary)',
-                        'fg-secondary': 'var(--text-secondary)',
-                        'fg-muted':     'var(--text-tertiary)',
-                        'fg-inverse':   'var(--text-inverse)',
-                        'fg-link':      'var(--text-link)',
-                        /* Accent */
-                        'gw-accent':       'var(--accent)',
-                        'gw-accent-hover': 'var(--accent-hover)',
-                        'gw-accent-muted': 'var(--accent-muted)',
-                        /* Borders */
-                        'edge-subtle':  'var(--border-subtle)',
-                        'edge-default': 'var(--border-default)',
-                        'edge-strong':  'var(--border-strong)',
-                        'edge-focus':   'var(--border-focus)',
-                        /* Status */
-                        'status-critical':        'var(--status-critical)',
-                        'status-critical-bg':     'var(--status-critical-bg)',
-                        'status-critical-border': 'var(--status-critical-border)',
-                        'status-high':            'var(--status-high)',
-                        'status-high-bg':         'var(--status-high-bg)',
-                        'status-moderate':        'var(--status-moderate)',
-                        'status-moderate-bg':     'var(--status-moderate-bg)',
-                        'status-resolved':        'var(--status-resolved)',
-                        'status-resolved-bg':     'var(--status-resolved-bg)',
-                        'status-info':            'var(--status-info)',
-                        'status-info-bg':         'var(--status-info-bg)',
-                        'status-dispatched':      'var(--status-dispatched)',
-                        'status-dispatched-bg':   'var(--status-dispatched-bg)',
-                    },
-                    fontFamily: {
-                        'sans': ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system'],
-                        'mono': ['"SF Mono"', '"Fira Code"', '"Fira Mono"', 'ui-monospace', 'monospace'],
+                        'gis-blue': '#3b82f6',
+                        'alert-red': '#ef4444',
+                        'conflict-purple': '#8b5cf6',
+                        'sidebar-green': '#062d1f',
+                        'active-gold': '#f59e0b',
+                        'critical-risk': '#ef4444',
+                        'high-risk': '#f97316',
+                        'moderate-risk': '#eab308',
                     },
                     spacing: {
-                        '55': '220px',
-                        '75': '300px',
+                        '18': '4.5rem',
+                        '88': '22rem',
                     },
-                    borderRadius: {
-                        'DEFAULT': '6px',
+                    fontFamily: {
+                        'sans': ['Inter', 'ui-sans-serif', 'system-ui'],
                     },
                 }
             }
         }
     </script>
-
+    
     <!-- Inter Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
+    
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'css/custom.css' %}">
-
+    
     <!-- MapLibre GL JS -->
     <link href="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.js"></script>
@@ -84,159 +53,117 @@
     <!-- MapLibre Draw Plugin -->
     <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.0/mapbox-gl-draw.js"></script>
     <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.0/mapbox-gl-draw.css" type="text/css" />
-
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     {% block extra_css %}{% endblock %}
 </head>
-<body class="bg-surface-base text-fg-primary font-sans antialiased">
-
-    <!-- ── Top Navigation ──────────────────────────────────── -->
-    <header class="fixed top-0 left-0 right-0 h-12 bg-surface-1 border-b border-edge-subtle z-50">
-        <div class="flex items-center justify-between h-full px-4">
-
-            <!-- Logo -->
-            <div class="flex items-center gap-3">
-                <a href="{% url 'analysis:live_map' %}" class="flex items-center gap-2.5 group" aria-label="{{ settings.APP_NAME }} home">
-                    <!-- Satellite icon mark in accent gold -->
-                    <div class="w-7 h-7 flex items-center justify-center flex-shrink-0">
-                        <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6">
-                            <path d="M7 7L13 13M21 7L15 13M7 21L13 15M21 21L15 15" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/>
-                            <circle cx="14" cy="14" r="3" fill="var(--accent)"/>
-                            <circle cx="14" cy="14" r="6.5" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="3 2"/>
-                            <circle cx="7" cy="7" r="2" fill="var(--accent)" fill-opacity="0.5"/>
-                            <circle cx="21" cy="7" r="2" fill="var(--accent)" fill-opacity="0.5"/>
-                            <circle cx="7" cy="21" r="2" fill="var(--accent)" fill-opacity="0.5"/>
-                            <circle cx="21" cy="21" r="2" fill="var(--accent)" fill-opacity="0.5"/>
-                        </svg>
+<body class="bg-gray-50 font-sans antialiased" data-user-role="{{ request.user.profile.role|default:'none' }}">
+    <!-- Top Navigation -->
+    <header class="fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-50">
+        <div class="flex items-center justify-between h-full px-6">
+            <!-- Logo and Title -->
+            <div class="flex items-center space-x-4">
+                <a href="{% url 'analysis:live_map' %}" class="flex items-center space-x-4 hover:opacity-80 transition-opacity">
+                    <div class="w-8 h-8 bg-active-gold rounded flex items-center justify-center">
+                        <span class="text-white font-bold text-sm">G</span>
                     </div>
-                    <span class="text-[14px] font-semibold text-fg-primary tracking-tight group-hover:text-gw-accent transition-colors" style="transition-duration:120ms">
-                        {{ settings.APP_NAME }}
-                    </span>
+                    <h1 class="text-xl font-semibold text-gray-900">{{ settings.APP_NAME }}</h1>
                 </a>
-                {% if settings.ENVIRONMENT and settings.ENVIRONMENT != 'Production' %}
-                <span class="px-2 py-0.5 text-[10px] font-semibold bg-surface-3 text-fg-muted rounded border border-edge-subtle uppercase tracking-widest">
+                {% if settings.ENVIRONMENT %}
+                <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
                     {{ settings.ENVIRONMENT }}
                 </span>
                 {% endif %}
             </div>
 
-            <!-- Right controls -->
-            <div class="flex items-center gap-1">
+            <!-- Right Navigation -->
+            <div class="flex items-center space-x-4">
+                <!-- Admin Panel Button -->
+                {% if user.is_staff %}
+                <button class="px-4 py-2 text-sm font-medium text-white bg-sidebar-green rounded hover:bg-opacity-90 transition-colors">
+                    Admin Panel
+                </button>
+                {% endif %}
 
                 <!-- Notifications -->
                 <div class="relative" id="notif-wrapper">
-                    <button id="notif-btn"
-                            class="btn-ghost relative w-8 h-8"
-                            aria-label="Notifications">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                    <button id="notif-btn" class="relative p-2 text-gray-600 hover:text-gray-900 transition-colors" aria-label="Notifications">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
                         </svg>
-                        <span id="notif-badge"
-                              class="hidden absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-status-critical rounded-full text-fg-inverse text-[9px] font-bold flex items-center justify-center px-1 leading-none">
-                        </span>
+                        <span id="notif-badge" class="hidden absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center px-1 leading-none"></span>
                     </button>
 
-                    <!-- Notification dropdown -->
-                    <div id="notif-dropdown"
-                         class="hidden absolute right-0 top-full mt-2 w-80 bg-surface-2 rounded-xl border border-edge-default z-50 overflow-hidden shadow-2xl"
-                         style="box-shadow: 0 16px 40px rgba(0,0,0,0.5)">
-                        <div class="px-4 py-3 border-b border-edge-subtle flex items-center justify-between">
-                            <span class="text-[13px] font-semibold text-fg-primary">Notifications</span>
-                            <span id="notif-count-label" class="text-[11px] text-fg-muted"></span>
+                    <!-- Dropdown -->
+                    <div id="notif-dropdown" class="hidden absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+                        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                            <span class="text-sm font-semibold text-gray-900">Notifications</span>
+                            <span id="notif-count-label" class="text-xs text-gray-400"></span>
                         </div>
-                        <div id="notif-list" class="divide-y max-h-72 overflow-y-auto gw-scrollbar"
-                             style="divide-color: var(--border-subtle)"></div>
-                        <div class="px-4 py-3 border-t border-edge-subtle">
-                            {% if user.is_authenticated %}
-                                {% if user.profile.role == 'inspector' %}
-                                <a href="{% url 'dashboard:inspector' %}" class="text-[12px] font-semibold text-fg-link hover:underline">My assignments →</a>
-                                {% else %}
-                                <a href="{% url 'dashboard:alerts' %}" class="text-[12px] font-semibold text-fg-link hover:underline">View all alerts →</a>
-                                {% endif %}
+                        <div id="notif-list" class="divide-y divide-gray-50 max-h-72 overflow-y-auto"></div>
+                        <div class="px-4 py-3 border-t border-gray-100 bg-gray-50">
+                            {% if user.is_authenticated and user.profile.role == 'inspector' %}
+                            <a href="{% url 'dashboard:inspector' %}" class="text-xs font-semibold text-blue-600 hover:underline">View my assignments →</a>
+                            {% else %}
+                            <a href="{% url 'dashboard:alerts' %}" class="text-xs font-semibold text-blue-600 hover:underline">View all alerts →</a>
                             {% endif %}
                         </div>
                     </div>
                 </div>
 
-                <!-- Divider -->
-                <div class="w-px h-5 bg-edge-subtle mx-1"></div>
-
-                <!-- User menu -->
+                <!-- User Profile Dropdown -->
                 <div class="relative">
-                    <button onclick="toggleUserMenu()"
-                            class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-3 transition-colors"
-                            style="transition-duration: 120ms"
-                            aria-label="User menu">
-                        <div class="w-6 h-6 bg-surface-3 border border-edge-default rounded-full flex items-center justify-center flex-shrink-0">
-                            <span class="text-[11px] font-semibold text-fg-primary">
-                                {% if user.is_authenticated %}{{ user.username|first|upper }}{% else %}?{% endif %}
+                    <button
+                        onclick="toggleUserMenu()"
+                        class="flex items-center space-x-2 p-2 rounded hover:bg-gray-100 transition-colors"
+                        aria-label="User Profile"
+                    >
+                        <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                            <span class="text-sm font-medium text-gray-700">
+                                {% if user.is_authenticated %}{{ user.username|first|upper }}{% else %}U{% endif %}
                             </span>
                         </div>
-                        <span class="text-[13px] text-fg-secondary hidden sm:block max-w-[100px] truncate">
-                            {% if user.is_authenticated %}{{ user.username }}{% endif %}
-                        </span>
-                        <svg class="w-3 h-3 text-fg-muted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                         </svg>
                     </button>
 
-                    <!-- User dropdown -->
-                    <div id="userMenu"
-                         class="hidden absolute right-0 mt-1.5 w-52 bg-surface-2 rounded-xl border border-edge-default z-50 overflow-hidden"
-                         style="box-shadow: 0 12px 32px rgba(0,0,0,0.45)">
+                    <!-- Dropdown Menu -->
+                    <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                         {% if user.is_authenticated %}
-                        <div class="px-4 py-3 border-b border-edge-subtle">
-                            <p class="text-[13px] font-semibold text-fg-primary truncate">{{ user.username }}</p>
-                            <p class="text-[11px] text-fg-muted truncate mt-0.5">{{ user.email }}</p>
-                        </div>
-                        <div class="py-1">
-                            <a href="{% url 'dashboard:my_account' %}"
-                               class="flex items-center gap-2.5 px-4 py-2 text-[13px] text-fg-secondary hover:bg-surface-3 hover:text-fg-primary transition-colors"
-                               style="transition-duration:120ms">
-                                <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                                </svg>
-                                My Account
-                            </a>
-                            <a href="{% url 'password_change' %}"
-                               class="flex items-center gap-2.5 px-4 py-2 text-[13px] text-fg-secondary hover:bg-surface-3 hover:text-fg-primary transition-colors"
-                               style="transition-duration:120ms">
-                                <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
-                                </svg>
-                                Change Password
-                            </a>
-                            {% if user.is_staff %}
-                            <a href="{% url 'admin:index' %}"
-                               class="flex items-center gap-2.5 px-4 py-2 text-[13px] text-fg-secondary hover:bg-surface-3 hover:text-fg-primary transition-colors"
-                               style="transition-duration:120ms">
-                                <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                </svg>
-                                Admin Panel
-                            </a>
-                            {% endif %}
-                            <div class="my-1 border-t border-edge-subtle"></div>
-                            <form method="post" action="{% url 'logout' %}">
-                                {% csrf_token %}
-                                <button type="submit"
-                                        class="w-full flex items-center gap-2.5 px-4 py-2 text-[13px] text-status-critical hover:bg-status-critical-bg transition-colors"
-                                        style="transition-duration:120ms">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                                    </svg>
-                                    Sign out
-                                </button>
-                            </form>
-                        </div>
+                            <div class="px-4 py-3 border-b border-gray-200">
+                                <p class="text-sm font-medium text-gray-900">{{ user.username }}</p>
+                                <p class="text-xs text-gray-500">{{ user.email }}</p>
+                            </div>
+                            <div class="py-1">
+                                <a href="{% url 'dashboard:my_account' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    My Account
+                                </a>
+                                <a href="{% url 'password_change' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    Change Password
+                                </a>
+                                {% if user.is_staff %}
+                                    <a href="{% url 'admin:index' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                        Admin Panel
+                                    </a>
+                                {% endif %}
+                                <form method="post" action="{% url 'logout' %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                        Logout
+                                    </button>
+                                </form>
+                            </div>
                         {% else %}
-                        <div class="py-1">
-                            <a href="{% url 'login' %}" class="flex items-center gap-2.5 px-4 py-2 text-[13px] text-fg-secondary hover:bg-surface-3 transition-colors" style="transition-duration:120ms">Sign in</a>
-                            <a href="{% url 'signup' %}" class="flex items-center gap-2.5 px-4 py-2 text-[13px] text-fg-secondary hover:bg-surface-3 transition-colors" style="transition-duration:120ms">Create account</a>
-                        </div>
+                            <div class="py-1">
+                                <a href="{% url 'login' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    Login
+                                </a>
+                                <a href="{% url 'signup' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    Sign Up
+                                </a>
+                            </div>
                         {% endif %}
                     </div>
                 </div>
@@ -244,237 +171,192 @@
         </div>
     </header>
 
-    <div class="flex pt-12">
-
-        <!-- ── Sidebar ──────────────────────────────────────── -->
-        <aside class="fixed left-0 top-12 bottom-0 w-55 bg-surface-1 border-r border-edge-subtle z-40 overflow-y-auto flex flex-col">
-            <nav class="flex-1 py-2">
+    <div class="flex pt-16">
+        <!-- Sidebar -->
+        <aside class="fixed left-0 top-16 bottom-0 w-64 bg-sidebar-green text-white z-40 overflow-y-auto">
+            <nav class="p-4">
                 {% if user.is_authenticated and user.profile.role == 'inspector' %}
-                <!-- Inspector Navigation -->
-                <p class="gw-nav-group">Navigation</p>
-                <ul class="list-none p-0 m-0">
+                <!-- ── Inspector Navigation ── -->
+                <ul class="list-none space-y-1 p-0 m-0">
                     <li>
-                        <a href="{% url 'dashboard:inspector' %}"
-                           class="gw-nav-item {% if request.resolver_match.url_name == 'inspector' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                        <a href="{% url 'dashboard:inspector' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'inspector' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
                             </svg>
                             <span>My Assignments</span>
                         </a>
                     </li>
                     <li>
-                        <a href="{% url 'dashboard:settings' %}"
-                           class="gw-nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <a href="{% url 'dashboard:settings' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'settings' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                             </svg>
                             <span>Settings</span>
                         </a>
                     </li>
                 </ul>
-
                 {% else %}
-                <!-- Admin / Analyst Navigation -->
-                <p class="gw-nav-group">Overview</p>
-                <ul class="list-none p-0 m-0 mb-1">
+                <!-- ── Admin / Analyst Navigation ── -->
+                <ul class="list-none space-y-1 p-0 m-0">
                     <li>
-                        <a href="{% url 'dashboard:home' %}"
-                           class="gw-nav-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                        <a href="{% url 'dashboard:home' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'home' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
                             </svg>
                             <span>Dashboard</span>
                         </a>
                     </li>
                     <li>
-                        <a href="{% url 'analysis:live_map' %}"
-                           class="gw-nav-item {% if request.resolver_match.url_name == 'live_map' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                        <a href="{% url 'analysis:live_map' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'live_map' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
                             </svg>
                             <span>Live Map</span>
                         </a>
                     </li>
                     <li>
-                        <a href="{% url 'dashboard:alerts' %}"
-                           class="gw-nav-item {% if 'alerts' in request.resolver_match.url_name %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        <a href="{% url 'dashboard:alerts' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if 'alerts' in request.resolver_match.url_name %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                             </svg>
                             <span>Alerts</span>
                         </a>
                     </li>
-                </ul>
-
-                <p class="gw-nav-group">Analysis</p>
-                <ul class="list-none p-0 m-0 mb-1">
                     <li>
-                        <a href="{% url 'scanning:auto_scan' %}"
-                           class="gw-nav-item {% if request.resolver_match.url_name == 'auto_scan' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                            <span>Auto Scan</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{% url 'dashboard:region_list' %}"
-                           class="gw-nav-item {% if 'region' in request.resolver_match.url_name %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/>
-                                <circle cx="12" cy="12" r="9"/>
-                            </svg>
-                            <span>Regions</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{% url 'dashboard:model_insights' %}"
-                           class="gw-nav-item {% if request.resolver_match.url_name == 'model_insights' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        <a href="{% url 'dashboard:model_insights' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'model_insights' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                             </svg>
                             <span>Model Insights</span>
                         </a>
                     </li>
                     <li>
-                        <a href="{% url 'uploads:data_uploads' %}"
-                           class="gw-nav-item {% if request.resolver_match.url_name == 'data_uploads' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        <a href="{% url 'uploads:data_uploads' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'data_uploads' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                             </svg>
                             <span>Data Uploads</span>
                         </a>
                     </li>
-                </ul>
-
-                <p class="gw-nav-group">System</p>
-                <ul class="list-none p-0 m-0">
                     <li>
-                        <a href="{% url 'dashboard:audit' %}"
-                           class="gw-nav-item {% if request.resolver_match.url_name == 'audit' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                        <a href="{% url 'dashboard:audit' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'audit' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
                             </svg>
                             <span>Audit Trail</span>
                         </a>
                     </li>
                     <li>
-                        <a href="{% url 'dashboard:settings' %}"
-                           class="gw-nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <a href="{% url 'dashboard:settings' %}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {% if request.resolver_match.url_name == 'settings' %}bg-active-gold text-white{% else %}hover:bg-gray-800 text-gray-300 hover:text-white{% endif %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                             </svg>
                             <span>Settings</span>
                         </a>
                     </li>
                 </ul>
                 {% endif %}
-
-                <!-- ── Map Controls (live map page only) ─────── -->
-                {% if 'live_map' in request.path or 'analysis' in request.path %}
-                <div class="mt-3 pt-3 border-t border-edge-subtle mx-3">
-
-                    <!-- AOI Tools -->
-                    <p class="gw-nav-group px-1 pt-2 pb-2">AOI Tools</p>
-                    <div class="px-1 space-y-2">
-                        <button id="draw-aoi-btn" class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                            </svg>
-                            Draw Area
-                        </button>
-
-                        <!-- Drawing mode hint -->
-                        <div id="aoi-draw-instructions"
-                             class="hidden rounded-lg border p-2.5 text-[11px] space-y-1"
-                             style="background:var(--surface-3);border-color:var(--accent-border)">
-                            <p class="font-semibold" style="color:var(--accent)">Drawing mode active</p>
-                            <p class="text-fg-secondary">Click to place vertices.</p>
-                            <p class="text-fg-secondary">Auto-closes after <strong class="text-fg-primary">4 clicks</strong>, or press
-                                <kbd class="px-1 rounded text-[10px]" style="background:var(--surface-4);color:var(--accent)">Enter</kbd> after 3.
-                            </p>
-                            <p style="color:var(--text-tertiary)" class="mt-1">Press "Stop Drawing" to cancel.</p>
-                        </div>
-
-                        <!-- AOI scan section -->
-                        <div id="aoi-scan-section" class="hidden">
-                            <div class="rounded-lg p-3 space-y-2" style="background:var(--surface-3);border:1px solid var(--border-default)">
-                                <p class="text-[11px] text-fg-secondary">
-                                    Area: <span id="aoi-area" class="text-fg-primary font-semibold tabular-nums">0.00</span> ha
-                                </p>
-                                <p id="aoi-warning" class="hidden text-[11px]" style="color:var(--status-critical)"></p>
-                                <button id="scan-aoi-btn"
-                                        onclick="if (window.mapHandler) window.mapHandler.scanAOI();"
-                                        class="btn-primary w-full text-[12px] py-1.5">
-                                    Scan AOI
+                    
+                    <!-- Map Controls (only show on live map page) -->
+                    {% if 'live_map' in request.path or 'analysis' in request.path %}
+                    <div class="border-t border-gray-700 pt-4 mt-4">
+                        <div class="space-y-4">
+                            <!-- AOI Tools -->
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-300 mb-2">AOI Tools</h4>
+                                <button id="draw-aoi-btn"
+                                        class="w-full px-4 py-2 bg-sidebar-green text-white rounded-lg shadow-sm hover:bg-opacity-90 transition-colors block border border-gray-600">
+                                    Draw Area
                                 </button>
+
+                                <!-- Drawing mode instructions — shown while draw mode is active -->
+                                <div id="aoi-draw-instructions"
+                                     class="hidden mt-2 rounded-lg border border-amber-500 border-opacity-60 bg-gray-800 px-3 py-2.5 text-xs text-gray-300 space-y-1">
+                                    <p class="font-semibold text-amber-400 mb-1">Drawing mode active</p>
+                                    <p>Click on the map to place vertices.</p>
+                                    <p>Closes automatically after <strong class="text-white">4 clicks</strong>, or press <kbd class="bg-gray-700 text-amber-300 px-1 rounded text-xs">Enter</kbd> after 3.</p>
+                                    <p class="text-gray-500 mt-1">Press "Stop Drawing" to cancel.</p>
+                                </div>
+
+                                <!-- Shown after AOI is drawn -->
+                                <div id="aoi-scan-section" class="hidden mt-2">
+                                    <div class="bg-gray-800 border border-gray-600 rounded-lg p-3">
+                                        <p class="text-xs text-gray-300 mb-1">
+                                            Area: <span id="aoi-area">0.00</span> ha
+                                        </p>
+                                        <p id="aoi-warning" class="hidden text-xs text-red-400 mb-2"></p>
+                                        <button id="scan-aoi-btn"
+                                                onclick="if (window.mapHandler) window.mapHandler.scanAOI();"
+                                                class="w-full px-3 py-2 bg-active-gold hover:bg-opacity-90 text-white text-xs font-semibold rounded-lg transition-colors">
+                                            Scan AOI
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Layer toggles -->
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-300 mb-3">Map Layers</h4>
+                                <div class="space-y-2">
+                                    <button id="toggle-detection-layer"
+                                            class="w-full px-4 py-2 bg-active-gold text-white rounded-lg shadow-sm hover:bg-opacity-90 transition-colors block">
+                                        Detections
+                                    </button>
+                                    <button id="toggle-concession-layer"
+                                            class="w-full px-4 py-2 bg-active-gold text-white rounded-lg shadow-sm hover:bg-opacity-90 transition-colors block">
+                                        Concessions
+                                    </button>
+                                    <button id="toggle-water-layer"
+                                            class="w-full px-4 py-2 bg-active-gold text-white rounded-lg shadow-sm hover:bg-opacity-90 transition-colors block">
+                                        Water Bodies
+                                    </button>
+                                    <button id="toggle-forest-layer"
+                                            class="w-full px-4 py-2 bg-active-gold text-white rounded-lg shadow-sm hover:bg-opacity-90 transition-colors block">
+                                        Protected Forests
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Coordinates -->
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-300 mb-2">Coordinates</h4>
+                                <div class="bg-gray-800 px-3 py-2 rounded-lg text-sm text-gray-300 border border-gray-700">
+                                    Lat: <span id="lat-display">6.6885</span>°, Lng: <span id="lng-display">-1.6244</span>°
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Layer toggles -->
-                    <p class="gw-nav-group px-1 pt-4 pb-2">Map Layers</p>
-                    <div class="px-1 space-y-1.5">
-                        <button id="toggle-detection-layer"
-                                class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
-                            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:var(--viz-illegal)"></span>
-                            Detections
-                        </button>
-                        <button id="toggle-concession-layer"
-                                class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
-                            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:var(--viz-legal)"></span>
-                            Concessions
-                        </button>
-                        <button id="toggle-water-layer"
-                                class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
-                            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:var(--viz-water)"></span>
-                            Water Bodies
-                        </button>
-                        <button id="toggle-forest-layer"
-                                class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
-                            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:var(--viz-forest)"></span>
-                            Protected Forests
-                        </button>
-                    </div>
-
-                    <!-- Coordinates -->
-                    <p class="gw-nav-group px-1 pt-4 pb-2">Coordinates</p>
-                    <div class="px-1">
-                        <div class="rounded px-3 py-2 font-mono text-[11px] text-fg-secondary"
-                             style="background:var(--surface-3);border:1px solid var(--border-subtle)">
-                            <span class="text-fg-muted">Lat</span> <span id="lat-display" class="text-fg-primary">6.6885</span>°
-                            <span class="mx-1 text-fg-muted">·</span>
-                            <span class="text-fg-muted">Lng</span> <span id="lng-display" class="text-fg-primary">-1.6244</span>°
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
+                    {% endif %}
             </nav>
         </aside>
 
-        <!-- ── Main Content ─────────────────────────────────── -->
-        <main class="flex-1 ml-55">
+        <!-- Main Content -->
+        <main class="flex-1 ml-64">
             {% block content %}
             {% endblock %}
         </main>
     </div>
 
-    <!-- ── Footer ───────────────────────────────────────────── -->
-    <footer class="fixed bottom-0 left-55 right-0 bg-surface-1 border-t border-edge-subtle py-2 px-5">
+    <!-- Footer -->
+    <footer class="fixed bottom-0 left-64 right-0 bg-white border-t border-gray-200 py-2 px-6 text-xs text-gray-600">
         <div class="flex justify-between items-center">
-            <span class="text-[11px] text-fg-muted">{{ settings.APP_NAME }} <span class="text-fg-muted opacity-60">v{{ settings.APP_VERSION }}</span></span>
-            <span class="text-[11px] text-fg-muted opacity-60">&copy; 2025 Environmental Protection Agency</span>
+            <span>{{ settings.APP_NAME }} v{{ settings.APP_VERSION }}</span>
+            <span>&copy; 2024 Environmental Protection Agency</span>
         </div>
     </footer>
 
     <!-- JavaScript -->
     <script src="{% static 'js/main.js' %}"></script>
 
-    <!-- User menu toggle -->
+    <!-- User Menu Toggle Script -->
     <script>
         function toggleUserMenu() {
             const menu = document.getElementById('userMenu');
             menu.classList.toggle('hidden');
+
+            // Close menu when clicking outside
             document.addEventListener('click', function closeMenu(e) {
                 if (!e.target.closest('#userMenu') && !e.target.closest('button[onclick="toggleUserMenu()"]')) {
                     menu.classList.add('hidden');
@@ -484,33 +366,25 @@
         }
     </script>
 
-    <!-- Notification system -->
+    <!-- Notification Bell Script -->
     <script>
     (function () {
         {% if not user.is_authenticated %}return;{% endif %}
 
-        const NOTIF_API     = '/api/notifications/';
-        const MARK_READ_API = '/api/notifications/mark-read/';
-
+        const NOTIF_API      = '/api/notifications/';
+        const MARK_READ_API  = '/api/notifications/mark-read/';
         {% if user.is_authenticated and user.profile.role == 'inspector' %}
         const FOOTER_LINK = '/dashboard/inspector/';
         {% else %}
         const FOOTER_LINK = '/dashboard/alerts/';
         {% endif %}
 
-        const KIND_LABEL = {
-            assignment: 'Assignment',
-            alert:      'Alert',
-            sla:        'SLA',
-            report:     'Report',
-            system:     'System',
-        };
         const KIND_COLOR = {
-            assignment: 'var(--status-dispatched)',
-            alert:      'var(--status-critical)',
-            sla:        'var(--status-moderate)',
-            report:     'var(--status-resolved)',
-            system:     'var(--text-tertiary)',
+            assignment: 'text-purple-600',
+            alert:      'text-red-600',
+            sla:        'text-amber-600',
+            report:     'text-green-600',
+            system:     'text-gray-500',
         };
 
         function getCsrf() {
@@ -554,7 +428,7 @@
             const list  = document.getElementById('notif-list');
             const label = document.getElementById('notif-count-label');
             if (!list) return;
-            list.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:var(--text-tertiary)">Loading…</div>';
+            list.innerHTML = '<div class="px-4 py-4 text-center text-xs text-gray-400">Loading…</div>';
             try {
                 const res = await fetch(NOTIF_API, { credentials: 'include' });
                 if (!res.ok) throw new Error();
@@ -566,41 +440,33 @@
                 setBadge(unread);
 
                 if (!items.length) {
-                    list.innerHTML = '<div style="padding:24px 16px;text-align:center;font-size:13px;color:var(--text-tertiary)">No notifications yet</div>';
+                    list.innerHTML = '<div class="px-4 py-6 text-center text-sm text-gray-400">No notifications yet</div>';
                     return;
                 }
 
                 list.innerHTML = items.map(item => {
-                    const kindColor = KIND_COLOR[item.kind] || KIND_COLOR.system;
-                    const kindLabel = KIND_LABEL[item.kind] || item.kind;
-                    const dotStyle  = item.is_read
-                        ? 'background:transparent;border:1px solid var(--border-default)'
-                        : 'background:var(--status-info)';
-                    const rowBg     = item.is_read
-                        ? ''
-                        : 'style="background:rgba(56,139,253,0.04)"';
-                    const titleW    = item.is_read ? '400' : '600';
-                    const href      = item.link || FOOTER_LINK;
-                    const bodyHtml  = item.body
-                        ? `<p style="font-size:11px;color:var(--text-secondary);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.body}</p>`
+                    const kindColor  = KIND_COLOR[item.kind] || KIND_COLOR.system;
+                    const dotColor   = item.is_read ? 'bg-transparent' : 'bg-blue-500';
+                    const rowBg      = item.is_read ? '' : 'style="background:#eff6ff;"';
+                    const titleCls   = item.is_read ? 'font-medium' : 'font-semibold';
+                    const href       = item.link || FOOTER_LINK;
+                    const bodyHtml   = item.body
+                        ? `<p class="text-xs text-gray-400 mt-0.5 truncate">${item.body}</p>`
                         : '';
-                    return `<a href="${href}"
-                               class="flex items-start gap-3 px-4 py-3 transition-colors"
-                               style="border-bottom:1px solid var(--border-subtle)"
-                               onmouseover="this.style.background='var(--surface-3)'"
-                               onmouseout="this.style.background=''" ${rowBg}>
-                        <span style="margin-top:5px;width:7px;height:7px;border-radius:50%;flex-shrink:0;${dotStyle}"></span>
-                        <div style="min-width:0;flex:1">
-                            <p style="font-size:13px;font-weight:${titleW};color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.title}</p>
+                    return `<a href="${href}" class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors" ${rowBg}>
+                        <span class="mt-2 w-2 h-2 rounded-full ${dotColor} shrink-0 flex-none"></span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm ${titleCls} text-gray-900 truncate">${item.title}</p>
                             ${bodyHtml}
-                            <p style="font-size:11px;color:${kindColor};margin-top:3px">${kindLabel} &middot; ${item.created_at}</p>
+                            <p class="text-xs ${kindColor} mt-0.5">${item.kind} &middot; ${item.created_at}</p>
                         </div>
                     </a>`;
                 }).join('');
 
+                // Mark all as read after rendering
                 if (unread > 0) markAllRead();
             } catch (_) {
-                list.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:var(--text-tertiary)">Failed to load</div>';
+                list.innerHTML = '<div class="px-4 py-4 text-center text-xs text-gray-400">Failed to load</div>';
             }
         }
 
@@ -609,9 +475,11 @@
             const dd  = document.getElementById('notif-dropdown');
             if (!btn || !dd) return;
 
+            // Load badge count on every page load, refresh every 60s
             loadNotifCount();
             setInterval(loadNotifCount, 60000);
 
+            // Toggle dropdown; load items when opening
             btn.addEventListener('click', function (e) {
                 e.stopPropagation();
                 const isOpen = !dd.classList.contains('hidden');
@@ -619,6 +487,7 @@
                 if (!isOpen) loadNotifications();
             });
 
+            // Close on outside click
             document.addEventListener('click', function (e) {
                 if (!e.target.closest('#notif-wrapper')) {
                     dd.classList.add('hidden');

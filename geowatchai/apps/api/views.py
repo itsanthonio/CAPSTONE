@@ -699,12 +699,14 @@ class AlertViewSet(viewsets.ViewSet):
             'id': str(a.id),
             'title': a.title,
             'description': a.description,
+            'alert_type': a.alert_type,
             'alert_type_display': a.get_alert_type_display(),
             'severity': a.severity,
             'severity_display': a.get_severity_display(),
             'status': a.status,
             'status_display': a.get_status_display(),
             'created_at': a.created_at.isoformat(),
+            'assigned_to': a.assigned_to.get_full_name() or a.assigned_to.username if a.assigned_to else None,
             'field_verification': field_verification,
             'site': {
                 'id': str(site.id),
@@ -769,6 +771,111 @@ class AlertViewSet(viewsets.ViewSet):
                 status=400
             )
         return self._change_status(request, pk, 'resolved')
+
+    @action(detail=True, methods=['post'])
+    def assign_inspector(self, request, pk=None):
+        """Assign an inspector to an alert"""
+        if not _is_admin(request.user):
+            return Response({'error': 'Admin access required.'}, status=403)
+        
+        from apps.detections.models import Alert
+        from apps.accounts.models import UserProfile, InspectorAssignment
+        
+        alert = get_object_or_404(Alert, pk=pk)
+        inspector_id = request.data.get('inspector_id')
+        
+        if not inspector_id:
+            return Response({'error': 'Inspector ID is required.'}, status=400)
+        
+        try:
+            inspector_profile = UserProfile.objects.get(id=inspector_id, role=UserProfile.Role.INSPECTOR)
+            
+            # Update alert
+            alert.assigned_to = inspector_profile.user
+            alert.status = 'dispatched'
+            alert.save()
+            
+            # Create inspector assignment
+            assignment = InspectorAssignment.objects.create(
+                inspector=inspector_profile,
+                alert_id=alert.id,
+                status=InspectorAssignment.Status.PENDING
+            )
+            
+            _audit(request.user, 'alert.assign_inspector', alert.id, 
+                   inspector_id=inspector_id, inspector_name=inspector_profile.user.get_full_name())
+            
+            return Response({
+                'id': str(alert.id),
+                'status': alert.status,
+                'assigned_to': inspector_profile.user.get_full_name() or inspector_profile.user.username
+            })
+            
+        except UserProfile.DoesNotExist:
+            return Response({'error': 'Inspector not found.'}, status=404)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+    @action(detail=True, methods=['put', 'patch'])
+    def update(self, request, pk=None):
+        """Update alert details"""
+        if not _is_admin(request.user):
+            return Response({'error': 'Admin access required.'}, status=403)
+        
+        from apps.detections.models import Alert
+        alert = get_object_or_404(Alert, pk=pk)
+        
+        # Update allowed fields
+        allowed_fields = ['title', 'description', 'severity', 'alert_type']
+        updated_fields = []
+        
+        for field in allowed_fields:
+            if field in request.data:
+                setattr(alert, field, request.data[field])
+                updated_fields.append(field)
+        
+        if updated_fields:
+            alert.save()
+            _audit(request.user, 'alert.update', alert.id, updated_fields=updated_fields)
+            
+            # Return updated alert data
+            return Response({
+                'id': str(alert.id),
+                'title': alert.title,
+                'description': alert.description,
+                'alert_type': alert.alert_type,
+                'alert_type_display': alert.get_alert_type_display(),
+                'severity': alert.severity,
+                'severity_display': alert.get_severity_display(),
+                'status': alert.status,
+                'status_display': alert.get_status_display(),
+                'created_at': alert.created_at.isoformat(),
+                'assigned_to': alert.assigned_to.get_full_name() or alert.assigned_to.username if alert.assigned_to else None,
+            })
+        
+        return Response({'error': 'No valid fields to update.'}, status=400)
+
+    @action(detail=True, methods=['delete'])
+    def delete(self, request, pk=None):
+        """Delete an alert (admin only)"""
+        if not _is_admin(request.user):
+            return Response({'error': 'Admin access required.'}, status=403)
+        
+        from apps.detections.models import Alert
+        alert = get_object_or_404(Alert, pk=pk)
+        
+        # Store info for audit before deletion
+        alert_info = {
+            'id': str(alert.id),
+            'title': alert.title,
+            'severity': alert.severity,
+            'status': alert.status
+        }
+        
+        alert.delete()
+        _audit(request.user, 'alert.delete', alert.id, alert_info=alert_info)
+        
+        return Response({'message': 'Alert deleted successfully.'})
 
     @action(detail=False, methods=['post'])
     def bulk_action(self, request):
