@@ -58,7 +58,7 @@
 
     {% block extra_css %}{% endblock %}
 </head>
-<body class="bg-gray-50 font-sans antialiased">
+<body class="bg-gray-50 font-sans antialiased" data-user-role="{{ request.user.profile.role|default:'none' }}">
     <!-- Top Navigation -->
     <header class="fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-50">
         <div class="flex items-center justify-between h-full px-6">
