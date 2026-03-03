@@ -23,6 +23,9 @@ urlpatterns = [
     path('alerts/<pk>/dismiss/', AlertViewSet.as_view({'post': 'dismiss'}), name='alert-dismiss'),
     path('alerts/<pk>/dispatch/', AlertViewSet.as_view({'post': 'dispatch_alert'}), name='alert-dispatch'),
     path('alerts/<pk>/resolve/', AlertViewSet.as_view({'post': 'resolve'}), name='alert-resolve'),
+    path('alerts/<pk>/assign_inspector/', AlertViewSet.as_view({'post': 'assign_inspector'}), name='alert-assign-inspector'),
+    path('alerts/<pk>/update/', AlertViewSet.as_view({'put': 'update', 'patch': 'update'}), name='alert-update'),
+    path('alerts/<pk>/delete/', AlertViewSet.as_view({'delete': 'delete'}), name='alert-delete'),
     path('my-assignments/', my_assignments_notifications, name='my-assignments'),
     path('notifications/', include('apps.notifications.urls')),
 ]
