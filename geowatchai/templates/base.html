@@ -46,6 +46,164 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'css/custom.css' %}">
     
+    <!-- Theme CSS -->
+    <style>
+    /* Theme variables */
+    :root {
+        --primary-color: #3b82f6;
+        --text-color: #1f2937;
+        --bg-color: #ffffff;
+        --border-color: #e5e7eb;
+        --card-bg: #ffffff;
+        --input-bg: #ffffff;
+        --input-border: #d1d5db;
+        --sidebar-bg: #ffffff;
+        --nav-bg: #ffffff;
+    }
+
+    [data-theme="dark"] {
+        --primary-color: #60a5fa;
+        --text-color: #f9fafb;
+        --bg-color: #111827;
+        --border-color: #374151;
+        --card-bg: #1f2937;
+        --input-bg: #374151;
+        --input-border: #4b5563;
+        --sidebar-bg: #1f2937;
+        --nav-bg: #1f2937;
+    }
+
+    /* Apply theme to page elements */
+    body {
+        background-color: var(--bg-color);
+        color: var(--text-color);
+    }
+
+    .bg-white {
+        background-color: var(--card-bg) !important;
+    }
+
+    .bg-gray-50 {
+        background-color: var(--bg-color) !important;
+    }
+
+    .text-gray-900 {
+        color: var(--text-color) !important;
+    }
+
+    .text-gray-700 {
+        color: var(--text-color) !important;
+    }
+
+    .text-gray-600 {
+        color: #9ca3af !important;
+    }
+
+    .text-gray-500 {
+        color: #6b7280 !important;
+    }
+
+    .border-gray-200 {
+        border-color: var(--border-color) !important;
+    }
+
+    .border-gray-300 {
+        border-color: var(--input-border) !important;
+    }
+
+    /* Header and Navigation */
+    header {
+        background-color: var(--nav-bg) !important;
+        border-color: var(--border-color) !important;
+    }
+
+    /* Sidebar */
+    .sidebar {
+        background-color: var(--sidebar-bg) !important;
+        border-color: var(--border-color) !important;
+    }
+
+    /* Form elements */
+    input[type="text"],
+    input[type="email"],
+    input[type="time"],
+    input[type="password"],
+    input[type="number"],
+    input[type="search"],
+    select,
+    textarea {
+        background-color: var(--input-bg);
+        border-color: var(--input-border);
+        color: var(--text-color);
+    }
+
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    input[type="time"]:focus,
+    input[type="password"]:focus,
+    input[type="number"]:focus,
+    input[type="search"]:focus,
+    select:focus,
+    textarea:focus {
+        border-color: var(--primary-color);
+    }
+
+    /* Buttons */
+    .bg-blue-600 {
+        background-color: var(--primary-color) !important;
+    }
+
+    .bg-blue-600:hover {
+        background-color: #2563eb !important;
+    }
+
+    /* Font size classes */
+    .font-small { font-size: 14px; }
+    .font-medium { font-size: 16px; }
+    .font-large { font-size: 18px; }
+    .font-extra-large { font-size: 20px; }
+
+    /* Layout classes */
+    .layout-compact { line-height: 1.4; }
+    .layout-spaced { line-height: 1.6; }
+    .layout-comfortable { line-height: 1.8; }
+
+    /* High contrast */
+    .high-contrast {
+        --primary-color: #000000;
+        --text-color: #000000;
+        --bg-color: #ffffff;
+        --border-color: #000000;
+        --input-bg: #ffffff;
+        --input-border: #000000;
+        --sidebar-bg: #ffffff;
+        --nav-bg: #ffffff;
+    }
+
+    [data-theme="dark"].high-contrast {
+        --primary-color: #ffffff;
+        --text-color: #ffffff;
+        --bg-color: #000000;
+        --border-color: #ffffff;
+        --input-bg: #000000;
+        --input-border: #ffffff;
+        --sidebar-bg: #000000;
+        --nav-bg: #000000;
+    }
+
+    .high-contrast .text-gray-900,
+    .high-contrast .text-gray-700,
+    .high-contrast .text-gray-600,
+    .high-contrast .text-gray-500 {
+        color: var(--text-color) !important;
+    }
+
+    .high-contrast .border-gray-200,
+    .high-contrast .border-gray-300 {
+        border-color: var(--border-color) !important;
+    }
+    </style>
+    
     <!-- MapLibre GL JS -->
     <link href="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.js"></script>
@@ -58,7 +216,7 @@
 
     {% block extra_css %}{% endblock %}
 </head>
-<body class="bg-gray-50 font-sans antialiased" data-user-role="{{ request.user.profile.role|default:'none' }}">
+<body class="bg-gray-50 font-sans antialiased" data-user-role="{{ request.user.profile.role|default:'none' }}" data-theme="{% if request.user.preferences %}{{ request.user.preferences.theme }}{% else %}light{% endif %}" data-layout="{% if request.user.preferences %}{{ request.user.preferences.layout }}{% else %}comfortable{% endif %}" data-font-size="{% if request.user.preferences %}{{ request.user.preferences.font_size }}{% else %}medium{% endif %}">
     <!-- Top Navigation -->
     <header class="fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-50">
         <div class="flex items-center justify-between h-full px-6">
@@ -494,6 +652,57 @@
                 }
             });
         });
+    })();
+    
+    // Theme Application
+    (function() {
+        function applyThemeAndStyles() {
+            const body = document.body;
+            if (!body) return;
+            
+            const theme = body.dataset.theme || 'light';
+            const layout = body.dataset.layout || 'comfortable';
+            const fontSize = body.dataset.fontSize || 'medium';
+            
+            // Apply theme
+            if (theme === 'dark') {
+                body.classList.add('theme-dark');
+                body.setAttribute('data-theme', 'dark');
+            } else if (theme === 'light') {
+                body.classList.add('theme-light');
+                body.setAttribute('data-theme', 'light');
+            } else {
+                // Auto - check system preference
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    body.classList.add('theme-dark');
+                    body.setAttribute('data-theme', 'dark');
+                } else {
+                    body.classList.add('theme-light');
+                    body.setAttribute('data-theme', 'light');
+                }
+            }
+            
+            // Apply layout
+            body.classList.remove('layout-compact', 'layout-spaced', 'layout-comfortable');
+            body.classList.add(`layout-${layout}`);
+            
+            // Apply font size
+            body.classList.remove('font-small', 'font-medium', 'font-large', 'font-extra-large');
+            body.classList.add(`font-${fontSize}`);
+        }
+        
+        // Apply theme on page load
+        document.addEventListener('DOMContentLoaded', applyThemeAndStyles);
+        
+        // Listen for system theme changes if using auto theme
+        if (window.matchMedia) {
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
+                const body = document.body;
+                if (body && body.dataset.theme === 'auto') {
+                    applyThemeAndStyles();
+                }
+            });
+        }
     })();
     </script>
 

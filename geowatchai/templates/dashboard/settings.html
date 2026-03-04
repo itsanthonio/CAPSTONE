@@ -1,176 +1,300 @@
 {% extends 'base.html' %}
 
-{% block title %}Settings — {{ settings.APP_NAME }}{% endblock %}
+{% block title %}Settings - {{ settings.APP_NAME }}{% endblock %}
 
 {% block content %}
 <div class="p-6">
+    <!-- Page Header -->
     <div class="mb-6">
-        <h1 class="text-[22px] font-semibold tracking-tight" style="color: var(--text-primary);">Settings</h1>
-        <p class="text-[13px] mt-1" style="color: var(--text-secondary);">Configure system preferences and parameters</p>
+        <h1 class="text-2xl font-bold text-gray-900">Settings</h1>
+        <p class="text-gray-600 mt-1">Configure your personal preferences</p>
     </div>
-
+    
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        <!-- Detection Settings -->
-        <div class="lg:col-span-2 space-y-6">
-
-            <div class="gw-card overflow-hidden">
-                <div class="px-6 py-4" style="border-bottom: 1px solid var(--border-subtle);">
-                    <h2 class="text-[15px] font-semibold" style="color: var(--text-primary);">Detection Settings</h2>
-                    <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">Configure AI model detection parameters</p>
+        <!-- Theme & Display Settings -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div class="p-6 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-900">Theme & Display</h2>
+                    <p class="text-sm text-gray-600 mt-1">Personalize your visual experience</p>
                 </div>
                 <div class="p-6 space-y-6">
-
+                    <!-- Theme Selection -->
                     <div>
-                        <label class="gw-label">
-                            Minimum Confidence Threshold: <span id="confidence-threshold-value" class="tabular-nums" style="color: var(--accent);">70%</span>
-                        </label>
-                        <input type="range" id="confidence-threshold" min="0" max="100" value="70"
-                               class="w-full mt-2" style="accent-color: var(--accent);">
-                        <p class="text-[12px] mt-1" style="color: var(--text-tertiary);">Alerts below this threshold will be filtered out</p>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Theme</label>
+                        <select id="theme-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="light" {% if preferences.theme == 'light' %}selected{% endif %}>Light</option>
+                            <option value="dark" {% if preferences.theme == 'dark' %}selected{% endif %}>Dark</option>
+                            <option value="auto" {% if preferences.theme == 'auto' %}selected{% endif %}>Auto (System)</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Choose your preferred color theme</p>
                     </div>
-
+                    
+                    <!-- Layout -->
                     <div>
-                        <label class="gw-label mb-3 block">Enabled Detection Types</label>
-                        <div class="space-y-2.5">
-                            <label class="flex items-center gap-2.5 cursor-pointer">
-                                <input type="checkbox" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
-                                <span class="text-[13px]" style="color: var(--text-secondary);">Illegal Mining Activity</span>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Layout</label>
+                        <select id="layout-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="compact" {% if preferences.layout == 'compact' %}selected{% endif %}>Compact</option>
+                            <option value="spaced" {% if preferences.layout == 'spaced' %}selected{% endif %}>Spaced</option>
+                            <option value="comfortable" {% if preferences.layout == 'comfortable' %}selected{% endif %}>Comfortable</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Adjust spacing and layout density</p>
+                    </div>
+                    
+                    <!-- Font Size -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Font Size</label>
+                        <select id="font-size-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="small" {% if preferences.font_size == 'small' %}selected{% endif %}>Small</option>
+                            <option value="medium" {% if preferences.font_size == 'medium' %}selected{% endif %}>Medium</option>
+                            <option value="large" {% if preferences.font_size == 'large' %}selected{% endif %}>Large</option>
+                            <option value="extra_large" {% if preferences.font_size == 'extra_large' %}selected{% endif %}>Extra Large</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Adjust text size for better readability</p>
+                    </div>
+                    
+                    <!-- High Contrast -->
+                    <div>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="high-contrast-checkbox" {% if preferences.high_contrast %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2 text-sm font-medium text-gray-700">High Contrast Mode</span>
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 ml-6">Increase contrast for better visibility</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Notification Settings -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
+                <div class="p-6 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-900">Notifications</h2>
+                    <p class="text-sm text-gray-600 mt-1">Configure your notification preferences</p>
+                </div>
+                <div class="p-6 space-y-6">
+                    <!-- Email Notifications -->
+                    <div>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="email-notifications-checkbox" {% if preferences.email_notifications %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2 text-sm font-medium text-gray-700">Email Notifications</span>
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 ml-6">Receive email alerts for updates</p>
+                    </div>
+                    
+                    <!-- Quiet Hours -->
+                    <div>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="quiet-hours-checkbox" {% if preferences.quiet_hours_enabled %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2 text-sm font-medium text-gray-700">Quiet Hours</span>
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 ml-6">Disable notifications during specific hours</p>
+                        
+                        {% if preferences.quiet_hours_enabled %}
+                        <div class="mt-3 ml-6 grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">From</label>
+                                <input type="time" id="quiet-hours-start" value="{{ preferences.quiet_hours_start|time:'H:i' }}" class="w-full px-2 py-1 text-sm border border-gray-300 rounded">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">To</label>
+                                <input type="time" id="quiet-hours-end" value="{{ preferences.quiet_hours_end|time:'H:i' }}" class="w-full px-2 py-1 text-sm border border-gray-300 rounded">
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Timezone -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Timezone</label>
+                        <select id="timezone-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="UTC" {% if preferences.timezone == 'UTC' %}selected{% endif %}>UTC</option>
+                            <option value="GMT" {% if preferences.timezone == 'GMT' %}selected{% endif %}>GMT</option>
+                            <option value="EST" {% if preferences.timezone == 'EST' %}selected{% endif %}>EST</option>
+                            <option value="PST" {% if preferences.timezone == 'PST' %}selected{% endif %}>PST</option>
+                            <option value="Africa/Accra" {% if preferences.timezone == 'Africa/Accra' %}selected{% endif %}>Africa/Accra</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Language -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Language</label>
+                        <select id="language-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="en" {% if preferences.language == 'en' %}selected{% endif %}>English</option>
+                            <option value="fr" {% if preferences.language == 'fr' %}selected{% endif %}>French</option>
+                            <option value="es" {% if preferences.language == 'es' %}selected{% endif %}>Spanish</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Critical Alerts Override -->
+                    <div>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="critical-alerts-checkbox" {% if preferences.critical_alerts_override %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2 text-sm font-medium text-gray-700">Critical Alerts Override</span>
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 ml-6">Always receive critical alerts, even during quiet hours</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Dashboard Customization -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
+                <div class="p-6 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-900">Dashboard</h2>
+                    <p class="text-sm text-gray-600 mt-1">Customize your dashboard experience</p>
+                </div>
+                <div class="p-6 space-y-6">
+                    <!-- Widget Visibility -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Widget Visibility</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="show-alerts-widget" {% if preferences.show_alerts_widget %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <span class="ml-2 text-sm text-gray-700">Alerts Widget</span>
                             </label>
-                            <label class="flex items-center gap-2.5 cursor-pointer">
-                                <input type="checkbox" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
-                                <span class="text-[13px]" style="color: var(--text-secondary);">Vegetation Clearance</span>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="show-assignments-widget" {% if preferences.show_assignments_widget %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <span class="ml-2 text-sm text-gray-700">Assignments Widget</span>
                             </label>
-                            <label class="flex items-center gap-2.5 cursor-pointer">
-                                <input type="checkbox" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
-                                <span class="text-[13px]" style="color: var(--text-secondary);">Water Contamination</span>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="show-reports-widget" {% if preferences.show_reports_widget %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <span class="ml-2 text-sm text-gray-700">Reports Widget</span>
                             </label>
-                            <label class="flex items-center gap-2.5 cursor-pointer">
-                                <input type="checkbox" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
-                                <span class="text-[13px]" style="color: var(--text-secondary);">Excavation Patterns</span>
-                            </label>
-                            <label class="flex items-center gap-2.5 cursor-pointer">
-                                <input type="checkbox" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
-                                <span class="text-[13px]" style="color: var(--text-secondary);">Equipment Detection</span>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="show-audit-widget" {% if preferences.show_audit_widget %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <span class="ml-2 text-sm text-gray-700">Audit Widget</span>
                             </label>
                         </div>
                     </div>
-
+                    
+                    <!-- Default Page -->
                     <div>
-                        <label class="gw-label">Automatic Scan Frequency</label>
-                        <select class="gw-select mt-1">
-                            <option value="hourly">Every Hour</option>
-                            <option value="6hours">Every 6 Hours</option>
-                            <option value="daily" selected>Daily</option>
-                            <option value="weekly">Weekly</option>
-                            <option value="manual">Manual Only</option>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Default Page</label>
+                        <select id="default-page-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="home" {% if preferences.default_page == 'home' %}selected{% endif %}>Home</option>
+                            <option value="alerts" {% if preferences.default_page == 'alerts' %}selected{% endif %}>Alerts</option>
+                            <option value="inspector" {% if preferences.default_page == 'inspector' %}selected{% endif %}>Inspector</option>
+                            <option value="report" {% if preferences.default_page == 'report' %}selected{% endif %}>Report</option>
                         </select>
-                        <p class="text-[12px] mt-1" style="color: var(--text-tertiary);">How often the system automatically scans for new activity</p>
-                    </div>
-
-                    <div>
-                        <label class="gw-label">Region of Interest</label>
-                        <select class="gw-select mt-1">
-                            <option value="all">All Ghana</option>
-                            <option value="ashanti">Ashanti Region</option>
-                            <option value="western">Western Region</option>
-                            <option value="eastern">Eastern Region</option>
-                            <option value="central">Central Region</option>
-                            <option value="greater_accra">Greater Accra Region</option>
-                        </select>
-                        <p class="text-[12px] mt-1" style="color: var(--text-tertiary);">Geographic area to monitor for illegal mining</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Notification Settings -->
-            <div class="gw-card overflow-hidden">
-                <div class="px-6 py-4" style="border-bottom: 1px solid var(--border-subtle);">
-                    <h2 class="text-[15px] font-semibold" style="color: var(--text-primary);">Notification Settings</h2>
-                    <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">Configure alert notifications</p>
-                </div>
-                <div class="p-6 space-y-5">
-                    <div>
-                        <label class="flex items-center gap-2.5 cursor-pointer">
-                            <input type="checkbox" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
-                            <span class="text-[13px] font-medium" style="color: var(--text-primary);">Email Notifications</span>
-                        </label>
-                        <p class="text-[12px] mt-1 ml-6" style="color: var(--text-tertiary);">Receive email alerts for new detections</p>
-                    </div>
-                    <div>
-                        <label class="flex items-center gap-2.5 cursor-pointer">
-                            <input type="checkbox" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
-                            <span class="text-[13px] font-medium" style="color: var(--text-primary);">High Priority Alerts Only</span>
-                        </label>
-                        <p class="text-[12px] mt-1 ml-6" style="color: var(--text-tertiary);">Only notify for high-risk detections (&gt;90% confidence)</p>
-                    </div>
-                    <div>
-                        <label class="gw-label">Notification Frequency</label>
-                        <select class="gw-select mt-1">
-                            <option value="immediate" selected>Immediate</option>
-                            <option value="hourly">Hourly Digest</option>
-                            <option value="daily">Daily Digest</option>
-                            <option value="weekly">Weekly Digest</option>
-                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Page to show when you log in</p>
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- Right column -->
-        <div class="lg:col-span-1 space-y-6">
-
-            <!-- System Information -->
-            <div class="gw-card overflow-hidden">
-                <div class="px-5 py-4" style="border-bottom: 1px solid var(--border-subtle);">
-                    <h2 class="text-[15px] font-semibold" style="color: var(--text-primary);">System Information</h2>
-                    <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">Current system status</p>
+        
+        <!-- Personal Settings -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div class="p-6 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-900">Personal Settings</h2>
+                    <p class="text-sm text-gray-600 mt-1">Your account and privacy</p>
                 </div>
-                <div class="p-5 space-y-4">
-                    {% for label, value in info_rows %}
+                <div class="p-6 space-y-4">
+                    <!-- Account Info -->
                     <div>
-                        <p class="text-[11px] uppercase tracking-[0.06em] font-medium mb-0.5" style="color: var(--text-tertiary);">{{ label }}</p>
-                        <p class="text-[13px]" style="color: var(--text-primary);">{{ value }}</p>
+                        <label class="text-sm font-medium text-gray-600">Name</label>
+                        <p class="text-sm text-gray-900">{{ request.user.get_full_name|default:request.user.username }}</p>
                     </div>
-                    {% empty %}
+                    
                     <div>
-                        <p class="text-[11px] uppercase tracking-[0.06em] font-medium mb-0.5" style="color: var(--text-tertiary);">Application Version</p>
-                        <p class="text-[13px]" style="color: var(--text-primary);">{{ settings.APP_VERSION }}</p>
+                        <label class="text-sm font-medium text-gray-600">Email</label>
+                        <p class="text-sm text-gray-900">{{ request.user.email }}</p>
                     </div>
+                    
                     <div>
-                        <p class="text-[11px] uppercase tracking-[0.06em] font-medium mb-0.5" style="color: var(--text-tertiary);">Environment</p>
-                        <p class="text-[13px]" style="color: var(--text-primary);">{{ settings.ENVIRONMENT }}</p>
+                        <label class="text-sm font-medium text-gray-600">Role</label>
+                        <p class="text-sm text-gray-900">{{ request.user.profile.get_role_display }}</p>
                     </div>
-                    <div>
-                        <p class="text-[11px] uppercase tracking-[0.06em] font-medium mb-0.5" style="color: var(--text-tertiary);">Model Version</p>
-                        <p class="text-[13px]" style="color: var(--text-primary);">v2.1.0</p>
+                    
+                    <div class="pt-4 border-t border-gray-200">
+                        <button class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm">
+                            Change Password
+                        </button>
+                        <button class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm mt-2">
+                            Edit Profile
+                        </button>
                     </div>
-                    <div>
-                        <p class="text-[11px] uppercase tracking-[0.06em] font-medium mb-0.5" style="color: var(--text-tertiary);">System Status</p>
-                        <span class="gw-badge--resolved">Operational</span>
-                    </div>
-                    {% endfor %}
                 </div>
             </div>
-
-            <!-- Quick Actions -->
-            <div class="gw-card overflow-hidden">
-                <div class="px-5 py-4" style="border-bottom: 1px solid var(--border-subtle);">
-                    <h2 class="text-[15px] font-semibold" style="color: var(--text-primary);">Quick Actions</h2>
-                    <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">System maintenance tasks</p>
+            
+            <!-- Privacy Settings -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
+                <div class="p-6 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-900">Privacy</h2>
+                    <p class="text-sm text-gray-600 mt-1">Control your data</p>
                 </div>
-                <div class="p-5 space-y-2.5">
-                    <button class="btn-primary w-full py-2 text-[13px]" id="btn-manual-scan">Run Manual Scan</button>
-                    <button class="btn-secondary w-full py-2 text-[13px]" id="btn-clear-cache">Clear Cache</button>
-                    <button class="btn-ghost w-full py-2 text-[13px]" id="btn-export-settings">Export Settings</button>
-                    <button class="btn-ghost w-full py-2 text-[13px]" id="btn-import-settings">Import Settings</button>
+                <div class="p-6 space-y-4">
+                    <!-- Activity Visibility -->
+                    <div>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="activity-visibility-checkbox" {% if preferences.activity_visibility %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2 text-sm font-medium text-gray-700">Activity Visibility</span>
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 ml-6">Show your activity to other users</p>
+                    </div>
+                    
+                    <!-- Location Sharing -->
+                    <div>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="location-sharing-checkbox" {% if preferences.location_sharing %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2 text-sm font-medium text-gray-700">Location Sharing</span>
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 ml-6">Share your location with team</p>
+                    </div>
+                    
+                    <div class="pt-4 border-t border-gray-200">
+                        <button class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm">
+                            Export My Data
+                        </button>
+                        <button class="w-full px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors text-sm mt-2">
+                            Delete Account
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mobile Settings -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
+                <div class="p-6 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-900">Mobile</h2>
+                    <p class="text-sm text-gray-600 mt-1">Mobile app preferences</p>
+                </div>
+                <div class="p-6 space-y-4">
+                    <!-- Push Notifications -->
+                    <div>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="mobile-push-checkbox" {% if preferences.mobile_push_notifications %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2 text-sm font-medium text-gray-700">Push Notifications</span>
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 ml-6">Receive push notifications on mobile</p>
+                    </div>
+                    
+                    <!-- Offline Sync -->
+                    <div>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="mobile-offline-checkbox" {% if preferences.mobile_offline_sync %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2 text-sm font-medium text-gray-700">Offline Sync</span>
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 ml-6">Sync data when offline</p>
+                    </div>
+                    
+                    <!-- Mobile Theme -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Mobile Theme</label>
+                        <select id="mobile-theme-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                            <option value="light" {% if preferences.mobile_theme == 'light' %}selected{% endif %}>Light</option>
+                            <option value="dark" {% if preferences.mobile_theme == 'dark' %}selected{% endif %}>Dark</option>
+                            <option value="auto" {% if preferences.mobile_theme == 'auto' %}selected{% endif %}>Auto (System)</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
+    
+    <!-- Save Button -->
     <div class="flex justify-end mt-6">
-        <button id="save-settings-btn" class="btn-primary px-6 py-2">Save Settings</button>
+        <button id="save-settings-btn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            Save Settings
+        </button>
     </div>
 </div>
 {% endblock %}
@@ -178,25 +302,253 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const threshold = document.getElementById('confidence-threshold');
-    const thresholdVal = document.getElementById('confidence-threshold-value');
-    if (threshold && thresholdVal) {
-        threshold.addEventListener('input', function() {
-            thresholdVal.textContent = this.value + '%';
+    initializeSettings();
+});
+
+function initializeSettings() {
+    // Apply current theme and preferences on load
+    applyThemeAndStyles();
+    
+    // Theme change handler
+    const themeSelect = document.getElementById('theme-select');
+    if (themeSelect) {
+        themeSelect.addEventListener('change', function() {
+            applyTheme(this.value);
         });
     }
+    
+    // Layout change handler
+    const layoutSelect = document.getElementById('layout-select');
+    if (layoutSelect) {
+        layoutSelect.addEventListener('change', function() {
+            applyLayout(this.value);
+        });
+    }
+    
+    // Font size change handler
+    const fontSizeSelect = document.getElementById('font-size-select');
+    if (fontSizeSelect) {
+        fontSizeSelect.addEventListener('change', function() {
+            applyFontSize(this.value);
+        });
+    }
+    
+    // High contrast toggle
+    const highContrastCheckbox = document.getElementById('high-contrast-checkbox');
+    if (highContrastCheckbox) {
+        highContrastCheckbox.addEventListener('change', function() {
+            applyHighContrast(this.checked);
+        });
+    }
+    
+    // Quiet hours toggle
+    const quietHoursCheckbox = document.getElementById('quiet-hours-checkbox');
+    if (quietHoursCheckbox) {
+        quietHoursCheckbox.addEventListener('change', function() {
+            toggleQuietHours(this.checked);
+        });
+    }
+    
+    // Save settings button
+    const saveButton = document.getElementById('save-settings-btn');
+    if (saveButton) {
+        saveButton.addEventListener('click', saveSettings);
+    }
+}
 
-    document.getElementById('btn-manual-scan')?.addEventListener('click', function() {
-        this.textContent = 'Scanning…';
-        this.disabled = true;
-        setTimeout(() => { this.textContent = 'Run Manual Scan'; this.disabled = false; alert('Manual scan initiated.'); }, 2000);
-    });
+function applyThemeAndStyles() {
+    const body = document.body;
+    if (!body) return;
+    
+    const theme = body.dataset.theme || 'light';
+    const layout = body.dataset.layout || 'comfortable';
+    const fontSize = body.dataset.fontSize || 'medium';
+    
+    applyTheme(theme);
+    applyLayout(layout);
+    applyFontSize(fontSize);
+    
+    // Apply high contrast if needed
+    const highContrastCheckbox = document.getElementById('high-contrast-checkbox');
+    if (highContrastCheckbox && highContrastCheckbox.checked) {
+        applyHighContrast(true);
+    }
+}
 
-    document.getElementById('btn-clear-cache')?.addEventListener('click', function() {
-        this.textContent = 'Clearing…';
-        this.disabled = true;
-        setTimeout(() => { this.textContent = 'Clear Cache'; this.disabled = false; alert('Cache cleared.'); }, 1000);
-    });
-});
+function applyTheme(theme) {
+    const body = document.body;
+    if (!body) return;
+    
+    // Remove existing theme classes
+    body.classList.remove('theme-light', 'theme-dark');
+    
+    if (theme === 'dark') {
+        body.classList.add('theme-dark');
+        body.setAttribute('data-theme', 'dark');
+    } else if (theme === 'light') {
+        body.classList.add('theme-light');
+        body.setAttribute('data-theme', 'light');
+    } else {
+        // Auto - check system preference
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            body.classList.add('theme-dark');
+            body.setAttribute('data-theme', 'dark');
+        } else {
+            body.classList.add('theme-light');
+            body.setAttribute('data-theme', 'light');
+        }
+    }
+}
+
+function applyLayout(layout) {
+    const body = document.body;
+    if (!body) return;
+    
+    // Remove existing layout classes
+    body.classList.remove('layout-compact', 'layout-spaced', 'layout-comfortable');
+    
+    body.classList.add(`layout-${layout}`);
+    body.setAttribute('data-layout', layout);
+}
+
+function applyFontSize(fontSize) {
+    const body = document.body;
+    if (!body) return;
+    
+    // Remove existing font size classes
+    body.classList.remove('font-small', 'font-medium', 'font-large', 'font-extra-large');
+    
+    body.classList.add(`font-${fontSize}`);
+    body.setAttribute('data-font-size', fontSize);
+}
+
+function applyHighContrast(enabled) {
+    const body = document.body;
+    if (!body) return;
+    
+    if (enabled) {
+        body.classList.add('high-contrast');
+    } else {
+        body.classList.remove('high-contrast');
+    }
+}
+
+function toggleQuietHours(enabled) {
+    const quietHoursDiv = document.querySelector('#quiet-hours-checkbox').closest('div').querySelector('.grid');
+    if (quietHoursDiv) {
+        if (enabled) {
+            quietHoursDiv.style.display = 'grid';
+        } else {
+            quietHoursDiv.style.display = 'none';
+        }
+    }
+}
+
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
+
+async function saveSettings() {
+    const saveButton = document.getElementById('save-settings-btn');
+    const originalText = saveButton.textContent;
+    
+    // Show loading state
+    saveButton.textContent = 'Saving...';
+    saveButton.disabled = true;
+    
+    try {
+        // Collect all form data
+        const formData = {
+            theme: document.getElementById('theme-select').value,
+            layout: document.getElementById('layout-select').value,
+            font_size: document.getElementById('font-size-select').value,
+            high_contrast: document.getElementById('high-contrast-checkbox').checked,
+            email_notifications: document.getElementById('email-notifications-checkbox').checked,
+            quiet_hours_enabled: document.getElementById('quiet-hours-checkbox').checked,
+            quiet_hours_start: document.getElementById('quiet-hours-start')?.value || '22:00',
+            quiet_hours_end: document.getElementById('quiet-hours-end')?.value || '08:00',
+            timezone: document.getElementById('timezone-select').value,
+            language: document.getElementById('language-select').value,
+            critical_alerts_override: document.getElementById('critical-alerts-checkbox').checked,
+            show_alerts_widget: document.getElementById('show-alerts-widget').checked,
+            show_assignments_widget: document.getElementById('show-assignments-widget').checked,
+            show_reports_widget: document.getElementById('show-reports-widget').checked,
+            show_audit_widget: document.getElementById('show-audit-widget').checked,
+            default_page: document.getElementById('default-page-select').value,
+            activity_visibility: document.getElementById('activity-visibility-checkbox').checked,
+            location_sharing: document.getElementById('location-sharing-checkbox').checked,
+            mobile_push_notifications: document.getElementById('mobile-push-checkbox').checked,
+            mobile_offline_sync: document.getElementById('mobile-offline-checkbox').checked,
+            mobile_theme: document.getElementById('mobile-theme-select').value,
+        };
+        
+        // Send to backend
+        const response = await fetch('/accounts/api/user/preferences/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(formData),
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+                // Show success message
+                showNotification('Settings saved successfully!', 'success');
+                
+                // Apply theme changes immediately
+                applyThemeAndStyles();
+            } else {
+                showNotification(result.error || 'Failed to save settings', 'error');
+            }
+        } else {
+            showNotification('Failed to save settings', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        showNotification('Network error. Please try again.', 'error');
+    } finally {
+        // Restore button state
+        saveButton.textContent = originalText;
+        saveButton.disabled = false;
+    }
+}
+
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 transform translate-x-full`;
+    
+    // Set color based on type
+    if (type === 'success') {
+        notification.classList.add('bg-green-500', 'text-white');
+    } else if (type === 'error') {
+        notification.classList.add('bg-red-500', 'text-white');
+    } else {
+        notification.classList.add('bg-blue-500', 'text-white');
+    }
+    
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    // Slide in
+    setTimeout(() => {
+        notification.classList.remove('translate-x-full');
+    }, 100);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        notification.classList.add('translate-x-full');
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 300);
+    }, 3000);
+}
 </script>
 {% endblock %}
