@@ -215,6 +215,81 @@ def delete_assignment(request, assignment_id):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+def update_user_preferences(request):
+    """Update user preferences"""
+    try:
+        from apps.accounts.models import UserPreferences
+        
+        preferences, created = UserPreferences.objects.get_or_create(user=request.user)
+        
+        # Update theme and display settings
+        if 'theme' in request.data:
+            preferences.theme = request.data['theme']
+        if 'layout' in request.data:
+            preferences.layout = request.data['layout']
+        if 'font_size' in request.data:
+            preferences.font_size = request.data['font_size']
+        if 'high_contrast' in request.data:
+            preferences.high_contrast = request.data['high_contrast']
+        
+        # Update notification settings
+        if 'email_notifications' in request.data:
+            preferences.email_notifications = request.data['email_notifications']
+        if 'quiet_hours_enabled' in request.data:
+            preferences.quiet_hours_enabled = request.data['quiet_hours_enabled']
+        if 'quiet_hours_start' in request.data:
+            preferences.quiet_hours_start = request.data['quiet_hours_start']
+        if 'quiet_hours_end' in request.data:
+            preferences.quiet_hours_end = request.data['quiet_hours_end']
+        if 'timezone' in request.data:
+            preferences.timezone = request.data['timezone']
+        if 'language' in request.data:
+            preferences.language = request.data['language']
+        if 'critical_alerts_override' in request.data:
+            preferences.critical_alerts_override = request.data['critical_alerts_override']
+        
+        # Update dashboard settings
+        if 'show_alerts_widget' in request.data:
+            preferences.show_alerts_widget = request.data['show_alerts_widget']
+        if 'show_assignments_widget' in request.data:
+            preferences.show_assignments_widget = request.data['show_assignments_widget']
+        if 'show_reports_widget' in request.data:
+            preferences.show_reports_widget = request.data['show_reports_widget']
+        if 'show_audit_widget' in request.data:
+            preferences.show_audit_widget = request.data['show_audit_widget']
+        if 'default_page' in request.data:
+            preferences.default_page = request.data['default_page']
+        
+        # Update privacy settings
+        if 'activity_visibility' in request.data:
+            preferences.activity_visibility = request.data['activity_visibility']
+        if 'location_sharing' in request.data:
+            preferences.location_sharing = request.data['location_sharing']
+        
+        # Update mobile settings
+        if 'mobile_push_notifications' in request.data:
+            preferences.mobile_push_notifications = request.data['mobile_push_notifications']
+        if 'mobile_offline_sync' in request.data:
+            preferences.mobile_offline_sync = request.data['mobile_offline_sync']
+        if 'mobile_theme' in request.data:
+            preferences.mobile_theme = request.data['mobile_theme']
+        
+        preferences.save()
+        
+        return Response({
+            'success': True,
+            'message': 'Preferences updated successfully'
+        })
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def update_availability(request):
     """Update inspector availability status"""
     try:
