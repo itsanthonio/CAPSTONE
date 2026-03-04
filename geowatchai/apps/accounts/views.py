@@ -156,6 +156,63 @@ def inspector_assignments(request):
         }, status=status.HTTP_404_NOT_FOUND)
 
 
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_assignment(request, assignment_id):
+    """Delete an assignment (inspector only - can only delete their own assignments)"""
+    try:
+        profile = request.user.profile
+        if profile.role != UserProfile.Role.INSPECTOR:
+            return Response({
+                'error': 'Only inspectors can delete assignments'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Try to convert assignment_id to UUID, if it fails treat as string
+        try:
+            from django.core.exceptions import ValidationError
+            from django.core.validators import validate_uuid
+            validate_uuid(assignment_id)
+            # If it's a valid UUID, use it directly
+            assignment = InspectorAssignment.objects.get(
+                id=assignment_id,
+                inspector=profile  # Ensure inspector can only delete their own assignments
+            )
+        except (ValidationError, InspectorAssignment.DoesNotExist):
+            # If UUID validation fails or assignment not found, try as integer
+            try:
+                assignment = InspectorAssignment.objects.get(
+                    id=int(assignment_id),
+                    inspector=profile
+                )
+            except (ValueError, InspectorAssignment.DoesNotExist):
+                return Response({
+                    'error': 'Assignment not found or you do not have permission to delete it'
+                }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get the alert to unassign the inspector
+        alert = assignment.alert
+        alert.assigned_to = None
+        alert.save()
+        
+        # Delete the assignment
+        assignment.delete()
+        
+        return Response({
+            'success': True,
+            'message': 'Assignment deleted successfully'
+        })
+    
+    except InspectorAssignment.DoesNotExist:
+        return Response({
+            'error': 'Assignment not found or you do not have permission to delete it'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def update_availability(request):
