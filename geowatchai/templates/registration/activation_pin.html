@@ -1,121 +1,158 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Activate Your Account — GalamseyWatch AI</title>
+    <title>Verify Email — GalamseyWatch AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        'gis-blue': '#3b82f6',
-                        'active-gold': '#f59e0b',
-                        'sidebar-green': '#062d1f',
+                        'surface-base': 'var(--surface-base)',
+                        'surface-2':    'var(--surface-2)',
+                        'surface-3':    'var(--surface-3)',
+                        'fg-primary':   'var(--text-primary)',
+                        'fg-secondary': 'var(--text-secondary)',
+                        'fg-muted':     'var(--text-tertiary)',
+                        'gw-accent':    'var(--accent)',
+                        'edge-default': 'var(--border-default)',
                     },
-                    fontFamily: { 'sans': ['Inter', 'ui-sans-serif', 'system-ui'] }
+                    fontFamily: { 'sans': ['Inter', 'ui-sans-serif', 'system-ui'] },
                 }
             }
         }
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/custom.css' %}">
+    <style>
+        .digit-box {
+            width: 48px;
+            height: 56px;
+            text-align: center;
+            font-size: 22px;
+            font-weight: 700;
+            background: var(--surface-3);
+            border: 2px solid var(--border-default);
+            border-radius: 8px;
+            color: var(--text-primary);
+            outline: none;
+            transition: border-color 200ms, box-shadow 200ms;
+            caret-color: var(--accent);
+        }
+        .digit-box:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(212, 160, 23, 0.15);
+        }
+        .digit-box.filled {
+            border-color: var(--border-strong);
+        }
+    </style>
 </head>
-<body class="bg-gray-50 font-sans antialiased">
+<body class="bg-surface-base font-sans antialiased">
 
-<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-md w-full space-y-8">
+<div class="min-h-screen flex items-center justify-center px-4 py-12">
+    <div class="w-full max-w-sm space-y-6">
 
-        <!-- Logo + heading -->
-        <div>
-            <div class="mx-auto h-12 w-12 flex items-center justify-center">
-                <div class="w-10 h-10 bg-sidebar-green rounded-lg flex items-center justify-center">
-                    <svg class="w-5 h-5 text-active-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                    </svg>
-                </div>
+        <!-- Logo -->
+        <div class="flex flex-col items-center gap-3">
+            <div class="w-10 h-10 flex items-center justify-center">
+                <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-9 h-9">
+                    <path d="M10 10L18 18M30 10L22 18M10 30L18 22M30 30L22 22" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round"/>
+                    <circle cx="20" cy="20" r="4" fill="var(--accent)"/>
+                    <circle cx="20" cy="20" r="9" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="4 3"/>
+                    <circle cx="10" cy="10" r="2.5" fill="var(--accent)" fill-opacity="0.45"/>
+                    <circle cx="30" cy="10" r="2.5" fill="var(--accent)" fill-opacity="0.45"/>
+                    <circle cx="10" cy="30" r="2.5" fill="var(--accent)" fill-opacity="0.45"/>
+                    <circle cx="30" cy="30" r="2.5" fill="var(--accent)" fill-opacity="0.45"/>
+                </svg>
             </div>
-            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                Verify your email
-            </h2>
-            <p class="mt-2 text-center text-sm text-gray-600">
-                We sent a 6-digit code to
-                {% if email %}
-                    <span class="font-semibold text-gray-800">{{ email }}</span>
-                {% else %}
-                    your email address
-                {% endif %}
-            </p>
+            <div class="text-center">
+                <h1 class="text-[20px] font-semibold text-fg-primary tracking-tight">Verify your email</h1>
+                <p class="text-[13px] text-fg-secondary mt-1">
+                    We sent a 6-digit code to
+                    {% if email %}
+                        <span class="font-medium text-fg-primary">{{ email }}</span>
+                    {% else %}
+                        your email address
+                    {% endif %}
+                </p>
+            </div>
         </div>
 
+        <!-- Messages -->
         {% if messages %}
-        {% for msg in messages %}
-        <div class="{% if msg.tags == 'success' %}bg-green-50 border-green-200{% elif msg.tags == 'warning' %}bg-amber-50 border-amber-200{% else %}bg-red-50 border-red-200{% endif %} border rounded-lg p-4">
-            <p class="text-sm {% if msg.tags == 'success' %}text-green-800{% elif msg.tags == 'warning' %}text-amber-800{% else %}text-red-800{% endif %}">{{ msg }}</p>
+        <div class="space-y-2">
+            {% for msg in messages %}
+            <div class="gw-alert-{% if msg.tags == 'success' %}success{% elif msg.tags == 'warning' %}warning{% else %}error{% endif %} flex gap-2.5">
+                <p class="text-[13px]">{{ msg }}</p>
+            </div>
+            {% endfor %}
         </div>
-        {% endfor %}
         {% endif %}
 
         {% if error %}
-        <div class="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-            <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        <div class="gw-alert-error flex gap-2.5">
+            <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
             </svg>
-            <p class="text-sm text-red-800">{{ error }}</p>
+            <p class="text-[13px]">{{ error }}</p>
         </div>
         {% endif %}
 
-        <form class="space-y-6" method="post">
-            {% csrf_token %}
-            <input type="hidden" name="email" value="{{ email }}">
+        <!-- Card -->
+        <div class="gw-card" style="padding: 28px;">
+            <form method="post" class="space-y-5">
+                {% csrf_token %}
+                <input type="hidden" name="email" value="{{ email }}">
 
-            <div>
-                <label for="pin" class="block text-sm font-medium text-gray-700 mb-2 text-center">
-                    Enter your 6-digit activation code
-                </label>
-                <!-- 6 individual digit boxes -->
-                <div class="flex justify-center gap-3" id="pin-boxes">
-                    {% for i in "123456" %}
-                    <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]"
-                           class="digit-box w-12 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-xl text-gray-900 focus:outline-none focus:border-active-gold focus:ring-2 focus:ring-active-gold transition-colors"
-                           autocomplete="off">
-                    {% endfor %}
+                <div>
+                    <label class="gw-label text-center block mb-3">Enter your 6-digit activation code</label>
+                    <div class="flex justify-center gap-2.5" id="pin-boxes">
+                        {% for i in "123456" %}
+                        <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]"
+                               class="digit-box" autocomplete="off">
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" id="pin" name="pin">
+                    <p class="mt-3 text-center text-[11px] text-fg-muted">
+                        Code expires in 24 hours · Check your spam folder
+                    </p>
                 </div>
-                <!-- Hidden full PIN field submitted with form -->
-                <input type="hidden" id="pin" name="pin">
-                <p class="mt-3 text-center text-xs text-gray-400">
-                    Code expires in 24 hours · Check your spam folder
-                </p>
-            </div>
 
-            <button type="submit" id="verify-btn" disabled
-                    class="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-active-gold hover:bg-opacity-90 disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-active-gold transition-all">
-                Activate account
-            </button>
-        </form>
-
-        <!-- Resend code -->
-        <div class="text-center">
-            <p class="text-sm text-gray-500 mb-1">Didn't receive it?</p>
-            <a href="{% url 'dashboard:resend_activation_pin' %}?email={{ email }}"
-               class="inline-flex items-center gap-1.5 text-sm font-medium text-gis-blue hover:text-blue-700">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                </svg>
-                Resend code
-            </a>
+                <button type="submit" id="verify-btn" disabled
+                        class="btn-primary w-full py-2 disabled:opacity-40 disabled:cursor-not-allowed">
+                    Activate account
+                </button>
+            </form>
         </div>
 
-        <p class="text-center text-sm text-gray-400">
-            Wrong email?
-            <a href="{% url 'signup' %}" class="text-gis-blue hover:text-blue-600">Sign up again</a>
-            &nbsp;·&nbsp;
-            <a href="{% url 'login' %}" class="hover:text-gray-600">Back to sign in</a>
-        </p>
+        <!-- Resend + footer links -->
+        <div class="text-center space-y-3">
+            <div>
+                <p class="text-[12px] text-fg-secondary mb-1">Didn't receive it?</p>
+                <a href="{% url 'dashboard:resend_activation_pin' %}?email={{ email }}"
+                   class="inline-flex items-center gap-1.5 text-[13px] font-medium"
+                   style="color: var(--text-link)">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    Resend code
+                </a>
+            </div>
+            <p class="text-[12px] text-fg-muted">
+                Wrong email?
+                <a href="{% url 'signup' %}" style="color: var(--accent)" class="font-medium hover:underline">Sign up again</a>
+                <span class="mx-1 opacity-40">·</span>
+                <a href="{% url 'login' %}" class="hover:underline text-fg-secondary">Back to sign in</a>
+            </p>
+        </div>
+
     </div>
 </div>
 
@@ -129,6 +166,9 @@
         const val = boxes.map(b => b.value).join('');
         pinInput.value = val;
         btn.disabled = val.length < 6;
+        boxes.forEach(b => {
+            b.classList.toggle('filled', b.value.length > 0);
+        });
     }
 
     boxes.forEach((box, i) => {
@@ -155,7 +195,6 @@
         });
     });
 
-    // Focus first box on load
     if (boxes[0]) boxes[0].focus();
 })();
 </script>

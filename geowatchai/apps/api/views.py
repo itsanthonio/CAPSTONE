@@ -121,13 +121,19 @@ class JobViewSet(viewsets.ModelViewSet):
                 )
 
             logger.info(f"Created new job {job.id} via API")
-            _audit(request.user, 'job.created', job.id, status=job.status)
+            _audit(request.user, 'job.created', job.id, status=job.status, source=job.source)
 
             # Trigger detection pipeline asynchronously
             try:
                 # Import here to avoid circular imports
                 from apps.core.tasks import run_detection_task
-                task_result = run_detection_task.delay(str(job.id))
+                # Manual scans get priority=9 (highest) so they always jump
+                # ahead of automated tile scans (priority=5) in the queue
+                task_result = run_detection_task.apply_async(
+                    args=[str(job.id)],
+                    queue='priority',
+                    priority=9,
+                )
 
                 logger.info(f"Triggered detection pipeline for job {job.id}")
 
@@ -341,7 +347,7 @@ class DetectedSiteViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         from apps.detections.models import DetectedSite
         return DetectedSite.objects.select_related(
-            'intersecting_concession', 'region', 'model_run', 'satellite_imagery'
+            'intersecting_concession', 'region', 'model_run', 'satellite_imagery', 'job'
         ).all()
 
     def list(self, request, *args, **kwargs):
@@ -401,6 +407,27 @@ class DetectedSiteViewSet(viewsets.ReadOnlyModelViewSet):
                 'overlap_pct': site.concession_overlap_pct,
             }
 
+        # Build patch image URLs (stored as MEDIA-relative paths on the job)
+        from django.conf import settings
+        patch_images = None
+        job = getattr(site, 'job', None)
+        if job:
+            def _media_url(rel_path):
+                if not rel_path:
+                    return None
+                return request.build_absolute_uri(
+                    settings.MEDIA_URL + rel_path
+                )
+            patch_images = {
+                'false_color':         _media_url(job.img_false_color),
+                'prediction_mask':     _media_url(job.img_prediction_mask),
+                'probability_heatmap': _media_url(job.img_probability_heatmap),
+                'overlay':             _media_url(job.img_overlay),
+            }
+            # Return None instead of the dict if all images are missing
+            if not any(patch_images.values()):
+                patch_images = None
+
         return Response({
             'id': str(site.id),
             'scan_date': site.created_at.date().isoformat(),
@@ -418,6 +445,7 @@ class DetectedSiteViewSet(viewsets.ReadOnlyModelViewSet):
             'region': site.region.name if site.region else None,
             'lat': round(site.centroid.y, 4) if site.centroid else None,
             'lng': round(site.centroid.x, 4) if site.centroid else None,
+            'patch_images': patch_images,
         })
 
     @action(detail=True, methods=['get'], url_path='timelapse')
@@ -538,14 +566,17 @@ class AlertViewSet(viewsets.ViewSet):
     def get_queryset(self):
         from apps.detections.models import Alert
         qs = Alert.objects.select_related(
-            'detected_site', 'detected_site__region', 'assigned_to'
+            'detected_site', 'detected_site__region', 'detected_site__job', 'assigned_to'
         )
         status   = self.request.query_params.get('status')
         severity = self.request.query_params.get('severity')
         atype    = self.request.query_params.get('alert_type')
+        source   = self.request.query_params.get('source')
         if status:   qs = qs.filter(status=status)
         if severity: qs = qs.filter(severity=severity)
         if atype:    qs = qs.filter(alert_type=atype)
+        if source in ('manual', 'automated'):
+            qs = qs.filter(detected_site__job__source=source)
         return qs
 
     def list(self, request, *args, **kwargs):
@@ -594,6 +625,7 @@ class AlertViewSet(viewsets.ViewSet):
                     'lng': round(centroid.x, 4) if centroid else None,
                 },
                 'assigned_to': a.assigned_to.get_full_name() or a.assigned_to.username if a.assigned_to else None,
+                'source': a.detected_site.job.source,
             }
 
         return Response({
@@ -607,7 +639,10 @@ class AlertViewSet(viewsets.ViewSet):
     def retrieve(self, request, *args, **kwargs):
         from apps.detections.models import Alert
         from apps.accounts.models import InspectorAssignment
-        a = get_object_or_404(Alert, pk=kwargs['pk'])
+        a = get_object_or_404(
+            Alert.objects.select_related('detected_site', 'detected_site__region', 'detected_site__job'),
+            pk=kwargs['pk'],
+        )
         site = a.detected_site
         centroid = site.centroid
 
@@ -644,6 +679,22 @@ class AlertViewSet(viewsets.ViewSet):
         except Exception:
             pass
 
+        # Build patch image URLs from the site's job
+        from django.conf import settings as _settings
+        patch_images = None
+        job = getattr(site, 'job', None)
+        if job:
+            def _murl(rel):
+                return request.build_absolute_uri(_settings.MEDIA_URL + rel) if rel else None
+            imgs = {
+                'false_color':         _murl(job.img_false_color),
+                'prediction_mask':     _murl(job.img_prediction_mask),
+                'probability_heatmap': _murl(job.img_probability_heatmap),
+                'overlay':             _murl(job.img_overlay),
+            }
+            if any(imgs.values()):
+                patch_images = imgs
+
         return Response({
             'id': str(a.id),
             'title': a.title,
@@ -665,6 +716,7 @@ class AlertViewSet(viewsets.ViewSet):
                 'region': site.region.name if site.region else None,
                 'lat': round(centroid.y, 4) if centroid else None,
                 'lng': round(centroid.x, 4) if centroid else None,
+                'patch_images': patch_images,
             },
         })
 

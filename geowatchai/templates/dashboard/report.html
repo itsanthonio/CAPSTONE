@@ -373,12 +373,53 @@
             </div>
         </div>
 
+        <!-- ── 3b. Inspector Performance Breakdown ── -->
+        {% if inspector_stats %}
+        <div class="section-title" style="margin-top:28px;">Inspector Performance Breakdown</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Inspector</th>
+                    <th style="text-align:center;">Total</th>
+                    <th style="text-align:center;">Confirmed</th>
+                    <th style="text-align:center;">False Pos.</th>
+                    <th style="text-align:center;">Inconclusive</th>
+                    <th style="text-align:center;">Pending</th>
+                    <th style="text-align:center;">Avg Days</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in inspector_stats %}
+                <tr>
+                    <td style="font-weight:600;">{{ row.inspector__user__username|default:"Unknown" }}</td>
+                    <td style="text-align:center;">{{ row.total }}</td>
+                    <td style="text-align:center;">
+                        {% if row.confirmed > 0 %}<span class="badge badge-red">{{ row.confirmed }}</span>{% else %}—{% endif %}
+                    </td>
+                    <td style="text-align:center;">
+                        {% if row.fp > 0 %}<span class="badge badge-green">{{ row.fp }}</span>{% else %}—{% endif %}
+                    </td>
+                    <td style="text-align:center;">{{ row.inconclusive|default:"—" }}</td>
+                    <td style="text-align:center;">
+                        {% if row.pending > 0 %}<span style="color:#f59e0b;font-weight:600;">{{ row.pending }}</span>{% else %}—{% endif %}
+                    </td>
+                    <td style="text-align:center;">
+                        {% if row.avg_days %}{{ row.avg_days }}d{% else %}—{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+
         <!-- ── 4. Top Regions ── -->
         {% if stats.top_regions %}
         <div class="section-title">Top Regions by Detection Count</div>
         {% for region in stats.top_regions %}
         <div class="bar-row">
-            <div class="bar-label" title="{{ region.region__name }}">{{ region.region__name|default:"Unknown" }}</div>
+            <div class="bar-label" title="{{ region.region__name }}">
+                {% if region.region__id %}<a href="{% url 'dashboard:region_detail' region.region__id %}" style="color:inherit;text-decoration:underline dotted;">{{ region.region__name|default:"Unknown" }}</a>{% else %}{{ region.region__name|default:"Unknown" }}{% endif %}
+            </div>
             <div class="bar-track">
                 <div class="bar-fill" style="width:{{ region.bar_pct }}%"></div>
             </div>
@@ -401,15 +442,6 @@
             <span style="color:#ef4444;font-weight:600;">&#9632; Illegal detections</span>
             <span>{{ stats.trend_labels|last }}</span>
         </div>
-        <script>
-        (function(){
-            var bars = document.querySelectorAll('#trend-sparkline .trend-bar');
-            var max = 0;
-            bars.forEach(function(b){ var v = parseInt(b.dataset.val,10)||0; if(v>max) max=v; });
-            if(max === 0) max = 1;
-            bars.forEach(function(b){ b.style.height = Math.max(2, Math.round(parseInt(b.dataset.val,10)/max*64)) + 'px'; });
-        })();
-        </script>
         {% endif %}
 
         <!-- ── 6. Recent Activity ── -->
@@ -514,6 +546,69 @@
     </div>
 
 </div><!-- /.page -->
+
+<script>
+(function () {
+    /* Size sparkline bars to fill the 64-px container based on max value */
+    function _sizeBars() {
+        var bars = document.querySelectorAll('#trend-sparkline .trend-bar');
+        var max = 0;
+        bars.forEach(function (b) { var v = parseInt(b.dataset.val, 10) || 0; if (v > max) max = v; });
+        if (!max) max = 1;
+        bars.forEach(function (b) { b.style.height = Math.max(2, Math.round(parseInt(b.dataset.val, 10) / max * 64)) + 'px'; });
+    }
+    _sizeBars();   /* initial page load */
+
+    /* AJAX date-range form intercept */
+    var form = document.querySelector('.print-bar form');
+    if (!form) return;
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var startDate = form.querySelector('[name="start_date"]').value;
+        var endDate   = form.querySelector('[name="end_date"]').value;
+        var url = '/dashboard/report/?start_date=' + encodeURIComponent(startDate) + '&end_date=' + encodeURIComponent(endDate);
+
+        var applyBtn = form.querySelector('[type="submit"]');
+        var origText = applyBtn.textContent;
+        applyBtn.textContent = '…';
+        applyBtn.disabled = true;
+
+        fetch(url, { credentials: 'include' })
+            .then(function (r) { return r.text(); })
+            .then(function (html) {
+                var doc = new DOMParser().parseFromString(html, 'text/html');
+
+                /* Replace report body */
+                var newBody = doc.querySelector('.report-body');
+                var oldBody = document.querySelector('.report-body');
+                if (newBody && oldBody) oldBody.replaceWith(newBody);
+
+                /* Replace period text in header meta-row */
+                var newMeta = doc.querySelector('.meta-row');
+                var oldMeta = document.querySelector('.meta-row');
+                if (newMeta && oldMeta) oldMeta.replaceWith(newMeta);
+
+                /* Update PDF download link */
+                var pdfLink = document.querySelector('a.btn-print[href*="report/pdf"]');
+                if (pdfLink) {
+                    pdfLink.href = '/dashboard/report/pdf/?start_date=' + encodeURIComponent(startDate) + '&end_date=' + encodeURIComponent(endDate);
+                }
+
+                /* Re-size sparkline bars (script tags in replaceWith nodes don't execute) */
+                _sizeBars();
+            })
+            .catch(function () {
+                /* Network error — fall back to a normal navigation */
+                form.submit();
+            })
+            .finally(function () {
+                applyBtn.textContent = origText;
+                applyBtn.disabled = false;
+            });
+    });
+})();
+</script>
 
 </body>
 </html>

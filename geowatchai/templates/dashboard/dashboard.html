@@ -9,20 +9,18 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
-            <p class="text-gray-500 text-sm mt-0.5">Illegal mining detection overview — Ghana</p>
+            <h1 class="text-2xl font-bold" style="color: var(--text-primary);">Dashboard</h1>
+            <p class="text-sm mt-0.5" style="color: var(--text-secondary);">Illegal mining detection overview — Ghana</p>
         </div>
         <div class="flex items-center gap-2">
-            <a href="{% url 'dashboard:report' %}"
-               class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
+            <a href="{% url 'dashboard:report' %}" class="btn-secondary inline-flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
                 Export Report
             </a>
-            <a href="{% url 'analysis:live_map' %}"
-               class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors">
+            <a href="{% url 'analysis:live_map' %}" class="btn-primary inline-flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
@@ -34,12 +32,14 @@
 
     {% if not stats.has_data %}
     <!-- Empty state banner -->
-    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
-        <svg class="w-5 h-5 text-amber-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="rounded-lg p-4 flex items-start gap-3"
+         style="background: var(--status-moderate-bg); border: 1px solid var(--status-moderate-border);">
+        <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+             style="color: var(--status-moderate);">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
-        <p class="text-sm text-amber-800">
+        <p class="text-sm" style="color: var(--status-moderate);">
             No detection data yet. Go to the <a href="{% url 'analysis:live_map' %}" class="font-semibold underline">Live Map</a>,
             draw an AOI over a mining area, and run a scan to populate the dashboard.
         </p>
@@ -50,120 +50,169 @@
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
 
         <!-- Detected Sites -->
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+        <div class="gw-card p-5">
             <div class="flex items-start justify-between">
                 <div>
-                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Detected Sites</p>
-                    <p class="text-3xl font-bold text-gray-900 mt-1">{{ stats.total_detected_sites }}</p>
-                    <p class="text-xs text-gray-500 mt-1">
-                        <span class="font-semibold text-red-600">{{ stats.illegal_sites }}</span> illegal
+                    <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Detected Sites</p>
+                    <p id="kpi-detected-sites" class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ stats.total_detected_sites }}</p>
+                    <p class="text-xs mt-1" style="color: var(--text-secondary);">
+                        <span id="kpi-illegal" class="font-semibold" style="color: var(--status-critical);">{{ stats.illegal_sites }}</span> illegal
                     </p>
                 </div>
-                <div class="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
-                    <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-10 h-10 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                         style="color: var(--status-critical);">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                     </svg>
                 </div>
             </div>
-            <div class="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+            <div id="kpi-sites-change" class="mt-3 pt-3 text-xs" style="border-top: 1px solid var(--border-subtle); color: var(--text-secondary);">
                 +{{ stats.trends.sites_change }} this week
             </div>
         </div>
 
         <!-- Open Alerts -->
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+        <div class="gw-card p-5">
             <div class="flex items-start justify-between">
                 <div>
-                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Open Alerts</p>
-                    <p class="text-3xl font-bold text-gray-900 mt-1">{{ stats.open_alerts }}</p>
-                    <p class="text-xs text-gray-500 mt-1">
-                        <span class="font-semibold text-red-600">{{ stats.critical_alerts }}</span> critical
-                        · <span class="font-semibold text-orange-500">{{ stats.high_alerts }}</span> high
+                    <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Open Alerts</p>
+                    <p id="kpi-open-alerts" class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ stats.open_alerts }}</p>
+                    <p class="text-xs mt-1" style="color: var(--text-secondary);">
+                        <span id="kpi-critical" class="font-semibold" style="color: var(--status-critical);">{{ stats.critical_alerts }}</span> critical
+                        · <span id="kpi-high" class="font-semibold" style="color: var(--status-high);">{{ stats.high_alerts }}</span> high
                     </p>
                 </div>
-                <div class="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
-                    <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-10 h-10 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                         style="color: var(--status-high);">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                     </svg>
                 </div>
             </div>
-            <div class="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
-                {{ stats.alerts_this_month }} this month
+            <div id="kpi-alerts-footer" class="mt-3 pt-3 text-xs" style="border-top: 1px solid var(--border-subtle); color: var(--text-secondary);">
+                <span id="kpi-alerts-month">{{ stats.alerts_this_month }}</span> this month
                 {% if stats.trends.alerts_change != 0 %}
-                    · {% if stats.trends.alerts_change > 0 %}+{% endif %}{{ stats.trends.alerts_change }}% vs last month
+                    · <span id="kpi-alerts-change">{% if stats.trends.alerts_change > 0 %}+{% endif %}{{ stats.trends.alerts_change }}%</span> vs last month
                 {% endif %}
             </div>
         </div>
 
         <!-- High-Risk Zones -->
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+        <div class="gw-card p-5">
             <div class="flex items-start justify-between">
                 <div>
-                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">High-Risk Zones</p>
-                    <p class="text-3xl font-bold text-gray-900 mt-1">{{ stats.high_risk_zones }}</p>
-                    <p class="text-xs text-gray-500 mt-1">recurring or critical sites</p>
+                    <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">High-Risk Zones</p>
+                    <p id="kpi-high-risk" class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ stats.high_risk_zones }}</p>
+                    <p class="text-xs mt-1" style="color: var(--text-secondary);">recurring or critical sites</p>
                 </div>
-                <div class="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center shrink-0">
-                    <svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-10 h-10 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                         style="color: var(--status-moderate);">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                     </svg>
                 </div>
             </div>
-            <div class="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
-                {{ stats.total_area_ha }} ha total illegal area
+            <div class="mt-3 pt-3 text-xs" style="border-top: 1px solid var(--border-subtle); color: var(--text-secondary);">
+                <span id="kpi-total-area">{{ stats.total_area_ha }}</span> ha total illegal area
             </div>
         </div>
 
         <!-- Completed Scans -->
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+        <div class="gw-card p-5">
             <div class="flex items-start justify-between">
                 <div>
-                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Scans Run</p>
-                    <p class="text-3xl font-bold text-gray-900 mt-1">{{ stats.completed_jobs }}</p>
-                    <p class="text-xs text-gray-500 mt-1">
+                    <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Scans Run</p>
+                    <p id="kpi-completed-jobs" class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ stats.completed_jobs }}</p>
+                    <p id="kpi-jobs-sub" class="text-xs mt-1" style="color: var(--text-secondary);">
                         {% if stats.completed_jobs == 0 %}
                         no scans yet
                         {% elif stats.failed_jobs > 0 %}
-                        <span class="text-red-500 font-medium">{{ stats.failed_jobs }} failed</span>
+                        <span class="font-medium" style="color: var(--status-critical);">{{ stats.failed_jobs }} failed</span>
                         {% else %}
                         all successful
                         {% endif %}
                     </p>
                 </div>
-                <div class="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                    <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-10 h-10 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                         style="color: var(--status-info);">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
                     </svg>
                 </div>
             </div>
-            <div class="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+            <div id="kpi-jobs-footer" class="mt-3 pt-3 text-xs" style="border-top: 1px solid var(--border-subtle); color: var(--text-secondary);">
                 {% if stats.total_jobs > 0 %}{{ stats.total_jobs }} job{{ stats.total_jobs|pluralize }} submitted total{% else %}Go to Live Map to run a scan{% endif %}
             </div>
         </div>
 
     </div>
 
+    <!-- ── Auto Scan Status Banner ── -->
+    <div class="gw-card p-4 flex items-center gap-5">
+        <!-- Status dot -->
+        <div class="flex items-center gap-2 shrink-0">
+            {% if stats.scan_enabled and stats.scan_within_window %}
+            <div class="w-2 h-2 rounded-full" style="background:#3cc878; box-shadow: 0 0 6px rgba(50,200,100,0.6);"></div>
+            <span class="text-xs font-semibold" style="color:#3cc878;">Auto Scanner Running</span>
+            {% elif stats.scan_enabled %}
+            <div class="w-2 h-2 rounded-full" style="background:var(--accent);"></div>
+            <span class="text-xs font-semibold" style="color:var(--accent);">Auto Scanner Waiting</span>
+            {% else %}
+            <div class="w-2 h-2 rounded-full" style="background:var(--border-default);"></div>
+            <span class="text-xs font-semibold" style="color:var(--text-tertiary);">Auto Scanner Paused</span>
+            {% endif %}
+        </div>
+
+        <div class="h-4 w-px shrink-0" style="background: var(--border-subtle);"></div>
+
+        <!-- Today's stats -->
+        <div class="flex items-center gap-5 text-xs">
+            <div>
+                <span style="color: var(--text-tertiary);">Tiles today</span>
+                <span id="kpi-tiles-today" class="ml-1.5 font-semibold tabular-nums" style="color: var(--text-primary);">{{ stats.auto_jobs_today }}</span>
+            </div>
+            <div>
+                <span style="color: var(--text-tertiary);">Detections today</span>
+                <span id="kpi-dets-today" class="ml-1.5 font-semibold tabular-nums" style="color: var(--text-primary);">{{ stats.auto_detections_today }}</span>
+            </div>
+            <div>
+                <span style="color: var(--text-tertiary);">Grid coverage</span>
+                <span id="kpi-coverage" class="ml-1.5 font-semibold tabular-nums" style="color: var(--text-primary);">{{ stats.scan_coverage_pct }}%</span>
+            </div>
+        </div>
+
+        <div class="flex-1"></div>
+
+        <a href="{% url 'scanning:auto_scan' %}" class="btn-ghost text-xs px-3 py-1.5 flex items-center gap-1.5 shrink-0">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            View Auto Scan
+        </a>
+    </div>
+
     <!-- ── Secondary Stat Row: Avg Confidence + Velocity ── -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
         <!-- Avg Confidence -->
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+        <div class="gw-card p-5">
             <div class="flex items-start justify-between">
                 <div>
-                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Avg Detection Confidence</p>
-                    <p class="text-3xl font-bold text-gray-900 mt-1">
+                    <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Avg Detection Confidence</p>
+                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">
                         {% if stats.avg_confidence_pct %}{{ stats.avg_confidence_pct }}%{% else %}—{% endif %}
                     </p>
-                    <p class="text-xs text-gray-500 mt-1">across illegal sites</p>
+                    <p class="text-xs mt-1" style="color: var(--text-secondary);">across illegal sites</p>
                 </div>
-                <div class="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center shrink-0">
-                    <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-10 h-10 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                         style="color: var(--status-dispatched);">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                     </svg>
@@ -172,15 +221,15 @@
         </div>
 
         <!-- Detection Velocity -->
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+        <div class="gw-card p-5">
             <div class="flex items-start justify-between mb-3">
                 <div>
-                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Detection Velocity</p>
-                    <p class="text-xs text-gray-500 mt-0.5">Illegal sites per week — last {{ velocity_weeks }} weeks</p>
+                    <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Detection Velocity</p>
+                    <p id="velocity-subtitle" class="text-xs mt-0.5" style="color: var(--text-secondary);">Illegal sites per week — last {{ velocity_weeks }} weeks</p>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
                     <select id="velocity-window-select"
-                            class="text-xs border border-gray-200 rounded-md px-2 py-1 bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-gis-blue cursor-pointer"
+                            class="gw-select text-xs"
                             title="Lookback window">
                         <option value="4"  {% if velocity_weeks == 4  %}selected{% endif %}>4W</option>
                         <option value="8"  {% if velocity_weeks == 8  %}selected{% endif %}>8W</option>
@@ -188,28 +237,30 @@
                         <option value="26" {% if velocity_weeks == 26 %}selected{% endif %}>26W</option>
                         <option value="52" {% if velocity_weeks == 52 %}selected{% endif %}>52W</option>
                     </select>
-                    <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
-                        <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-8 h-8 flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                             style="color: var(--status-critical);">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
                         </svg>
                     </div>
                 </div>
             </div>
-            {% if stats.velocity_data %}
-            <div id="velocity-sparkline" class="flex items-end gap-1" style="height:44px;">
+            <div id="velocity-sparkline" class="flex items-end gap-1" style="height:44px;{% if not stats.velocity_data %} display:none;{% endif %}">
                 {% for v in stats.velocity_data %}
-                <div class="velocity-bar flex-1 rounded-t bg-red-400"
+                <div class="velocity-bar flex-1 rounded-t"
                      data-val="{{ v }}"
-                     style="min-height:2px;"
+                     style="min-height:2px; background: var(--status-critical);"
                      title="Week {{ forloop.counter }}: {{ v }} sites"></div>
                 {% endfor %}
             </div>
-            <div class="flex justify-between text-xs text-gray-400 mt-1">
+            <div id="velocity-labels" class="flex justify-between text-xs mt-1" style="color: var(--text-tertiary);{% if not stats.velocity_data %} display:none;{% endif %}">
                 {% for label in stats.velocity_labels %}
                 <span>{{ label }}</span>
                 {% endfor %}
             </div>
+            <p id="velocity-empty" class="text-sm italic{% if stats.velocity_data %} hidden{% endif %}" style="color: var(--text-tertiary);">No detections in the last {{ velocity_weeks }} weeks.</p>
+            {% if stats.velocity_data %}
             <script>
             (function(){
                 var bars = document.querySelectorAll('#velocity-sparkline .velocity-bar');
@@ -218,56 +269,82 @@
                 if (max === 0) max = 1;
                 bars.forEach(function(b){ b.style.height = Math.max(2, Math.round(parseInt(b.dataset.val,10)/max*44)) + 'px'; });
             })();
-            document.getElementById('velocity-window-select').addEventListener('change', function() {
-                var url = new URL(window.location.href);
-                url.searchParams.set('velocity_weeks', this.value);
-                window.location.href = url.toString();
-            });
-            </script>
-            {% else %}
-            <p class="text-sm text-gray-400 italic">No detections in the last {{ velocity_weeks }} weeks.</p>
-            <script>
-            document.getElementById('velocity-window-select').addEventListener('change', function() {
-                var url = new URL(window.location.href);
-                url.searchParams.set('velocity_weeks', this.value);
-                window.location.href = url.toString();
-            });
             </script>
             {% endif %}
         </div>
 
     </div>
 
+    <!-- ── Concession Expiry Warning ── -->
+    {% if stats.expired_concessions_count > 0 or stats.expiring_concessions %}
+    <div class="rounded-lg p-4 flex items-start gap-3"
+         style="background: var(--status-moderate-bg); border: 1px solid var(--status-moderate-border);">
+        <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+             style="color: var(--status-moderate);">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+        <div class="flex-1 min-w-0">
+            <p class="text-xs font-semibold mb-1" style="color: var(--status-moderate);">
+                Concession Licence Alert
+            </p>
+            {% if stats.expired_concessions_count > 0 %}
+            <p class="text-xs mb-1" style="color: var(--status-moderate);">
+                <strong>{{ stats.expired_concessions_count }} expired concession(s)</strong> still marked active — the daily task will deactivate them at 9 AM.
+            </p>
+            {% endif %}
+            {% if stats.expiring_concessions %}
+            <p class="text-xs mb-1" style="color: var(--status-moderate);">
+                <strong>{{ stats.expiring_concessions|length }} concession(s)</strong> expire within 30 days:
+                {% for c in stats.expiring_concessions %}
+                <span class="inline-block ml-1">{{ c.concession_name }} <span class="opacity-70">({{ c.valid_to }})</span>{% if not forloop.last %},{% endif %}</span>
+                {% endfor %}
+            </p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- ── Main Grid ── -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         <!-- Map (2 cols) -->
-        <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+        <div class="lg:col-span-2 gw-card overflow-hidden flex flex-col">
+            <div class="flex items-center justify-between px-5 py-4 shrink-0" style="border-bottom: 1px solid var(--border-subtle);">
                 <div>
-                    <h2 class="text-sm font-semibold text-gray-900">Detection Map</h2>
-                    <p class="text-xs text-gray-500 mt-0.5">Click a polygon to inspect · Zoom to explore</p>
+                    <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Detection Map</h2>
+                    <p class="text-xs mt-0.5" style="color: var(--text-secondary);">Click a polygon to inspect · Zoom to explore</p>
                 </div>
                 <div class="flex items-center gap-1.5 text-xs" id="map-legend">
-                    <button data-filter="all" class="map-filter-btn active flex items-center gap-1 px-2 py-1 rounded border border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors font-medium">All</button>
-                    <button data-filter="illegal" class="map-filter-btn flex items-center gap-1 px-2 py-1 rounded border border-gray-200 bg-white text-gray-600 hover:bg-red-50 transition-colors">
-                        <span class="w-2.5 h-2.5 rounded-sm inline-block shrink-0" style="background:#ef4444;opacity:0.7;"></span> Illegal
+                    <button data-filter="all"
+                            class="map-filter-btn active flex items-center gap-1 px-2 py-1 rounded font-medium transition-colors"
+                            style="background: var(--surface-3); border: 1px solid var(--border-strong); color: var(--text-primary);">All</button>
+                    <button data-filter="illegal"
+                            class="map-filter-btn flex items-center gap-1 px-2 py-1 rounded transition-colors"
+                            style="background: var(--surface-2); border: 1px solid var(--border-default); color: var(--text-secondary);">
+                        <span class="w-2.5 h-2.5 rounded-sm inline-block shrink-0" style="background: var(--viz-illegal); opacity:0.8;"></span> Illegal
                     </button>
-                    <button data-filter="legal" class="map-filter-btn flex items-center gap-1 px-2 py-1 rounded border border-gray-200 bg-white text-gray-600 hover:bg-blue-50 transition-colors">
-                        <span class="w-2.5 h-2.5 rounded-sm inline-block shrink-0" style="background:#3b82f6;opacity:0.7;"></span> Legal
+                    <button data-filter="legal"
+                            class="map-filter-btn flex items-center gap-1 px-2 py-1 rounded transition-colors"
+                            style="background: var(--surface-2); border: 1px solid var(--border-default); color: var(--text-secondary);">
+                        <span class="w-2.5 h-2.5 rounded-sm inline-block shrink-0" style="background: var(--viz-legal); opacity:0.8;"></span> Legal
                     </button>
-                    <button data-filter="concession" class="map-filter-btn flex items-center gap-1 px-2 py-1 rounded border border-gray-200 bg-white text-gray-600 hover:bg-green-50 transition-colors">
-                        <span class="w-2.5 h-2.5 rounded-sm inline-block border-2 shrink-0" style="border-color:#16a34a;border-style:dashed;"></span> Concessions
+                    <button data-filter="concession"
+                            class="map-filter-btn flex items-center gap-1 px-2 py-1 rounded transition-colors"
+                            style="background: var(--surface-2); border: 1px solid var(--border-default); color: var(--text-secondary);">
+                        <span class="w-2.5 h-2.5 rounded-sm inline-block border-2 shrink-0" style="border-color: var(--viz-forest); border-style:dashed;"></span> Concessions
                     </button>
                 </div>
             </div>
             <div id="dashboard-map" style="flex:1; min-height:320px;"></div>
-            <div id="map-empty-state" class="hidden px-6 py-10 flex flex-col items-center justify-center text-center border-t border-gray-100">
-                <svg class="w-10 h-10 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div id="map-empty-state" class="hidden px-6 py-10 flex flex-col items-center justify-center text-center"
+                 style="border-top: 1px solid var(--border-subtle);">
+                <svg class="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                     style="color: var(--text-tertiary);">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
                 </svg>
-                <p class="text-sm font-medium text-gray-500">No detections yet</p>
-                <p class="text-xs text-gray-400 mt-1">Draw an AOI on the <a href="{% url 'analysis:live_map' %}" class="text-amber-600 underline font-medium">Live Map</a> and run a scan</p>
+                <p class="text-sm font-medium" style="color: var(--text-secondary);">No detections yet</p>
+                <p class="text-xs mt-1" style="color: var(--text-tertiary);">Draw an AOI on the <a href="{% url 'analysis:live_map' %}" class="underline font-medium" style="color: var(--accent);">Live Map</a> and run a scan</p>
             </div>
         </div>
 
@@ -275,10 +352,10 @@
         <div class="space-y-5">
 
             <!-- Top Regions -->
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <div class="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
-                    <h2 class="text-sm font-semibold text-gray-900">Top Regions</h2>
-                    <span class="text-xs text-gray-400">by detection count</span>
+            <div class="gw-card overflow-hidden">
+                <div class="px-5 pt-4 pb-3 flex items-center justify-between" style="border-bottom: 1px solid var(--border-subtle);">
+                    <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Top Regions</h2>
+                    <span class="text-xs" style="color: var(--text-tertiary);">by detection count</span>
                 </div>
                 <div class="p-5">
                 {% if stats.top_regions %}
@@ -286,67 +363,68 @@
                     {% for r in stats.top_regions %}
                     <div>
                         <div class="flex items-center justify-between text-xs mb-1.5">
-                            <span class="font-medium text-gray-800 truncate">{{ r.region__name }}</span>
+                            <a href="{% url 'dashboard:region_detail' r.region__id %}" class="font-medium truncate hover:underline" style="color: var(--text-primary);">{{ r.region__name }}</a>
                             <span class="shrink-0 ml-3 flex items-center gap-1.5">
-                                <span class="text-gray-500">{{ r.total }}</span>
+                                <span style="color: var(--text-secondary);">{{ r.total }}</span>
                                 {% if r.illegal > 0 %}
-                                <span class="inline-flex items-center px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-medium">{{ r.illegal }} illegal</span>
+                                <span class="gw-badge--critical">{{ r.illegal }} illegal</span>
                                 {% endif %}
                             </span>
                         </div>
                         <!-- Bar: width proportional to region's share; fill shows illegal % -->
-                        <div class="w-full bg-gray-100 rounded-full h-1.5">
+                        <div class="w-full rounded-full h-1.5" style="background: var(--border-subtle);">
                             <div class="h-1.5 rounded-full relative overflow-hidden" style="width:{{ r.bar_pct }}%">
-                                <div class="absolute inset-0 bg-blue-400"></div>
-                                <div class="absolute inset-y-0 left-0 bg-red-400" style="width:{{ r.illegal_pct }}%"></div>
+                                <div class="absolute inset-0" style="background: var(--viz-legal);"></div>
+                                <div class="absolute inset-y-0 left-0" style="background: var(--viz-illegal); width:{{ r.illegal_pct }}%"></div>
                             </div>
                         </div>
                     </div>
                     {% endfor %}
                 </div>
-                <div class="mt-4 flex items-center gap-3 text-xs text-gray-400 pt-3 border-t border-gray-100">
-                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400 inline-block"></span>Illegal</span>
-                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-400 inline-block"></span>Legal</span>
+                <div class="mt-4 flex items-center gap-3 text-xs pt-3" style="border-top: 1px solid var(--border-subtle); color: var(--text-tertiary);">
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full inline-block" style="background: var(--viz-illegal);"></span>Illegal</span>
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full inline-block" style="background: var(--viz-legal);"></span>Legal</span>
                 </div>
                 {% else %}
-                <p class="text-xs text-gray-400 italic">No regional data yet.</p>
+                <p class="text-xs italic" style="color: var(--text-tertiary);">No regional data yet.</p>
                 {% endif %}
                 </div>
             </div>
 
             <!-- Recent detections feed -->
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <div class="gw-card p-5">
                 <div class="flex items-center justify-between mb-3">
-                    <h2 class="text-sm font-semibold text-gray-900">Recent Detections</h2>
-                    <a href="{% url 'dashboard:alerts' %}" class="text-xs font-medium text-blue-600 hover:underline">View all →</a>
+                    <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Recent Detections</h2>
+                    <a href="{% url 'dashboard:alerts' %}" class="text-xs font-medium hover:underline" style="color: var(--text-link);">View all →</a>
                 </div>
                 {% if stats.recent_sites %}
                 <div class="space-y-2">
                     {% for site in stats.recent_sites %}
-                    <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                    <div class="flex items-center justify-between py-2 last:border-0" style="border-bottom: 1px solid var(--border-subtle);">
                         <div class="min-w-0">
-                            <p class="text-xs font-medium text-gray-900 truncate">
+                            <p class="text-xs font-medium truncate" style="color: var(--text-primary);">
                                 {% if site.region__name %}{{ site.region__name }}{% else %}Outside monitored zones{% endif %}
                             </p>
-                            <p class="text-xs text-gray-400 mt-0.5">{{ site.created_at|date:"d M Y" }} · {{ site.area_hectares|floatformat:1 }} ha · {{ site.confidence_pct }}% conf</p>
+                            <p class="text-xs mt-0.5" style="color: var(--text-tertiary);">{{ site.created_at|date:"d M Y" }} · {{ site.area_hectares|floatformat:1 }} ha · {{ site.confidence_pct }}% conf</p>
                             {% if site.job__created_by__username %}
-                            <p class="text-xs text-gray-400 mt-0.5">by {{ site.job__created_by__username }}</p>
+                            <p class="text-xs mt-0.5" style="color: var(--text-tertiary);">by {{ site.job__created_by__username }}</p>
                             {% endif %}
                         </div>
                         <div class="shrink-0 ml-3">
                             {% if site.legal_status == 'illegal' %}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Illegal</span>
+                            <span class="gw-badge--critical">Illegal</span>
                             {% elif site.legal_status == 'legal' %}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Legal</span>
+                            <span class="gw-badge--resolved">Legal</span>
                             {% else %}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Unknown</span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                                  style="background: var(--surface-3); color: var(--text-secondary);">Unknown</span>
                             {% endif %}
                         </div>
                     </div>
                     {% endfor %}
                 </div>
                 {% else %}
-                <p class="text-xs text-gray-400 italic">No detections yet.</p>
+                <p class="text-xs italic" style="color: var(--text-tertiary);">No detections yet.</p>
                 {% endif %}
             </div>
 
@@ -354,26 +432,38 @@
     </div>
 
     <!-- ── Detection Trend ── -->
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div class="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
+    <div class="gw-card overflow-hidden">
+        <div class="px-5 pt-4 pb-3 flex items-center justify-between" style="border-bottom: 1px solid var(--border-subtle);">
             <div>
-                <h2 class="text-sm font-semibold text-gray-900">Detection Trend</h2>
-                <p class="text-xs text-gray-500 mt-0.5">Daily detections over the last 30 days</p>
+                <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Detection Trend</h2>
+                <p id="trend-subtitle" class="text-xs mt-0.5" style="color: var(--text-secondary);">
+                    {% if trend_days == 365 %}Monthly{% else %}Daily{% endif %} detections —
+                    {% if trend_days == 7 %}last 7 days{% elif trend_days == 30 %}last 30 days{% elif trend_days == 90 %}last 90 days{% else %}last 12 months{% endif %}
+                </p>
             </div>
-            <div class="flex items-center gap-3 text-xs text-gray-500">
-                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm inline-block" style="background:rgba(239,68,68,0.75)"></span>Illegal</span>
-                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm inline-block" style="background:rgba(59,130,246,0.65)"></span>Legal</span>
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3 text-xs" style="color: var(--text-secondary);">
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm inline-block" style="background: var(--viz-illegal); opacity:0.75;"></span>Illegal</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm inline-block" style="background: var(--viz-legal); opacity:0.65;"></span>Legal</span>
+                </div>
+                <select id="trend-period-select" class="gw-select text-xs" title="Period">
+                    <option value="7"   {% if trend_days == 7   %}selected{% endif %}>7d</option>
+                    <option value="30"  {% if trend_days == 30  %}selected{% endif %}>30d</option>
+                    <option value="90"  {% if trend_days == 90  %}selected{% endif %}>90d</option>
+                    <option value="365" {% if trend_days == 365 %}selected{% endif %}>12m</option>
+                </select>
             </div>
         </div>
         <div class="p-5">
             <div style="height:200px; position:relative;">
                 <canvas id="trend-chart"></canvas>
                 <div id="trend-empty" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center">
-                    <svg class="w-8 h-8 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                         style="color: var(--text-tertiary);">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                     </svg>
-                    <p class="text-sm text-gray-400 font-medium">No detections in the last 30 days</p>
-                    <p class="text-xs text-gray-300 mt-1">Run a scan on the Live Map to populate this chart</p>
+                    <p class="text-sm font-medium" style="color: var(--text-secondary);">No detections in this period</p>
+                    <p class="text-xs mt-1" style="color: var(--text-tertiary);">Run a scan on the Live Map to populate this chart</p>
                 </div>
             </div>
         </div>
@@ -382,22 +472,25 @@
 </div>
 
 <!-- ── Site Detail Panel ── -->
-<div id="site-panel" class="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl border-l border-gray-200 z-50 transform translate-x-full transition-transform duration-300 ease-in-out overflow-y-auto">
-    <div class="flex items-center justify-between p-5 border-b border-gray-200 sticky top-0 bg-white z-10">
-        <h3 class="text-sm font-semibold text-gray-900">Site Detail</h3>
-        <button id="site-panel-close" class="text-gray-400 hover:text-gray-600 transition-colors">
+<div id="site-panel" class="fixed top-0 right-0 h-full w-96 z-50 transform translate-x-full overflow-y-auto"
+     style="background: var(--surface-1); border-left: 1px solid var(--border-default); transition: transform 0.3s ease-in-out;">
+    <div class="flex items-center justify-between p-5 sticky top-0 z-10"
+         style="background: var(--surface-1); border-bottom: 1px solid var(--border-default);">
+        <h3 class="text-sm font-semibold" style="color: var(--text-primary);">Site Detail</h3>
+        <button id="site-panel-close" style="color: var(--text-tertiary); transition: color 0.15s;">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
         </button>
     </div>
     <div id="site-panel-loading" class="p-6 text-center hidden">
-        <div class="inline-block w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
-        <p class="text-sm text-gray-500">Loading site data...</p>
+        <div class="inline-block w-6 h-6 border-2 border-t-transparent rounded-full animate-spin mb-3"
+             style="border-color: var(--status-info); border-top-color: transparent;"></div>
+        <p class="text-sm" style="color: var(--text-secondary);">Loading site data...</p>
     </div>
     <div id="site-panel-error" class="p-6 hidden">
-        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p class="text-sm text-red-600" id="site-panel-error-msg">Failed to load site data.</p>
+        <div class="rounded-lg p-4" style="background: var(--status-critical-bg); border: 1px solid var(--status-critical-border);">
+            <p class="text-sm" style="color: var(--status-critical);" id="site-panel-error-msg">Failed to load site data.</p>
         </div>
     </div>
     <div id="site-panel-content" class="p-5 hidden">
@@ -405,66 +498,69 @@
             <span id="sp-legal-badge" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold"></span>
         </div>
         <div class="grid grid-cols-2 gap-3 mb-5">
-            <div class="bg-gray-50 rounded-lg p-3">
-                <p class="text-xs text-gray-500 mb-1">Confidence</p>
-                <p id="sp-confidence" class="text-xl font-bold text-gray-900">—</p>
+            <div class="rounded-lg p-3" style="background: var(--surface-3);">
+                <p class="text-xs mb-1" style="color: var(--text-secondary);">Confidence</p>
+                <p id="sp-confidence" class="text-xl font-bold tabular-nums" style="color: var(--text-primary);">—</p>
             </div>
-            <div class="bg-gray-50 rounded-lg p-3">
-                <p class="text-xs text-gray-500 mb-1">Area</p>
-                <p id="sp-area" class="text-xl font-bold text-gray-900">—</p>
+            <div class="rounded-lg p-3" style="background: var(--surface-3);">
+                <p class="text-xs mb-1" style="color: var(--text-secondary);">Area</p>
+                <p id="sp-area" class="text-xl font-bold tabular-nums" style="color: var(--text-primary);">—</p>
             </div>
-            <div class="bg-gray-50 rounded-lg p-3">
-                <p class="text-xs text-gray-500 mb-1">Scanned</p>
-                <p id="sp-date" class="text-sm font-semibold text-gray-900">—</p>
+            <div class="rounded-lg p-3" style="background: var(--surface-3);">
+                <p class="text-xs mb-1" style="color: var(--text-secondary);">Scanned</p>
+                <p id="sp-date" class="text-sm font-semibold" style="color: var(--text-primary);">—</p>
             </div>
-            <div class="bg-gray-50 rounded-lg p-3">
-                <p class="text-xs text-gray-500 mb-1">Recurrences</p>
-                <p id="sp-recurrence" class="text-xl font-bold text-gray-900">—</p>
+            <div class="rounded-lg p-3" style="background: var(--surface-3);">
+                <p class="text-xs mb-1" style="color: var(--text-secondary);">Recurrences</p>
+                <p id="sp-recurrence" class="text-xl font-bold tabular-nums" style="color: var(--text-primary);">—</p>
             </div>
         </div>
         <div id="sp-concession-block" class="mb-5 hidden">
-            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Overlapping Concession</h4>
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-1">
-                <p class="text-sm font-semibold text-blue-900" id="sp-concession-name">—</p>
-                <p class="text-xs text-blue-700" id="sp-concession-holder">—</p>
-                <p class="text-xs text-blue-600" id="sp-concession-overlap">—</p>
+            <h4 class="text-xs font-semibold uppercase tracking-wide mb-2" style="color: var(--text-secondary);">Overlapping Concession</h4>
+            <div class="rounded-lg p-3 space-y-1"
+                 style="background: var(--status-info-bg); border: 1px solid var(--status-info-border);">
+                <p class="text-sm font-semibold" style="color: var(--text-primary);" id="sp-concession-name">—</p>
+                <p class="text-xs" style="color: var(--text-secondary);" id="sp-concession-holder">—</p>
+                <p class="text-xs" style="color: var(--status-info);" id="sp-concession-overlap">—</p>
             </div>
         </div>
         <div id="sp-region-block" class="mb-5 hidden">
-            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Region</h4>
-            <p class="text-sm text-gray-800" id="sp-region">—</p>
+            <h4 class="text-xs font-semibold uppercase tracking-wide mb-1" style="color: var(--text-secondary);">Region</h4>
+            <p class="text-sm" style="color: var(--text-primary);" id="sp-region">—</p>
         </div>
         <div class="mb-5">
-            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">5-Year Timelapse</h4>
+            <h4 class="text-xs font-semibold uppercase tracking-wide mb-3" style="color: var(--text-secondary);">5-Year Timelapse</h4>
             <div id="sp-timelapse-loading" class="text-center py-4 hidden">
-                <div class="inline-block w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                <div class="inline-block w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"
+                     style="border-color: var(--border-default); border-top-color: transparent;"></div>
             </div>
             <div id="sp-timelapse-empty" class="hidden">
-                <p class="text-xs text-gray-400 italic">No timelapse data yet — frames are fetched automatically in the background.</p>
+                <p class="text-xs italic" style="color: var(--text-tertiary);">No timelapse data yet — frames are fetched automatically in the background.</p>
             </div>
             <div id="sp-timelapse-viewer" class="hidden">
                 <div class="flex items-center justify-between mb-2">
-                    <span class="text-sm font-semibold text-gray-700" id="sp-timelapse-year-label">—</span>
-                    <div class="text-xs text-gray-500">
+                    <span class="text-sm font-semibold" style="color: var(--text-primary);" id="sp-timelapse-year-label">—</span>
+                    <div class="text-xs" style="color: var(--text-secondary);">
                         NDVI: <span id="sp-timelapse-ndvi">—</span> &nbsp;|&nbsp; BSI: <span id="sp-timelapse-bsi">—</span>
                     </div>
                 </div>
                 <div class="relative mb-3">
                     <img id="sp-timelapse-img" src="" alt="Satellite composite"
-                         class="w-full rounded-lg border border-gray-200 bg-gray-100" style="height:200px;object-fit:cover;"
+                         class="w-full rounded-lg" style="height:200px; object-fit:cover; border: 1px solid var(--border-default); background: var(--surface-3);"
                          onerror="this.classList.add('hidden');document.getElementById('sp-timelapse-img-fallback').classList.remove('hidden');" />
-                    <div id="sp-timelapse-img-fallback" class="hidden w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <p class="text-xs text-gray-400">Image unavailable</p>
+                    <div id="sp-timelapse-img-fallback" class="hidden w-full h-48 rounded-lg flex items-center justify-center"
+                         style="background: var(--surface-3);">
+                        <p class="text-xs" style="color: var(--text-tertiary);">Image unavailable</p>
                     </div>
                 </div>
                 <input id="sp-timelapse-slider" type="range" min="0" max="0" value="0"
                        class="w-full accent-blue-600" oninput="window._sitePanel.onSliderChange(this.value)" />
-                <div id="sp-timelapse-ticks" class="flex justify-between text-xs text-gray-400 mt-1"></div>
+                <div id="sp-timelapse-ticks" class="flex justify-between text-xs mt-1" style="color: var(--text-tertiary);"></div>
             </div>
         </div>
     </div>
 </div>
-<div id="site-panel-overlay" class="fixed inset-0 bg-black bg-opacity-20 z-40 hidden"></div>
+<div id="site-panel-overlay" class="fixed inset-0 z-40 hidden" style="background: rgba(0,0,0,0.4);"></div>
 {% endblock %}
 
 
@@ -472,6 +568,7 @@
 <script src="{% static 'js/map_handler.js' %}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    let trendChart = null;
 
     // ── Site panel ──
     window._sitePanel = (function () {
@@ -504,13 +601,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const badge = document.getElementById('sp-legal-badge');
             if (site.legal_status === 'illegal') {
                 badge.textContent = '⚠ Illegal Mining';
-                badge.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-800';
+                badge.style.cssText = 'background: var(--status-critical-bg); color: var(--status-critical); border: 1px solid var(--status-critical-border);';
             } else if (site.legal_status === 'legal') {
                 badge.textContent = '✓ Legal Activity';
-                badge.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800';
+                badge.style.cssText = 'background: var(--status-resolved-bg); color: var(--status-resolved); border: 1px solid var(--status-resolved-border);';
             } else {
                 badge.textContent = '? Unclassified';
-                badge.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-gray-100 text-gray-700';
+                badge.style.cssText = 'background: var(--surface-3); color: var(--text-secondary); border: 1px solid var(--border-default);';
             }
             document.getElementById('sp-confidence').textContent = site.confidence_pct + '%';
             document.getElementById('sp-area').textContent       = site.area_hectares + ' ha';
@@ -629,16 +726,19 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             // Reset all buttons to idle state
             document.querySelectorAll('.map-filter-btn').forEach(b => {
-                b.classList.remove('font-medium',
-                    'bg-gray-100', 'text-gray-700',
-                    'bg-red-50',   'text-red-700',   'border-red-300',
-                    'bg-blue-50',  'text-blue-700',  'border-blue-300',
-                    'bg-green-50', 'text-green-700', 'border-green-300');
-                b.classList.add('bg-white', 'text-gray-600');
+                b.style.background = 'var(--surface-2)';
+                b.style.borderColor = 'var(--border-default)';
+                b.style.color = 'var(--text-secondary)';
+                b.classList.remove('font-medium');
             });
             // Mark "All" active
             const allBtn = document.querySelector('[data-filter="all"]');
-            if (allBtn) allBtn.classList.add('bg-gray-100', 'text-gray-700', 'font-medium');
+            if (allBtn) {
+                allBtn.style.background = 'var(--surface-3)';
+                allBtn.style.borderColor = 'var(--border-strong)';
+                allBtn.style.color = 'var(--text-primary)';
+                allBtn.classList.add('font-medium');
+            }
         }
 
         document.querySelectorAll('.map-filter-btn').forEach(btn => {
@@ -656,18 +756,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // Reset all button styles
                 document.querySelectorAll('.map-filter-btn').forEach(b => {
-                    b.classList.remove('font-medium',
-                        'bg-gray-100', 'text-gray-700',
-                        'bg-red-50',   'text-red-700',   'border-red-300',
-                        'bg-blue-50',  'text-blue-700',  'border-blue-300',
-                        'bg-green-50', 'text-green-700', 'border-green-300');
-                    b.classList.add('bg-white', 'text-gray-600');
+                    b.style.background = 'var(--surface-2)';
+                    b.style.borderColor = 'var(--border-default)';
+                    b.style.color = 'var(--text-secondary)';
+                    b.classList.remove('font-medium');
                 });
-                this.classList.remove('bg-white', 'text-gray-600');
+                this.style.background = 'var(--surface-3)';
+                this.style.borderColor = 'var(--border-strong)';
+                this.style.color = 'var(--text-primary)';
                 this.classList.add('font-medium');
 
                 if (filter === 'illegal') {
-                    this.classList.add('bg-red-50', 'text-red-700', 'border-red-300');
                     const f = ['==', ['get', 'legal_status'], 'illegal'];
                     ['detections-layer', 'detections-outline'].forEach(id => {
                         if (map.getLayer(id)) { map.setFilter(id, f); map.setLayoutProperty(id, 'visibility', 'visible'); }
@@ -678,7 +777,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
 
                 } else if (filter === 'legal') {
-                    this.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-300');
                     const f = ['==', ['get', 'legal_status'], 'legal'];
                     ['detections-layer', 'detections-outline'].forEach(id => {
                         if (map.getLayer(id)) { map.setFilter(id, f); map.setLayoutProperty(id, 'visibility', 'visible'); }
@@ -689,7 +787,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
 
                 } else if (filter === 'concession') {
-                    this.classList.add('bg-green-50', 'text-green-700', 'border-green-300');
                     ['detections-layer', 'detections-outline', 'detections-hover'].forEach(id => {
                         if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
                     });
@@ -728,7 +825,7 @@ document.addEventListener('DOMContentLoaded', function () {
         trendIllegal = trendIllegal.slice(firstNonZero);
         trendLegal   = trendLegal.slice(firstNonZero);
 
-        new Chart(ctx, {
+        trendChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: trendLabels,
@@ -736,7 +833,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     {
                         label: 'Illegal',
                         data: trendIllegal,
-                        backgroundColor: 'rgba(239, 68, 68, 0.75)',
+                        backgroundColor: 'rgba(224, 82, 82, 0.75)',
                         borderWidth: 0,
                         borderRadius: 3,
                         stack: 'detections',
@@ -744,7 +841,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     {
                         label: 'Legal',
                         data: trendLegal,
-                        backgroundColor: 'rgba(59, 130, 246, 0.65)',
+                        backgroundColor: 'rgba(56, 139, 253, 0.65)',
                         borderWidth: 0,
                         borderRadius: 3,
                         stack: 'detections',
@@ -762,18 +859,164 @@ document.addEventListener('DOMContentLoaded', function () {
                     x: {
                         stacked: true,
                         grid: { display: false },
-                        ticks: { font: { size: 10 }, color: '#9ca3af', maxTicksLimit: 10 }
+                        ticks: { font: { size: 10 }, color: '#8b949e', maxTicksLimit: 10 }
                     },
                     y: {
                         stacked: true,
                         beginAtZero: true,
-                        grid: { color: '#f3f4f6' },
-                        ticks: { font: { size: 10 }, color: '#9ca3af', stepSize: 1 }
+                        grid: { color: 'rgba(240,246,252,0.06)' },
+                        ticks: { font: { size: 10 }, color: '#8b949e', stepSize: 1 }
                     }
                 }
             }
         });
     })();
+
+    // ── Chart AJAX helpers ──
+    function _fetchChartData(velocityWeeks, trendDays, cb) {
+        fetch('/dashboard/api/chart-data/?velocity_weeks=' + velocityWeeks + '&trend_days=' + trendDays, { credentials: 'include' })
+            .then(function (r) { return r.json(); })
+            .then(cb)
+            .catch(function () {});
+    }
+
+    function _updateVelocityChart(data) {
+        var subtitle  = document.getElementById('velocity-subtitle');
+        var sparkline = document.getElementById('velocity-sparkline');
+        var labelsDiv = document.getElementById('velocity-labels');
+        var emptyEl   = document.getElementById('velocity-empty');
+        if (subtitle) subtitle.textContent = 'Illegal sites per week \u2014 last ' + data.velocity_weeks + ' weeks';
+        var hasData = data.velocity_data && data.velocity_data.some(function (v) { return v > 0; });
+        if (sparkline) sparkline.style.display = hasData ? 'flex' : 'none';
+        if (labelsDiv) labelsDiv.style.display = hasData ? 'flex' : 'none';
+        if (emptyEl)   emptyEl.classList.toggle('hidden', hasData);
+        if (hasData && sparkline) {
+            var vals = data.velocity_data;
+            var max  = Math.max.apply(null, vals.concat([1]));
+            sparkline.innerHTML = vals.map(function (v, i) {
+                return '<div class="velocity-bar flex-1 rounded-t" data-val="' + v + '" style="min-height:2px;background:var(--status-critical);height:' + Math.max(2, Math.round(v / max * 44)) + 'px;" title="Week ' + (i + 1) + ': ' + v + ' sites"></div>';
+            }).join('');
+            if (labelsDiv) labelsDiv.innerHTML = data.velocity_labels.map(function (l) { return '<span>' + l + '</span>'; }).join('');
+        }
+    }
+
+    function _updateTrendChart(data) {
+        var subtitleMap = {
+            7:   'Daily detections \u2014 last 7 days',
+            30:  'Daily detections \u2014 last 30 days',
+            90:  'Daily detections \u2014 last 90 days',
+            365: 'Monthly detections \u2014 last 12 months'
+        };
+        var subtitle = document.getElementById('trend-subtitle');
+        if (subtitle) subtitle.textContent = subtitleMap[data.trend_days] || subtitleMap[30];
+        var labels  = (data.trend_labels  || []).slice();
+        var illegal = (data.trend_illegal || []).slice();
+        var legal   = (data.trend_legal   || []).slice();
+        var isEmpty = !illegal.some(function (v) { return v > 0; }) && !legal.some(function (v) { return v > 0; });
+        var emptyEl = document.getElementById('trend-empty');
+        var canvas  = document.getElementById('trend-chart');
+        if (isEmpty) {
+            if (emptyEl) emptyEl.classList.remove('hidden');
+            if (trendChart) { trendChart.destroy(); trendChart = null; }
+            return;
+        }
+        if (emptyEl) emptyEl.classList.add('hidden');
+        // Trim leading zeros (same logic as initial render)
+        var firstNonZero = 0;
+        while (firstNonZero < labels.length - 1 && illegal[firstNonZero] === 0 && legal[firstNonZero] === 0) firstNonZero++;
+        firstNonZero = Math.max(0, firstNonZero - 2);
+        labels  = labels.slice(firstNonZero);
+        illegal = illegal.slice(firstNonZero);
+        legal   = legal.slice(firstNonZero);
+        if (trendChart) {
+            trendChart.data.labels = labels;
+            trendChart.data.datasets[0].data = illegal;
+            trendChart.data.datasets[1].data = legal;
+            trendChart.update();
+        } else if (canvas) {
+            trendChart = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Illegal', data: illegal, backgroundColor: 'rgba(224, 82, 82, 0.75)', borderWidth: 0, borderRadius: 3, stack: 'detections' },
+                        { label: 'Legal',   data: legal,   backgroundColor: 'rgba(56, 139, 253, 0.65)', borderWidth: 0, borderRadius: 3, stack: 'detections' }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+                    scales: {
+                        x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 }, color: '#8b949e', maxTicksLimit: 10 } },
+                        y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(240,246,252,0.06)' }, ticks: { font: { size: 10 }, color: '#8b949e', stepSize: 1 } }
+                    }
+                }
+            });
+        }
+    }
+
+    // ── KPI auto-refresh (every 60 s) ──
+    function _setText(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; }
+    function _refreshKPIs() {
+        fetch('/dashboard/api/kpis/', { credentials: 'include' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                _setText('kpi-detected-sites', d.total_detected_sites);
+                _setText('kpi-illegal',         d.illegal_sites);
+                _setText('kpi-open-alerts',     d.open_alerts);
+                _setText('kpi-critical',        d.critical_alerts);
+                _setText('kpi-high',            d.high_alerts);
+                _setText('kpi-high-risk',       d.high_risk_zones);
+                _setText('kpi-total-area',      d.total_area_ha);
+                _setText('kpi-completed-jobs',  d.completed_jobs);
+                _setText('kpi-tiles-today',     d.auto_jobs_today);
+                _setText('kpi-dets-today',      d.auto_detections_today);
+                _setText('kpi-coverage',        d.scan_coverage_pct + '%');
+                _setText('kpi-alerts-month',    d.alerts_this_month);
+                var changeEl = document.getElementById('kpi-alerts-change');
+                if (changeEl) changeEl.textContent = (d.alerts_change > 0 ? '+' : '') + d.alerts_change + '%';
+                var siteChange = document.getElementById('kpi-sites-change');
+                if (siteChange) siteChange.textContent = (d.sites_change >= 0 ? '+' : '') + d.sites_change + ' this week';
+                var jobsSub = document.getElementById('kpi-jobs-sub');
+                if (jobsSub) {
+                    if (d.completed_jobs === 0)       jobsSub.textContent = 'no scans yet';
+                    else if (d.failed_jobs > 0)       jobsSub.innerHTML = '<span class="font-medium" style="color:var(--status-critical);">' + d.failed_jobs + ' failed</span>';
+                    else                              jobsSub.textContent = 'all successful';
+                }
+                var jobsFooter = document.getElementById('kpi-jobs-footer');
+                if (jobsFooter) jobsFooter.textContent = d.total_jobs > 0 ? d.total_jobs + ' job' + (d.total_jobs !== 1 ? 's' : '') + ' submitted total' : 'Go to Live Map to run a scan';
+            })
+            .catch(function () {});
+    }
+    setInterval(_refreshKPIs, 60000);
+
+    // ── Velocity window selector (AJAX — no page reload) ──
+    var velocitySelect = document.getElementById('velocity-window-select');
+    if (velocitySelect) {
+        velocitySelect.addEventListener('change', function () {
+            var sel = this;
+            sel.disabled = true;
+            var td = (document.getElementById('trend-period-select') || {}).value || 30;
+            _fetchChartData(sel.value, td, function (data) {
+                _updateVelocityChart(data);
+                sel.disabled = false;
+            });
+        });
+    }
+
+    // ── Trend period selector (AJAX — no page reload) ──
+    var trendSelect = document.getElementById('trend-period-select');
+    if (trendSelect) {
+        trendSelect.addEventListener('change', function () {
+            var sel = this;
+            sel.disabled = true;
+            var vw = (document.getElementById('velocity-window-select') || {}).value || 8;
+            _fetchChartData(vw, sel.value, function (data) {
+                _updateTrendChart(data);
+                sel.disabled = false;
+            });
+        });
+    }
 });
 </script>
 {% endblock %}

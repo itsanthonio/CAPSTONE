@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Model Insights - {{ settings.APP_NAME }}{% endblock %}
+{% block title %}Model Insights — {{ settings.APP_NAME }}{% endblock %}
 
 {% block content %}
 <div class="p-6 space-y-6">
@@ -8,18 +8,15 @@
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Model Insights</h1>
-            <p class="text-sm text-gray-500 mt-0.5">FPN-ResNet50 v1.0 &middot; HLS Optical Imagery &middot; Ghana Mining Belt</p>
+            <h1 class="text-[22px] font-semibold tracking-tight" style="color: var(--text-primary);">Model Insights</h1>
+            <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">FPN-ResNet50 v1.0 &middot; HLS Optical Imagery &middot; Ghana Mining Belt</p>
         </div>
         <div class="flex items-center gap-2 flex-wrap">
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                Best Precision Model
-            </span>
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200">
-                Test Set Results
-            </span>
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
-                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+            <span class="gw-badge--info">Best Precision Model</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium"
+                  style="background: var(--surface-3); color: var(--text-secondary); border: 1px solid var(--border-default);">Test Set Results</span>
+            <span class="gw-badge--resolved">
+                <span class="w-1.5 h-1.5 rounded-full inline-block mr-1" style="background: var(--status-resolved);"></span>
                 Production
             </span>
         </div>
@@ -28,75 +25,70 @@
     <!-- 6 Metric Cards -->
     <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
 
-        <!-- Accuracy — live EMA from field reports -->
-        <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm relative overflow-hidden">
+        <div class="gw-card p-4 text-center relative overflow-hidden">
             {% if has_field_data %}
-            <span class="absolute top-2 right-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-50 text-green-700 border border-green-200">
-                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Live
+            <span class="absolute top-2 right-2 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                  style="background: var(--status-resolved-bg); color: var(--status-resolved); border: 1px solid var(--status-resolved-border);">
+                <span class="w-1.5 h-1.5 rounded-full inline-block" style="background: var(--status-resolved);"></span>Live
             </span>
             {% endif %}
-            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Accuracy</p>
-            <p class="text-2xl font-bold text-gray-900">{{ live_accuracy }}<span class="text-base font-semibold text-gray-400">%</span></p>
-            <div class="mt-2 w-full bg-gray-100 rounded-full h-1">
-                <div class="bg-green-500 h-1 rounded-full" style="width:{{ live_accuracy }}%"></div>
+            <p class="text-[10px] font-medium uppercase tracking-[0.07em] mb-2" style="color: var(--text-tertiary);">Accuracy</p>
+            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);">{{ live_accuracy }}<span class="text-[14px] font-semibold" style="color: var(--text-tertiary);">%</span></p>
+            <div class="mt-2 w-full rounded-full h-1" style="background: var(--border-subtle);">
+                <div class="h-1 rounded-full" style="width:{{ live_accuracy }}%; background: var(--status-resolved);"></div>
             </div>
-            <p class="text-xs text-green-600 font-medium mt-1.5">{% if has_field_data %}Field-adjusted{% else %}Test set{% endif %}</p>
+            <p class="text-[11px] font-medium mt-1.5" style="color: var(--status-resolved);">{% if has_field_data %}Field-adjusted{% else %}Test set{% endif %}</p>
         </div>
 
-        <!-- Precision — rolling last 50 verified -->
-        <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm relative overflow-hidden">
+        <div class="gw-card p-4 text-center relative overflow-hidden">
             {% if has_field_data %}
-            <span class="absolute top-2 right-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-50 text-green-700 border border-green-200">
-                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Live
+            <span class="absolute top-2 right-2 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                  style="background: var(--status-resolved-bg); color: var(--status-resolved); border: 1px solid var(--status-resolved-border);">
+                <span class="w-1.5 h-1.5 rounded-full inline-block" style="background: var(--status-resolved);"></span>Live
             </span>
             {% endif %}
-            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Precision</p>
-            <p class="text-2xl font-bold text-gray-900">{{ live_precision }}<span class="text-base font-semibold text-gray-400">%</span></p>
-            <div class="mt-2 w-full bg-gray-100 rounded-full h-1">
-                <div class="bg-blue-500 h-1 rounded-full" style="width:{{ live_precision }}%"></div>
+            <p class="text-[10px] font-medium uppercase tracking-[0.07em] mb-2" style="color: var(--text-tertiary);">Precision</p>
+            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);">{{ live_precision }}<span class="text-[14px] font-semibold" style="color: var(--text-tertiary);">%</span></p>
+            <div class="mt-2 w-full rounded-full h-1" style="background: var(--border-subtle);">
+                <div class="h-1 rounded-full" style="width:{{ live_precision }}%; background: var(--status-info);"></div>
             </div>
-            <p class="text-xs text-blue-600 font-medium mt-1.5">{% if has_field_data %}Last {{ total_verified|default:50 }} verified{% else %}Test set{% endif %}</p>
+            <p class="text-[11px] font-medium mt-1.5" style="color: var(--status-info);">{% if has_field_data %}Last {{ total_verified|default:50 }} verified{% else %}Test set{% endif %}</p>
         </div>
 
-        <!-- Recall -->
-        <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
-            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Recall</p>
-            <p class="text-2xl font-bold text-gray-900">{{ model_metrics.recall }}<span class="text-base font-semibold text-gray-400">%</span></p>
-            <div class="mt-2 w-full bg-gray-100 rounded-full h-1">
-                <div class="bg-blue-500 h-1 rounded-full" style="width:{{ model_metrics.recall }}%"></div>
+        <div class="gw-card p-4 text-center">
+            <p class="text-[10px] font-medium uppercase tracking-[0.07em] mb-2" style="color: var(--text-tertiary);">Recall</p>
+            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);">{{ model_metrics.recall }}<span class="text-[14px] font-semibold" style="color: var(--text-tertiary);">%</span></p>
+            <div class="mt-2 w-full rounded-full h-1" style="background: var(--border-subtle);">
+                <div class="h-1 rounded-full" style="width:{{ model_metrics.recall }}%; background: var(--status-info);"></div>
             </div>
-            <p class="text-xs text-blue-600 font-medium mt-1.5">Coverage</p>
+            <p class="text-[11px] font-medium mt-1.5" style="color: var(--status-info);">Coverage</p>
         </div>
 
-        <!-- F1 / Dice -->
-        <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
-            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">F1 / Dice</p>
-            <p class="text-2xl font-bold text-gray-900">{{ model_metrics.f1 }}<span class="text-base font-semibold text-gray-400">%</span></p>
-            <div class="mt-2 w-full bg-gray-100 rounded-full h-1">
-                <div class="bg-indigo-500 h-1 rounded-full" style="width:{{ model_metrics.f1 }}%"></div>
+        <div class="gw-card p-4 text-center">
+            <p class="text-[10px] font-medium uppercase tracking-[0.07em] mb-2" style="color: var(--text-tertiary);">F1 / Dice</p>
+            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);">{{ model_metrics.f1 }}<span class="text-[14px] font-semibold" style="color: var(--text-tertiary);">%</span></p>
+            <div class="mt-2 w-full rounded-full h-1" style="background: var(--border-subtle);">
+                <div class="h-1 rounded-full" style="width:{{ model_metrics.f1 }}%; background: var(--status-dispatched);"></div>
             </div>
-            <p class="text-xs text-indigo-600 font-medium mt-1.5">Balance</p>
+            <p class="text-[11px] font-medium mt-1.5" style="color: var(--status-dispatched);">Balance</p>
         </div>
 
-        <!-- IoU -->
-        <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
-            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">IoU</p>
-            <p class="text-2xl font-bold text-gray-900">{{ model_metrics.iou }}<span class="text-base font-semibold text-gray-400">%</span></p>
-            <div class="mt-2 w-full bg-gray-100 rounded-full h-1">
-                <div class="bg-orange-400 h-1 rounded-full" style="width:{{ model_metrics.iou }}%"></div>
+        <div class="gw-card p-4 text-center">
+            <p class="text-[10px] font-medium uppercase tracking-[0.07em] mb-2" style="color: var(--text-tertiary);">IoU</p>
+            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);">{{ model_metrics.iou }}<span class="text-[14px] font-semibold" style="color: var(--text-tertiary);">%</span></p>
+            <div class="mt-2 w-full rounded-full h-1" style="background: var(--border-subtle);">
+                <div class="h-1 rounded-full" style="width:{{ model_metrics.iou }}%; background: var(--status-high);"></div>
             </div>
-            <p class="text-xs text-orange-600 font-medium mt-1.5">Overlap</p>
+            <p class="text-[11px] font-medium mt-1.5" style="color: var(--status-high);">Overlap</p>
         </div>
 
-        <!-- Loss -->
-        <div class="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
-            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Test Loss</p>
-            <p class="text-2xl font-bold text-gray-900">{{ model_metrics.loss }}</p>
-            <div class="mt-2 w-full bg-gray-100 rounded-full h-1">
-                <!-- Lower is better — cap bar at 25% so it reads as "low" -->
-                <div class="bg-green-400 h-1 rounded-full" style="width:12.46%;max-width:25%"></div>
+        <div class="gw-card p-4 text-center">
+            <p class="text-[10px] font-medium uppercase tracking-[0.07em] mb-2" style="color: var(--text-tertiary);">Test Loss</p>
+            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);">{{ model_metrics.loss }}</p>
+            <div class="mt-2 w-full rounded-full h-1" style="background: var(--border-subtle);">
+                <div class="h-1 rounded-full" style="width:12.46%;max-width:25%; background: var(--status-resolved);"></div>
             </div>
-            <p class="text-xs text-green-600 font-medium mt-1.5">Low &darr;</p>
+            <p class="text-[11px] font-medium mt-1.5" style="color: var(--status-resolved);">Low &darr;</p>
         </div>
 
     </div>
@@ -104,12 +96,12 @@
     <!-- Charts Row -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        <!-- Performance Over Time (2/3) -->
-        <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+        <!-- Performance Over Time -->
+        <div class="lg:col-span-2 gw-card overflow-hidden">
+            <div class="px-5 py-4 flex items-center justify-between" style="border-bottom: 1px solid var(--border-subtle);">
                 <div>
-                    <h2 class="text-sm font-semibold text-gray-900">Performance Over Time</h2>
-                    <p class="text-xs text-gray-400 mt-0.5">
+                    <h2 class="text-[14px] font-semibold" style="color: var(--text-primary);">Performance Over Time</h2>
+                    <p class="text-[12px] mt-0.5" style="color: var(--text-tertiary);">
                         {% if has_field_data %}
                             Field-verified Accuracy &amp; Precision &mdash; last 12 months
                         {% else %}
@@ -118,11 +110,12 @@
                     </p>
                 </div>
                 {% if has_field_data %}
-                <span class="inline-flex items-center gap-1 text-xs font-semibold bg-green-50 text-green-700 border border-green-200 px-2 py-1 rounded">
-                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Live data
+                <span class="gw-badge--resolved">
+                    <span class="w-1.5 h-1.5 rounded-full inline-block mr-1" style="background: var(--status-resolved);"></span>Live data
                 </span>
                 {% else %}
-                <span class="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded border border-gray-100">Test set &middot; v0.3 &rarr; v1.0</span>
+                <span class="inline-flex items-center text-[11px] px-2 py-1 rounded"
+                      style="background: var(--surface-3); color: var(--text-tertiary); border: 1px solid var(--border-subtle);">Test set &middot; v0.3 &rarr; v1.0</span>
                 {% endif %}
             </div>
             <div class="p-5" style="height:300px;">
@@ -130,11 +123,11 @@
             </div>
         </div>
 
-        <!-- Confidence Distribution (1/3) -->
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col">
-            <div class="px-5 py-4 border-b border-gray-100">
-                <h2 class="text-sm font-semibold text-gray-900">Confidence Distribution</h2>
-                <p class="text-xs text-gray-400 mt-0.5">
+        <!-- Confidence Distribution -->
+        <div class="gw-card flex flex-col overflow-hidden">
+            <div class="px-5 py-4" style="border-bottom: 1px solid var(--border-subtle);">
+                <h2 class="text-[14px] font-semibold" style="color: var(--text-primary);">Confidence Distribution</h2>
+                <p class="text-[12px] mt-0.5" style="color: var(--text-tertiary);">
                     {% if conf_total > 0 %}
                         {{ conf_total }} active detection{{ conf_total|pluralize }}
                     {% else %}
@@ -146,16 +139,17 @@
                 {% if conf_total > 0 %}
                     <canvas id="confidence-chart"></canvas>
                 {% else %}
-                    <div class="flex flex-col items-center justify-center h-full text-gray-300 gap-2">
+                    <div class="flex flex-col items-center justify-center h-full gap-2" style="color: var(--border-default);">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                         </svg>
-                        <p class="text-sm text-gray-400">No predictions yet</p>
+                        <p class="text-[13px]" style="color: var(--text-secondary);">No predictions yet</p>
                     </div>
                 {% endif %}
             </div>
             {% if conf_total > 0 %}
-            <div class="px-5 pb-4 border-t border-gray-50 pt-3 flex justify-between text-[11px] text-gray-400">
+            <div class="px-5 pb-4 pt-3 flex justify-between text-[11px]"
+                 style="border-top: 1px solid var(--border-subtle); color: var(--text-tertiary);">
                 <span>Lower confidence</span>
                 <span>Higher confidence</span>
             </div>
@@ -166,94 +160,96 @@
 
     <!-- Field Verification Summary -->
     {% if has_field_data %}
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
-        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+    <div class="gw-card overflow-hidden">
+        <div class="px-5 py-4 flex items-center justify-between" style="border-bottom: 1px solid var(--border-subtle);">
             <div>
-                <h2 class="text-sm font-semibold text-gray-900">Field Verification Summary</h2>
-                <p class="text-xs text-gray-400 mt-0.5">Inspector-confirmed outcomes driving live metrics</p>
+                <h2 class="text-[14px] font-semibold" style="color: var(--text-primary);">Field Verification Summary</h2>
+                <p class="text-[12px] mt-0.5" style="color: var(--text-tertiary);">Inspector-confirmed outcomes driving live metrics</p>
             </div>
-            <span class="inline-flex items-center gap-1 text-xs font-semibold bg-green-50 text-green-700 border border-green-200 px-2 py-1 rounded">
-                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>{{ total_verified }} verified
+            <span class="gw-badge--resolved">
+                <span class="w-1.5 h-1.5 rounded-full inline-block mr-1" style="background: var(--status-resolved);"></span>{{ total_verified }} verified
             </span>
         </div>
         <div class="p-5 grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <!-- Total verified -->
             <div class="flex flex-col justify-center">
-                <p class="text-3xl font-bold text-gray-900">{{ total_verified }}</p>
-                <p class="text-sm text-gray-500 mt-1">Sites field-verified</p>
-                <p class="text-xs text-gray-400 mt-2 leading-relaxed">Each inspector report updates the live Accuracy &amp; Precision metrics shown above.</p>
+                <p class="text-[28px] font-bold tabular-nums" style="color: var(--text-primary);">{{ total_verified }}</p>
+                <p class="text-[13px] mt-1" style="color: var(--text-secondary);">Sites field-verified</p>
+                <p class="text-[12px] mt-2 leading-relaxed" style="color: var(--text-tertiary);">Each inspector report updates the live Accuracy &amp; Precision metrics shown above.</p>
             </div>
-            <!-- True positives -->
             <div>
                 <div class="flex items-baseline gap-2 mb-1">
-                    <p class="text-3xl font-bold text-gray-900">{{ total_tp }}</p>
-                    <p class="text-sm text-gray-400">confirmed</p>
+                    <p class="text-[28px] font-bold tabular-nums" style="color: var(--text-primary);">{{ total_tp }}</p>
+                    <p class="text-[13px]" style="color: var(--text-tertiary);">confirmed</p>
                 </div>
-                <p class="text-xs text-gray-500 mb-2">Illegal mining sites confirmed by inspector</p>
-                <div class="w-full bg-gray-100 rounded-full h-2">
-                    <div class="bg-gray-700 h-2 rounded-full transition-all" style="width:{% if total_verified %}{% widthratio total_tp total_verified 100 %}{% else %}0{% endif %}%"></div>
+                <p class="text-[12px] mb-2" style="color: var(--text-secondary);">Illegal mining sites confirmed by inspector</p>
+                <div class="w-full rounded-full h-2" style="background: var(--border-subtle);">
+                    <div class="h-2 rounded-full" style="width:{% if total_verified %}{% widthratio total_tp total_verified 100 %}{% else %}0{% endif %}%; background: var(--status-critical); transition: width 0.3s;"></div>
                 </div>
-                <p class="text-xs text-gray-400 mt-1">{% if total_verified %}{% widthratio total_tp total_verified 100 %}{% else %}0{% endif %}% of verified sites</p>
+                <p class="text-[11px] mt-1 tabular-nums" style="color: var(--text-tertiary);">{% if total_verified %}{% widthratio total_tp total_verified 100 %}{% else %}0{% endif %}% of verified sites</p>
             </div>
-            <!-- False positives -->
             <div>
                 <div class="flex items-baseline gap-2 mb-1">
-                    <p class="text-3xl font-bold text-gray-900">{{ total_fp }}</p>
-                    <p class="text-sm text-gray-400">false positives</p>
+                    <p class="text-[28px] font-bold tabular-nums" style="color: var(--text-primary);">{{ total_fp }}</p>
+                    <p class="text-[13px]" style="color: var(--text-tertiary);">false positives</p>
                 </div>
-                <p class="text-xs text-gray-500 mb-2">Sites flagged by model but cleared on the ground</p>
-                <div class="w-full bg-gray-100 rounded-full h-2">
-                    <div class="bg-gray-400 h-2 rounded-full transition-all" style="width:{% if total_verified %}{% widthratio total_fp total_verified 100 %}{% else %}0{% endif %}%"></div>
+                <p class="text-[12px] mb-2" style="color: var(--text-secondary);">Sites flagged by model but cleared on the ground</p>
+                <div class="w-full rounded-full h-2" style="background: var(--border-subtle);">
+                    <div class="h-2 rounded-full" style="width:{% if total_verified %}{% widthratio total_fp total_verified 100 %}{% else %}0{% endif %}%; background: var(--border-strong); transition: width 0.3s;"></div>
                 </div>
-                <p class="text-xs text-gray-400 mt-1">{% if total_verified %}{% widthratio total_fp total_verified 100 %}{% else %}0{% endif %}% false positive rate</p>
+                <p class="text-[11px] mt-1 tabular-nums" style="color: var(--text-tertiary);">{% if total_verified %}{% widthratio total_fp total_verified 100 %}{% else %}0{% endif %}% false positive rate</p>
             </div>
         </div>
     </div>
     {% endif %}
 
     <!-- Model Interpretation -->
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
-        <div class="px-5 py-4 border-b border-gray-100">
-            <h2 class="text-sm font-semibold text-gray-900">What these numbers mean in practice</h2>
-            <p class="text-xs text-gray-400 mt-0.5">Plain-language interpretation of model behaviour</p>
+    <div class="gw-card overflow-hidden">
+        <div class="px-5 py-4" style="border-bottom: 1px solid var(--border-subtle);">
+            <h2 class="text-[14px] font-semibold" style="color: var(--text-primary);">What these numbers mean in practice</h2>
+            <p class="text-[12px] mt-0.5" style="color: var(--text-tertiary);">Plain-language interpretation of model behaviour</p>
         </div>
         <div class="p-5 grid grid-cols-1 sm:grid-cols-3 gap-5">
             <div class="flex gap-3">
-                <div class="mt-0.5 w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                     style="background: var(--status-info-bg); border: 1px solid var(--status-info-border);">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                         style="color: var(--status-info);">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                 </div>
                 <div>
-                    <p class="text-sm font-semibold text-gray-800">{{ live_precision }}% Precision</p>
-                    <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">When the model flags a site as illegal mining, it is correct roughly <strong>{{ live_precision|floatformat:0 }} times out of 100</strong>. Every false dispatch wastes inspector time.</p>
+                    <p class="text-[13px] font-semibold" style="color: var(--text-primary);">{{ live_precision }}% Precision</p>
+                    <p class="text-[12px] mt-0.5 leading-relaxed" style="color: var(--text-secondary);">When the model flags a site as illegal mining, it is correct roughly <strong style="color: var(--text-primary);">{{ live_precision|floatformat:0 }} times out of 100</strong>. Every false dispatch wastes inspector time.</p>
                 </div>
             </div>
             <div class="flex gap-3">
-                <div class="mt-0.5 w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
-                    <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                     style="background: var(--status-moderate-bg); border: 1px solid var(--status-moderate-border);">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                         style="color: var(--status-moderate);">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                     </svg>
                 </div>
                 <div>
-                    <p class="text-sm font-semibold text-gray-800">{{ model_metrics.recall }}% Recall</p>
-                    <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">The model detects <strong>~3 in 4 actual mining sites</strong>. Roughly 1 in 4 real sites may be missed in any given scan — human review of borderline zones matters.</p>
+                    <p class="text-[13px] font-semibold" style="color: var(--text-primary);">{{ model_metrics.recall }}% Recall</p>
+                    <p class="text-[12px] mt-0.5 leading-relaxed" style="color: var(--text-secondary);">The model detects <strong style="color: var(--text-primary);">~3 in 4 actual mining sites</strong>. Roughly 1 in 4 real sites may be missed in any given scan — human review of borderline zones matters.</p>
                 </div>
             </div>
             <div class="flex gap-3">
-                <div class="mt-0.5 w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center shrink-0">
-                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                     style="background: var(--status-resolved-bg); border: 1px solid var(--status-resolved-border);">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                         style="color: var(--status-resolved);">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                     </svg>
                 </div>
                 <div>
-                    <p class="text-sm font-semibold text-gray-800">{{ model_metrics.iou }}% IoU</p>
-                    <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">On average, the model's predicted mining boundary overlaps <strong>{{ model_metrics.iou }}% with the actual site footprint</strong>. Useful for area estimates but not precise enough for legal boundary demarcation.</p>
+                    <p class="text-[13px] font-semibold" style="color: var(--text-primary);">{{ model_metrics.iou }}% IoU</p>
+                    <p class="text-[12px] mt-0.5 leading-relaxed" style="color: var(--text-secondary);">On average, the model's predicted mining boundary overlaps <strong style="color: var(--text-primary);">{{ model_metrics.iou }}% with the actual site footprint</strong>. Useful for area estimates but not precise enough for legal boundary demarcation.</p>
                 </div>
             </div>
         </div>
     </div>
-
 
 </div>
 {% endblock %}
@@ -262,7 +258,6 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
-    // ── Performance Over Time ──
     const perfCtx = document.getElementById('performance-chart');
     if (perfCtx) {
         const hasFieldData = {{ has_field_data|yesno:"true,false" }};
@@ -278,27 +273,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 {
                     label: 'Accuracy (EMA)',
                     data: monthlyAccuracy,
-                    borderColor: '#22c55e',
-                    backgroundColor: 'rgba(34,197,94,0.08)',
-                    borderWidth: 2,
-                    pointRadius: 4,
-                    tension: 0.35,
-                    fill: false,
+                    borderColor: '#3fb950',
+                    backgroundColor: 'rgba(63,185,80,0.08)',
+                    borderWidth: 2, pointRadius: 4, tension: 0.35, fill: false,
                 },
                 {
                     label: 'Precision (rolling)',
                     data: monthlyPrecision,
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59,130,246,0.08)',
-                    borderWidth: 2,
-                    pointRadius: 4,
-                    tension: 0.35,
-                    fill: false,
-                    spanGaps: true,   // connect across months with no data
+                    borderColor: '#388bfd',
+                    backgroundColor: 'rgba(56,139,253,0.08)',
+                    borderWidth: 2, pointRadius: 4, tension: 0.35, fill: false, spanGaps: true,
                 },
             ];
         } else {
-            // Fallback: test-set version progression (final values from settings)
             const iouFinal       = {{ model_metrics.iou }};
             const precisionFinal = {{ model_metrics.precision_fallback }};
             const recallFinal    = {{ model_metrics.recall }};
@@ -307,22 +294,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 {
                     label: 'IoU',
                     data: [42, 50, 55, 58, iouFinal],
-                    borderColor: '#f97316',
-                    backgroundColor: 'rgba(249,115,22,0.08)',
+                    borderColor: '#e8833a',
+                    backgroundColor: 'rgba(232,131,58,0.08)',
                     borderWidth: 2, pointRadius: 4, tension: 0.35, fill: false,
                 },
                 {
                     label: 'Precision',
                     data: [55, 63, 68, 71, precisionFinal],
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59,130,246,0.08)',
+                    borderColor: '#388bfd',
+                    backgroundColor: 'rgba(56,139,253,0.08)',
                     borderWidth: 2, pointRadius: 4, tension: 0.35, fill: false,
                 },
                 {
                     label: 'Recall',
                     data: [60, 67, 72, 75, recallFinal],
-                    borderColor: '#8b5cf6',
-                    backgroundColor: 'rgba(139,92,246,0.08)',
+                    borderColor: '#a371f7',
+                    backgroundColor: 'rgba(163,113,247,0.08)',
                     borderWidth: 2, pointRadius: 4, tension: 0.35, fill: false,
                 },
             ];
@@ -337,7 +324,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 plugins: {
                     legend: {
                         position: 'bottom',
-                        labels: { font: { size: 11 }, color: '#6b7280', boxWidth: 14, padding: 16 }
+                        labels: { font: { size: 11 }, color: '#8b949e', boxWidth: 14, padding: 16 }
                     },
                     tooltip: {
                         mode: 'index',
@@ -352,15 +339,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 scales: {
                     x: {
                         grid: { display: false },
-                        ticks: { font: { size: 11 }, color: '#9ca3af' }
+                        ticks: { font: { size: 11 }, color: '#8b949e' }
                     },
                     y: {
                         min: 30,
                         max: 100,
-                        grid: { color: '#f3f4f6' },
+                        grid: { color: 'rgba(240,246,252,0.06)' },
                         ticks: {
                             font: { size: 11 },
-                            color: '#9ca3af',
+                            color: '#8b949e',
                             callback: v => v + '%'
                         }
                     }
@@ -369,11 +356,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ── Confidence Distribution (real DB data) ──
     const confCtx = document.getElementById('confidence-chart');
     if (confCtx) {
         const confBins = [{% for b in conf_bins %}{{ b }}{% if not forloop.last %},{% endif %}{% endfor %}];
-        // Use opacity steps of a single green to keep it clean
         new Chart(confCtx, {
             type: 'bar',
             data: {
@@ -382,11 +367,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     label: 'Detections',
                     data: confBins,
                     backgroundColor: [
-                        'rgba(27,67,50,0.25)',
-                        'rgba(27,67,50,0.40)',
-                        'rgba(27,67,50,0.55)',
-                        'rgba(27,67,50,0.72)',
-                        'rgba(27,67,50,0.90)',
+                        'rgba(56,139,253,0.20)',
+                        'rgba(56,139,253,0.35)',
+                        'rgba(56,139,253,0.50)',
+                        'rgba(56,139,253,0.68)',
+                        'rgba(56,139,253,0.85)',
                     ],
                     borderWidth: 0,
                     borderRadius: 4,
@@ -407,12 +392,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 scales: {
                     x: {
                         grid: { display: false },
-                        ticks: { font: { size: 10 }, color: '#9ca3af' }
+                        ticks: { font: { size: 10 }, color: '#8b949e' }
                     },
                     y: {
                         beginAtZero: true,
-                        grid: { color: '#f3f4f6' },
-                        ticks: { font: { size: 10 }, color: '#9ca3af', stepSize: 1 }
+                        grid: { color: 'rgba(240,246,252,0.06)' },
+                        ticks: { font: { size: 10 }, color: '#8b949e', stepSize: 1 }
                     }
                 }
             }

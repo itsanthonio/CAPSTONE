@@ -236,7 +236,11 @@ def send_scan_completed(job):
     total   = job.total_detections or 0
     legal   = total - illegal
 
-    subject = f'Scan Complete — {total} site(s) detected | {APP_NAME}'
+    source        = getattr(job, 'source', 'manual')
+    source_label  = 'Automated' if source == 'automated' else 'Manual'
+    source_prefix = '[Auto] ' if source == 'automated' else ''
+
+    subject = f'{source_prefix}Scan Complete — {total} site(s) detected | {APP_NAME}'
 
     if illegal == 0:
         summary_box = _alert_box('No illegal mining sites were detected in this scan.', 'success')
@@ -259,6 +263,7 @@ def send_scan_completed(job):
             ('Job ID',     str(job.id)),
             ('Start date', str(job.start_date)),
             ('End date',   str(job.end_date)),
+            ('Source',     source_label),
         ])
         + summary_box
         + _cta_button(_site_url('/dashboard/alerts/'), 'View Alerts &rarr;')
@@ -267,6 +272,7 @@ def send_scan_completed(job):
     plain = (
         f"Satellite scan complete.\n\n"
         f"Job: {job.id}\nDate range: {job.start_date} to {job.end_date}\n"
+        f"Source: {source_label}\n"
         f"Total: {total}  Illegal: {illegal}  Legal: {legal}\n\n"
         f"{'No illegal sites detected.' if illegal == 0 else f'{illegal} illegal site(s) flagged.'}\n\n"
         f"View alerts: {_site_url('/dashboard/alerts/')}"
@@ -290,7 +296,11 @@ def send_scan_failed(job):
 
     reason = getattr(job, 'failure_reason', None) or 'Unknown error — check server logs.'
 
-    subject = f'Scan Failed — Action Required | {APP_NAME}'
+    source       = getattr(job, 'source', 'manual')
+    source_label = 'Automated' if source == 'automated' else 'Manual'
+    source_prefix = '[Auto] ' if source == 'automated' else ''
+
+    subject = f'{source_prefix}Scan Failed — Action Required | {APP_NAME}'
 
     body = (
         _heading('Satellite Scan Failed')
@@ -300,6 +310,7 @@ def send_scan_failed(job):
             ('Job ID',     str(job.id)),
             ('Start date', str(job.start_date)),
             ('End date',   str(job.end_date)),
+            ('Source',     source_label),
             ('Reason',     f'<span style="color:#dc2626;">{reason}</span>'),
         ])
         + _cta_button(_site_url('/dashboard/home/'), 'Go to Dashboard &rarr;')
@@ -308,6 +319,7 @@ def send_scan_failed(job):
     plain = (
         f"Scan failed.\n\nJob: {job.id}\n"
         f"Date range: {job.start_date} to {job.end_date}\n"
+        f"Source: {source_label}\n"
         f"Reason: {reason}\n\n"
         f"Dashboard: {_site_url('/dashboard/home/')}"
     )
