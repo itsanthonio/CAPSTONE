@@ -19,6 +19,10 @@ class Job(models.Model):
         COMPLETED = 'completed', 'Completed'
         FAILED = 'failed', 'Failed'
         CANCELLED = 'cancelled', 'Cancelled'
+
+    class Source(models.TextChoices):
+        MANUAL    = 'manual',    'Manual'
+        AUTOMATED = 'automated', 'Automated'
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     status = models.CharField(
@@ -50,11 +54,33 @@ class Job(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
     failure_reason = models.TextField(null=True, blank=True)
     
+    # Source — manual (user drew AOI) or automated (scanner tile)
+    source = models.CharField(
+        max_length=20,
+        choices=Source.choices,
+        default=Source.MANUAL,
+        db_index=True,
+    )
+    scan_tile = models.ForeignKey(
+        'scanning.ScanTile',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='jobs',
+        help_text='Automated scan tile that triggered this job (null for manual scans)',
+    )
+
     # Detection result fields for frontend access
     total_detections = models.IntegerField(default=0, help_text="Total number of detections")
     illegal_count = models.IntegerField(default=0, help_text="Number of illegal detections")
     result_id = models.UUIDField(null=True, blank=True, help_text="Related result ID")
     detection_data = models.JSONField(default=list, help_text="Detection data as JSON")
+
+    # ML visualization patch images (relative to MEDIA_ROOT, empty until generated)
+    img_false_color       = models.CharField(max_length=500, blank=True, default='')
+    img_prediction_mask   = models.CharField(max_length=500, blank=True, default='')
+    img_probability_heatmap = models.CharField(max_length=500, blank=True, default='')
+    img_overlay           = models.CharField(max_length=500, blank=True, default='')
     
     class Meta:
         indexes = [

@@ -83,12 +83,24 @@ class PostProcessor:
                 mask=None
             )
             
+            # HLS pixel size is 30 m.  One pixel in degrees ≈ 30/111320 ≈ 0.000270°.
+            # Simplify with tolerance = 1 pixel width so staircased pixel edges
+            # become smooth outlines without losing meaningful detail.
+            simplify_tolerance = 0.000270
+
             polygons = []
             for geom, value in shapes:
                 if value == 1:  # Only keep positive shapes
                     # Convert to shapely geometry for area calculation
                     shapely_geom = shape(geom)
-                    
+
+                    # Smooth pixel-staircase boundaries (Douglas-Peucker)
+                    shapely_geom = shapely_geom.simplify(
+                        simplify_tolerance, preserve_topology=True
+                    )
+                    if shapely_geom.is_empty:
+                        continue
+
                     # Calculate area in square meters
                     # shapely.area is in CRS units (degrees for WGS84)
                     # Convert to m² using rough approximation: 1 deg ≈ 111,320 m at equator
@@ -102,7 +114,7 @@ class PostProcessor:
                     # Filter by minimum area
                     if area_m2 >= self.min_area:
                         polygons.append({
-                            'geometry': geom,
+                            'geometry': shapely_geom.__geo_interface__,
                             'shapely_geometry': shapely_geom,
                             'area': area_m2,
                             'value': value
@@ -322,6 +334,123 @@ class PostProcessor:
         except Exception as e:
             self.logger.error(f"Post-processing failed for job {job.id}: {str(e)}")
             raise
+
+
+def save_patch_images(job, tensor: np.ndarray, probability_mask: np.ndarray) -> bool:
+    """
+    Generate 4 ML visualization PNGs for a completed scan and store their
+    relative paths on the Job record.
+
+    Tensor band order (from PreprocessingService.MODEL_BAND_ORDER):
+        0: B3 (Green), 1: B4 (Red), 2: B8 (NIR),
+        3: B11 (SWIR1), 4: B12 (SWIR2), 5: BSI
+
+    Images produced:
+        1. false_color.png       — False colour composite (R=B4, G=B3, B=NIR),
+                                   percentile-stretched [p2, p98] per channel
+        2. prediction_mask.png   — Binary threshold mask (>=0.5), 'hot' colourmap
+        3. probability_heatmap.png — Raw probability [0,1], 'hot' colourmap
+        4. overlay.png           — False colour + semi-transparent red on detections
+
+    Returns True on success, False if anything fails (caller should log).
+    """
+    try:
+        from pathlib import Path
+        from PIL import Image
+        from django.conf import settings
+
+        # Minimum display size — upscale small GeoTIFFs so images don't look
+        # like 3×3 pixel thumbnails (HLS is 30 m/px; a tiny AOI = tiny raster).
+        MIN_SIDE = 512
+
+        job_id = str(job.id)
+        out_dir = Path(settings.MEDIA_ROOT) / 'job_images' / job_id
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        # ── Prepare arrays ────────────────────────────────────────────────
+        # Squeeze channel dim from inference output: (1,H,W) → (H,W)
+        if probability_mask.ndim == 3 and probability_mask.shape[0] == 1:
+            prob = probability_mask.squeeze(0)
+        else:
+            prob = probability_mask  # already (H, W)
+
+        # Ensure tensor is (6, H, W) float
+        t = tensor.astype(np.float32)
+
+        h, w = prob.shape
+
+        def _stretch(arr):
+            """Percentile stretch to [0, 1]: clips to [p2, p98] then rescales."""
+            lo, hi = np.percentile(arr, 2), np.percentile(arr, 98)
+            if hi <= lo:
+                return np.zeros_like(arr)
+            return np.clip((arr - lo) / (hi - lo), 0.0, 1.0)
+
+        def _hot(arr_2d):
+            """Apply 'hot' colourmap to a (H,W) array in [0,1]. Returns (H,W,3) uint8."""
+            v = np.clip(arr_2d, 0.0, 1.0)
+            r = np.clip(v * 3.0,       0.0, 1.0)
+            g = np.clip(v * 3.0 - 1.0, 0.0, 1.0)
+            b = np.clip(v * 3.0 - 2.0, 0.0, 1.0)
+            return (np.stack([r, g, b], axis=-1) * 255).astype(np.uint8)
+
+        def _upscale(img: Image.Image) -> Image.Image:
+            """Upscale with nearest-neighbour so pixel boundaries stay sharp."""
+            if img.width >= MIN_SIDE and img.height >= MIN_SIDE:
+                return img
+            scale = max(MIN_SIDE / img.width, MIN_SIDE / img.height)
+            new_w = max(MIN_SIDE, int(img.width  * scale))
+            new_h = max(MIN_SIDE, int(img.height * scale))
+            return img.resize((new_w, new_h), Image.NEAREST)
+
+        def _save(arr_uint8, filename):
+            _upscale(Image.fromarray(arr_uint8)).save(str(out_dir / filename))
+
+        # ── 1. False colour ───────────────────────────────────────────────
+        r_ch = _stretch(t[1])   # B4 = Red
+        g_ch = _stretch(t[0])   # B3 = Green
+        b_ch = _stretch(t[2])   # B8 = NIR
+        false_color = (np.stack([r_ch, g_ch, b_ch], axis=-1) * 255).astype(np.uint8)
+        _save(false_color, 'false_color.png')
+
+        # ── 2. Binary prediction mask ────────────────────────────────────
+        binary = (prob >= 0.5).astype(np.float32)
+        _save(_hot(binary), 'prediction_mask.png')
+
+        # ── 3. Probability heatmap ───────────────────────────────────────
+        _save(_hot(prob), 'probability_heatmap.png')
+
+        # ── 4. Overlay: false colour + transparent red on detections ─────
+        # Matches the notebook exactly:
+        #   overlay = np.zeros((*pred.shape, 4))
+        #   overlay[pred == 1] = [1, 0, 0, 0.5]
+        # Composite: alpha-blend the RGBA red layer over the RGB base.
+        base   = false_color.astype(np.float32)           # (H, W, 3) float
+        mask   = binary.astype(bool)                       # (H, W)
+        result = base.copy()
+        alpha  = 0.5
+        result[mask, 0] = base[mask, 0] * (1 - alpha) + 255 * alpha   # R
+        result[mask, 1] = base[mask, 1] * (1 - alpha)                  # G
+        result[mask, 2] = base[mask, 2] * (1 - alpha)                  # B
+        _save(np.clip(result, 0, 255).astype(np.uint8), 'overlay.png')
+
+        # ── Store relative paths on Job ───────────────────────────────────
+        rel = f'job_images/{job_id}/'
+        job.img_false_color         = rel + 'false_color.png'
+        job.img_prediction_mask     = rel + 'prediction_mask.png'
+        job.img_probability_heatmap = rel + 'probability_heatmap.png'
+        job.img_overlay             = rel + 'overlay.png'
+        job.save(update_fields=[
+            'img_false_color', 'img_prediction_mask',
+            'img_probability_heatmap', 'img_overlay',
+        ])
+
+        logger.info(f"Saved patch images for job {job_id}")
+        return True
+
+    except Exception as exc:
+        logger.warning(f"Failed to save patch images for job {job.id}: {exc}")
+        return False
 
 
 # Singleton instance for the service

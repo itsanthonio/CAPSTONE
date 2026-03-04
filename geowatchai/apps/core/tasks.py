@@ -156,6 +156,60 @@ def check_assignment_sla():
     return {'reminded': reminded, 'escalated': escalated}
 
 
+@shared_task
+def check_concession_expiry():
+    """
+    Daily task: auto-deactivate expired concessions and email OPS about
+    any that expire within the next 30 days.
+    """
+    from datetime import date, timedelta
+    from django.conf import settings
+    from django.core.mail import send_mail
+    from apps.detections.models import LegalConcession
+
+    today        = date.today()
+    thirty_ahead = today + timedelta(days=30)
+
+    # Auto-deactivate concessions whose valid_to has passed
+    expired_qs    = LegalConcession.objects.filter(is_active=True, valid_to__isnull=False, valid_to__lt=today)
+    expired_count = expired_qs.count()
+    expired_qs.update(is_active=False)
+    if expired_count:
+        logger.info(f'check_concession_expiry: deactivated {expired_count} expired concession(s).')
+
+    # Warn about concessions expiring within 30 days
+    expiring = list(
+        LegalConcession.objects.filter(
+            is_active=True, valid_to__isnull=False,
+            valid_to__gte=today, valid_to__lte=thirty_ahead,
+        ).order_by('valid_to')
+    )
+
+    if expiring:
+        ops_emails = list(getattr(settings, 'OPS_EMAILS', []))
+        if ops_emails:
+            lines = [f"  • {c.concession_name} ({c.license_number}) — expires {c.valid_to}" for c in expiring]
+            extra = (f"\nAlso, {expired_count} concession(s) were auto-deactivated today." if expired_count else '')
+            body = (
+                f"{len(expiring)} mining concession(s) expire within 30 days:\n\n"
+                + "\n".join(lines) + extra
+                + "\n\nPlease review and renew licences as needed."
+            )
+            try:
+                send_mail(
+                    subject=f"[GalamseyWatch] {len(expiring)} Concession(s) Expiring Within 30 Days",
+                    message=body,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=ops_emails,
+                    fail_silently=True,
+                )
+                logger.info(f'check_concession_expiry: warned about {len(expiring)} expiring concession(s).')
+            except Exception as exc:
+                logger.error(f'check_concession_expiry: email failed: {exc}')
+
+    return {'deactivated': expired_count, 'expiring_soon': len(expiring)}
+
+
 @shared_task(bind=True, max_retries=3)
 def run_detection_task(self, job_id: str, threshold: float = 0.5, min_area: float = 100.0):
     """

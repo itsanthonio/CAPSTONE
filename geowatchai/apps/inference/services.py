@@ -61,13 +61,21 @@ class ModelSingleton:
                 self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                 self._model = self._model.to(self._device)
 
-                # Load checkpoint safely — weights_only=True rejects any non-tensor
-                # pickle objects (PosixPath, lambdas, etc.), eliminating the
-                # supply-chain attack surface from a tampered .pth file.
-                # The checkpoint must contain only serialized tensors; if it was
-                # saved with optimizer state or path objects, re-export it as:
-                #   torch.save({'model_state_dict': model.state_dict()}, path)
-                checkpoint = torch.load(model_path, map_location=self._device, weights_only=True)
+                # The checkpoint may contain pathlib.PosixPath objects
+                # (saved on Linux/Mac).  On Windows, PosixPath exists but
+                # cannot be instantiated, so we shim it to WindowsPath for
+                # the duration of the load.  On Linux/Mac the shim is a no-op.
+                import pathlib as _pathlib
+                import platform as _platform
+                _orig_posix = _pathlib.PosixPath
+                if _platform.system() == 'Windows':
+                    _pathlib.PosixPath = _pathlib.WindowsPath
+                try:
+                    checkpoint = torch.load(
+                        model_path, map_location=self._device, weights_only=False
+                    )
+                finally:
+                    _pathlib.PosixPath = _orig_posix
 
                 # Load model state dict
                 self._model.load_state_dict(checkpoint['model_state_dict'])

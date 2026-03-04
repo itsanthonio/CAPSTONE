@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     'apps.postprocessing',
     'apps.results',
     'apps.core',
+    'apps.scanning',
     # Domain models
     'apps.accounts',
     'apps.detections',
@@ -170,7 +171,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
@@ -251,7 +252,7 @@ APP_NAME = 'GalamseyWatch AI'
 # Authentication Settings
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'  # Points to gatekeeper router
-LOGOUT_REDIRECT_URL = '/accounts/login/'
+LOGOUT_REDIRECT_URL = '/'
 
 # Django REST Framework configuration
 REST_FRAMEWORK = {
@@ -296,24 +297,68 @@ EMAIL_HOST_USER     = config('EMAIL_HOST_USER',     default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL  = config('DEFAULT_FROM_EMAIL',  default='GalamseyWatch AI <noreply@galamseywatch.ai>')
 
-# Celery Configuration
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
+# ── Celery Configuration ─────────────────────────────────────────────────────
+CELERY_BROKER_URL       = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND   = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT   = ['json']
+CELERY_TASK_SERIALIZER  = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'UTC'
+CELERY_TIMEZONE         = 'UTC'
 CELERY_TASK_TRACK_STARTED = True
 
+# ── Queues ────────────────────────────────────────────────────────────────────
+# priority  — all detection jobs (manual + automated tile scans)
+# background — timelapse fetching (5-year historical imagery, non-urgent)
+from kombu import Queue, Exchange
+
+CELERY_TASK_QUEUES = (
+    Queue('priority',   Exchange('priority'),   routing_key='priority'),
+    Queue('background', Exchange('background'), routing_key='background'),
+)
+CELERY_TASK_DEFAULT_QUEUE       = 'priority'
+CELERY_TASK_DEFAULT_EXCHANGE    = 'priority'
+CELERY_TASK_DEFAULT_ROUTING_KEY = 'priority'
+
+# Enable task priorities 0-9 (higher number = picked first)
+CELERY_TASK_QUEUE_MAX_PRIORITY = 10
+CELERY_TASK_DEFAULT_PRIORITY   = 5
+
+# Route timelapse fetching to the background queue automatically
+CELERY_TASK_ROUTES = {
+    'apps.detections.tasks.fetch_site_timelapse': {'queue': 'background'},
+}
+
+# Worker: acknowledge tasks only after completion (safer for long pipeline steps)
+CELERY_TASK_ACKS_LATE          = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # fetch one task at a time per worker
+
+# ── Beat Schedule ─────────────────────────────────────────────────────────────
 from celery.schedules import crontab
 CELERY_BEAT_SCHEDULE = {
     'check-assignment-sla-daily': {
         'task': 'apps.core.tasks.check_assignment_sla',
-        'schedule': crontab(hour=7, minute=0),  # Every day at 07:00 UTC
+        'schedule': crontab(hour=7, minute=0),
     },
     'escalate-stale-critical-alerts': {
         'task': 'apps.core.tasks.escalate_stale_alerts',
         'schedule': crontab(minute=0),  # Every hour
+    },
+    # Automated Ghana scanner — fires every 5 minutes
+    # The task itself checks the 6am–6pm window and skips outside it
+    'auto-scan-tick': {
+        'task': 'apps.scanning.tasks.auto_scan_tick',
+        'schedule': crontab(minute='*/5'),
+    },
+    # Daily digest of automated detections — sent at 18:00 (end of scanning window)
+    # Manual scan alerts are NOT included; this is automated-only
+    'automated-scan-daily-digest': {
+        'task': 'apps.scanning.tasks.automated_scan_daily_digest',
+        'schedule': crontab(hour=18, minute=0),
+    },
+    # Daily concession expiry check — deactivates expired, emails about soon-expiring
+    'check-concession-expiry': {
+        'task': 'apps.core.tasks.check_concession_expiry',
+        'schedule': crontab(hour=9, minute=0),
     },
 }
 

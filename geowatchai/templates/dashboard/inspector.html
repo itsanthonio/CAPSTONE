@@ -17,16 +17,23 @@
         font-size: 0.7rem; padding: 3px 8px; border-radius: 4px;
         pointer-events: auto; cursor: pointer;
     }
-    .tab-btn.active { background: #f59e0b; color: #fff; }
+    .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
     .assignment-card { display: none; }
     .assignment-card.visible { display: block; }
     .outcome-btn { transition: all 0.15s; }
     /* Drop zone styles */
-    .drop-zone.drag-over { border-color: #f59e0b; background: #fffbeb; }
+    .drop-zone.drag-over { border-color: var(--accent); background: var(--surface-3); }
     /* Timelapse thumbnail active state — ring managed on wrapper div by JS */
     .tl-thumb { opacity: 0.55; cursor: pointer; transition: opacity 0.15s; }
     .tl-thumb:hover { opacity: 0.85; }
     .tl-thumb.active { opacity: 1; }
+    /* Print isolation — only the dynamically appended overlay is rendered */
+    #print-overlay { display: none; }
+    @media print {
+        body.is-printing > *:not(#print-overlay) { display: none !important; }
+        body.is-printing #print-overlay { display: block !important; }
+        .print-hide { display: none !important; }
+    }
 </style>
 {% endblock %}
 
@@ -35,10 +42,11 @@
 
     <!-- New-assignment banner (shown by polling JS) -->
     <div id="new-assignment-banner"
-         class="hidden bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center justify-between text-sm text-blue-800">
+         class="hidden rounded-lg px-4 py-3 flex items-center justify-between text-sm"
+         style="background: var(--status-info-bg); border: 1px solid var(--status-info-border); color: var(--status-info);">
         <span>New assignment available.</span>
-        <button onclick="location.reload()"
-                class="ml-4 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors">
+        <button onclick="refreshAssignments()"
+                class="btn-primary ml-4 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
             Reload
         </button>
     </div>
@@ -46,68 +54,74 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">My Assignments</h1>
-            <p class="text-gray-500 text-sm mt-0.5">Field verification tasks assigned to you</p>
+            <h1 class="text-2xl font-bold" style="color: var(--text-primary);">My Assignments</h1>
+            <p class="text-sm mt-0.5" style="color: var(--text-secondary);">Field verification tasks assigned to you</p>
         </div>
 
         <!-- Availability toggle -->
         <div class="flex items-center gap-3">
-            <div id="availability-status" class="flex items-center gap-2 text-sm font-medium
-                {% if is_available %}text-green-700{% else %}text-gray-500{% endif %}">
-                <span id="availability-dot" class="w-2.5 h-2.5 rounded-full flex-shrink-0
-                    {% if is_available %}bg-green-500{% else %}bg-gray-400{% endif %}"></span>
+            <div id="availability-status" class="flex items-center gap-2 text-sm font-medium"
+                 style="color: {% if is_available %}#3fb950{% else %}var(--text-secondary){% endif %};">
+                <span id="availability-dot" class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style="background: {% if is_available %}#3fb950{% else %}#484f58{% endif %};"></span>
                 <span id="availability-label">
                     {% if is_available %}Available{% else %}Unavailable{% endif %}
                 </span>
             </div>
             <button id="availability-btn"
                     onclick="toggleAvailability()"
-                    class="px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors
-                        {% if is_available %}border-red-200 text-red-600 bg-red-50 hover:bg-red-100
-                        {% else %}border-green-200 text-green-700 bg-green-50 hover:bg-green-100{% endif %}">
+                    class="px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors"
+                    style="{% if is_available %}background: var(--status-critical-bg); border-color: var(--status-critical-border); color: var(--status-critical);{% else %}background: var(--status-resolved-bg); border-color: var(--status-resolved-border); color: var(--status-resolved);{% endif %}">
                 {% if is_available %}Go Unavailable{% else %}Go Available{% endif %}
             </button>
         </div>
     </div>
 
     {% if error %}
-    <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">
+    <div class="rounded-lg p-4 text-sm"
+         style="background: var(--status-critical-bg); border: 1px solid var(--status-critical-border); color: var(--status-critical);">
         <strong>Error loading assignments:</strong> {{ error }}
     </div>
     {% endif %}
 
     <!-- Summary bar -->
-    <div class="grid grid-cols-3 gap-4">
-        <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center">
-            <div class="text-3xl font-bold text-yellow-700">{{ pending_count }}</div>
-            <div class="text-sm text-yellow-600 mt-1">Pending</div>
+    <div id="inspector-summary-bar" class="grid grid-cols-3 gap-4">
+        <div class="rounded-lg p-4 text-center"
+             style="background: var(--status-moderate-bg); border: 1px solid var(--status-moderate-border);">
+            <div class="text-3xl font-bold" style="color: var(--status-moderate);">{{ pending_count }}</div>
+            <div class="text-sm mt-1" style="color: var(--status-moderate);">Pending</div>
         </div>
-        <div class="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-            <div class="text-3xl font-bold text-green-700">{{ verified_count }}</div>
-            <div class="text-sm text-green-600 mt-1">Verified</div>
+        <div class="rounded-lg p-4 text-center"
+             style="background: var(--status-resolved-bg); border: 1px solid var(--status-resolved-border);">
+            <div class="text-3xl font-bold" style="color: var(--status-resolved);">{{ verified_count }}</div>
+            <div class="text-sm mt-1" style="color: var(--status-resolved);">Verified</div>
         </div>
-        <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
-            <div class="text-3xl font-bold text-gray-600">{{ inconclusive_count }}</div>
-            <div class="text-sm text-gray-500 mt-1">Inconclusive</div>
+        <div class="rounded-lg p-4 text-center"
+             style="background: var(--surface-3); border: 1px solid var(--border-default);">
+            <div class="text-3xl font-bold" style="color: var(--text-secondary);">{{ inconclusive_count }}</div>
+            <div class="text-sm mt-1" style="color: var(--text-tertiary);">Inconclusive</div>
         </div>
     </div>
 
     <!-- Tabs -->
-    <div class="flex space-x-2">
+    <div id="tab-bar" class="flex space-x-2">
         <button onclick="filterTab('all')" id="tab-all"
-                class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 bg-active-gold text-white">
+                class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium border">
             All ({{ assignments|length }})
         </button>
         <button onclick="filterTab('pending')" id="tab-pending"
-                class="tab-btn px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50">
+                class="tab-btn px-4 py-2 rounded-lg text-sm font-medium border"
+                style="border-color: var(--border-default); color: var(--text-secondary); background: transparent;">
             Pending ({{ pending_count }})
         </button>
         <button onclick="filterTab('verified')" id="tab-verified"
-                class="tab-btn px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50">
+                class="tab-btn px-4 py-2 rounded-lg text-sm font-medium border"
+                style="border-color: var(--border-default); color: var(--text-secondary); background: transparent;">
             Verified ({{ verified_count }})
         </button>
         <button onclick="filterTab('inconclusive')" id="tab-inconclusive"
-                class="tab-btn px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50">
+                class="tab-btn px-4 py-2 rounded-lg text-sm font-medium border"
+                style="border-color: var(--border-default); color: var(--text-secondary); background: transparent;">
             Inconclusive ({{ inconclusive_count }})
         </button>
     </div>
@@ -137,13 +151,13 @@
         {% endfor %}
     </div>
     {% else %}
-    <div class="bg-white rounded-xl border border-gray-200 p-12 text-center">
-        <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="gw-card p-12 text-center">
+        <svg class="w-12 h-12 mx-auto mb-4" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
         </svg>
-        <h3 class="text-lg font-medium text-gray-900 mb-2">No assignments yet</h3>
-        <p class="text-gray-500">You haven't been assigned any alerts. Check back later.</p>
+        <h3 class="text-lg font-medium mb-2" style="color: var(--text-primary);">No assignments yet</h3>
+        <p style="color: var(--text-secondary);">You haven't been assigned any alerts. Check back later.</p>
     </div>
     {% endif %}
 
@@ -184,18 +198,21 @@ function toggleAvailability() {
         if (data.success !== false) {
             const available = data.is_available ?? goingAvailable;
             // Update dot colour
-            dot.className = 'w-2.5 h-2.5 rounded-full flex-shrink-0 ' +
-                (available ? 'bg-green-500' : 'bg-gray-400');
+            dot.style.background = available ? '#3fb950' : '#484f58';
             // Update label colour + text
-            status.className = 'flex items-center gap-2 text-sm font-medium ' +
-                (available ? 'text-green-700' : 'text-gray-500');
+            status.style.color = available ? '#3fb950' : 'var(--text-secondary)';
             label.textContent = available ? 'Available' : 'Unavailable';
             // Update button
             btn.textContent = available ? 'Go Unavailable' : 'Go Available';
-            btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors ' +
-                (available
-                    ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100'
-                    : 'border-green-200 text-green-700 bg-green-50 hover:bg-green-100');
+            if (available) {
+                btn.style.background = 'var(--status-critical-bg)';
+                btn.style.borderColor = 'var(--status-critical-border)';
+                btn.style.color = 'var(--status-critical)';
+            } else {
+                btn.style.background = 'var(--status-resolved-bg)';
+                btn.style.borderColor = 'var(--status-resolved-border)';
+                btn.style.color = 'var(--status-resolved)';
+            }
             showToast(available ? 'You are now available for new assignments.' : 'You are now unavailable.', available ? 'success' : 'info');
         } else {
             showToast(data.error || 'Could not update availability.', 'error');
@@ -215,12 +232,16 @@ function toggleAvailability() {
 /* ---------- Tab filtering ---------- */
 function filterTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(b => {
-        b.classList.remove('active', 'bg-active-gold', 'text-white');
-        b.classList.add('text-gray-600', 'hover:bg-gray-50');
+        b.classList.remove('active');
+        b.style.background = 'transparent';
+        b.style.color = 'var(--text-secondary)';
+        b.style.borderColor = 'var(--border-default)';
     });
     const active = document.getElementById('tab-' + tab);
-    active.classList.add('active', 'bg-active-gold', 'text-white');
-    active.classList.remove('text-gray-600', 'hover:bg-gray-50');
+    active.classList.add('active');
+    active.style.background = '';
+    active.style.color = '';
+    active.style.borderColor = '';
 
     document.querySelectorAll('.assignment-card').forEach(card => {
         if (tab === 'all' || card.dataset.tab === tab) {
@@ -238,19 +259,20 @@ function openInLiveMap(lng, lat) {
     window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
 }
 
-requestAnimationFrame(() => {
+function initMiniMaps() {
     if (typeof L === 'undefined') {
         console.error('Leaflet failed to load — check network/CDN');
         document.querySelectorAll('.mini-map').forEach(el => {
-            el.innerHTML = '<div class="flex items-center justify-center h-full bg-gray-100 text-gray-400 text-sm rounded-lg">Map unavailable</div>';
+            el.innerHTML = '<div class="flex items-center justify-center h-full rounded-lg text-sm" style="background: var(--surface-3); color: var(--text-tertiary);">Map unavailable</div>';
         });
         return;
     }
     document.querySelectorAll('.mini-map').forEach(el => {
+        if (el._leaflet_id) return;   // already initialised
         const lng = parseFloat(el.dataset.lng);
         const lat = parseFloat(el.dataset.lat);
         if (isNaN(lng) || isNaN(lat)) {
-            el.innerHTML = '<div class="flex items-center justify-center h-full bg-gray-100 text-gray-400 text-sm rounded-lg">No location data</div>';
+            el.innerHTML = '<div class="flex items-center justify-center h-full rounded-lg text-sm" style="background: var(--surface-3); color: var(--text-tertiary);">No location data</div>';
             return;
         }
         const m = L.map(el, {
@@ -275,7 +297,8 @@ requestAnimationFrame(() => {
         // Force reflow after a tick in case container was hidden during init
         setTimeout(() => m.invalidateSize(), 150);
     });
-});
+}
+requestAnimationFrame(initMiniMaps);
 
 /* ---------- Outcome selection ---------- */
 function selectOutcome(assignmentId, outcome) {
@@ -328,10 +351,12 @@ function addFiles(aid, fileList, previewEl) {
         wrap.className = 'relative';
         const img = document.createElement('img');
         img.src = URL.createObjectURL(file);
-        img.className = 'w-16 h-12 object-cover rounded-lg border border-gray-200';
+        img.className = 'w-16 h-12 object-cover rounded-lg';
+        img.style.border = '1px solid var(--border-subtle)';
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'absolute -top-1 -right-1 w-4 h-4 bg-gray-700 text-white rounded-full text-xs flex items-center justify-center leading-none hover:bg-red-600';
+        btn.className = 'absolute -top-1 -right-1 w-4 h-4 text-white rounded-full text-xs flex items-center justify-center leading-none';
+        btn.style.background = 'var(--surface-4)';
         btn.textContent = '×';
         const idx = _draftFiles[aid].length - 1;
         btn.addEventListener('click', () => {
@@ -429,12 +454,39 @@ document.addEventListener('DOMContentLoaded', () => {
 /* ---------- Toast ---------- */
 function showToast(msg, type) {
     const t = document.createElement('div');
-    const bg = type === 'success' ? 'bg-green-100 border-green-400 text-green-800'
-                                   : 'bg-red-100 border-red-400 text-red-800';
-    t.className = `border px-4 py-3 rounded shadow-lg text-sm ${bg}`;
+    t.className = 'border px-4 py-3 rounded text-sm';
+    if (type === 'success') {
+        t.style.background = 'var(--status-resolved-bg)';
+        t.style.borderColor = 'var(--status-resolved-border)';
+        t.style.color = 'var(--status-resolved)';
+    } else {
+        t.style.background = 'var(--status-critical-bg)';
+        t.style.borderColor = 'var(--status-critical-border)';
+        t.style.color = 'var(--status-critical)';
+    }
     t.textContent = msg;
     document.getElementById('toast-container').appendChild(t);
     setTimeout(() => t.remove(), 4000);
+}
+
+/* ---------- Print detection card ---------- */
+function printDetectionCard(btn) {
+    var card = btn.closest('.assignment-card');
+    var clone = card.cloneNode(true);
+    // Remove UI-only elements (buttons, print button, etc.)
+    clone.querySelectorAll('.print-hide').forEach(function (el) { el.remove(); });
+    clone.style.cssText = 'display:block;box-shadow:none;border:none;margin:0;';
+
+    var overlay = document.createElement('div');
+    overlay.id = 'print-overlay';
+    overlay.appendChild(clone);
+    document.body.appendChild(overlay);
+    document.body.classList.add('is-printing');
+
+    window.print();
+
+    document.body.classList.remove('is-printing');
+    document.body.removeChild(overlay);
 }
 
 /* ---------- Cookie helper ---------- */
@@ -443,19 +495,48 @@ function getCookie(name) {
     return v ? decodeURIComponent(v.pop()) : '';
 }
 
-/* ---------- Real-time polling — new assignments ---------- */
-(function () {
-    let knownPending = {{ pending_count }};
-    setInterval(async function () {
-        try {
-            const r = await fetch('/api/my-assignments/', { credentials: 'include' });
-            if (!r.ok) return;
-            const d = await r.json();
-            if (d.count > knownPending) {
-                document.getElementById('new-assignment-banner').classList.remove('hidden');
-            }
-        } catch (_) {}
-    }, 30000);
-})();
+/* ---------- Real-time polling + AJAX refresh ---------- */
+let _knownPending = {{ pending_count }};
+
+async function refreshAssignments() {
+    try {
+        const r = await fetch(window.location.pathname, { credentials: 'include' });
+        if (!r.ok) { showToast('Refresh failed — try reloading.', 'error'); return; }
+        const html = await r.text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+
+        const newSummary = doc.getElementById('inspector-summary-bar');
+        if (newSummary) document.getElementById('inspector-summary-bar').replaceWith(newSummary);
+
+        const newTabBar = doc.getElementById('tab-bar');
+        if (newTabBar) document.getElementById('tab-bar').replaceWith(newTabBar);
+
+        const newCards = doc.getElementById('cards-container');
+        const oldCards = document.getElementById('cards-container');
+        if (newCards && oldCards) oldCards.replaceWith(newCards);
+
+        // Re-initialise interactive components for any new cards
+        requestAnimationFrame(initMiniMaps);
+        initDropZones();
+        initTimelapse();
+        filterTab('all');
+
+        document.getElementById('new-assignment-banner').classList.add('hidden');
+        showToast('Assignments refreshed.', 'success');
+    } catch (_) {
+        showToast('Refresh failed — try reloading.', 'error');
+    }
+}
+
+setInterval(async function () {
+    try {
+        const r = await fetch('/api/my-assignments/', { credentials: 'include' });
+        if (!r.ok) return;
+        const d = await r.json();
+        if (d.count > _knownPending) {
+            document.getElementById('new-assignment-banner').classList.remove('hidden');
+        }
+    } catch (_) {}
+}, 30000);
 </script>
 {% endblock %}

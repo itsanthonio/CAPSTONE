@@ -1,0 +1,404 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ region.name }} — GalamseyWatch{% endblock %}
+
+{% block extra_css %}
+<style>
+.patch-img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 6px;
+    background: var(--surface-3);
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+.patch-img:hover { opacity: 0.85; }
+
+.det-card {
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    background: var(--surface-1);
+    overflow: hidden;
+    transition: border-color 0.15s;
+}
+.det-card:hover { border-color: var(--border-default); }
+.det-card.illegal { border-left: 3px solid var(--status-critical); }
+.det-card.legal   { border-left: 3px solid var(--status-resolved); }
+
+/* Lightbox */
+#lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    background: rgba(0,0,0,0.88);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+}
+#lightbox.open { display: flex; }
+#lightbox img { max-width: 90vw; max-height: 80vh; border-radius: 8px; object-fit: contain; }
+#lightbox-caption { font-size: 11px; color: rgba(240,246,252,0.5); }
+#lightbox-close {
+    position: absolute; top: 16px; right: 20px;
+    font-size: 24px; cursor: pointer; color: rgba(240,246,252,0.6);
+    background: none; border: none;
+}
+#lightbox-close:hover { color: #fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center gap-3">
+        <a href="{% url 'dashboard:region_list' %}" class="text-sm hover:underline" style="color: var(--text-tertiary);">← Regions</a>
+        <span style="color: var(--border-subtle);">/</span>
+        <h1 class="text-2xl font-bold" style="color: var(--text-primary);">{{ region.name }}</h1>
+        {% if region.region_type %}
+        <span class="text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wide"
+              style="background: var(--surface-3); color: var(--text-secondary); border: 1px solid var(--border-subtle);">
+            {{ region.get_region_type_display }}
+        </span>
+        {% endif %}
+        {% if region.district %}
+        <span class="text-xs" style="color: var(--text-tertiary);">· {{ region.district }}</span>
+        {% endif %}
+    </div>
+
+    <!-- ── Stat cards ── -->
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div class="gw-card p-4">
+            <p class="text-xs mb-1" style="color: var(--text-tertiary);">Total Detections</p>
+            <p class="text-2xl font-bold" style="color: var(--text-primary);">{{ total_sites }}</p>
+        </div>
+        <div class="gw-card p-4">
+            <p class="text-xs mb-1" style="color: var(--text-tertiary);">Illegal Sites</p>
+            <p class="text-2xl font-bold" style="color: var(--status-critical);">{{ illegal_sites }}</p>
+        </div>
+        <div class="gw-card p-4">
+            <p class="text-xs mb-1" style="color: var(--text-tertiary);">Total Illegal Area</p>
+            <p class="text-2xl font-bold" style="color: var(--text-primary);">{{ total_area_ha }}<span class="text-sm font-normal"> ha</span></p>
+        </div>
+        <div class="gw-card p-4">
+            <p class="text-xs mb-1" style="color: var(--text-tertiary);">Avg Confidence</p>
+            <p class="text-2xl font-bold" style="color: var(--accent);">{{ avg_conf }}%</p>
+        </div>
+        <div class="gw-card p-4">
+            <p class="text-xs mb-1" style="color: var(--text-tertiary);">Recurring Sites</p>
+            <p class="text-2xl font-bold" style="color: var(--text-primary);">{{ recurrent }}</p>
+        </div>
+    </div>
+
+    <!-- ── Trend + sidebar ── -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- 30-day trend chart -->
+        <div class="gw-card lg:col-span-2">
+            <div class="px-5 pt-4 pb-2 flex items-center justify-between" style="border-bottom: 1px solid var(--border-subtle);">
+                <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Detection Trend — Last 30 Days</h2>
+                <div class="flex items-center gap-3 text-[10px]" style="color: var(--text-tertiary);">
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full inline-block" style="background:rgba(239,68,68,0.75);"></span>Illegal</span>
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full inline-block" style="background:rgba(34,197,94,0.4);"></span>Legal</span>
+                </div>
+            </div>
+            <div class="p-5">
+                <div style="position:relative;height:130px;">
+                    <canvas id="trend-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts + Field verification -->
+        <div class="space-y-4">
+            <div class="gw-card p-4">
+                <h3 class="text-xs font-semibold uppercase tracking-wide mb-3" style="color: var(--text-tertiary);">Alerts</h3>
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between text-sm">
+                        <span style="color: var(--text-secondary);">Open</span>
+                        <span class="font-semibold" style="color: var(--text-primary);">{{ open_alerts }}</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span style="color: var(--text-secondary);">Critical</span>
+                        <span class="font-semibold" style="color: var(--status-critical);">{{ critical_alerts }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="gw-card p-4">
+                <h3 class="text-xs font-semibold uppercase tracking-wide mb-3" style="color: var(--text-tertiary);">Field Verification</h3>
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between text-sm">
+                        <span style="color: var(--text-secondary);">Total Assignments</span>
+                        <span class="font-semibold" style="color: var(--text-primary);">{{ total_assignments }}</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span style="color: var(--text-secondary);">Mining Confirmed</span>
+                        <span class="font-semibold" style="color: var(--status-critical);">{{ confirmed_mining }}</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span style="color: var(--text-secondary);">False Positives</span>
+                        <span class="font-semibold" style="color: var(--status-resolved);">{{ false_positives }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Assigned inspectors ── -->
+    {% if assigned_inspectors %}
+    <div class="gw-card px-5 py-4">
+        <h2 class="text-xs font-semibold uppercase tracking-wide mb-3" style="color: var(--text-tertiary);">Assigned Inspectors</h2>
+        <div class="flex flex-wrap gap-2">
+            {% for inspector in assigned_inspectors %}
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
+                  style="background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--border-subtle);">
+                <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                      style="background: var(--accent); color: #0d1117;">
+                    {{ inspector.username|first|upper }}
+                </span>
+                {{ inspector.username }}
+            </span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ── Detection cards ── -->
+    <div>
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-base font-semibold" style="color: var(--text-primary);">
+                Detections
+                <span class="text-sm font-normal ml-1" style="color: var(--text-tertiary);">(most recent 20)</span>
+            </h2>
+        </div>
+
+        {% if detection_data %}
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">
+        {% for d in detection_data %}
+
+        <div class="det-card {% if d.site.legal_status == 'illegal' %}illegal{% else %}legal{% endif %}">
+
+            <!-- Card header -->
+            <div class="flex items-center justify-between gap-2 px-3 py-2"
+                 style="border-bottom: 1px solid var(--border-subtle); background: var(--surface-2);">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    {% if d.site.legal_status == 'illegal' %}
+                        <span class="gw-badge--critical">Illegal</span>
+                    {% elif d.site.legal_status == 'legal' %}
+                        <span class="gw-badge--resolved">Legal</span>
+                    {% else %}
+                        <span class="gw-badge--moderate">Unknown</span>
+                    {% endif %}
+                    {% if d.alert %}
+                        {% if d.alert.severity == 'critical' %}<span class="gw-badge--critical">Critical</span>
+                        {% elif d.alert.severity == 'high' %}<span class="gw-badge--high">High</span>
+                        {% elif d.alert.severity == 'medium' %}<span class="gw-badge--moderate">Medium</span>
+                        {% else %}<span class="gw-badge--info">Low</span>{% endif %}
+                    {% endif %}
+                    {% if d.job_source == 'automated' %}
+                    <span class="text-[9px] px-1 py-0.5 rounded"
+                          style="background: var(--surface-3); color: var(--text-tertiary); border: 1px solid var(--border-subtle);">Auto</span>
+                    {% endif %}
+                </div>
+                <div class="text-[10px] shrink-0 flex items-center gap-2" style="color: var(--text-tertiary);">
+                    {{ d.site.detection_date }}
+                    {% if d.site.recurrence_count > 1 %}
+                    <span style="color: var(--status-moderate);">↺{{ d.site.recurrence_count }}×</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Card body -->
+            <div class="p-3 space-y-2.5">
+
+                <!-- Inline key stats -->
+                <div class="flex items-center gap-2">
+                    <div class="flex-1 rounded px-2 py-1.5 text-center" style="background: var(--surface-2); border: 1px solid var(--border-subtle);">
+                        <p class="text-[9px] uppercase tracking-wide" style="color: var(--text-tertiary);">Confidence</p>
+                        <p class="text-sm font-bold" style="color: var(--accent);">{{ d.confidence_pct }}%</p>
+                    </div>
+                    <div class="flex-1 rounded px-2 py-1.5 text-center" style="background: var(--surface-2); border: 1px solid var(--border-subtle);">
+                        <p class="text-[9px] uppercase tracking-wide" style="color: var(--text-tertiary);">Area</p>
+                        <p class="text-sm font-bold" style="color: var(--text-primary);">{{ d.site.area_hectares|floatformat:1 }} ha</p>
+                    </div>
+                    {% if d.site.recurrence_count > 1 %}
+                    <div class="flex-1 rounded px-2 py-1.5 text-center" style="background: var(--surface-2); border: 1px solid var(--border-subtle);">
+                        <p class="text-[9px] uppercase tracking-wide" style="color: var(--text-tertiary);">Recurrences</p>
+                        <p class="text-sm font-bold" style="color: var(--status-moderate);">{{ d.site.recurrence_count }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Patch images -->
+                {% if d.patch_images %}
+                <div class="grid grid-cols-4 gap-1.5">
+                    {% if d.patch_images.false_color %}
+                    <div>
+                        <img src="{{ d.patch_images.false_color }}" alt="False Color" class="patch-img"
+                             onclick="openLightbox(this.src,'False Color Composite')"
+                             onerror="this.parentNode.style.display='none'">
+                        <p class="text-[8px] text-center mt-0.5" style="color: var(--text-tertiary);">False Color</p>
+                    </div>
+                    {% endif %}
+                    {% if d.patch_images.prediction_mask %}
+                    <div>
+                        <img src="{{ d.patch_images.prediction_mask }}" alt="Prediction Mask" class="patch-img"
+                             onclick="openLightbox(this.src,'Prediction Mask')"
+                             onerror="this.parentNode.style.display='none'">
+                        <p class="text-[8px] text-center mt-0.5" style="color: var(--text-tertiary);">Mask</p>
+                    </div>
+                    {% endif %}
+                    {% if d.patch_images.probability_heatmap %}
+                    <div>
+                        <img src="{{ d.patch_images.probability_heatmap }}" alt="Probability Heatmap" class="patch-img"
+                             onclick="openLightbox(this.src,'Probability Heatmap')"
+                             onerror="this.parentNode.style.display='none'">
+                        <p class="text-[8px] text-center mt-0.5" style="color: var(--text-tertiary);">Heatmap</p>
+                    </div>
+                    {% endif %}
+                    {% if d.patch_images.overlay %}
+                    <div>
+                        <img src="{{ d.patch_images.overlay }}" alt="Overlay" class="patch-img"
+                             onclick="openLightbox(this.src,'Detection Overlay')"
+                             onerror="this.parentNode.style.display='none'">
+                        <p class="text-[8px] text-center mt-0.5" style="color: var(--text-tertiary);">Overlay</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- ML Analysis (compact rows) -->
+                {% if d.model_name %}
+                <div class="rounded px-2.5 py-2 space-y-1" style="background: var(--surface-2); border: 1px solid var(--border-subtle);">
+                    <p class="text-[9px] uppercase tracking-wide font-semibold mb-1" style="color: var(--text-tertiary);">ML Analysis</p>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span style="color: var(--text-secondary);">Model</span>
+                        <span class="font-medium" style="color: var(--text-primary);">{{ d.model_name }} {{ d.model_version }}</span>
+                    </div>
+                    {% if d.val_precision %}
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span style="color: var(--text-secondary);">Precision</span>
+                        <span class="font-medium" style="color: var(--text-primary);">{{ d.val_precision }}%</span>
+                    </div>
+                    {% endif %}
+                    {% if d.val_iou %}
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span style="color: var(--text-secondary);">IoU</span>
+                        <span class="font-medium" style="color: var(--text-primary);">{{ d.val_iou }}%</span>
+                    </div>
+                    {% endif %}
+                    {% if d.site.intersecting_concession %}
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span style="color: var(--text-secondary);">Concession</span>
+                        <span class="font-medium truncate max-w-[130px]" style="color: var(--text-primary);">{{ d.site.intersecting_concession.concession_name }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Field verification (compact) -->
+                {% if d.site.reviewed_by %}
+                <div class="rounded px-2.5 py-2 space-y-1" style="background: var(--surface-2); border: 1px solid var(--border-subtle);">
+                    <p class="text-[9px] uppercase tracking-wide font-semibold mb-1" style="color: var(--text-tertiary);">Field Verification</p>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span style="color: var(--text-secondary);">By</span>
+                        <span class="font-medium" style="color: var(--text-primary);">{{ d.site.reviewed_by.username }}</span>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span style="color: var(--text-secondary);">Outcome</span>
+                        {% if d.site.status == 'confirmed_illegal' %}<span class="font-semibold" style="color: var(--status-critical);">Mining Confirmed</span>
+                        {% elif d.site.status == 'false_positive' %}<span class="font-semibold" style="color: var(--status-resolved);">False Positive</span>
+                        {% else %}<span style="color: var(--text-secondary);">{{ d.site.get_status_display }}</span>{% endif %}
+                    </div>
+                    {% if d.site.review_notes %}
+                    <p class="text-[10px] italic pt-1" style="color: var(--text-tertiary); border-top: 1px solid var(--border-subtle);">"{{ d.site.review_notes|truncatechars:80 }}"</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Timelapse strip -->
+                {% if d.timelapse %}
+                <div class="flex gap-2 overflow-x-auto pb-0.5">
+                    {% for frame in d.timelapse %}{% if frame.thumbnail_url %}
+                    <div class="shrink-0 text-center" style="width:72px;">
+                        <img src="{{ frame.thumbnail_url }}" alt="{{ frame.year }}"
+                             class="object-cover rounded cursor-pointer"
+                             style="width:72px; height:72px; border: 1px solid var(--border-subtle);"
+                             onclick="openLightbox(this.src,'{{ frame.year }} — {{ frame.acquisition_period }}')">
+                        <p class="text-[9px] mt-0.5" style="color: var(--text-tertiary);">{{ frame.year }}</p>
+                    </div>
+                    {% endif %}{% endfor %}
+                </div>
+                {% endif %}
+
+            </div><!-- /card body -->
+        </div>
+        {% endfor %}
+        </div>
+
+        {% else %}
+        <div class="gw-card p-10 text-center">
+            <p class="text-sm italic" style="color: var(--text-tertiary);">No detections recorded for this region yet.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox" onclick="closeLightbox()">
+    <button id="lightbox-close" onclick="closeLightbox()">✕</button>
+    <img id="lightbox-img" src="" alt="">
+    <p id="lightbox-caption"></p>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openLightbox(src, caption) {
+    document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox-caption').textContent = caption || '';
+    document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+    document.getElementById('lightbox-img').src = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+// ── Trend chart ──
+(function(){
+    const labels  = [{% for l in trend_labels %}"{{ l }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    const illegal = [{% for v in trend_illegal %}{{ v }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const legal   = [{% for v in trend_legal %}{{ v }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const ctx = document.getElementById('trend-chart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Illegal', data: illegal, backgroundColor: 'rgba(239,68,68,0.75)', borderRadius: 2, stack: 'a' },
+                { label: 'Legal',   data: legal,   backgroundColor: 'rgba(34,197,94,0.4)',  borderRadius: 2, stack: 'a' },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y}` } },
+            },
+            scales: {
+                x: { stacked: true, ticks: { color: 'rgba(240,246,252,0.4)', font:{size:9}, maxTicksLimit:8, maxRotation:0 }, grid: { color: 'rgba(240,246,252,0.05)' } },
+                y: { stacked: true, beginAtZero: true, ticks: { color: 'rgba(240,246,252,0.4)', font:{size:9}, precision:0 }, grid: { color: 'rgba(240,246,252,0.05)' } },
+            },
+        },
+    });
+})();
+</script>
+{% endblock %}
