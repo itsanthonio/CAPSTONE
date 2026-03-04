@@ -1,5 +1,5 @@
 import logging
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 
 logger = logging.getLogger(__name__)
 from django.contrib.auth import login, authenticate, get_user_model
@@ -27,6 +27,53 @@ from .forms import CustomUserCreationForm, RoleBasedLoginForm
 from apps.accounts.models import UserProfile
 
 User = get_user_model()
+
+
+def impact_page(request):
+    """Public landing/impact page — no login required."""
+    try:
+        from apps.detections.models import DetectedSite, Alert
+        from apps.jobs.models import Job
+        from apps.scanning.models import ScanTile
+        from django.db.models import Sum, Count
+
+        total_area_ha = round(
+            DetectedSite.objects.filter(legal_status='illegal')
+            .aggregate(total=Sum('area_hectares'))['total'] or 0, 1
+        )
+        illegal_sites = DetectedSite.objects.filter(legal_status='illegal').count()
+        total_detections = DetectedSite.objects.count()
+        alerts_resolved = Alert.objects.filter(
+            status__in=['resolved', 'dismissed']
+        ).count()
+        regions_covered = (
+            DetectedSite.objects.filter(region__isnull=False)
+            .values('region').distinct().count()
+        )
+        total_jobs = Job.objects.filter(status='completed').count()
+        scan_tiles_total = ScanTile.objects.filter(is_active=True).count()
+        scan_tiles_scanned = ScanTile.objects.filter(is_active=True, last_scanned_at__isnull=False).count()
+        scan_coverage_pct = round(scan_tiles_scanned / scan_tiles_total * 100, 1) if scan_tiles_total else 0
+        stats = {
+            'total_area_ha': total_area_ha,
+            'illegal_sites': illegal_sites,
+            'total_detections': total_detections,
+            'alerts_resolved': alerts_resolved,
+            'regions_covered': regions_covered,
+            'total_jobs': total_jobs,
+            'scan_coverage_pct': scan_coverage_pct,
+        }
+    except Exception:
+        stats = {
+            'total_area_ha': 0,
+            'illegal_sites': 0,
+            'total_detections': 0,
+            'alerts_resolved': 0,
+            'regions_covered': 0,
+            'total_jobs': 0,
+            'scan_coverage_pct': 0,
+        }
+    return render(request, 'impact.html', {'stats': stats})
 
 
 @login_required
@@ -197,16 +244,18 @@ class SignUpView(CreateView):
 
 
 class CustomLogoutView(LogoutView):
-    next_page = '/accounts/login/'
+    next_page = '/'
 
 
-def _get_dashboard_stats(velocity_weeks=8):
+def _get_dashboard_stats(velocity_weeks=8, trend_days=30):
     """Query real stats from DetectedSite, Alert, and ModelRun. Cached for 5 minutes.
 
     velocity_weeks: lookback window for the detection velocity sparkline (2–52).
+    trend_days: period for the detection trend chart (7, 30, 90, or 365).
     """
     velocity_weeks = max(2, min(int(velocity_weeks), 52))
-    cache_key = f'dashboard_stats_{velocity_weeks}'
+    trend_days = int(trend_days) if int(trend_days) in (7, 30, 90, 365) else 30
+    cache_key = f'dashboard_stats_{velocity_weeks}_{trend_days}'
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -265,36 +314,76 @@ def _get_dashboard_stats(velocity_weeks=8):
         completed_jobs = Job.objects.filter(status='completed').count()
         failed_jobs    = Job.objects.filter(status='failed').count()
 
-        # --- Detection trend: daily counts for last 30 days (DB-level aggregation) ---
-        from django.db.models.functions import TruncDate as _TruncDate
-        trend_rows = (
-            DetectedSite.objects
-            .filter(created_at__gte=thirty_days_ago)
-            .annotate(day=_TruncDate('created_at'))
-            .values('day', 'legal_status')
-            .annotate(cnt=Count('id'))
-            .order_by('day')
-        )
-        illegal_by_day = {}
-        legal_by_day   = {}
-        for row in trend_rows:
-            d = row['day']
-            if row['legal_status'] == 'illegal':
-                illegal_by_day[d] = row['cnt']
-            else:
-                legal_by_day[d] = row['cnt']
+        # --- Automated scan stats (lightweight) ---
+        from apps.scanning.models import AutoScanConfig, ScanTile
+        scan_config = AutoScanConfig.get()
+        auto_jobs_today = Job.objects.filter(source='automated', created_at__date=now.date()).count()
+        auto_detections_today = DetectedSite.objects.filter(
+            job__source='automated', job__created_at__date=now.date()
+        ).count()
+        scan_tiles_total   = ScanTile.objects.filter(is_active=True).count()
+        scan_tiles_scanned = ScanTile.objects.filter(is_active=True, last_scanned_at__isnull=False).count()
+        scan_coverage_pct  = round(scan_tiles_scanned / scan_tiles_total * 100, 1) if scan_tiles_total else 0
+
+        # --- Detection trend (configurable period: 7d / 30d / 90d / 12m) ---
+        trend_start = now - timedelta(days=trend_days)
         trend_labels, trend_illegal, trend_legal = [], [], []
-        for i in range(29, -1, -1):
-            d = (now - timedelta(days=i)).date()
-            trend_labels.append(d.strftime('%d %b'))
-            trend_illegal.append(illegal_by_day.get(d, 0))
-            trend_legal.append(legal_by_day.get(d, 0))
+        if trend_days <= 90:
+            from django.db.models.functions import TruncDate as _TruncDate
+            trend_rows = (
+                DetectedSite.objects
+                .filter(created_at__gte=trend_start)
+                .annotate(day=_TruncDate('created_at'))
+                .values('day', 'legal_status')
+                .annotate(cnt=Count('id'))
+                .order_by('day')
+            )
+            illegal_by_day, legal_by_day = {}, {}
+            for row in trend_rows:
+                d = row['day']
+                if row['legal_status'] == 'illegal':
+                    illegal_by_day[d] = row['cnt']
+                else:
+                    legal_by_day[d] = row['cnt']
+            for i in range(trend_days - 1, -1, -1):
+                d = (now - timedelta(days=i)).date()
+                trend_labels.append(d.strftime('%d %b'))
+                trend_illegal.append(illegal_by_day.get(d, 0))
+                trend_legal.append(legal_by_day.get(d, 0))
+        else:
+            # 365 days → monthly granularity
+            from django.db.models.functions import TruncMonth as _TruncMonth
+            monthly_rows = (
+                DetectedSite.objects
+                .filter(detection_date__gte=trend_start.date())
+                .annotate(month=_TruncMonth('detection_date'))
+                .values('month', 'legal_status')
+                .annotate(cnt=Count('id'))
+                .order_by('month')
+            )
+            illegal_by_month, legal_by_month = {}, {}
+            for row in monthly_rows:
+                m = row['month']
+                if row['legal_status'] == 'illegal':
+                    illegal_by_month[m] = row['cnt']
+                else:
+                    legal_by_month[m] = row['cnt']
+            for i in range(11, -1, -1):
+                mo = now.month - i
+                y = now.year
+                while mo <= 0:
+                    mo += 12
+                    y -= 1
+                key = date(y, mo, 1)
+                trend_labels.append(key.strftime('%b %Y'))
+                trend_illegal.append(illegal_by_month.get(key, 0))
+                trend_legal.append(legal_by_month.get(key, 0))
 
         # --- Top regions by detection count (all-time) ---
         top_regions = list(
             DetectedSite.objects
             .filter(region__isnull=False)
-            .values('region__name')
+            .values('region__id', 'region__name')
             .annotate(
                 total=Count('id'),
                 illegal=Count('id', filter=Q(legal_status='illegal')),
@@ -349,6 +438,19 @@ def _get_dashboard_stats(velocity_weeks=8):
             velocity_labels.append('W' + week_start.strftime('%W'))
             velocity_data.append(velocity_by_week.get(key, 0))
 
+        # ── Concession expiry (live — feeds dashboard warning banner) ─────────
+        from apps.detections.models import LegalConcession
+        _today        = now.date()
+        _thirty_ahead = _today + timedelta(days=30)
+        expiring_concessions = LegalConcession.objects.filter(
+            is_active=True, valid_to__isnull=False,
+            valid_to__gte=_today, valid_to__lte=_thirty_ahead,
+        ).order_by('valid_to').values('concession_name', 'license_number', 'valid_to')[:10]
+        expired_concessions_count = LegalConcession.objects.filter(
+            is_active=True, valid_to__isnull=False, valid_to__lt=_today,
+        ).count()
+        expiring_concessions = list(expiring_concessions)
+
         result = {
             'total_detected_sites': total_sites,
             'illegal_sites': illegal_sites,
@@ -374,6 +476,19 @@ def _get_dashboard_stats(velocity_weeks=8):
                 'alerts_change': alerts_change_pct,
             },
             'has_data': total_sites > 0,
+            # Auto scan
+            'scan_enabled':          scan_config.is_enabled,
+            'scan_within_window':    scan_config.is_within_window(),
+            'auto_jobs_today':       auto_jobs_today,
+            'auto_detections_today': auto_detections_today,
+            'scan_coverage_pct':     scan_coverage_pct,
+            'scan_tiles_scanned':    scan_tiles_scanned,
+            'scan_tiles_total':      scan_tiles_total,
+            # Trend period
+            'trend_days':            trend_days,
+            # Concession expiry
+            'expiring_concessions':      expiring_concessions,
+            'expired_concessions_count': expired_concessions_count,
         }
         cache.set(cache_key, result, 300)  # 5-minute cache
         return result
@@ -401,6 +516,16 @@ def _get_dashboard_stats(velocity_weeks=8):
             'velocity_data': [],
             'trends': {'sites_change': 0, 'alerts_change': 0},
             'has_data': False,
+            'scan_enabled': False,
+            'scan_within_window': False,
+            'auto_jobs_today': 0,
+            'auto_detections_today': 0,
+            'scan_coverage_pct': 0,
+            'scan_tiles_scanned': 0,
+            'scan_tiles_total': 0,
+            'trend_days': 30,
+            'expiring_concessions':      [],
+            'expired_concessions_count': 0,
         }
 
 
@@ -434,8 +559,16 @@ def dashboard_home(request):
             _vw = int(request.GET.get('velocity_weeks', 8))
         except (ValueError, TypeError):
             _vw = 8
-        stats = _get_dashboard_stats(velocity_weeks=_vw)
+        try:
+            _td = int(request.GET.get('trend_days', 30))
+            if _td not in (7, 30, 90, 365):
+                _td = 30
+        except (ValueError, TypeError):
+            _td = 30
+        stats = _get_dashboard_stats(velocity_weeks=_vw, trend_days=_td)
     except Exception as e:
+        _vw = 8
+        _td = 30
         # Fallback stats if there's an error
         stats = {
             'total_sites': 0,
@@ -450,11 +583,41 @@ def dashboard_home(request):
             'trend_labels': [],
             'trend_illegal': [],
             'trend_legal': [],
+            'trend_days': 30,
             'trends': {'sites_change': 0, 'alerts_change': 0},
             'has_data': False,
         }
-    
-    return render(request, 'dashboard/dashboard.html', {'stats': stats, 'velocity_weeks': _vw})
+
+    return render(request, 'dashboard/dashboard.html', {
+        'stats': stats,
+        'velocity_weeks': _vw,
+        'trend_days': _td,
+    })
+
+
+@login_required
+def dashboard_chart_data(request):
+    """JSON endpoint returning chart-only data — used by AJAX selectors (no page reload)."""
+    try:
+        vw = int(request.GET.get('velocity_weeks', 8))
+    except (ValueError, TypeError):
+        vw = 8
+    try:
+        td = int(request.GET.get('trend_days', 30))
+        if td not in (7, 30, 90, 365):
+            td = 30
+    except (ValueError, TypeError):
+        td = 30
+    stats = _get_dashboard_stats(velocity_weeks=vw, trend_days=td)
+    return JsonResponse({
+        'trend_labels':    stats.get('trend_labels', []),
+        'trend_illegal':   stats.get('trend_illegal', []),
+        'trend_legal':     stats.get('trend_legal', []),
+        'trend_days':      stats.get('trend_days', 30),
+        'velocity_data':   stats.get('velocity_data', []),
+        'velocity_labels': stats.get('velocity_labels', []),
+        'velocity_weeks':  vw,
+    })
 
 
 @user_passes_test(is_admin)
@@ -525,6 +688,29 @@ def dashboard_audit(request):
         .order_by('user__username')
     )
 
+    # AJAX request — return JSON so the frontend can update the table in-place
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        entries_data = []
+        for entry in page_obj:
+            entries_data.append({
+                'timestamp_date': entry.timestamp.strftime('%d %b %Y'),
+                'timestamp_time': entry.timestamp.strftime('%H:%M:%S'),
+                'user':      entry.user.username if entry.user else None,
+                'action':    entry.action,
+                'object_id': entry.object_id or None,
+                'detail':    entry.detail or {},
+            })
+        return JsonResponse({
+            'entries':      entries_data,
+            'page':         page_obj.number,
+            'total_pages':  page_obj.paginator.num_pages,
+            'total':        page_obj.paginator.count,
+            'has_previous': page_obj.has_previous(),
+            'has_next':     page_obj.has_next(),
+            'previous_page': page_obj.previous_page_number() if page_obj.has_previous() else None,
+            'next_page':    page_obj.next_page_number() if page_obj.has_next() else None,
+        })
+
     return render(request, 'dashboard/audit.html', {
         'page_obj':      page_obj,
         'action_choices': action_choices,
@@ -535,6 +721,30 @@ def dashboard_audit(request):
             'date_from': date_from,
             'date_to':   date_to,
         },
+    })
+
+
+@login_required
+def dashboard_kpis(request):
+    """JSON endpoint returning headline KPI numbers — polled every 60 s for live refresh."""
+    stats = _get_dashboard_stats()
+    return JsonResponse({
+        'total_detected_sites':  stats.get('total_detected_sites', 0),
+        'illegal_sites':         stats.get('illegal_sites', 0),
+        'open_alerts':           stats.get('open_alerts', 0),
+        'critical_alerts':       stats.get('critical_alerts', 0),
+        'high_alerts':           stats.get('high_alerts', 0),
+        'high_risk_zones':       stats.get('high_risk_zones', 0),
+        'total_area_ha':         stats.get('total_area_ha', 0),
+        'completed_jobs':        stats.get('completed_jobs', 0),
+        'failed_jobs':           stats.get('failed_jobs', 0),
+        'total_jobs':            stats.get('total_jobs', 0),
+        'alerts_this_month':     stats.get('alerts_this_month', 0),
+        'alerts_change':         stats.get('trends', {}).get('alerts_change', 0),
+        'sites_change':          stats.get('trends', {}).get('sites_change', 0),
+        'auto_jobs_today':       stats.get('auto_jobs_today', 0),
+        'auto_detections_today': stats.get('auto_detections_today', 0),
+        'scan_coverage_pct':     stats.get('scan_coverage_pct', 0),
     })
 
 
@@ -583,7 +793,7 @@ def dashboard_report(request):
     # Top regions for the period
     top_regions = list(
         sites_qs.filter(region__isnull=False)
-        .values('region__name')
+        .values('region__id', 'region__name')
         .annotate(total=Count('id'), illegal=Count('id', filter=Q(legal_status='illegal')))
         .order_by('-total')[:6]
     )
@@ -633,6 +843,37 @@ def dashboard_report(request):
     resolved_assignments = assign_qs.filter(status='resolved').count()
     confirmed_mining     = assign_qs.filter(outcome='mining_confirmed').count()
     false_positives      = assign_qs.filter(outcome='false_positive').count()
+
+    # Per-inspector performance breakdown
+    from django.db.models import ExpressionWrapper, DurationField, Avg, F as _F
+    _assign_period_qs = InspectorAssignment.objects.filter(
+        assigned_at__date__gte=period_start,
+        assigned_at__date__lte=period_end,
+    )
+    inspector_stats = list(
+        _assign_period_qs
+        .values('inspector__user__username')
+        .annotate(
+            total=Count('id'),
+            confirmed=Count('id', filter=Q(outcome='mining_confirmed')),
+            fp=Count('id', filter=Q(outcome='false_positive')),
+            inconclusive=Count('id', filter=Q(outcome='inconclusive')),
+            pending=Count('id', filter=Q(status='pending')),
+        )
+        .order_by('-total')
+    )
+    # Compute average response time per inspector (only resolved with both timestamps)
+    _resolved_timed = (
+        _assign_period_qs
+        .filter(status='resolved', completed_at__isnull=False)
+        .annotate(duration=ExpressionWrapper(_F('completed_at') - _F('assigned_at'), output_field=DurationField()))
+        .values('inspector__user__username')
+        .annotate(avg_dur=Avg('duration'))
+    )
+    _avg_map = {r['inspector__user__username']: r['avg_dur'] for r in _resolved_timed}
+    for row in inspector_stats:
+        dur = _avg_map.get(row['inspector__user__username'])
+        row['avg_days'] = round(dur.days + dur.seconds / 86400, 1) if dur else None
 
     # ── Scan jobs in period ──────────────────────────────────────────────────
     from apps.jobs.models import Job as ScanJob
@@ -706,6 +947,7 @@ def dashboard_report(request):
         'resolved_assignments': resolved_assignments,
         'confirmed_mining':   confirmed_mining,
         'false_positives':    false_positives,
+        'inspector_stats':    inspector_stats,
         'recent_jobs':        recent_jobs,
         'report_date':        now,
         'period_start':       period_start,
@@ -896,7 +1138,7 @@ def inspector_dashboard(request):
         alerts_map = {
             a.id: a
             for a in Alert.objects.filter(id__in=alert_ids)
-            .select_related('detected_site', 'detected_site__region')
+            .select_related('detected_site', 'detected_site__region', 'detected_site__job')
             .prefetch_related('detected_site__timelapse_frames')
         }
 
@@ -921,6 +1163,18 @@ def inspector_dashboard(request):
                         django_settings.MEDIA_URL + p for p in (assignment.evidence_photos or [])
                     ]
 
+                patch_images = None
+                job = getattr(site, 'job', None) if site else None
+                if job:
+                    _imgs = {
+                        'false_color':         django_settings.MEDIA_URL + job.img_false_color         if job.img_false_color else None,
+                        'prediction_mask':     django_settings.MEDIA_URL + job.img_prediction_mask     if job.img_prediction_mask else None,
+                        'probability_heatmap': django_settings.MEDIA_URL + job.img_probability_heatmap if job.img_probability_heatmap else None,
+                        'overlay':             django_settings.MEDIA_URL + job.img_overlay             if job.img_overlay else None,
+                    }
+                    if any(_imgs.values()):
+                        patch_images = _imgs
+
                 assignment_data.append({
                     'assignment': assignment,
                     'alert': alert,
@@ -929,6 +1183,7 @@ def inspector_dashboard(request):
                     'centroid_lat': centroid_lat,
                     'timelapse_frames': timelapse,
                     'photo_urls': photo_urls,
+                    'patch_images': patch_images,
                 })
             else:
                 assignment_data.append({
@@ -939,6 +1194,7 @@ def inspector_dashboard(request):
                     'centroid_lat': None,
                     'timelapse_frames': [],
                     'photo_urls': [],
+                    'patch_images': None,
                 })
 
         pending_count = sum(1 for d in assignment_data if d['assignment'].status == 'pending')
@@ -1138,6 +1394,164 @@ def submit_field_report(request, assignment_id):
         return JsonResponse({'error': 'Assignment not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+# ---------------------------------------------------------------------------
+# Region summary page
+# ---------------------------------------------------------------------------
+
+@login_required
+@user_passes_test(is_admin)
+def region_list(request):
+    """List all active monitoring regions with summary stats."""
+    from apps.detections.models import Region
+    from django.db.models import Count, Q
+
+    regions = list(
+        Region.objects.filter(is_active=True)
+        .annotate(
+            total_detections=Count('detections', distinct=True),
+            illegal_detections=Count(
+                'detections',
+                filter=Q(detections__legal_status='illegal'),
+                distinct=True,
+            ),
+            open_alerts=Count(
+                'detections__alerts',
+                filter=Q(detections__alerts__status='open'),
+                distinct=True,
+            ),
+        )
+        .order_by('-total_detections')
+    )
+
+    return render(request, 'dashboard/region_list.html', {
+        'regions': regions,
+    })
+
+
+@login_required
+@user_passes_test(is_admin)
+def region_detail(request, region_id):
+    """Per-region summary: detection stats, alert breakdown, inspector assignments, 30-day trend, and full detection cards."""
+    from apps.detections.models import Region, DetectedSite, Alert
+    from apps.accounts.models import InspectorAssignment
+    from django.db.models import Count, Sum, Q, Avg
+    from django.db.models.functions import TruncDate
+    from datetime import timedelta
+
+    region = get_object_or_404(Region, id=region_id)
+
+    sites_qs = DetectedSite.objects.filter(region=region)
+
+    total_sites   = sites_qs.count()
+    illegal_sites = sites_qs.filter(legal_status='illegal').count()
+    total_area_ha = round(
+        sites_qs.filter(legal_status='illegal')
+        .aggregate(t=Sum('area_hectares'))['t'] or 0, 1
+    )
+    avg_conf = round(
+        (sites_qs.aggregate(a=Avg('confidence_score'))['a'] or 0) * 100, 1
+    )
+    recurrent = sites_qs.filter(recurrence_count__gt=1).count()
+
+    # Alerts for this region
+    alerts_qs       = Alert.objects.filter(detected_site__region=region)
+    open_alerts     = alerts_qs.filter(status='open').count()
+    critical_alerts = alerts_qs.filter(status='open', severity='critical').count()
+
+    # Inspector assignments via alerts
+    assignments_qs    = InspectorAssignment.objects.filter(alert__detected_site__region=region)
+    total_assignments = assignments_qs.count()
+    confirmed_mining  = assignments_qs.filter(outcome='mining_confirmed').count()
+    false_positives   = assignments_qs.filter(outcome='false_positive').count()
+
+    # Assigned inspectors (from Region.assigned_inspectors M2M)
+    assigned_inspectors = list(region.assigned_inspectors.all())
+
+    # 30-day detection trend
+    thirty_ago = timezone.now().date() - timedelta(days=29)
+    trend_rows = (
+        sites_qs
+        .filter(detection_date__gte=thirty_ago)
+        .annotate(day=TruncDate('detection_date'))
+        .values('day', 'legal_status')
+        .annotate(cnt=Count('id'))
+        .order_by('day')
+    )
+    illegal_by_day, legal_by_day = {}, {}
+    for row in trend_rows:
+        d = row['day']
+        if row['legal_status'] == 'illegal':
+            illegal_by_day[d] = row['cnt']
+        else:
+            legal_by_day[d] = row['cnt']
+
+    trend_labels, trend_illegal, trend_legal = [], [], []
+    for i in range(30):
+        d = thirty_ago + timedelta(days=i)
+        trend_labels.append(d.strftime('%d %b'))
+        trend_illegal.append(illegal_by_day.get(d, 0))
+        trend_legal.append(legal_by_day.get(d, 0))
+
+    # Full detection cards — 20 most recent with all related data
+    raw_sites = list(
+        sites_qs
+        .select_related('job', 'job__created_by', 'model_run', 'reviewed_by', 'intersecting_concession')
+        .prefetch_related('alerts', 'timelapse_frames')
+        .order_by('-detection_date', '-confidence_score')[:20]
+    )
+
+    # Build enriched detection data dicts
+    detection_data = []
+    for site in raw_sites:
+        job   = site.job
+        alert = site.alerts.first()
+
+        patch_images = None
+        if job:
+            imgs = {
+                'false_color':         django_settings.MEDIA_URL + job.img_false_color         if job.img_false_color else None,
+                'prediction_mask':     django_settings.MEDIA_URL + job.img_prediction_mask     if job.img_prediction_mask else None,
+                'probability_heatmap': django_settings.MEDIA_URL + job.img_probability_heatmap if job.img_probability_heatmap else None,
+                'overlay':             django_settings.MEDIA_URL + job.img_overlay             if job.img_overlay else None,
+            }
+            if any(imgs.values()):
+                patch_images = imgs
+
+        timelapse = list(site.timelapse_frames.order_by('year').values('year', 'thumbnail_url', 'acquisition_period'))
+
+        detection_data.append({
+            'site':            site,
+            'alert':           alert,
+            'patch_images':    patch_images,
+            'timelapse':       timelapse,
+            'confidence_pct':  round(site.confidence_score * 100, 1),
+            'job_source':      job.source if job else '',
+            'model_name':      site.model_run.model_name    if site.model_run else '',
+            'model_version':   site.model_run.model_version if site.model_run else '',
+            'val_precision':   round(site.model_run.val_precision * 100, 1) if site.model_run and site.model_run.val_precision else None,
+            'val_iou':         round(site.model_run.val_iou * 100, 1)       if site.model_run and site.model_run.val_iou else None,
+        })
+
+    return render(request, 'dashboard/region_detail.html', {
+        'region':              region,
+        'total_sites':         total_sites,
+        'illegal_sites':       illegal_sites,
+        'total_area_ha':       total_area_ha,
+        'avg_conf':            avg_conf,
+        'recurrent':           recurrent,
+        'open_alerts':         open_alerts,
+        'critical_alerts':     critical_alerts,
+        'total_assignments':   total_assignments,
+        'confirmed_mining':    confirmed_mining,
+        'false_positives':     false_positives,
+        'assigned_inspectors': assigned_inspectors,
+        'detection_data':      detection_data,
+        'trend_labels':        trend_labels,
+        'trend_illegal':       trend_illegal,
+        'trend_legal':         trend_legal,
+    })
 
 
 # ---------------------------------------------------------------------------

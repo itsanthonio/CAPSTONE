@@ -22,10 +22,10 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, Http404, HttpResponseForbidden
-from django.views.generic import RedirectView
 from apps.dashboard.views import (
     SignUpView, CustomLoginView, CustomLogoutView,
     password_reset_request, password_reset_pin_entry, password_reset_new_password,
+    impact_page,
 )
 
 
@@ -46,21 +46,6 @@ def protected_media(request, path):
         content_type=content_type or 'application/octet-stream',
     )
 
-def root_view(request):
-    """Root view that redirects based on user role"""
-    if request.user.is_authenticated:
-        try:
-            from apps.accounts.models import UserProfile
-            profile = request.user.profile
-            if profile.role == UserProfile.Role.INSPECTOR:
-                from django.shortcuts import redirect
-                return redirect('/dashboard/inspector/')
-        except UserProfile.DoesNotExist:
-            pass
-    # Default to dashboard home for admins or non-authenticated users
-    from django.shortcuts import redirect
-    return redirect('/dashboard/home/')
-
 urlpatterns = [
     path('admin/', admin.site.urls),
     # Custom auth URLs (must be before django.contrib.auth.urls)
@@ -73,7 +58,7 @@ urlpatterns = [
     path('accounts/password_reset/new/', password_reset_new_password, name='password_reset_new_password'),
     # Django auth URLs (password change, etc.)
     path('accounts/', include('django.contrib.auth.urls')),
-    path('', root_view, name='root'),
+    path('', impact_page, name='root'),
     path('dashboard/', include('apps.dashboard.urls')),
     path('analysis/', include('analysis.urls')),
     path('uploads/', include('uploads.urls')),
@@ -87,12 +72,13 @@ urlpatterns = [
     # API endpoints
     path('api/', include('apps.api.urls')),
     path('accounts/api/', include('apps.accounts.urls')),
+    path('scanning/', include('apps.scanning.urls')),
     # Authenticated media serving (replaces unauthenticated static() in DEBUG too)
     path('media/<path:path>', protected_media, name='protected_media'),
     # Test page
     path('test-map/', lambda request: render(request, 'test_map.html'), name='test_map'),
 ]
 
-# Serve static files during development (media served via protected_media view above)
+# Serve static files during development from source directory (media served via protected_media view above)
 if settings.DEBUG:
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])

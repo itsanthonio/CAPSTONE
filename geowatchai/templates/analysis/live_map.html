@@ -13,21 +13,24 @@
         <!-- Zoom Controls -->
         <div class="absolute top-4 right-4 z-20 flex flex-col gap-2">
             <button onclick="if(window.mapHandler) window.mapHandler.zoomIn();"
-                    class="bg-white bg-opacity-90 rounded-lg shadow-sm p-2 hover:bg-opacity-100 transition-all">
+                    class="rounded-lg p-2 transition-all"
+                    style="background: var(--surface-2); border: 1px solid var(--border-default); color: var(--text-primary);">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m0 0l-3-3m3 3l3-3"></path>
                 </svg>
             </button>
             <button onclick="if(window.mapHandler) window.mapHandler.zoomOut();"
-                    class="bg-white bg-opacity-90 rounded-lg shadow-sm p-2 hover:bg-opacity-100 transition-all">
+                    class="rounded-lg p-2 transition-all"
+                    style="background: var(--surface-2); border: 1px solid var(--border-default); color: var(--text-primary);">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
                 </svg>
             </button>
             <!-- Locate Me -->
             <button id="locate-me-btn" onclick="locateMe()" title="Center map on my location"
-                    class="bg-white bg-opacity-90 rounded-lg shadow-sm p-2 hover:bg-opacity-100 transition-all">
-                <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    class="rounded-lg p-2 transition-all"
+                    style="background: var(--surface-2); border: 1px solid var(--border-default); color: var(--text-primary);">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <circle cx="12" cy="12" r="3" stroke-width="2"/>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
@@ -37,16 +40,17 @@
 
         <!-- Legend -->
         <div class="absolute bottom-4 left-4 z-20 pointer-events-none">
-            <div class="bg-white bg-opacity-90 rounded-lg shadow-sm px-3 py-2">
+            <div class="rounded-lg px-3 py-2"
+                 style="background: var(--surface-2); border: 1px solid var(--border-default);">
                 <div class="space-y-1.5">
-                    <div class="flex items-center gap-2 text-xs text-gray-600">
+                    <div class="flex items-center gap-2 text-xs" style="color: var(--text-secondary);">
                         <div class="w-3 h-3 rounded shrink-0" style="background:#ef4444"></div>Illegal
                     </div>
-                    <div class="flex items-center gap-2 text-xs text-gray-600">
+                    <div class="flex items-center gap-2 text-xs" style="color: var(--text-secondary);">
                         <div class="w-3 h-3 rounded shrink-0" style="background:#3b82f6"></div>Legal
                     </div>
-                    <div class="flex items-center gap-2 text-xs text-gray-600">
-                        <div class="w-3 h-3 rounded shrink-0 border border-dashed border-green-600" style="background:#22c55e;opacity:0.5"></div>Concession
+                    <div class="flex items-center gap-2 text-xs" style="color: var(--text-secondary);">
+                        <div class="w-3 h-3 rounded shrink-0" style="background:#22c55e;opacity:0.5;border:1px dashed #16a34a"></div>Concession
                     </div>
                 </div>
             </div>
@@ -54,12 +58,14 @@
     </div>
 
     <!-- Detection Sidebar -->
-    <aside class="w-80 bg-white border-l border-gray-200 flex flex-col shrink-0 overflow-hidden">
+    <aside class="w-80 flex flex-col shrink-0 overflow-hidden"
+           style="background: var(--surface-1); border-left: 1px solid var(--border-default);">
 
         <!-- Sidebar header -->
-        <div class="px-4 py-3 border-b border-gray-100 shrink-0">
+        <div class="px-4 py-3 shrink-0"
+             style="border-bottom: 1px solid var(--border-subtle);">
             <div class="flex items-center justify-between">
-                <h2 class="text-sm font-semibold text-gray-900">Detections</h2>
+                <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Detections</h2>
                 <span id="detection-count"
                       class="px-2 py-0.5 bg-red-500 text-white text-xs font-semibold rounded-full min-w-[20px] text-center">
                     0
@@ -68,24 +74,25 @@
         </div>
 
         <!-- Confidence filter -->
-        <div class="px-4 py-3 border-b border-gray-100 shrink-0">
+        <div class="px-4 py-3 shrink-0"
+             style="border-bottom: 1px solid var(--border-subtle);">
             <div class="flex items-center justify-between mb-1.5">
-                <span class="text-xs text-gray-600">Min Confidence</span>
-                <span id="confidence-value" class="text-xs font-semibold text-gray-900">50%</span>
+                <span class="text-xs" style="color: var(--text-secondary);">Min Confidence</span>
+                <span id="confidence-value" class="text-xs font-semibold" style="color: var(--text-primary);">50%</span>
             </div>
             <input type="range" id="confidence-slider" min="0" max="100" value="50"
-                   class="w-full accent-blue-600"/>
+                   class="w-full" style="accent-color: var(--accent);"/>
         </div>
 
         <!-- Detection list -->
         <div class="flex-1 overflow-y-auto">
             <div id="detection-empty" class="py-10 px-4 text-center">
-                <svg class="w-10 h-10 text-gray-200 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-10 h-10 mx-auto mb-2" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                           d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
                 </svg>
-                <p class="text-sm text-gray-400 font-medium">No detections yet</p>
-                <p class="text-xs text-gray-300 mt-1">Draw an AOI and scan to start</p>
+                <p class="text-sm font-medium" style="color: var(--text-tertiary);">No detections yet</p>
+                <p class="text-xs mt-1" style="color: var(--text-tertiary);">Draw an AOI and scan to start</p>
             </div>
 
             <div id="detection-list" class="p-3 space-y-2 hidden"></div>
@@ -95,12 +102,16 @@
 
 
 <!-- ── Site Detail Modal ── -->
-<div id="site-modal" class="fixed inset-0 bg-black bg-opacity-40 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden">
+<div id="site-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4"
+     style="background: rgba(0,0,0,0.6);">
+    <div class="gw-card w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden rounded-lg">
 
-        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
-            <h3 class="text-base font-semibold text-gray-900">Detection Details</h3>
-            <button id="site-modal-close" class="text-gray-400 hover:text-gray-600">
+        <div class="flex items-center justify-between px-6 py-4 shrink-0"
+             style="border-bottom: 1px solid var(--border-subtle);">
+            <h3 class="text-base font-semibold" style="color: var(--text-primary);">Detection Details</h3>
+            <button id="site-modal-close" style="color: var(--text-tertiary);"
+                    onmouseover="this.style.color='var(--text-primary)'"
+                    onmouseout="this.style.color='var(--text-tertiary)'">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -112,97 +123,140 @@
 
                 <div class="flex items-center gap-2">
                     <span id="site-legal-badge" class="px-2.5 py-1 rounded-full text-xs font-bold"></span>
-                    <span id="site-status-badge" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600"></span>
+                    <span id="site-status-badge" class="px-2.5 py-1 rounded-full text-xs font-semibold"
+                          style="background: var(--surface-3); color: var(--text-secondary);"></span>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <p class="text-xs text-gray-400 mb-1">Confidence</p>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Confidence</p>
                         <div class="flex items-center gap-2">
-                            <span id="site-confidence" class="text-sm font-semibold text-gray-900"></span>
-                            <div class="flex-1 bg-gray-100 rounded-full h-1.5">
-                                <div id="site-confidence-bar" class="h-1.5 rounded-full bg-blue-500" style="width:0%"></div>
+                            <span id="site-confidence" class="text-sm font-semibold" style="color: var(--text-primary);"></span>
+                            <div class="flex-1 rounded-full h-1.5" style="background: var(--surface-3);">
+                                <div id="site-confidence-bar" class="h-1.5 rounded-full" style="width:0%; background: var(--accent);"></div>
                             </div>
                         </div>
                     </div>
                     <div>
-                        <p class="text-xs text-gray-400 mb-1">Area</p>
-                        <p id="site-area" class="text-sm font-semibold text-gray-900"></p>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Area</p>
+                        <p id="site-area" class="text-sm font-semibold" style="color: var(--text-primary);"></p>
                     </div>
                     <div>
-                        <p class="text-xs text-gray-400 mb-1">Detection Date</p>
-                        <p id="site-date" class="text-sm text-gray-900"></p>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Detection Date</p>
+                        <p id="site-date" class="text-sm" style="color: var(--text-primary);"></p>
                     </div>
                     <div>
-                        <p class="text-xs text-gray-400 mb-1">Recurrences</p>
-                        <p id="site-recurrence" class="text-sm text-gray-900"></p>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Recurrences</p>
+                        <p id="site-recurrence" class="text-sm" style="color: var(--text-primary);"></p>
                     </div>
                     <div>
-                        <p class="text-xs text-gray-400 mb-1">Region</p>
-                        <p id="site-region" class="text-sm text-gray-900"></p>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Region</p>
+                        <p id="site-region" class="text-sm" style="color: var(--text-primary);"></p>
                     </div>
                     <div>
-                        <p class="text-xs text-gray-400 mb-1">Coordinates</p>
-                        <p id="site-coords" class="text-sm text-gray-900 font-mono text-xs"></p>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Coordinates</p>
+                        <p id="site-coords" class="text-sm font-mono text-xs" style="color: var(--text-primary);"></p>
                     </div>
                 </div>
 
-                <div id="site-concession-block" class="hidden bg-green-50 border border-green-100 rounded-lg p-3">
-                    <p class="text-xs font-semibold text-green-800 mb-1">Licensed Concession</p>
-                    <p id="site-concession-name" class="text-xs text-green-700"></p>
-                    <p id="site-concession-holder" class="text-xs text-green-600 mt-0.5"></p>
+                <div id="site-concession-block" class="hidden rounded-lg p-3"
+                     style="background: var(--status-resolved-bg); border: 1px solid var(--status-resolved-border);">
+                    <p class="text-xs font-semibold mb-1" style="color: var(--status-resolved);">Licensed Concession</p>
+                    <p id="site-concession-name" class="text-xs" style="color: var(--status-resolved);"></p>
+                    <p id="site-concession-holder" class="text-xs mt-0.5" style="color: var(--status-resolved); opacity: 0.85;"></p>
                 </div>
             </div>
 
+            <!-- ML Visualization Panels -->
+            <div id="site-ml-panels" class="hidden px-6 py-5" style="border-top: 1px solid var(--border-subtle);">
+                <h4 class="text-sm font-semibold mb-3" style="color: var(--text-primary);">ML Analysis</h4>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">False Colour</p>
+                        <a id="site-img-false-color-link" href="#" target="_blank">
+                            <img id="site-img-false-color" src="" alt="False Colour"
+                                 class="w-full rounded" style="height:100px;object-fit:cover;background:var(--surface-3);"/>
+                        </a>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Prediction Mask</p>
+                        <a id="site-img-prediction-mask-link" href="#" target="_blank">
+                            <img id="site-img-prediction-mask" src="" alt="Prediction Mask"
+                                 class="w-full rounded" style="height:100px;object-fit:cover;background:var(--surface-3);"/>
+                        </a>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Probability Heatmap</p>
+                        <a id="site-img-probability-heatmap-link" href="#" target="_blank">
+                            <img id="site-img-probability-heatmap" src="" alt="Probability Heatmap"
+                                 class="w-full rounded" style="height:100px;object-fit:cover;background:var(--surface-3);"/>
+                        </a>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Overlay</p>
+                        <a id="site-img-overlay-link" href="#" target="_blank">
+                            <img id="site-img-overlay" src="" alt="Overlay"
+                                 class="w-full rounded" style="height:100px;object-fit:cover;background:var(--surface-3);"/>
+                        </a>
+                    </div>
+                </div>
+                <p class="text-xs mt-2" style="color: var(--text-tertiary);">Click any image to open full-size.</p>
+            </div>
+
             <!-- Timelapse -->
-            <div class="border-t border-gray-100 px-6 py-5">
-                <h4 class="text-sm font-semibold text-gray-900 mb-3">Site Timelapse</h4>
+            <div class="px-6 py-5" style="border-top: 1px solid var(--border-subtle);">
+                <h4 class="text-sm font-semibold mb-3" style="color: var(--text-primary);">Site Timelapse</h4>
 
                 <div id="site-tl-loading" class="py-6 text-center">
-                    <div class="inline-block w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
-                    <p class="text-xs text-gray-400">Loading imagery…</p>
+                    <div class="inline-block w-5 h-5 border-2 border-t-transparent rounded-full animate-spin mb-2"
+                         style="border-color: var(--accent); border-top-color: transparent;"></div>
+                    <p class="text-xs" style="color: var(--text-tertiary);">Loading imagery…</p>
                 </div>
 
                 <div id="site-tl-empty" class="hidden py-6 text-center">
-                    <svg class="w-8 h-8 text-gray-200 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-8 h-8 mx-auto mb-2" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                               d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                     </svg>
-                    <p class="text-xs text-gray-400">No imagery yet — fetched after detection.</p>
+                    <p class="text-xs" style="color: var(--text-tertiary);">No imagery yet — fetched after detection.</p>
                 </div>
 
                 <div id="site-tl-viewer" class="hidden">
-                    <div class="relative bg-gray-900 rounded-lg overflow-hidden" style="height:210px;">
+                    <div class="relative rounded-lg overflow-hidden" style="height:210px; background: var(--surface-4);">
                         <img id="site-tl-img" src="" alt="Satellite" class="w-full h-full object-cover"/>
                         <div id="site-tl-fallback"
-                             class="hidden absolute inset-0 flex items-center justify-center text-gray-400 text-xs bg-gray-800">
+                             class="hidden absolute inset-0 flex items-center justify-center text-xs"
+                             style="background: var(--surface-4); color: var(--text-tertiary);">
                             No image
                         </div>
-                        <div class="absolute top-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-0.5 rounded font-semibold"
+                        <div class="absolute top-2 left-2 text-white text-xs px-2 py-0.5 rounded font-semibold"
+                             style="background: rgba(0,0,0,0.6);"
                              id="site-tl-year"></div>
                         <div class="absolute top-2 right-2 flex gap-1.5">
-                            <span class="bg-black bg-opacity-60 text-green-400 text-xs px-2 py-0.5 rounded">
+                            <span class="text-xs px-2 py-0.5 rounded" style="background: rgba(0,0,0,0.6); color: #4ade80;">
                                 NDVI <span id="site-tl-ndvi">—</span>
                             </span>
-                            <span class="bg-black bg-opacity-60 text-orange-400 text-xs px-2 py-0.5 rounded">
+                            <span class="text-xs px-2 py-0.5 rounded" style="background: rgba(0,0,0,0.6); color: #fb923c;">
                                 BSI <span id="site-tl-bsi">—</span>
                             </span>
                         </div>
                     </div>
                     <div class="mt-3">
                         <input id="site-tl-slider" type="range" min="0" max="0" value="0"
-                               class="w-full accent-blue-600"
+                               class="w-full" style="accent-color: var(--accent);"
                                oninput="renderSiteTlFrame(parseInt(this.value))"/>
                         <div id="site-tl-ticks"
-                             class="flex justify-between text-xs text-gray-400 mt-1 px-0.5"></div>
+                             class="flex justify-between text-xs mt-1 px-0.5"
+                             style="color: var(--text-tertiary);"></div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="px-6 py-4 border-t border-gray-100 flex justify-end shrink-0">
+        <div class="px-6 py-4 flex justify-end shrink-0"
+             style="border-top: 1px solid var(--border-subtle);">
             <button onclick="closeSiteModal()"
-                    class="px-4 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50">
+                    class="btn-secondary px-4 py-2 text-sm rounded-lg">
                 Close
             </button>
         </div>
@@ -280,15 +334,21 @@ async function openSiteModal(siteId) {
         if (!res.ok) throw new Error();
         const site = await res.json();
 
-        const legalCls = site.legal_status === 'legal'
-            ? 'bg-blue-100 text-blue-800'
-            : site.legal_status === 'illegal'
-                ? 'bg-red-100 text-red-800'
-                : 'bg-gray-100 text-gray-600';
-
         const legalBadge = document.getElementById('site-legal-badge');
         legalBadge.textContent = (site.legal_status_display || site.legal_status || '—').toUpperCase();
-        legalBadge.className   = `px-2.5 py-1 rounded-full text-xs font-bold ${legalCls}`;
+        if (site.legal_status === 'legal') {
+            legalBadge.style.background = 'var(--status-info-bg)';
+            legalBadge.style.border = '1px solid var(--status-info-border)';
+            legalBadge.style.color = 'var(--status-info)';
+        } else if (site.legal_status === 'illegal') {
+            legalBadge.style.background = 'var(--status-critical-bg)';
+            legalBadge.style.border = '1px solid var(--status-critical-border)';
+            legalBadge.style.color = 'var(--status-critical)';
+        } else {
+            legalBadge.style.background = 'var(--surface-3)';
+            legalBadge.style.border = '1px solid var(--border-default)';
+            legalBadge.style.color = 'var(--text-secondary)';
+        }
 
         document.getElementById('site-status-badge').textContent = site.status_display || site.status || '—';
 
@@ -314,6 +374,26 @@ async function openSiteModal(siteId) {
                 site.concession.holder + ' — ' + site.concession.license_type;
         } else {
             concBlock.classList.add('hidden');
+        }
+
+        // ML patch images
+        const mlPanel = document.getElementById('site-ml-panels');
+        const imgs = site.patch_images;
+        if (imgs && (imgs.false_color || imgs.prediction_mask || imgs.probability_heatmap || imgs.overlay)) {
+            mlPanel.classList.remove('hidden');
+            const panels = [
+                ['false-color',         imgs.false_color],
+                ['prediction-mask',     imgs.prediction_mask],
+                ['probability-heatmap', imgs.probability_heatmap],
+                ['overlay',             imgs.overlay],
+            ];
+            panels.forEach(([key, url]) => {
+                const img  = document.getElementById(`site-img-${key}`);
+                const link = document.getElementById(`site-img-${key}-link`);
+                if (url) { img.src = url; link.href = url; }
+            });
+        } else {
+            mlPanel.classList.add('hidden');
         }
 
         loadSiteTimelapse(siteId);
@@ -422,33 +502,39 @@ function applyDetectionFilter() {
             ? `${parseFloat(lat).toFixed(4)}° N, ${Math.abs(parseFloat(lng)).toFixed(4)}° W`
             : '—';
 
-        const legalCls = legal === 'legal'
-            ? 'bg-blue-100 text-blue-800'
-            : legal === 'illegal'
-                ? 'bg-red-100 text-red-800'
-                : 'bg-gray-100 text-gray-600';
+        let legalStyle;
+        if (legal === 'legal') {
+            legalStyle = 'background:var(--status-info-bg);border:1px solid var(--status-info-border);color:var(--status-info);';
+        } else if (legal === 'illegal') {
+            legalStyle = 'background:var(--status-critical-bg);border:1px solid var(--status-critical-border);color:var(--status-critical);';
+        } else {
+            legalStyle = 'background:var(--surface-3);border:1px solid var(--border-default);color:var(--text-secondary);';
+        }
         const legalLabel = legal.charAt(0).toUpperCase() + legal.slice(1);
-        const barColor   = conf >= 80 ? 'bg-green-500' : conf >= 60 ? 'bg-yellow-500' : 'bg-red-400';
+
+        const barColor = conf >= 80 ? '#3fb950' : conf >= 60 ? '#f59e0b' : '#ef4444';
 
         return `
-<div class="bg-white border border-gray-200 rounded-lg p-3 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer"
+<div style="background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:6px;padding:12px;cursor:pointer;transition:border-color 0.15s;"
+     onmouseover="this.style.borderColor='var(--border-default)'"
+     onmouseout="this.style.borderColor='var(--border-subtle)'"
      onclick="openSiteModal('${id}')">
     <div class="flex items-start justify-between mb-2">
         <div class="flex-1 min-w-0 pr-2">
-            <p class="text-xs font-semibold text-gray-900">Mining Site #${idx + 1}</p>
-            ${region ? `<p class="text-xs text-gray-400 truncate">${region}</p>` : ''}
+            <p class="text-xs font-semibold" style="color:var(--text-primary);">Mining Site #${idx + 1}</p>
+            ${region ? `<p class="text-xs truncate" style="color:var(--text-tertiary);">${region}</p>` : ''}
         </div>
-        <span class="px-1.5 py-0.5 rounded text-xs font-bold ${legalCls} shrink-0">${legalLabel}</span>
+        <span class="px-1.5 py-0.5 rounded text-xs font-bold shrink-0" style="${legalStyle}">${legalLabel}</span>
     </div>
     <div class="flex items-center gap-2 mb-2">
-        <span class="text-xs font-semibold text-gray-800 w-9 shrink-0">${conf}%</span>
-        <div class="flex-1 bg-gray-100 rounded-full h-1.5">
-            <div class="h-1.5 rounded-full ${barColor}" style="width:${conf}%"></div>
+        <span class="text-xs font-semibold w-9 shrink-0" style="color:var(--text-primary);">${conf}%</span>
+        <div class="flex-1 rounded-full h-1.5" style="background:var(--surface-3);">
+            <div class="h-1.5 rounded-full" style="width:${conf}%;background:${barColor};"></div>
         </div>
-        <span class="text-xs text-gray-400 shrink-0">${area} ha</span>
+        <span class="text-xs shrink-0" style="color:var(--text-tertiary);">${area} ha</span>
     </div>
-    <p class="text-xs text-gray-400 font-mono mb-2">${coordStr}</p>
-    <button class="w-full text-xs px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-700 font-medium"
+    <p class="text-xs font-mono mb-2" style="color:var(--text-tertiary);">${coordStr}</p>
+    <button class="w-full text-xs px-3 py-1.5 rounded-lg font-medium transition-colors btn-secondary"
             onclick="event.stopPropagation();openSiteModal('${id}')">
         View Details &amp; Images
     </button>

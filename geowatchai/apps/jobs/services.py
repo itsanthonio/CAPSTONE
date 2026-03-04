@@ -15,9 +15,11 @@ class JobService:
     """Business logic for job management following Anti-Vibe guardrails"""
     
     @staticmethod
-    def create_job(aoi_geometry: Polygon, start_date: str, end_date: str, 
-                  model_version: str = "v1.0.0", 
-                  preprocessing_version: str = "v1.0.0") -> Job:
+    def create_job(aoi_geometry: Polygon, start_date: str, end_date: str,
+                  model_version: str = "v1.0.0",
+                  preprocessing_version: str = "v1.0.0",
+                  source: str = "manual",
+                  scan_tile_id: Optional[str] = None) -> Job:
         """
         Create a new detection job with AOI deduplication
         
@@ -66,7 +68,9 @@ class JobService:
                 start_date=start_date,
                 end_date=end_date,
                 model_version=model_version,
-                preprocessing_version=preprocessing_version
+                preprocessing_version=preprocessing_version,
+                source=source,
+                scan_tile_id=scan_tile_id,
             )
             
             logger.info(f"Created new job {job.id} with status {job.status}")

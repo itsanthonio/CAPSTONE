@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Regions — GalamseyWatch{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold" style="color: var(--text-primary);">Monitoring Regions</h1>
+            <p class="text-sm mt-0.5" style="color: var(--text-secondary);">{{ regions|length }} active zone{{ regions|length|pluralize }}</p>
+        </div>
+    </div>
+
+    {% if regions %}
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {% for region in regions %}
+        <a href="{% url 'dashboard:region_detail' region.id %}"
+           class="gw-card p-5 block hover:ring-1 transition-all"
+           style="--tw-ring-color: var(--accent); text-decoration: none;">
+
+            <!-- Region name + type badge -->
+            <div class="flex items-start justify-between gap-2 mb-3">
+                <div class="min-w-0">
+                    <h2 class="text-sm font-semibold truncate" style="color: var(--text-primary);">{{ region.name }}</h2>
+                    {% if region.district %}
+                    <p class="text-xs mt-0.5 truncate" style="color: var(--text-tertiary);">{{ region.district }}</p>
+                    {% endif %}
+                </div>
+                {% if region.region_type %}
+                <span class="shrink-0 text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wide"
+                      style="background: var(--surface-3); color: var(--text-secondary); border: 1px solid var(--border-subtle);">
+                    {{ region.get_region_type_display }}
+                </span>
+                {% endif %}
+            </div>
+
+            <!-- Stats row -->
+            <div class="grid grid-cols-3 gap-2 mt-3 pt-3" style="border-top: 1px solid var(--border-subtle);">
+                <div class="text-center">
+                    <p class="text-lg font-bold" style="color: var(--text-primary);">{{ region.total_detections }}</p>
+                    <p class="text-[10px] mt-0.5" style="color: var(--text-tertiary);">Detections</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-lg font-bold" style="color: {% if region.illegal_detections > 0 %}var(--status-critical){% else %}var(--text-primary){% endif %};">
+                        {{ region.illegal_detections }}
+                    </p>
+                    <p class="text-[10px] mt-0.5" style="color: var(--text-tertiary);">Illegal</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-lg font-bold" style="color: {% if region.open_alerts > 0 %}var(--status-moderate){% else %}var(--text-primary){% endif %};">
+                        {{ region.open_alerts }}
+                    </p>
+                    <p class="text-[10px] mt-0.5" style="color: var(--text-tertiary);">Open Alerts</p>
+                </div>
+            </div>
+
+            <!-- Bar showing illegal % -->
+            {% if region.total_detections > 0 %}
+            <div class="mt-3">
+                <div class="w-full rounded-full h-1" style="background: var(--border-subtle);">
+                    <div class="h-1 rounded-full" style="width: {% widthratio region.illegal_detections region.total_detections 100 %}%; background: var(--status-critical);"></div>
+                </div>
+            </div>
+            {% endif %}
+
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="gw-card p-10 text-center">
+        <p class="text-sm italic" style="color: var(--text-tertiary);">No monitoring regions configured yet.</p>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

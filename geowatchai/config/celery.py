@@ -5,7 +5,32 @@ This module configures Celery with Redis as broker and result backend.
 """
 
 import os
+import platform
 import multiprocessing
+
+# ── PROJ/GDAL path fix ──────────────────────────────────────────────────────
+# Celery workers are a separate process from manage.py, so they don't benefit
+# from the fix in manage.py.  Same logic must run here before any Django/GDAL
+# import so PROJ finds the QGIS proj.db instead of PostgreSQL's old one.
+if platform.system() == 'Windows':
+    import pathlib as _pathlib
+    _proj = r'C:\Program Files\QGIS 3.44.7\share\proj'   # safe default
+    _here = _pathlib.Path(__file__).resolve().parent       # config/
+    for _candidate in (_here.parent / '.env', _here / '.env'):
+        if _candidate.exists():
+            for _ln in _candidate.read_text(encoding='utf-8', errors='ignore').splitlines():
+                _ln = _ln.strip()
+                if _ln.startswith('#') or '=' not in _ln:
+                    continue
+                _k, _, _v = _ln.partition('=')
+                if _k.strip() in ('PROJ_LIB', 'PROJ_DATA'):
+                    _proj = _v.strip().strip('"\'')
+                    break
+            break
+    os.environ['PROJ_LIB']  = _proj
+    os.environ['PROJ_DATA'] = _proj
+# ────────────────────────────────────────────────────────────────────────────
+
 from celery import Celery
 
 # Set the default Django settings module for the 'celery' program.

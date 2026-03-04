@@ -19,6 +19,8 @@ urlpatterns = [
     
     # Dashboard URLs
     path('home/', views.dashboard_home, name='home'),
+    path('api/chart-data/', views.dashboard_chart_data, name='chart_data'),
+    path('api/kpis/', views.dashboard_kpis, name='kpis'),
     path('alerts/', views.dashboard_alerts, name='alerts'),
     path('report/', views.dashboard_report, name='report'),
     path('report/pdf/', views.dashboard_report_pdf, name='report_pdf'),
@@ -28,6 +30,8 @@ urlpatterns = [
     path('inspector/', views.inspector_dashboard, name='inspector'),
     path('assignment/<uuid:assignment_id>/report/', views.submit_field_report, name='submit_field_report'),
     path('account/', views.my_account, name='my_account'),
+    path('regions/', views.region_list, name='region_list'),
+    path('regions/<uuid:region_id>/', views.region_detail, name='region_detail'),
     
     # Include accounts API URLs
     path('api/', include('apps.accounts.urls')),

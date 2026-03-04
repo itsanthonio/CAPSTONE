@@ -1,14 +1,33 @@
 // Main JavaScript for GalamseyWatch AI
+
+// ── Chart.js dark theme defaults ──────────────────────────────────────────────
+if (typeof Chart !== 'undefined') {
+    Chart.defaults.color = '#8b949e';
+    Chart.defaults.borderColor = 'rgba(240,246,252,0.08)';
+    Chart.defaults.font.family = 'Inter, ui-sans-serif, system-ui';
+    Chart.defaults.font.size = 12;
+    Chart.defaults.plugins.tooltip.backgroundColor = '#2d333b';
+    Chart.defaults.plugins.tooltip.borderColor = 'rgba(240,246,252,0.12)';
+    Chart.defaults.plugins.tooltip.borderWidth = 1;
+    Chart.defaults.plugins.tooltip.titleColor = '#e6edf3';
+    Chart.defaults.plugins.tooltip.bodyColor = '#8b949e';
+    Chart.defaults.plugins.tooltip.padding = 10;
+    if (Chart.defaults.plugins.legend) {
+        Chart.defaults.plugins.legend.labels.color = '#8b949e';
+    }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize navigation
     initializeNavigation();
-    
+
     // Initialize mobile menu toggle
     initializeMobileMenu();
-    
+
     // Initialize notification system
     initializeNotifications();
-    
+
     // Initialize form validation
     initializeFormValidation();
 });
