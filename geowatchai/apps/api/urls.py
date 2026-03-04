@@ -15,7 +15,7 @@ app_name = 'api'
 urlpatterns = [
     path('', include(router.urls)),
     path('regions/', RegionGeoJSONView.as_view({'get': 'list'}), name='regions'),
-    path('alerts/', AlertViewSet.as_view({'get': 'list'}), name='alert-list'),
+    path('alerts/', AlertViewSet.as_view({'get': 'list', 'post': 'create'}), name='alert-list'),
     path('alerts/bulk_action/', AlertViewSet.as_view({'post': 'bulk_action'}), name='alert-bulk-action'),
     path('alerts/bulk-assign-inspector/', AlertViewSet.as_view({'post': 'bulk_assign_inspector'}), name='alert-bulk-assign-inspector'),
     path('alerts/<pk>/', AlertViewSet.as_view({'get': 'retrieve'}), name='alert-detail'),
