@@ -1,0 +1,1833 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Auto Scan — GalamseyWatch{% endblock %}
+
+{% block extra_css %}
+<!-- Leaflet + MarkerCluster CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+
+<style>
+/* ── Layout ───────────────────────────────────────────────────────────── */
+#auto-scan-map { height: 100%; width: 100%; }
+#map-container  { position: relative; }
+
+/* ── Keyframes ────────────────────────────────────────────────────────── */
+@keyframes tile-pulse {
+    0%   { transform: scale(1);   opacity: 0.9; }
+    70%  { transform: scale(2.2); opacity: 0;   }
+    100% { transform: scale(2.2); opacity: 0;   }
+}
+@keyframes radar-sweep {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+@keyframes det-pop {
+    0%   { transform: scale(0);    opacity: 0; }
+    55%  { transform: scale(2.2);  opacity: 1; }
+    80%  { transform: scale(0.85); }
+    100% { transform: scale(1);    opacity: 1; }
+}
+@keyframes det-ripple {
+    0%   { transform: scale(1);    opacity: 0.7; }
+    100% { transform: scale(4.5);  opacity: 0;   }
+}
+@keyframes sonar-ring {
+    0%   { transform: scale(1);    opacity: 0.7; }
+    100% { transform: scale(8);    opacity: 0;   }
+}
+@keyframes cloud-drift {
+    from { background-position: 0 0; }
+    to   { background-position: 600px 200px; }
+}
+@keyframes drawer-slide {
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(0); }
+}
+
+/* ── Active tile marker ────────────────────────────────────────────────── */
+.active-tile-marker {
+    width:16px; height:16px; border-radius:50%;
+    background:var(--accent); border:2px solid #fff;
+    box-shadow:0 0 0 0 rgba(212,160,23,0.6);
+    animation:tile-pulse 1.8s ease-out infinite;
+}
+.running-tile-marker {
+    width:14px; height:14px; border-radius:50%;
+    background:rgba(88,166,255,0.9); border:2px solid #fff;
+    box-shadow:0 0 0 0 rgba(88,166,255,0.5);
+    animation:tile-pulse 1.2s ease-out infinite;
+}
+
+/* ── Radar icon ─────────────────────────────────────────────────────────── */
+.radar-icon { width:80px; height:80px; position:relative; }
+.radar-icon::before {
+    content:''; position:absolute; inset:0; border-radius:50%;
+    border:1.5px solid rgba(212,160,23,0.25);
+    background:conic-gradient(from 0deg,rgba(212,160,23,0) 0%,rgba(212,160,23,0) 70%,rgba(212,160,23,0.35) 80%,rgba(212,160,23,0.55) 90%,rgba(212,160,23,0) 100%);
+    animation:radar-sweep 2s linear infinite;
+}
+.radar-icon::after {
+    content:''; position:absolute; top:50%; left:50%;
+    width:8px; height:8px; margin:-4px; border-radius:50%; background:var(--accent);
+}
+
+/* ── Leaflet dark theme ─────────────────────────────────────────────────── */
+.leaflet-container { background:#0d1117 !important; }
+.leaflet-control-zoom a { background:var(--surface-2) !important; color:var(--text-primary) !important; border-color:var(--border-default) !important; }
+.leaflet-control-zoom a:hover { background:var(--surface-3) !important; }
+.leaflet-control-attribution { background:rgba(13,17,23,0.75) !important; color:var(--text-tertiary) !important; font-size:10px !important; }
+.leaflet-control-attribution a { color:var(--text-tertiary) !important; }
+
+/* ── Popups ─────────────────────────────────────────────────────────────── */
+.scan-popup .leaflet-popup-content-wrapper {
+    background:var(--surface-2); border:1px solid var(--border-default);
+    border-radius:8px; color:var(--text-primary); box-shadow:0 8px 24px rgba(0,0,0,0.4);
+}
+.scan-popup .leaflet-popup-tip { background:var(--surface-2); }
+
+/* ── Status badges ──────────────────────────────────────────────────────── */
+.status-running      { background:rgba(50,200,100,0.12); color:#3cc878; border:1px solid rgba(50,200,100,0.3); }
+.status-paused       { background:rgba(240,246,252,0.06); color:var(--text-secondary); border:1px solid var(--border-default); }
+.status-waiting      { background:rgba(212,160,23,0.12); color:var(--accent); border:1px solid rgba(212,160,23,0.3); }
+.status-done         { background:rgba(88,166,255,0.1); color:#58a6ff; border:1px solid rgba(88,166,255,0.25); }
+.status-rate_limited { background:rgba(248,81,73,0.1); color:#f85149; border:1px solid rgba(248,81,73,0.25); }
+
+/* ── Activity feed ──────────────────────────────────────────────────────── */
+.activity-item:not(:last-child) { border-bottom:1px solid var(--border-subtle); }
+.activity-item { transition:opacity 0.35s ease, max-height 0.35s ease, background 0.15s ease; overflow:hidden; cursor:pointer; }
+.activity-item:hover { background:var(--surface-2); }
+
+/* ── Detection / reveal animations ─────────────────────────────────────── */
+.det-pop    { animation:det-pop    0.45s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+.det-ripple {
+    position:absolute; border-radius:50%; pointer-events:none;
+    width:10px; height:10px; top:0; left:0;
+    border:1.5px solid rgba(212,160,23,0.75);
+    animation:det-ripple 0.85s ease-out forwards;
+}
+.sonar-ring {
+    position:absolute; border-radius:50%; pointer-events:none;
+    animation:sonar-ring 1.4s ease-out forwards;
+}
+
+/* ── Failure marker ─────────────────────────────────────────────────────── */
+.fail-marker {
+    color:#f85149; font-weight:700; font-size:13px; line-height:1;
+    text-shadow:0 0 6px rgba(248,81,73,0.5);
+}
+
+/* ── Layer controls panel ───────────────────────────────────────────────── */
+#layer-controls label { display:flex; align-items:center; gap:6px; cursor:pointer; padding:2px 0; }
+#layer-controls input[type=checkbox] { accent-color:var(--accent); width:12px; height:12px; }
+
+/* ── Cloud layer ────────────────────────────────────────────────────────── */
+#cloud-layer {
+    position:absolute; inset:0; z-index:350; pointer-events:none; opacity:0.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='200'%3E%3Cellipse cx='80' cy='110' rx='70' ry='38' fill='white'/%3E%3Cellipse cx='115' cy='90' rx='52' ry='35' fill='white'/%3E%3Cellipse cx='290' cy='130' rx='62' ry='34' fill='white'/%3E%3Cellipse cx='320' cy='110' rx='48' ry='30' fill='white'/%3E%3Cellipse cx='200' cy='60' rx='40' ry='28' fill='white' opacity='.6'/%3E%3C/svg%3E");
+    background-size:400px 200px;
+    animation:cloud-drift 120s linear infinite;
+}
+
+/* ── History banner ─────────────────────────────────────────────────────── */
+#history-banner {
+    position:absolute; top:12px; left:50%; transform:translateX(-50%);
+    z-index:1000; padding:6px 16px; border-radius:6px;
+    background:rgba(212,160,23,0.12); border:1px solid rgba(212,160,23,0.35);
+    color:var(--accent); font-size:11px; white-space:nowrap;
+}
+
+/* ── Context menu ───────────────────────────────────────────────────────── */
+#map-context-menu {
+    min-width:160px; border-radius:8px; overflow:hidden;
+    background:var(--surface-2); border:1px solid var(--border-default);
+    box-shadow:0 8px 24px rgba(0,0,0,0.4); list-style:none; margin:0; padding:4px 0;
+}
+#map-context-menu li { padding:7px 14px; cursor:pointer; font-size:12px; color:var(--text-primary); }
+#map-context-menu li:hover { background:var(--surface-3); }
+
+/* ── MarkerCluster dark theme ───────────────────────────────────────────── */
+.cluster-icon-custom {
+    width:32px; height:32px; border-radius:50%; display:flex;
+    align-items:center; justify-content:center;
+    background:rgba(212,160,23,0.85); color:#0d1117;
+    font-weight:700; font-size:11px; border:2px solid rgba(212,160,23,0.3);
+}
+.marker-cluster-small  div,
+.marker-cluster-medium div,
+.marker-cluster-large  div {
+    background:rgba(212,160,23,0.75); color:#0d1117; font-weight:700;
+}
+.marker-cluster-small  { background:rgba(212,160,23,0.15); }
+.marker-cluster-medium { background:rgba(212,160,23,0.25); }
+.marker-cluster-large  { background:rgba(212,160,23,0.35); }
+
+/* ── Tab styles ─────────────────────────────────────────────────────────── */
+.panel-tab { transition:color 0.15s ease, border-color 0.15s ease; border-bottom:2px solid transparent; }
+.panel-tab.tab-active { color:var(--text-primary); border-bottom-color:var(--accent); }
+.panel-tab:not(.tab-active) { color:var(--text-tertiary); }
+
+/* ── Scrollbars ─────────────────────────────────────────────────────────── */
+#activity-feed, #regions-panel {
+    scrollbar-width:thin; scrollbar-color:var(--border-default) transparent;
+}
+#activity-feed::-webkit-scrollbar,
+#regions-panel::-webkit-scrollbar { width:4px; }
+#activity-feed::-webkit-scrollbar-thumb,
+#regions-panel::-webkit-scrollbar-thumb { background:var(--border-default); border-radius:2px; }
+
+/* ── Cinematic mode ─────────────────────────────────────────────────────── */
+#auto-scan-root.cinematic {
+    position:fixed; inset:0; z-index:2000;
+    background:#0d1117;
+}
+#auto-scan-root.cinematic #stats-bar  { display:none; }
+#auto-scan-root.cinematic #right-panel { display:none; }
+#auto-scan-root.cinematic .map-flex { height:100% !important; }
+#auto-scan-root.cinematic #auto-scan-map { height:100%; }
+
+/* ── Date input ─────────────────────────────────────────────────────────── */
+#history-date {
+    background:var(--surface-2); border:1px solid var(--border-default);
+    color:var(--text-primary); border-radius:6px; padding:4px 8px;
+    font-size:11px; font-family:inherit; cursor:pointer;
+}
+#history-date:focus { outline:none; border-color:var(--accent); }
+
+/* ── Sparkline tooltip ──────────────────────────────────────────────────── */
+#sparkline-svg { cursor:default; }
+
+/* ── Heatmap: never block clicks on markers below it ────────────────────── */
+.leaflet-heatmap-layer { pointer-events: none !important; }
+
+
+</style>
+{% endblock extra_css %}
+
+{% block content %}
+<div id="auto-scan-root" class="flex flex-col" style="height: calc(100vh - 48px);">
+
+    <!-- ── Stats Bar ───────────────────────────────────────────────────── -->
+    <div id="stats-bar" class="flex items-center gap-4 px-5 py-3 shrink-0 flex-wrap"
+         style="background:var(--surface-1); border-bottom:1px solid var(--border-subtle);">
+
+        <!-- Status badge -->
+        <div class="flex items-center gap-2.5">
+            <span id="status-badge" class="px-2.5 py-1 text-[11px] font-semibold rounded-full status-waiting">Checking…</span>
+            <span class="text-[11px]" style="color:var(--text-tertiary);">
+                Window: <span id="window-label">6:00 – 18:00</span>
+            </span>
+        </div>
+
+        <div class="h-4 w-px" style="background:var(--border-subtle);"></div>
+
+        <!-- Stat chips -->
+        <div class="flex items-center gap-5">
+            <div>
+                <span class="text-[10px] uppercase tracking-wide mr-1.5" style="color:var(--text-tertiary);">Tiles Today</span>
+                <span id="stat-tiles" class="text-sm font-bold tabular-nums" style="color:var(--text-primary);">—</span>
+            </div>
+            <div>
+                <span class="text-[10px] uppercase tracking-wide mr-1.5" style="color:var(--text-tertiary);">Detections</span>
+                <span id="stat-detections" class="text-sm font-bold tabular-nums" style="color:var(--text-primary);">—</span>
+            </div>
+            <div>
+                <span class="text-[10px] uppercase tracking-wide mr-1.5" style="color:var(--text-tertiary);">Jobs</span>
+                <span id="stat-jobs" class="text-sm font-bold tabular-nums" style="color:var(--text-primary);">—</span>
+                <span id="stat-failed" class="text-xs tabular-nums hidden" style="color:var(--status-critical);margin-left:4px;"></span>
+            </div>
+            <div>
+                <span class="text-[10px] uppercase tracking-wide mr-1.5" style="color:var(--text-tertiary);">Running</span>
+                <span id="stat-running" class="text-sm font-bold tabular-nums" style="color:var(--text-primary);">—</span>
+            </div>
+        </div>
+
+        <div class="h-4 w-px" style="background:var(--border-subtle);"></div>
+
+        <!-- Sparkline (14-day trend) -->
+        <div class="flex items-center gap-2">
+            <span class="text-[10px] uppercase tracking-wide" style="color:var(--text-tertiary);">14d</span>
+            <svg id="sparkline-svg" width="80" height="20" style="overflow:visible;" title="Detections over last 14 days">
+                <text x="40" y="14" text-anchor="middle" fill="rgba(240,246,252,0.15)" font-size="9">no data</text>
+            </svg>
+        </div>
+
+        <div class="h-4 w-px" style="background:var(--border-subtle);"></div>
+
+        <!-- Celestial scanning-window clock -->
+        <div class="flex items-center gap-2" title="Scanning window (6am–6pm) with current time">
+            <svg id="celestial-clock" width="32" height="32" viewBox="0 0 32 32"></svg>
+            <span class="text-[11px] font-mono tabular-nums" style="color:var(--text-tertiary);">
+                <span id="server-time">—</span>
+            </span>
+        </div>
+
+        <!-- Spacer -->
+        <div class="flex-1"></div>
+
+        <!-- Action buttons -->
+        <div class="flex items-center gap-2">
+            <button id="export-btn" class="btn-ghost text-xs px-2.5 py-1.5" title="Export today's detections">↓ Export</button>
+            <button id="sound-btn"  class="btn-ghost text-xs px-2.5 py-1.5" title="Toggle ambient sounds">🔕</button>
+            <button id="cinematic-btn" class="btn-ghost text-xs px-2.5 py-1.5" title="Cinematic mode (Esc to exit)">⤢</button>
+            {% if request.user.is_staff %}
+            <button id="toggle-btn" class="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5">
+                <span id="toggle-icon">⏸</span>
+                <span id="toggle-label">Pause</span>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ── Map + Side Panel ─────────────────────────────────────────────── -->
+    <div class="map-flex flex flex-1 min-h-0">
+
+        <!-- Map -->
+        <div id="map-container" class="flex-1 relative min-w-0">
+            <div id="auto-scan-map"></div>
+
+            <!-- Particle canvas (gold dust on beam) -->
+            <canvas id="particle-canvas" style="position:absolute;inset:0;z-index:998;pointer-events:none;"></canvas>
+
+            <!-- Cloud layer (atmospheric) -->
+            <div id="cloud-layer"></div>
+
+            <!-- Historical snapshot banner -->
+            <div id="history-banner" class="hidden">
+                Viewing snapshot — <span id="history-date-label"></span>
+                <button id="history-live-btn" class="ml-3 underline" style="color:var(--accent);">↺ Live</button>
+            </div>
+
+            <!-- Layer toggle controls -->
+            <div id="layer-controls" class="absolute top-3 right-3 rounded-lg px-3 py-2.5 text-[11px]"
+                 style="z-index:1000; background:rgba(13,17,23,0.88); border:1px solid var(--border-subtle); backdrop-filter:blur(6px);">
+                <div class="text-[10px] uppercase tracking-wide mb-2.5 font-semibold" style="color:var(--text-tertiary);">Layers</div>
+                <div class="space-y-1.5">
+                    <label><input type="checkbox" id="toggle-grid"       checked> <span style="color:var(--text-secondary);">Grid</span></label>
+                    <label><input type="checkbox" id="toggle-hotspots"   checked> <span style="color:var(--text-secondary);">Hotspots</span></label>
+                    <label><input type="checkbox" id="toggle-scanned"    checked> <span style="color:var(--text-secondary);">Scanned tiles</span></label>
+                    <label><input type="checkbox" id="toggle-next"       checked> <span style="color:var(--text-secondary);">Next tiles</span></label>
+                    <label><input type="checkbox" id="toggle-detections" checked> <span style="color:var(--text-secondary);">Detections</span></label>
+                    <label><input type="checkbox" id="toggle-heatmap"         > <span style="color:var(--text-secondary);">Heatmap</span></label>
+                    <label><input type="checkbox" id="toggle-failures"   checked> <span style="color:var(--text-secondary);">Failures</span></label>
+                </div>
+            </div>
+
+            <!-- Scan history date scrubber -->
+            <div class="absolute flex items-center gap-2" style="z-index:1000; bottom:108px; left:16px;">
+                <input type="date" id="history-date" title="View historical snapshot">
+                <button id="history-live-btn2" class="btn-ghost text-[10px] px-2 py-1 hidden">↺ Live</button>
+            </div>
+
+            <!-- Radar overlay (for active tile) -->
+            <div id="radar-overlay" class="hidden pointer-events-none absolute z-20 flex items-center justify-center">
+                <div class="radar-icon"></div>
+            </div>
+
+            <!-- Map legend -->
+            <div class="absolute bottom-6 left-4 rounded-lg px-3 py-2 text-[11px] space-y-1.5"
+                 style="z-index:1000; background:rgba(13,17,23,0.85); border:1px solid var(--border-subtle); backdrop-filter:blur(4px);">
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-sm" style="border:1px solid rgba(212,160,23,0.3);"></div>
+                    <span style="color:var(--text-secondary);">Scan grid tile</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-sm" style="background:rgba(212,160,23,0.7);"></div>
+                    <span style="color:var(--text-secondary);">Recently scanned</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-sm" style="background:rgba(248,81,73,0.6);"></div>
+                    <span style="color:var(--text-secondary);">Detection found</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-sm" style="background:rgba(88,166,255,0.3); border:1px solid rgba(88,166,255,0.5);"></div>
+                    <span style="color:var(--text-secondary);">Hotspot zone</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-sm flex items-center justify-center" style="font-size:9px;color:#f85149;">✕</div>
+                    <span style="color:var(--text-secondary);">Failed scan</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div id="right-panel" class="flex flex-col shrink-0"
+             style="width:280px; background:var(--surface-1); border-left:1px solid var(--border-subtle);">
+
+            <!-- Tabs -->
+            <div class="flex shrink-0" style="border-bottom:1px solid var(--border-subtle);">
+                <button id="tab-activity" class="panel-tab tab-active flex-1 py-2.5 text-[11px] font-semibold uppercase tracking-wide">Activity</button>
+                <button id="tab-regions"  class="panel-tab flex-1 py-2.5 text-[11px] font-semibold uppercase tracking-wide">Regions</button>
+            </div>
+
+            <!-- Activity feed -->
+            <div id="activity-feed" class="flex-1 overflow-y-auto">
+                <div id="activity-loading" class="py-8 text-center">
+                    <div class="inline-block w-4 h-4 border-2 border-t-transparent rounded-full animate-spin mb-2"
+                         style="border-color:var(--accent);border-top-color:transparent;"></div>
+                    <p class="text-xs" style="color:var(--text-tertiary);">Loading…</p>
+                </div>
+                <div id="activity-empty" class="hidden py-8 text-center">
+                    <p class="text-xs" style="color:var(--text-tertiary);">No tiles scanned yet today.</p>
+                    <p class="text-xs mt-1" style="color:var(--text-tertiary);">Scanner runs 6am – 6pm.</p>
+                </div>
+                <ul id="activity-list" class="list-none m-0 p-0 hidden"></ul>
+            </div>
+
+            <!-- Regions panel -->
+            <div id="regions-panel" class="flex-1 overflow-y-auto hidden px-4 py-3">
+                <p class="text-[10px] uppercase tracking-wide mb-3 font-semibold" style="color:var(--text-tertiary);">Top regions by detections</p>
+                <ul id="regions-list" class="space-y-3 list-none p-0 m-0">
+                    <li class="text-xs" style="color:var(--text-tertiary);">Loading…</li>
+                </ul>
+            </div>
+
+            <!-- Tile detail panel (replaces activity/regions content in-place) -->
+            <div id="tile-detail-panel" class="hidden flex-1 flex flex-col min-h-0">
+                <div class="flex items-center gap-2 px-4 py-2.5 shrink-0" style="border-bottom:1px solid var(--border-subtle);">
+                    <button id="tile-detail-back" class="text-xs flex items-center gap-1" style="color:var(--accent);">← Back</button>
+                    <div class="flex-1 min-w-0">
+                        <p id="tile-detail-title" class="text-xs font-semibold truncate" style="color:var(--text-primary);">—</p>
+                        <p id="tile-detail-subtitle" class="text-[10px]" style="color:var(--text-tertiary);">—</p>
+                    </div>
+                </div>
+                <div id="tile-detail-body" class="flex-1 overflow-y-auto px-4 py-3 space-y-4 text-[12px]"
+                     style="scrollbar-width:thin;scrollbar-color:var(--border-default) transparent;">
+                </div>
+            </div>
+
+            <!-- Panel footer -->
+            <div class="px-4 py-3 shrink-0" style="border-top:1px solid var(--border-subtle);">
+                <!-- Coverage bar -->
+                <div class="flex items-center justify-between text-xs mb-1.5">
+                    <span style="color:var(--text-secondary);">Ghana grid coverage</span>
+                    <span id="coverage-pct" class="font-semibold tabular-nums" style="color:var(--text-primary);">—</span>
+                </div>
+                <div class="w-full rounded-full h-1.5" style="background:var(--border-subtle);">
+                    <div id="coverage-bar" class="h-1.5 rounded-full"
+                         style="width:0%; background:var(--accent); transition:width 1.5s cubic-bezier(0.4,0,0.2,1);"></div>
+                </div>
+                <div class="flex items-center justify-between mt-1.5">
+                    <p class="text-[10px]" style="color:var(--text-tertiary);">
+                        <span id="coverage-scanned">—</span> / <span id="coverage-total">—</span> tiles
+                    </p>
+                    <!-- Confidence donut -->
+                    <div class="flex items-center gap-1.5" title="Confidence distribution: gold=high, blue=mid, faint=low">
+                        <svg id="confidence-donut" width="24" height="24" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="9" fill="none" stroke="rgba(240,246,252,0.07)" stroke-width="4"/>
+                        </svg>
+                        <span id="donut-label" class="text-[10px]" style="color:var(--text-tertiary);">—</span>
+                    </div>
+                </div>
+                <!-- ETA -->
+                <p id="eta-label" class="text-[10px] mt-1" style="color:var(--text-tertiary); display:none;"></p>
+            </div>
+        </div>
+
+    </div><!-- end map-flex -->
+</div><!-- end auto-scan-root -->
+
+<!-- Context menu (body-level to avoid z-index clip) -->
+{% if request.user.is_staff %}
+<ul id="map-context-menu" class="hidden fixed" style="z-index:9999;">
+    <li id="ctx-force-scan">Force scan this tile</li>
+</ul>
+{% endif %}
+
+<!-- Toast container -->
+<div id="toast-container" class="fixed bottom-6 right-6 z-50 space-y-2 pointer-events-none"></div>
+
+<!-- Confirm modal -->
+<div id="confirm-modal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center"
+     style="background: rgba(0,0,0,0.6);">
+    <div class="rounded-lg w-80 overflow-hidden"
+         style="background: var(--surface-2); border: 1px solid var(--border-default);">
+        <div class="px-5 py-5">
+            <h3 id="confirm-modal-title" class="text-sm font-semibold mb-2" style="color: var(--text-primary);"></h3>
+            <p id="confirm-modal-message" class="text-sm" style="color: var(--text-secondary);"></p>
+        </div>
+        <div class="px-5 py-3 flex justify-end gap-2" style="border-top: 1px solid var(--border-subtle);">
+            <button id="confirm-modal-cancel" class="btn-secondary text-sm px-4 py-2">Cancel</button>
+            <button id="confirm-modal-ok" class="btn-primary text-sm px-4 py-2">Confirm</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet.heat (heatmap) -->
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<!-- Leaflet.markercluster -->
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+<script>
+(function () {
+    'use strict';
+
+    const IS_STAFF = {% if request.user.is_staff %}true{% else %}false{% endif %};
+
+    // ── Map init ───────────────────────────────────────────────────────────
+    const GHANA_BOUNDS = L.latLngBounds([4.5, -3.5], [11.3, 1.4]);
+
+    const map = L.map('auto-scan-map', {
+        center: [7.9, -1.0], zoom: 7,
+        minZoom: 6, maxZoom: 16,
+        maxBounds: GHANA_BOUNDS.pad(0.25),
+        maxBoundsViscosity: 0.85,
+        zoomControl: true,
+        attributionControl: true,
+    });
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd', maxZoom: 19,
+    }).addTo(map);
+
+    // ── Custom panes ───────────────────────────────────────────────────────
+    // pane-grid is created inside GridCanvasLayer.onAdd so that the canvas
+    // is managed by Leaflet's pane system.  L.DomUtil.setPosition() keeps
+    // the canvas at viewport (0,0) so container-coordinate drawing stays
+    // aligned during pan without needing to touch the CSS transform directly.
+
+    const FADE_PANES = {
+        'pane-border':   300,
+        'pane-hotspots': 310,
+        'pane-tiles':    320,
+        'pane-active':   400,
+    };
+    Object.entries(FADE_PANES).forEach(([p, z]) => {
+        map.createPane(p);
+        const el = map.getPane(p);
+        el.style.zIndex     = z;
+        el.style.opacity    = '0';
+        el.style.transition = 'opacity 0.7s ease';
+    });
+    map.getPane('pane-border').style.transition = 'opacity 1.5s ease';
+
+    // pane-detections: always opacity 1; individual icons control their own visibility
+    map.createPane('pane-detections');
+    map.getPane('pane-detections').style.zIndex = 330;
+
+    // ── Grid canvas layer (6,528 tiles) ────────────────────────────────────
+    const TILE_S    = 0.07;
+    const GH_BOUNDS = { minLon: -3.5, maxLon: 1.2, minLat: 4.5, maxLat: 11.2 };
+
+    const GridCanvasLayer = L.Layer.extend({
+        onAdd(map) {
+            this._map = map;
+
+            // ── Dedicated pane: above tile pane (200) but below vectors ──
+            if (!map.getPane('pane-grid')) {
+                map.createPane('pane-grid');
+            }
+            const gridPane = map.getPane('pane-grid');
+            gridPane.style.zIndex       = '205';
+            gridPane.style.pointerEvents = 'none';
+
+            this._canvas = document.createElement('canvas');
+            Object.assign(this._canvas.style, {
+                position: 'absolute', left: '0', top: '0',
+                pointerEvents: 'none',
+            });
+            gridPane.appendChild(this._canvas);
+
+            // Build tile list
+            this._tiles = [];
+            let lon = GH_BOUNDS.minLon;
+            while (lon < GH_BOUNDS.maxLon) {
+                let lat = GH_BOUNDS.minLat;
+                while (lat < GH_BOUNDS.maxLat) {
+                    this._tiles.push([
+                        lat, lon,
+                        Math.min(lat + TILE_S, GH_BOUNDS.maxLat),
+                        Math.min(lon + TILE_S, GH_BOUNDS.maxLon),
+                    ]);
+                    lat = Math.round((lat + TILE_S) * 1e6) / 1e6;
+                }
+                lon = Math.round((lon + TILE_S) * 1e6) / 1e6;
+            }
+
+            // ── Event strategy ───────────────────────────────────────────
+            // The pane has a CSS transform applied during pan/zoom.
+            // On 'move' we call L.DomUtil.setPosition to slide the canvas
+            // opposite to the pane transform so it stays at viewport (0,0)
+            // and we can keep using latLngToContainerPoint for drawing.
+            // On zoom the scale changes, so we do a full resize + redraw
+            // after the zoom animation ends.
+            map.on('zoomstart',                   this._onZoomStart, this);
+            map.on('move',                        this._onMove,      this);
+            map.on('zoomend viewreset resize',    this._onResize,    this);
+            this._onResize();
+        },
+
+        onRemove(map) {
+            this._canvas.remove();
+            map.off('zoomstart',                this._onZoomStart, this);
+            map.off('move',                     this._onMove,      this);
+            map.off('zoomend viewreset resize', this._onResize,    this);
+        },
+
+        _onZoomStart() {
+            this._canvas.style.visibility = 'hidden';
+        },
+
+        // On pan: slide canvas to stay at viewport top-left, then redraw.
+        _onMove() {
+            const panePos = this._map.containerPointToLayerPoint([0, 0]);
+            L.DomUtil.setPosition(this._canvas, panePos);
+            this._computeRects();
+            this._redraw();
+        },
+
+        // On zoom-end / resize: resize canvas buffer, reposition, redraw.
+        _onResize() {
+            const size = this._map.getSize();
+            this._canvas.width  = size.x;
+            this._canvas.height = size.y;
+            this._canvas.style.width  = size.x + 'px';
+            this._canvas.style.height = size.y + 'px';
+            this._canvas.style.visibility = 'visible';
+
+            const panePos = this._map.containerPointToLayerPoint([0, 0]);
+            L.DomUtil.setPosition(this._canvas, panePos);
+
+            this._computeRects();
+            this._redraw();
+
+            const pc = document.getElementById('particle-canvas');
+            if (pc) { pc.width = size.x; pc.height = size.y; }
+        },
+
+        _computeRects() {
+            this._rects = this._tiles.map(([lat, lon, maxLat, maxLon]) => {
+                const sw = this._map.latLngToContainerPoint([lat, lon]);
+                const ne = this._map.latLngToContainerPoint([maxLat, maxLon]);
+                return {
+                    x: ne.x, y: ne.y,
+                    w: sw.x - ne.x, h: sw.y - ne.y,
+                    cy: (sw.y + ne.y) / 2,
+                };
+            });
+        },
+
+        _redraw() {
+            if      (this._animDone)               this._drawStatic();
+            else if (this._lastScanY !== undefined) this.drawScan(this._lastScanY);
+        },
+
+        drawScan(scanY) {
+            this._lastScanY = scanY;
+            const ctx  = this._canvas.getContext('2d');
+            const size = this._map.getSize();
+            ctx.clearRect(0, 0, size.x, size.y);
+            const flashH = Math.max(25, size.y * 0.05);
+
+            // Tiles fully above the beam — gold outline
+            ctx.beginPath();
+            for (const t of this._rects) {
+                if (t.cy >= scanY || (scanY - t.cy) < flashH) continue;
+                ctx.rect(t.x, t.y, t.w, t.h);
+            }
+            ctx.strokeStyle = 'rgba(212,160,23,0.45)';
+            ctx.lineWidth   = 0.8;
+            ctx.stroke();
+
+            // Tiles in the flash zone just behind the beam — bright fill
+            for (const t of this._rects) {
+                if (t.cy >= scanY) continue;
+                const dist = scanY - t.cy;
+                if (dist >= flashH) continue;
+                const fi = 1 - dist / flashH;
+                ctx.fillStyle   = `rgba(212,160,23,${(fi * 0.65).toFixed(3)})`;
+                ctx.fillRect(t.x, t.y, t.w, t.h);
+                ctx.strokeStyle = `rgba(212,160,23,${(0.35 + fi * 0.5).toFixed(3)})`;
+                ctx.lineWidth   = 0.9;
+                ctx.strokeRect(t.x, t.y, t.w, t.h);
+            }
+        },
+
+        _drawStatic() {
+            const ctx  = this._canvas.getContext('2d');
+            const size = this._map.getSize();
+            ctx.clearRect(0, 0, size.x, size.y);
+            ctx.beginPath();
+            for (const t of this._rects) ctx.rect(t.x, t.y, t.w, t.h);
+            ctx.strokeStyle = 'rgba(212,160,23,0.45)';
+            ctx.lineWidth   = 0.8;
+            ctx.stroke();
+        },
+
+        finishScan() { this._animDone = true; this._drawStatic(); },
+        setVisible(v) { this._canvas.style.opacity = v ? '1' : '0'; },
+    });
+
+    const gridLayer = new GridCanvasLayer().addTo(map);
+
+    // ── Ghana boundary ─────────────────────────────────────────────────────
+    L.rectangle([[4.74, -3.26], [11.17, 1.20]], {
+        pane: 'pane-border', color: 'rgba(212,160,23,0.55)',
+        weight: 1.5, fill: false, dashArray: '5 4',
+    }).addTo(map);
+
+    // ── Hotspot regions ────────────────────────────────────────────────────
+    const HOTSPOT_REGIONS = [
+        { name:'Tarkwa-Prestea',  bounds:[[5.0, -2.35],[5.75,-1.8 ]] },
+        { name:'Chirano-Bibiani', bounds:[[6.0, -2.6 ],[6.8, -2.0 ]] },
+        { name:'Damang',          bounds:[[5.1, -2.0 ],[5.7, -1.5 ]] },
+        { name:'Obuasi-Amansie',  bounds:[[6.0, -1.8 ],[6.8, -1.2 ]] },
+        { name:'Ahafo',           bounds:[[6.8, -2.6 ],[7.5, -1.8 ]] },
+        { name:'Dunkwa-Offin',    bounds:[[5.7, -1.7 ],[6.3, -1.1 ]] },
+        { name:'Birim-Oda',       bounds:[[5.9, -1.1 ],[6.5, -0.6 ]] },
+        { name:'Atiwa-Birim',     bounds:[[6.3, -0.9 ],[7.0, -0.3 ]] },
+        { name:'Upper Denkyira',  bounds:[[5.4, -2.0 ],[6.1, -1.4 ]] },
+    ];
+    HOTSPOT_REGIONS.forEach(r => {
+        L.rectangle([r.bounds[0], r.bounds[1]], {
+            pane:'pane-hotspots', color:'rgba(88,166,255,0.5)',
+            weight:1, fillColor:'rgba(88,166,255,0.08)', fillOpacity:1,
+        }).bindTooltip(r.name, { className:'scan-popup', direction:'top', sticky:true }).addTo(map);
+    });
+
+    // ── Layer groups ───────────────────────────────────────────────────────
+    const tilesLayer    = L.layerGroup().addTo(map);
+    const nextTilesLayer = L.layerGroup().addTo(map);
+    const runningLayer  = L.layerGroup().addTo(map);
+    const failuresLayer = L.layerGroup().addTo(map);
+
+    const detectionsLayer = L.markerClusterGroup({
+        maxClusterRadius: 30,       // tighter clusters → individual dots appear sooner
+        disableClusteringAtZoom: 8, // individual markers from zoom 8 onwards
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,  // click cluster to zoom in
+        spiderfyOnMaxZoom: true,
+        iconCreateFunction(cluster) {
+            const n  = cluster.getChildCount();
+            const el = document.createElement('div');
+            el.className   = 'cluster-icon-custom';
+            el.textContent = n;
+            el.title       = `${n} detections — click to zoom in`;
+            return L.divIcon({ html: el, className:'', iconSize:[32,32], iconAnchor:[16,16] });
+        },
+    }).addTo(map);
+
+    const heatLayer = L.heatLayer([], {
+        radius:28, blur:18, maxZoom:12,
+        gradient:{ '0.3':'rgba(212,160,23,0.2)', '0.65':'rgba(248,165,0,0.55)', '1.0':'rgba(248,81,73,0.85)' },
+    }); // NOT on map by default; toggle adds/removes
+
+    let activeTileMarker = null;
+
+    // ── Detection reveal state ─────────────────────────────────────────────
+    let _sweepActive          = false;
+    let _pendingDets          = [];
+    let _knownDetIds          = new Set();
+    let _lastSweep            = 0;
+    let _allDetectionLatLngs = [];   // [lat, lng] for every known detection (for random pick)
+    let _sweepTargetLatLng   = null; // which one to spiderfy after the current sweep
+    const SWEEP_COOLDOWN = 0;
+
+    // ── Particle system ────────────────────────────────────────────────────
+    let _particles = [];
+    const particleCanvas = document.getElementById('particle-canvas');
+    const pctx = particleCanvas.getContext('2d');
+
+    function _spawnParticles(scanY, mapW) {
+        if (Math.random() > 0.4) {
+            _particles.push({
+                x:   Math.random() * mapW,
+                y:   scanY,
+                vx:  (Math.random() - 0.5) * 1.8,
+                vy:  -(1.2 + Math.random() * 1.5),
+                life: 1.0,
+            });
+        }
+    }
+
+    function _drawParticles(mapW, mapH) {
+        pctx.clearRect(0, 0, mapW, mapH);
+        _particles = _particles.filter(p => {
+            p.x   += p.vx;
+            p.y   += p.vy;
+            p.life -= 0.055;
+            if (p.life <= 0) return false;
+            pctx.beginPath();
+            pctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+            pctx.fillStyle = `rgba(212,160,23,${p.life.toFixed(2)})`;
+            pctx.fill();
+            return true;
+        });
+    }
+
+    // ── Sonar rings ────────────────────────────────────────────────────────
+    function fireSonarRings() {
+        const mapEl  = document.getElementById('auto-scan-map');
+        const center = map.latLngToContainerPoint([7.9, -1.0]);
+        [0, 450].forEach(delay => {
+            setTimeout(() => {
+                const ring = document.createElement('div');
+                ring.className = 'sonar-ring';
+                const sz = 44;
+                Object.assign(ring.style, {
+                    left:   (center.x - sz / 2) + 'px',
+                    top:    (center.y - sz / 2) + 'px',
+                    width:  sz + 'px',
+                    height: sz + 'px',
+                    border: '1.5px solid rgba(212,160,23,0.65)',
+                });
+                mapEl.appendChild(ring);
+                ring.addEventListener('animationend', () => ring.remove());
+            }, delay);
+        });
+    }
+
+    // ── Tile layers rendering ──────────────────────────────────────────────
+    function renderTiles(geojson) {
+        tilesLayer.clearLayers();
+        if (!geojson || !geojson.features || !geojson.features.length) return;
+        geojson.features.forEach((f, idx) => {
+            const isNewest = idx === 0;
+            const alpha    = isNewest ? 0.75 : Math.max(0.15, 0.6 - idx * 0.006);
+            const color    = f.properties.priority === 'hotspot'
+                ? `rgba(212,160,23,${alpha})`
+                : `rgba(212,160,23,${alpha * 0.7})`;
+            L.geoJSON(f, {
+                pane: 'pane-tiles',
+                style: { color:'rgba(212,160,23,0.4)', weight:1, fillColor:color, fillOpacity:1 },
+            })
+            .bindTooltip(
+                `<div style="font-size:11px;line-height:1.5;">
+                    <b>${f.properties.name}</b><br>
+                    Priority: ${f.properties.priority}<br>
+                    Scanned: ${f.properties.scan_count}×<br>
+                    Last: ${f.properties.last_scanned_at ? new Date(f.properties.last_scanned_at).toLocaleString() : '—'}
+                 </div>`,
+                { className:'scan-popup', direction:'top', sticky:true }
+            )
+            .addTo(tilesLayer);
+
+            if (isNewest) {
+                const center = L.geoJSON(f).getBounds().getCenter();
+                if (activeTileMarker) map.removeLayer(activeTileMarker);
+                const el = document.createElement('div');
+                el.className = 'active-tile-marker';
+                activeTileMarker = L.marker(center, {
+                    pane: 'pane-active',
+                    icon: L.divIcon({ html:el, className:'', iconSize:[16,16], iconAnchor:[8,8] }),
+                    zIndexOffset: 1000,
+                }).addTo(map);
+            }
+        });
+    }
+
+    // ── Detection marker builder ───────────────────────────────────────────
+    function _makeDetMarker(f, hidden) {
+        const [lng, lat] = f.geometry.coordinates;
+        const p = f.properties;
+        const isIllegal = p.legal_status === 'illegal';
+        const el = document.createElement('div');
+        el.style.cssText = `
+            width:13px;height:13px;border-radius:50%;cursor:pointer;
+            background:${isIllegal ? 'rgba(248,81,73,0.9)' : 'rgba(88,166,255,0.8)'};
+            border:2px solid #fff;
+            box-shadow:0 0 8px ${isIllegal ? 'rgba(248,81,73,0.6)' : 'rgba(88,166,255,0.4)'};
+            ${hidden ? 'opacity:0;transform:scale(0);' : ''}`;
+
+        const imgs = p.patch_images || {};
+        const imgLabels = [
+            ['false_color','False Colour'],['prediction_mask','Prediction'],
+            ['probability_heatmap','Heatmap'],['overlay','Overlay'],
+        ];
+        const imgCells = imgLabels.filter(([k]) => imgs[k]).map(([k, label]) =>
+            `<div>
+               <div style="font-size:9px;color:#8b949e;margin-bottom:2px;">${label}</div>
+               <a href="${imgs[k]}" target="_blank" rel="noopener">
+                 <img src="${imgs[k]}" alt="${label}"
+                      style="width:100%;height:72px;object-fit:cover;border-radius:4px;border:1px solid rgba(240,246,252,0.08);">
+               </a>
+             </div>`
+        ).join('');
+
+        const mlSection = imgCells
+            ? `<div style="margin-top:8px;">
+                 <div style="font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">ML Analysis</div>
+                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">${imgCells}</div>
+               </div>`
+            : '';
+
+        const geLink = p.google_earth_url
+            ? `<a href="${p.google_earth_url}" target="_blank" rel="noopener"
+                  style="display:block;margin-top:8px;font-size:11px;color:#58a6ff;text-decoration:none;">
+                 View in Google Earth ↗
+               </a>` : '';
+
+        const marker = L.marker([lat, lng], {
+            pane: 'pane-detections',
+            icon: L.divIcon({ html:el, className:'', iconSize:[13,13], iconAnchor:[6,6] }),
+        }).bindPopup(
+            `<div style="font-size:12px;line-height:1.6;min-width:220px;max-width:260px;">
+               <div style="font-weight:600;margin-bottom:6px;font-size:13px;">
+                 ${isIllegal ? '<span style="color:#f85149;">⚠ Illegal Mining</span>' : '<span style="color:#58a6ff;">Legal / Inconclusive</span>'}
+               </div>
+               <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;font-size:11px;">
+                 <span style="color:#8b949e;">Confidence</span><b>${p.confidence_pct}%</b>
+                 <span style="color:#8b949e;">Area</span><b>${p.area_hectares} ha</b>
+                 <span style="color:#8b949e;">Date</span><span>${p.detection_date}</span>
+                 ${p.region ? `<span style="color:#8b949e;">Region</span><span>${p.region}</span>` : ''}
+               </div>
+               ${mlSection}${geLink}
+             </div>`,
+            { className:'scan-popup', maxWidth:280 }
+        );
+        return { marker, el, lat };
+    }
+
+    function renderDetections(geojson) {
+        detectionsLayer.clearLayers();
+        _pendingDets = [];
+        if (!geojson || !geojson.features) return;
+
+        const heatPoints = [];
+        geojson.features.forEach(f => {
+            const { marker, el, lat } = _makeDetMarker(f, _sweepActive);
+            marker.addTo(detectionsLayer);
+            if (_sweepActive) _pendingDets.push({ el, lat });
+            const [lng, lt] = f.geometry.coordinates;
+            heatPoints.push([lt, lng, (f.properties.confidence_pct || 50) / 100]);
+        });
+        heatLayer.setLatLngs(heatPoints);
+        renderConfidenceDonut(geojson.features);
+    }
+
+    // ── Reveal helpers ────────────────────────────────────────────────────
+    // Always pre-set opacity/transform so the element is visible the moment
+    // spiderfy un-clusters it. The pop animation only fires at zoom levels
+    // where the marker is not clustered (i.e. document.contains is true).
+    function _revealDetsAtY(scanY) {
+        _pendingDets = _pendingDets.filter(d => {
+            const py = map.latLngToContainerPoint([d.lat, 0]).y;
+            if (py <= scanY) {
+                // Pre-unhide so the element is ready the moment spiderfy expands it
+                d.el.style.opacity   = '1';
+                d.el.style.transform = 'scale(1)';
+                playDetectionPing();
+                // Pop + ripple only fires if not currently clustered (zoom ≥ disableClusteringAtZoom)
+                if (document.contains(d.el)) {
+                    d.el.classList.add('det-pop');
+                    if (d.el.parentNode) {
+                        const rip = document.createElement('div');
+                        rip.className = 'det-ripple';
+                        d.el.parentNode.appendChild(rip);
+                        rip.addEventListener('animationend', () => rip.remove());
+                    }
+                }
+                return false;
+            }
+            return true;
+        });
+    }
+
+    function _revealAllPending() {
+        _pendingDets.forEach(d => {
+            d.el.style.opacity   = '1';
+            d.el.style.transform = 'scale(1)';
+            playDetectionPing();
+            if (document.contains(d.el)) {
+                d.el.classList.add('det-pop');
+            }
+        });
+        _pendingDets = [];
+    }
+
+    // ── Tile detail panel (inside right panel) ────────────────────────────
+    // Simple centroid from GeoJSON polygon ring (average of corner points)
+    function _geomCentroid(geom) {
+        const ring = geom.coordinates[0];
+        const n    = ring.length - 1;
+        let sumLat = 0, sumLng = 0;
+        for (let i = 0; i < n; i++) { sumLng += ring[i][0]; sumLat += ring[i][1]; }
+        return { lat: sumLat / n, lng: sumLng / n };
+    }
+
+    // Which tab was active before entering tile detail, so we can restore it
+    let _priorTab = 'activity';
+
+    function showTileDetail(lat, lng) {
+        // Remember which tab is currently active
+        _priorTab = document.getElementById('tab-activity').classList.contains('tab-active')
+            ? 'activity' : 'regions';
+
+        // Hide tabs + content panels, show tile detail panel
+        document.querySelector('#right-panel .flex.shrink-0').style.display = 'none';
+        document.getElementById('activity-feed').classList.add('hidden');
+        document.getElementById('regions-panel').classList.add('hidden');
+        document.getElementById('tile-detail-panel').classList.remove('hidden');
+
+        // Loading state
+        document.getElementById('tile-detail-title').textContent    = 'Loading…';
+        document.getElementById('tile-detail-subtitle').textContent = '';
+        document.getElementById('tile-detail-body').innerHTML =
+            `<div class="flex items-center gap-2 py-4" style="color:var(--text-tertiary);">
+                <div class="w-3 h-3 border-2 rounded-full animate-spin shrink-0"
+                     style="border-color:var(--accent);border-top-color:transparent;"></div>
+                <span class="text-xs">Fetching tile data…</span>
+             </div>`;
+
+        fetch(`/scanning/api/tile-detail/?lat=${lat}&lng=${lng}`, { credentials: 'include' })
+            .then(r => {
+                if (!r.ok) throw new Error(r.status);
+                return r.json();
+            })
+            .then(data => {
+                document.getElementById('tile-detail-title').textContent =
+                    data.name || '—';
+                document.getElementById('tile-detail-subtitle').textContent =
+                    `${data.priority} · ${data.scan_count}× scanned · last: ${
+                        data.last_scanned_at
+                            ? new Date(data.last_scanned_at).toLocaleDateString()
+                            : 'never'
+                    }`;
+
+                const histHtml = data.scan_history && data.scan_history.length
+                    ? `<div>
+                        <p class="text-[10px] uppercase tracking-wide font-semibold mb-2" style="color:var(--text-tertiary);">Scan history</p>
+                        <div class="space-y-1.5">
+                            ${data.scan_history.map(s => `
+                            <div class="flex items-center justify-between text-[11px]">
+                                <span style="color:var(--text-secondary);">${s.date}</span>
+                                <span class="px-1.5 py-0.5 rounded text-[10px]" style="background:var(--surface-3);color:var(--text-tertiary);">${s.status}</span>
+                            </div>`).join('')}
+                        </div>
+                       </div>`
+                    : `<p class="text-[11px]" style="color:var(--text-tertiary);">No scan history yet.</p>`;
+
+                const detsHtml = data.detections && data.detections.length
+                    ? `<div>
+                        <p class="text-[10px] uppercase tracking-wide font-semibold mb-2" style="color:var(--text-tertiary);">Detections</p>
+                        <div class="space-y-1.5">
+                            ${data.detections.map(d => `
+                            <div class="px-2.5 py-2 rounded" style="background:var(--surface-3);border-left:3px solid ${d.legal_status === 'illegal' ? 'rgba(248,81,73,0.7)' : 'rgba(88,166,255,0.5)'};">
+                                <div class="flex items-center justify-between text-[11px]">
+                                    <span style="color:var(--text-primary);">${d.legal_status}</span>
+                                    <span class="tabular-nums" style="color:var(--accent);">${d.confidence_pct}%</span>
+                                </div>
+                                <div class="text-[10px] mt-0.5" style="color:var(--text-tertiary);">${d.area_hectares} ha · ${d.detection_date}</div>
+                            </div>`).join('')}
+                        </div>
+                       </div>`
+                    : '';
+
+                document.getElementById('tile-detail-body').innerHTML = histHtml + detsHtml;
+            })
+            .catch(() => {
+                document.getElementById('tile-detail-body').innerHTML =
+                    `<p class="text-xs py-4" style="color:var(--status-critical);">Could not load tile data.</p>`;
+            });
+    }
+
+    function hideTileDetail() {
+        document.getElementById('tile-detail-panel').classList.add('hidden');
+        document.querySelector('#right-panel .flex.shrink-0').style.display = '';
+        if (_priorTab === 'regions') {
+            document.getElementById('activity-feed').classList.add('hidden');
+            document.getElementById('regions-panel').classList.remove('hidden');
+        } else {
+            document.getElementById('activity-feed').classList.remove('hidden');
+            document.getElementById('regions-panel').classList.add('hidden');
+        }
+    }
+
+    document.getElementById('tile-detail-back').addEventListener('click', hideTileDetail);
+
+    // ── Activity feed ─────────────────────────────────────────────────────
+    function renderActivityFeed(geojson) {
+        const loading = document.getElementById('activity-loading');
+        const empty   = document.getElementById('activity-empty');
+        const list    = document.getElementById('activity-list');
+        loading.classList.add('hidden');
+        if (!geojson || !geojson.features || !geojson.features.length) {
+            empty.classList.remove('hidden');
+            list.classList.add('hidden');
+            return;
+        }
+        empty.classList.add('hidden');
+        list.classList.remove('hidden');
+        list.innerHTML = geojson.features.map(f => {
+            const p              = f.properties;
+            const { lat, lng }   = _geomCentroid(f.geometry);
+            const time = p.last_scanned_at
+                ? new Date(p.last_scanned_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })
+                : '—';
+            const dot = p.priority === 'hotspot'
+                ? 'background:rgba(212,160,23,0.9)'
+                : 'background:rgba(240,246,252,0.25)';
+            return `<li class="activity-item px-4 py-2.5 flex items-start gap-2.5"
+                        data-lat="${lat}" data-lng="${lng}"
+                        style="opacity:0;max-height:0;">
+                <div class="w-2 h-2 rounded-full mt-1 shrink-0" style="${dot};"></div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-xs font-medium truncate" style="color:var(--text-primary);">${p.name}</p>
+                    <p class="text-[10px] mt-0.5" style="color:var(--text-tertiary);">
+                        ${p.priority === 'hotspot' ? 'Hotspot · ' : ''}${time}
+                    </p>
+                </div>
+                <span class="text-[10px] shrink-0 tabular-nums" style="color:var(--text-tertiary);">${p.scan_count}×</span>
+            </li>`;
+        }).join('');
+
+        // Staggered slide-in reveal (typewriter feel)
+        const items = Array.from(list.querySelectorAll('li'));
+        requestAnimationFrame(() => {
+            items.forEach((el, i) => {
+                setTimeout(() => {
+                    el.style.maxHeight = '60px';
+                    el.style.opacity   = '1';
+                }, i * 60);
+            });
+        });
+    }
+
+    // ── Status bar update ─────────────────────────────────────────────────
+    const STATUS_LABEL = {
+        running:'Running', paused:'Paused', waiting:'Waiting',
+        done:'Done for today', rate_limited:'Rate Limited',
+    };
+
+    let _firstStatusUpdate = true;
+
+    function updateStatusBar(data) {
+        const badge = document.getElementById('status-badge');
+        badge.className   = `px-2.5 py-1 text-[11px] font-semibold rounded-full status-${data.system_status}`;
+        badge.textContent = STATUS_LABEL[data.system_status] || data.system_status;
+        document.getElementById('window-label').textContent =
+            `${String(data.window_start).padStart(2,'0')}:00 – ${String(data.window_end).padStart(2,'0')}:00`;
+        document.getElementById('stat-tiles').textContent      = data.tiles_scanned_today ?? '—';
+        document.getElementById('stat-detections').textContent = data.detections_today ?? '—';
+        document.getElementById('stat-jobs').textContent       = data.total_auto_today ?? '—';
+        document.getElementById('stat-running').textContent    = data.running_auto_today ?? '—';
+        const failedEl = document.getElementById('stat-failed');
+        if (data.failed_auto_today > 0) {
+            failedEl.textContent = `(${data.failed_auto_today} failed)`;
+            failedEl.classList.remove('hidden');
+        } else { failedEl.classList.add('hidden'); }
+        document.getElementById('server-time').textContent = data.server_time || '—';
+
+        // Coverage bar (animates from 0 on first update)
+        if (data.total_tiles > 0) {
+            const pct = ((data.scanned_tiles / data.total_tiles) * 100).toFixed(1);
+            document.getElementById('coverage-pct').textContent     = pct + '%';
+            document.getElementById('coverage-scanned').textContent = data.scanned_tiles.toLocaleString();
+            document.getElementById('coverage-total').textContent   = data.total_tiles.toLocaleString();
+            // Delayed to let CSS transition animate from 0
+            setTimeout(() => { document.getElementById('coverage-bar').style.width = pct + '%'; }, _firstStatusUpdate ? 400 : 0);
+
+            // ETA estimate
+            if (data.detections_by_day && data.detections_by_day.length) {
+                const remaining = data.total_tiles - data.scanned_tiles;
+                const recentTiles = data.tiles_scanned_today;
+                if (recentTiles > 0 && remaining > 0) {
+                    const daysEta = Math.ceil(remaining / recentTiles);
+                    const etaEl = document.getElementById('eta-label');
+                    etaEl.textContent = `At today's rate — full coverage in ~${daysEta} day${daysEta !== 1 ? 's' : ''}`;
+                    etaEl.style.display = 'block';
+                }
+            }
+        }
+
+        // Sparkline
+        if (data.detections_by_day) renderSparkline(data.detections_by_day);
+
+        // Celestial clock
+        if (data.server_time) renderCelestialClock(data.window_start, data.window_end, data.server_time);
+
+        // Regional leaderboard
+        if (data.detections_by_region) renderRegionalLeaderboard(data.detections_by_region);
+
+        // "Now scanning" running tiles
+        renderRunningTiles(data.running_jobs || []);
+
+        // Next tiles preview
+        renderNextTiles(data.next_tiles || []);
+
+        // Failure map layer
+        renderFailures(data.failed_jobs_today || []);
+
+        const toggleBtn = document.getElementById('toggle-btn');
+        if (toggleBtn) {
+            const paused = !data.is_enabled;
+            document.getElementById('toggle-icon').textContent  = paused ? '▶' : '⏸';
+            document.getElementById('toggle-label').textContent = paused ? 'Resume' : 'Pause';
+            toggleBtn._paused = paused;
+        }
+
+        _firstStatusUpdate = false;
+    }
+
+    // ── Sparkline ─────────────────────────────────────────────────────────
+    function renderSparkline(byDay) {
+        if (!byDay || byDay.length < 2) return;
+        const max = Math.max(...byDay.map(d => d.count), 1);
+        const W = 80, H = 18;
+        const pts = byDay.map((d, i) =>
+            `${((i / (byDay.length - 1)) * W).toFixed(1)},${(H - (d.count / max) * H).toFixed(1)}`
+        ).join(' ');
+        const svg = document.getElementById('sparkline-svg');
+        const maxCount = Math.max(...byDay.map(d => d.count));
+        svg.innerHTML = `
+            <polyline points="${pts}" fill="none" stroke="rgba(212,160,23,0.7)" stroke-width="1.5"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="${(byDay.length-1)/(byDay.length-1)*W}" cy="${H-(byDay[byDay.length-1].count/max)*H}"
+                    r="2" fill="rgba(212,160,23,1)"/>
+        `;
+        svg.title = `Last 14 days — max: ${maxCount} detections/day`;
+    }
+
+    // ── Celestial clock ───────────────────────────────────────────────────
+    function renderCelestialClock(wStart, wEnd, timeStr) {
+        const svg   = document.getElementById('celestial-clock');
+        const R     = 12, cx = 16, cy = 16;
+        const circ  = 2 * Math.PI * R;
+        const arcLen = ((wEnd - wStart) / 24) * circ;
+        const arcGap = circ - arcLen;
+        const startDeg = (wStart / 24) * 360 - 90;
+        const [h, m] = timeStr.split(':').map(Number);
+        const timeFrac  = (h + m / 60) / 24;
+        const dotAngle  = timeFrac * 2 * Math.PI - Math.PI / 2;
+        const dx = cx + R * Math.cos(dotAngle);
+        const dy = cy + R * Math.sin(dotAngle);
+        svg.innerHTML = `
+            <circle cx="${cx}" cy="${cy}" r="${R}" fill="none"
+                    stroke="rgba(240,246,252,0.08)" stroke-width="2.5"/>
+            <circle cx="${cx}" cy="${cy}" r="${R}" fill="none"
+                    stroke="rgba(212,160,23,0.65)" stroke-width="2.5"
+                    stroke-dasharray="${arcLen.toFixed(1)} ${arcGap.toFixed(1)}"
+                    transform="rotate(${startDeg},${cx},${cy})"
+                    stroke-linecap="round"/>
+            <circle cx="${dx.toFixed(2)}" cy="${dy.toFixed(2)}" r="2.5" fill="rgba(212,160,23,1)"/>
+        `;
+    }
+
+    // ── Confidence donut ──────────────────────────────────────────────────
+    function renderConfidenceDonut(features) {
+        const total = features.length;
+        if (!total) return;
+        const high = features.filter(f => f.properties.confidence_pct >= 80).length;
+        const mid  = features.filter(f => f.properties.confidence_pct >= 50 && f.properties.confidence_pct < 80).length;
+        const low  = total - high - mid;
+        const svg  = document.getElementById('confidence-donut');
+        const R    = 9, cx = 12, cy = 12, circ = 2 * Math.PI * R;
+        const highLen = (high / total) * circ;
+        const midLen  = (mid  / total) * circ;
+        const lowLen  = (low  / total) * circ;
+        // Draw 3 arc segments using stroke-dasharray + stroke-dashoffset
+        svg.innerHTML = `
+            <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="rgba(240,246,252,0.07)" stroke-width="4"/>
+            ${highLen > 0 ? `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none"
+                stroke="rgba(212,160,23,0.85)" stroke-width="4"
+                stroke-dasharray="${highLen.toFixed(1)} ${(circ-highLen).toFixed(1)}"
+                transform="rotate(-90,${cx},${cy})" stroke-linecap="round"/>` : ''}
+            ${midLen > 0 ? `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none"
+                stroke="rgba(88,166,255,0.75)" stroke-width="4"
+                stroke-dasharray="${midLen.toFixed(1)} ${(circ-midLen).toFixed(1)}"
+                stroke-dashoffset="${(-highLen).toFixed(1)}"
+                transform="rotate(-90,${cx},${cy})" stroke-linecap="round"/>` : ''}
+        `;
+        document.getElementById('donut-label').textContent = `${Math.round((high/total)*100)}% hi`;
+    }
+
+    // ── Regional leaderboard ──────────────────────────────────────────────
+    function renderRegionalLeaderboard(regions) {
+        const list = document.getElementById('regions-list');
+        if (!regions.length) {
+            list.innerHTML = '<li class="text-xs" style="color:var(--text-tertiary);">No regional data yet.</li>';
+            return;
+        }
+        const maxCount = Math.max(...regions.map(r => r.count));
+        list.innerHTML = regions.map(r => {
+            const barW = Math.round((r.count / maxCount) * 80);
+            return `<li class="flex items-center gap-2 text-[11px]">
+                <div class="flex-1 min-w-0">
+                    <div class="truncate" style="color:var(--text-primary);">${r.region}</div>
+                    <div class="mt-1 h-1 rounded-full overflow-hidden" style="background:var(--border-subtle);">
+                        <div style="width:${barW}px;max-width:100%;height:100%;background:linear-gradient(to right,rgba(212,160,23,0.75),rgba(212,160,23,0.3));border-radius:9999px;"></div>
+                    </div>
+                </div>
+                <span class="tabular-nums font-semibold shrink-0" style="color:var(--accent);">${r.count}</span>
+            </li>`;
+        }).join('');
+    }
+
+    // ── Running tiles (now scanning badges) ───────────────────────────────
+    function renderRunningTiles(jobs) {
+        runningLayer.clearLayers();
+        jobs.forEach(job => {
+            const el = document.createElement('div');
+            el.className = 'running-tile-marker';
+            L.marker([job.tile_lat, job.tile_lng], {
+                pane: 'pane-active',
+                icon: L.divIcon({ html:el, className:'', iconSize:[14,14], iconAnchor:[7,7] }),
+                zIndexOffset: 900,
+            })
+            .bindTooltip(`⚙ Scanning: ${job.tile_name}<br><small>${job.status}</small>`,
+                { className:'scan-popup', direction:'top', sticky:true })
+            .addTo(runningLayer);
+        });
+    }
+
+    // ── Next tiles preview ────────────────────────────────────────────────
+    function renderNextTiles(tiles) {
+        nextTilesLayer.clearLayers();
+        tiles.forEach((t, i) => {
+            const sw = [t.lat, t.lng];
+            const ne = [+(t.lat + TILE_S).toFixed(6), +(t.lng + TILE_S).toFixed(6)];
+            L.rectangle([sw, ne], {
+                pane: 'pane-tiles',
+                color: 'rgba(212,160,23,0.3)', weight: 1,
+                fillColor: 'rgba(212,160,23,0.04)', fillOpacity: 1,
+                dashArray: '3 3',
+            })
+            .bindTooltip(`Next #${i+1}: ${t.name}`, { className:'scan-popup', sticky:true })
+            .addTo(nextTilesLayer);
+        });
+    }
+
+    // ── Failure map ───────────────────────────────────────────────────────
+    function renderFailures(failures) {
+        failuresLayer.clearLayers();
+        failures.forEach(job => {
+            const el = document.createElement('div');
+            el.className = 'fail-marker';
+            el.textContent = '✕';
+            L.marker([job.tile_lat, job.tile_lng], {
+                icon: L.divIcon({ html:el, className:'', iconSize:[14,14], iconAnchor:[7,7] }),
+            })
+            .bindTooltip(
+                `<b>Failed: ${job.tile_name}</b><br><small style="color:#8b949e;">${job.failure_reason}</small>`,
+                { className:'scan-popup', direction:'top' }
+            )
+            .addTo(failuresLayer);
+        });
+    }
+
+    // ── Intro animation ───────────────────────────────────────────────────
+    function playIntroAnimation() {
+        _sweepActive = true;
+
+        setTimeout(() => { map.getPane('pane-border').style.opacity = '1'; }, 200);
+        setTimeout(() => { map.getPane('pane-hotspots').style.opacity = '1'; }, 600);
+
+        setTimeout(() => {
+            const mapEl   = document.getElementById('auto-scan-map');
+            const mapH    = mapEl.offsetHeight;
+            const mapW    = mapEl.offsetWidth;
+            const topY    = Math.max(0,    map.latLngToContainerPoint([11.2, -1.0]).y);
+            const bottomY = Math.min(mapH, map.latLngToContainerPoint([4.5,  -1.0]).y);
+
+            // Size particle canvas
+            particleCanvas.width  = mapW;
+            particleCanvas.height = mapH;
+
+            const beam = document.createElement('div');
+            Object.assign(beam.style, {
+                position:'absolute', left:'0', right:'0', height:'3px',
+                background:'linear-gradient(to right,transparent 0%,rgba(212,160,23,0.3) 15%,rgba(212,160,23,0.95) 50%,rgba(212,160,23,0.3) 85%,transparent 100%)',
+                boxShadow:'0 0 10px 3px rgba(212,160,23,0.45),0 4px 18px 8px rgba(212,160,23,0.15)',
+                pointerEvents:'none', zIndex:'999', top: topY + 'px',
+            });
+            mapEl.appendChild(beam);
+
+            const duration  = 2200;
+            const startTime = performance.now();
+
+            function frame(now) {
+                const t     = Math.min((now - startTime) / duration, 1);
+                const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+                const scanY = topY + (bottomY - topY) * eased;
+
+                gridLayer.drawScan(scanY);
+                beam.style.top = (scanY - 1.5) + 'px';
+                _revealDetsAtY(scanY);
+                _spawnParticles(scanY, mapW);
+                _drawParticles(mapW, mapH);
+
+                if (t < 1) {
+                    requestAnimationFrame(frame);
+                } else {
+                    gridLayer.finishScan();
+                    beam.remove();
+                    _drawParticles(mapW, mapH); // clear particles
+                    _particles = [];
+                    pctx.clearRect(0, 0, mapW, mapH);
+
+                    _revealAllPending();
+                    _sweepActive = false;
+                    _lastSweep   = Date.now();
+
+                    fireSonarRings();
+                    playSweepDone();
+
+                    // Spiderfy after markers have moved into the cluster group
+                    setTimeout(_spiderfyTarget, 800);
+
+                    map.getPane('pane-tiles').style.opacity = '1';
+                    setTimeout(() => { map.getPane('pane-active').style.opacity = '1'; }, 700);
+                }
+            }
+            requestAnimationFrame(frame);
+        }, 900);
+    }
+
+    // ── Re-sweep on new detections ─────────────────────────────────────────
+    function playSweepForNewDetections() {
+        if (_sweepActive) return;
+        const now = Date.now();
+        if (now - _lastSweep < SWEEP_COOLDOWN) return;
+        _sweepActive = true;
+        _lastSweep   = now;
+
+        const mapEl   = document.getElementById('auto-scan-map');
+        const mapH    = mapEl.offsetHeight;
+        const mapW    = mapEl.offsetWidth;
+        const topY    = Math.max(0,    map.latLngToContainerPoint([11.2, -1.0]).y);
+        const bottomY = Math.min(mapH, map.latLngToContainerPoint([4.5,  -1.0]).y);
+
+        const beam = document.createElement('div');
+        Object.assign(beam.style, {
+            position:'absolute', left:'0', right:'0', height:'3px',
+            background:'linear-gradient(to right,transparent 0%,rgba(212,160,23,0.3) 15%,rgba(212,160,23,0.95) 50%,rgba(212,160,23,0.3) 85%,transparent 100%)',
+            boxShadow:'0 0 10px 3px rgba(212,160,23,0.45),0 4px 18px 8px rgba(212,160,23,0.15)',
+            pointerEvents:'none', zIndex:'999', top: topY + 'px',
+        });
+        mapEl.appendChild(beam);
+
+        const duration  = 3000;
+        const startTime = performance.now();
+
+        function sweepFrame(now) {
+            const t     = Math.min((now - startTime) / duration, 1);
+            const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+            const scanY = topY + (bottomY - topY) * eased;
+
+            gridLayer.drawScan(scanY);
+            beam.style.top = (scanY - 1.5) + 'px';
+            _revealDetsAtY(scanY);
+            _spawnParticles(scanY, mapW);
+            _drawParticles(mapW, mapH);
+
+            if (t < 1) {
+                requestAnimationFrame(sweepFrame);
+            } else {
+                gridLayer._drawStatic();
+                beam.remove();
+                _particles = [];
+                pctx.clearRect(0, 0, mapW, mapH);
+                _revealAllPending();
+                _sweepActive = false;
+                fireSonarRings();
+                playSweepDone();
+                // Spiderfy after markers have moved into the cluster group
+                setTimeout(_spiderfyTarget, 800);
+            }
+        }
+        requestAnimationFrame(sweepFrame);
+    }
+
+    // ── Spiderfy the sweep's target cluster ───────────────────────────────
+    // Called after every sweep. For new-detection sweeps, target = the new
+    // site. For periodic sweeps, target = a randomly chosen known site.
+    function _spiderfyTarget() {
+        if (!_sweepTargetLatLng) return;
+        const [lat, lng] = _sweepTargetLatLng;
+
+        // getLayers() on MarkerClusterGroup returns all individual markers
+        const layers = detectionsLayer.getLayers();
+        let best = null, bestDist = Infinity;
+        layers.forEach(m => {
+            const ll = m.getLatLng();
+            const d = Math.abs(ll.lat - lat) + Math.abs(ll.lng - lng);
+            if (d < bestDist) { bestDist = d; best = m; }
+        });
+        if (!best) return;
+
+        // getVisibleParent returns the marker itself (if unclustered) or its
+        // parent MarkerCluster. If clustered, spiderfy that cluster.
+        const parent = detectionsLayer.getVisibleParent(best);
+        if (parent && parent.spiderfy) {
+            parent.spiderfy();
+        }
+    }
+
+    // ── Tile inspection drawer ─────────────────────────────────────────────
+    let _ctxTileId = null;
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            document.getElementById('auto-scan-root').classList.remove('cinematic');
+        }
+    });
+
+    // ── Scan history scrubber ──────────────────────────────────────────────
+    let _isHistoricalMode = false;
+
+    async function fetchHistoricalView(date) {
+        _isHistoricalMode = true;
+        try {
+            const [tilesR, detsR] = await Promise.all([
+                fetch(`/scanning/api/recent-tiles/?date=${date}&limit=200`, { credentials:'include' }),
+                fetch(`/scanning/api/detections/?date=${date}&limit=300`, { credentials:'include' }),
+            ]);
+            const [tiles, dets] = await Promise.all([tilesR.json(), detsR.json()]);
+            renderTiles(tiles);
+            detectionsLayer.clearLayers();
+            (dets.features || []).forEach(f => {
+                const { marker } = _makeDetMarker(f, false);
+                marker.addTo(detectionsLayer);
+            });
+            document.getElementById('history-banner').classList.remove('hidden');
+            document.getElementById('history-date-label').textContent = date;
+            document.getElementById('history-live-btn2').classList.remove('hidden');
+        } catch(e) { console.warn('Historical fetch failed', e); }
+    }
+
+    function exitHistoricalMode() {
+        _isHistoricalMode = false;
+        document.getElementById('history-banner').classList.add('hidden');
+        document.getElementById('history-live-btn2').classList.add('hidden');
+        document.getElementById('history-date').value = '';
+        fetchTiles();
+        fetchDetections();
+    }
+
+    document.getElementById('history-date').addEventListener('change', e => {
+        if (e.target.value) fetchHistoricalView(e.target.value);
+    });
+    document.getElementById('history-live-btn').addEventListener('click', exitHistoricalMode);
+    document.getElementById('history-live-btn2').addEventListener('click', exitHistoricalMode);
+
+    // ── Right-click → force scan ────────────────────────────────────────────
+    {% if request.user.is_staff %}
+    map.on('contextmenu', async e => {
+        e.originalEvent.preventDefault();
+        const { lat, lng } = e.latlng;
+        try {
+            const r = await fetch(`/scanning/api/tile-detail/?lat=${lat}&lng=${lng}`, { credentials:'include' });
+            const data = r.ok ? await r.json() : null;
+            if (!data) return;
+            _ctxTileId = data.id;
+            const menu = document.getElementById('map-context-menu');
+            menu.style.left = e.originalEvent.clientX + 'px';
+            menu.style.top  = e.originalEvent.clientY + 'px';
+            menu.classList.remove('hidden');
+        } catch(e) { /* ignore */ }
+    });
+
+    document.getElementById('ctx-force-scan').addEventListener('click', async () => {
+        document.getElementById('map-context-menu').classList.add('hidden');
+        if (!_ctxTileId) return;
+        const ok = await showConfirm(
+            'Force Scan Tile',
+            'Queue this tile for immediate scanning? This will consume GEE quota and jump the scan queue.'
+        );
+        if (!ok) return;
+        try {
+            const r = await fetch('/scanning/api/force-scan/', {
+                method: 'POST', credentials: 'include',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                body: JSON.stringify({ tile_id: _ctxTileId }),
+            });
+            if (r.ok) showToast('Tile queued for scanning');
+            else      showToast('Force scan failed', 'error');
+        } catch(e) { showToast('Force scan failed', 'error'); }
+    });
+
+    document.addEventListener('click', () => {
+        const menu = document.getElementById('map-context-menu');
+        if (menu) menu.classList.add('hidden');
+    });
+    {% endif %}
+
+    // ── Layer toggles ──────────────────────────────────────────────────────
+    function setupLayerToggles() {
+        const toggles = {
+            'toggle-grid':       v => { gridLayer.setVisible(v); },
+            'toggle-hotspots':   v => { map.getPane('pane-hotspots').style.opacity = v ? '1' : '0'; },
+            'toggle-scanned':    v => { map.getPane('pane-tiles').style.opacity    = v ? '1' : '0'; },
+            'toggle-next':       v => { v ? nextTilesLayer.addTo(map) : map.removeLayer(nextTilesLayer); },
+            'toggle-detections': v => { v ? detectionsLayer.addTo(map) : map.removeLayer(detectionsLayer); },
+            'toggle-heatmap':    v => { v ? heatLayer.addTo(map) : map.removeLayer(heatLayer); },
+            'toggle-failures':   v => { v ? failuresLayer.addTo(map) : map.removeLayer(failuresLayer); },
+        };
+        Object.entries(toggles).forEach(([id, handler]) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('change', () => handler(el.checked));
+        });
+    }
+    setupLayerToggles();
+
+    // ── Prevent map click/scroll propagation from UI overlays ─────────────
+    ['layer-controls'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            L.DomEvent.disableClickPropagation(el);
+            L.DomEvent.disableScrollPropagation(el);
+        }
+    });
+    // Also block the legend and scrubber row
+    document.querySelectorAll('#map-container .absolute').forEach(el => {
+        if (el.id !== 'particle-canvas' && el.id !== 'cloud-layer' &&
+            el.id !== 'history-banner' && el.id !== 'radar-overlay') {
+            L.DomEvent.disableClickPropagation(el);
+        }
+    });
+
+    // ── Panel tabs ─────────────────────────────────────────────────────────
+    document.getElementById('tab-activity').addEventListener('click', () => {
+        document.getElementById('tab-activity').classList.add('tab-active');
+        document.getElementById('tab-regions').classList.remove('tab-active');
+        document.getElementById('activity-feed').classList.remove('hidden');
+        document.getElementById('regions-panel').classList.add('hidden');
+    });
+    document.getElementById('tab-regions').addEventListener('click', () => {
+        document.getElementById('tab-regions').classList.add('tab-active');
+        document.getElementById('tab-activity').classList.remove('tab-active');
+        document.getElementById('regions-panel').classList.remove('hidden');
+        document.getElementById('activity-feed').classList.add('hidden');
+    });
+
+    // Single delegated listener on the stable <ul> — survives innerHTML refreshes
+    document.getElementById('activity-list').addEventListener('click', e => {
+        const li = e.target.closest('li[data-lat]');
+        if (!li) return;
+        showTileDetail(li.dataset.lat, li.dataset.lng);
+    });
+
+    // ── Ambient sound ──────────────────────────────────────────────────────
+    let _audioCtx     = null;
+    let _soundEnabled = false;
+
+    function _ensureAudio() {
+        return _audioCtx || (_audioCtx = new (window.AudioContext || window.webkitAudioContext)());
+    }
+
+    function playDetectionPing() {
+        if (!_soundEnabled) return;
+        try {
+            const ctx = _ensureAudio();
+            const osc = ctx.createOscillator(), g = ctx.createGain();
+            osc.connect(g); g.connect(ctx.destination);
+            osc.frequency.setValueAtTime(520, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12);
+            g.gain.setValueAtTime(0.08, ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+            osc.start(); osc.stop(ctx.currentTime + 0.35);
+        } catch(e) { /* ignore */ }
+    }
+
+    function playSweepDone() {
+        if (!_soundEnabled) return;
+        try {
+            const ctx = _ensureAudio();
+            const osc = ctx.createOscillator(), g = ctx.createGain();
+            osc.type = 'sine'; osc.connect(g); g.connect(ctx.destination);
+            osc.frequency.setValueAtTime(180, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(90, ctx.currentTime + 0.6);
+            g.gain.setValueAtTime(0.1, ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.75);
+            osc.start(); osc.stop(ctx.currentTime + 0.75);
+        } catch(e) { /* ignore */ }
+    }
+
+    document.getElementById('sound-btn').addEventListener('click', () => {
+        _soundEnabled = !_soundEnabled;
+        document.getElementById('sound-btn').textContent = _soundEnabled ? '🔔' : '🔕';
+        if (_soundEnabled) {
+            const ctx = _ensureAudio();
+            ctx.resume().then(() => {
+                // Immediate confirmation ping so the user knows sound is working
+                try {
+                    const osc = ctx.createOscillator(), g = ctx.createGain();
+                    osc.connect(g); g.connect(ctx.destination);
+                    osc.frequency.setValueAtTime(440, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.1);
+                    g.gain.setValueAtTime(0.06, ctx.currentTime);
+                    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+                    osc.start(); osc.stop(ctx.currentTime + 0.3);
+                } catch(e) {}
+            }).catch(() => {});
+        }
+    });
+
+    // Resume AudioContext on first user gesture anywhere on the page so that
+    // the context is in 'running' state by the time the user enables sound.
+    // Browsers suspend AudioContext by default until a user interaction occurs.
+    (function resumeOnGesture() {
+        const resume = () => {
+            if (_audioCtx) { try { _audioCtx.resume(); } catch(e) {} }
+            document.removeEventListener('click',     resume);
+            document.removeEventListener('keydown',   resume);
+            document.removeEventListener('touchstart',resume);
+        };
+        document.addEventListener('click',      resume, { once: true });
+        document.addEventListener('keydown',    resume, { once: true });
+        document.addEventListener('touchstart', resume, { once: true });
+    })();
+
+    // ── Cinematic mode ─────────────────────────────────────────────────────
+    document.getElementById('cinematic-btn').addEventListener('click', () => {
+        document.getElementById('auto-scan-root').classList.toggle('cinematic');
+        map.invalidateSize();
+    });
+
+    // ── Export ─────────────────────────────────────────────────────────────
+    document.getElementById('export-btn').addEventListener('click', () => {
+        window.location.href = '/scanning/api/export/?format=geojson';
+    });
+
+    // ── Confirm modal helper ────────────────────────────────────────────────
+    function showConfirm(title, message) {
+        return new Promise(function (resolve) {
+            document.getElementById('confirm-modal-title').textContent = title;
+            document.getElementById('confirm-modal-message').textContent = message;
+            var modal = document.getElementById('confirm-modal');
+            modal.classList.remove('hidden');
+            var okBtn = document.getElementById('confirm-modal-ok');
+            var cancelBtn = document.getElementById('confirm-modal-cancel');
+            function done(r) {
+                modal.classList.add('hidden');
+                okBtn.removeEventListener('click', onOk);
+                cancelBtn.removeEventListener('click', onCancel);
+                resolve(r);
+            }
+            var onOk = function () { done(true); };
+            var onCancel = function () { done(false); };
+            okBtn.addEventListener('click', onOk);
+            cancelBtn.addEventListener('click', onCancel);
+        });
+    }
+
+    // ── Toast helper ───────────────────────────────────────────────────────
+    function showToast(msg, type = 'success') {
+        const toast = document.createElement('div');
+        const bg = type === 'error' ? 'rgba(248,81,73,0.15)' : 'rgba(50,200,100,0.15)';
+        const border = type === 'error' ? 'rgba(248,81,73,0.35)' : 'rgba(50,200,100,0.35)';
+        toast.style.cssText = `
+            background:${bg}; border:1px solid ${border}; border-radius:8px;
+            padding:10px 14px; font-size:12px; color:var(--text-primary);
+            pointer-events:auto; opacity:0; transform:translateY(8px);
+            transition:opacity 0.25s ease, transform 0.25s ease;`;
+        toast.textContent = msg;
+        document.getElementById('toast-container').appendChild(toast);
+        requestAnimationFrame(() => { toast.style.opacity='1'; toast.style.transform='translateY(0)'; });
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(8px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // ── API polling ────────────────────────────────────────────────────────
+    async function fetchStatus() {
+        try {
+            const r = await fetch('/scanning/api/status/', { credentials:'include' });
+            if (r.ok) updateStatusBar(await r.json());
+        } catch(e) { console.warn('Status fetch failed', e); }
+    }
+
+    async function fetchTiles() {
+        if (_isHistoricalMode) return;
+        try {
+            const r = await fetch('/scanning/api/recent-tiles/?limit=100', { credentials:'include' });
+            if (!r.ok) return;
+            const data = await r.json();
+            renderTiles(data);
+            renderActivityFeed(data);
+            // Periodic sweep: pick a random known detection to spiderfy
+            if (_allDetectionLatLngs.length > 0) {
+                const idx = Math.floor(Math.random() * _allDetectionLatLngs.length);
+                _sweepTargetLatLng = _allDetectionLatLngs[idx];
+            }
+            playSweepForNewDetections();
+        } catch(e) { console.warn('Tiles fetch failed', e); }
+    }
+
+    async function fetchDetections() {
+        if (_isHistoricalMode) return;
+        try {
+            const r = await fetch('/scanning/api/detections/?limit=300', { credentials:'include' });
+            if (!r.ok) return;
+            const geojson  = await r.json();
+            const features = geojson.features || [];
+
+            const key = f => f.id != null
+                ? String(f.id)
+                : `${f.geometry.coordinates[0].toFixed(6)},${f.geometry.coordinates[1].toFixed(6)}`;
+
+            const isFirstLoad = _knownDetIds.size === 0;
+            const newFeatures = features.filter(f => !_knownDetIds.has(key(f)));
+            features.forEach(f => _knownDetIds.add(key(f)));
+
+            // Keep the full position list fresh for random-pick periodic sweeps
+            _allDetectionLatLngs = features.map(f => [
+                f.geometry.coordinates[1],
+                f.geometry.coordinates[0],
+            ]);
+
+            if (isFirstLoad) {
+                renderDetections(geojson);
+            } else if (newFeatures.length > 0) {
+                newFeatures.forEach(f => {
+                    const { marker, el, lat } = _makeDetMarker(f, true);
+                    marker.addTo(detectionsLayer);
+                    _pendingDets.push({ el, lat });
+                });
+                // Point the sweep at the new detection specifically
+                const nf0 = newFeatures[0];
+                _sweepTargetLatLng = [
+                    nf0.geometry.coordinates[1],
+                    nf0.geometry.coordinates[0],
+                ];
+                playSweepForNewDetections();
+            }
+        } catch(e) { console.warn('Detections fetch failed', e); }
+    }
+
+    // ── Pause / Resume ─────────────────────────────────────────────────────
+    const toggleBtn = document.getElementById('toggle-btn');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', async () => {
+            const action = toggleBtn._paused ? 'resume' : 'pause';
+            try {
+                const r = await fetch('/scanning/api/toggle/', {
+                    method: 'POST', credentials: 'include',
+                    headers: { 'Content-Type':'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                    body: JSON.stringify({ action }),
+                });
+                if (r.ok) await fetchStatus();
+            } catch(e) { console.error('Toggle failed', e); }
+        });
+    }
+
+    // ── Cookie helper ──────────────────────────────────────────────────────
+    function getCookie(name) {
+        const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+        return match ? decodeURIComponent(match[1]) : null;
+    }
+
+    // ── Boot ───────────────────────────────────────────────────────────────
+    playIntroAnimation();
+    fetchStatus();
+    fetchTiles();
+    fetchDetections();
+
+    setInterval(fetchStatus,     30_000);
+    setInterval(fetchTiles,      30_000);
+    setInterval(fetchDetections, 20_000);
+
+})();
+</script>
+{% endblock %}

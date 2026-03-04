@@ -82,11 +82,13 @@ class MiningDetectionPipeline:
             tensor, raster_meta = self._preprocess(job, geotiff_path)
             probability_mask = self._infer(job, tensor)
             result, polygons = self._postprocess(job, probability_mask, raster_meta, geotiff_path)
+            self._save_patch_images(job, tensor, probability_mask)
             satellite_imagery = self._log_satellite_imagery(
                 scene_id, satellite, cloud_cover, job, geotiff_path, raster_meta
             )
             model_run = self._log_model_run(job, satellite_imagery)
             detected_sites = self._create_detected_sites(job, result, model_run, satellite_imagery)
+            self._auto_promote_tile(job, detected_sites)
             self._assign_regions(detected_sites)
             self._classify_legal_status(detected_sites)
             self._generate_alerts(detected_sites)
@@ -121,10 +123,28 @@ class MiningDetectionPipeline:
             logger.info(f"[Pipeline] Completed job {job_id} — {len(detected_sites)} sites")
 
             try:
-                from apps.notifications.services import send_scan_completed
-                send_scan_completed(job)
+                from apps.detections.models import AuditLog
+                AuditLog.objects.create(
+                    user=None,
+                    action='job.completed',
+                    object_id=str(job.id),
+                    detail={
+                        'source': job.source,
+                        'total_detections': len(detected_sites),
+                        'illegal_count': job.illegal_count or 0,
+                    },
+                )
             except Exception:
                 pass
+
+            # Immediate email only for manual scans; automated scans are
+            # batched into the daily digest at 18:00 by automated_scan_daily_digest.
+            if job.source != 'automated':
+                try:
+                    from apps.notifications.services import send_scan_completed
+                    send_scan_completed(job)
+                except Exception:
+                    pass
 
             return {
                 'status': 'completed',
@@ -142,10 +162,21 @@ class MiningDetectionPipeline:
                 pass
             try:
                 from apps.jobs.models import Job as _Job
+                from apps.detections.models import AuditLog
                 from apps.notifications.services import send_scan_failed
                 _job = _Job.objects.filter(id=job_id).first()
                 if _job:
-                    send_scan_failed(_job)
+                    AuditLog.objects.create(
+                        user=None,
+                        action='job.failed',
+                        object_id=str(_job.id),
+                        detail={
+                            'source': _job.source,
+                            'reason': str(exc),
+                        },
+                    )
+                    if _job.source != 'automated':
+                        send_scan_failed(_job)
             except Exception:
                 pass
             return {'status': 'failed', 'job_id': job_id, 'error': str(exc)}
@@ -281,6 +312,19 @@ class MiningDetectionPipeline:
         return result, polygons
 
     # ------------------------------------------------------------------
+    # Step 5b — Save patch visualization images (non-blocking)
+    # ------------------------------------------------------------------
+
+    def _save_patch_images(self, job: Job, tensor: np.ndarray,
+                           probability_mask: np.ndarray):
+        """Generate and persist the 4 ML visualization PNGs. Never raises."""
+        try:
+            from apps.postprocessing.services import save_patch_images
+            save_patch_images(job, tensor, probability_mask)
+        except Exception as exc:
+            logger.warning(f"[Pipeline] Patch image generation skipped: {exc}")
+
+    # ------------------------------------------------------------------
     # Step 6 — Log SatelliteImagery
     # ------------------------------------------------------------------
 
@@ -344,9 +388,10 @@ class MiningDetectionPipeline:
 
             # Deduplication: if an existing site centroid is within 500 m,
             # increment its recurrence counter instead of creating a duplicate.
-            from django.contrib.gis.measure import D
+            # SRID=4326 uses degrees — D(m=...) is rejected on geographic fields.
+            # 0.0045° ≈ 500 m at Ghana's latitude (~7°N).
             existing = DetectedSite.objects.filter(
-                centroid__dwithin=(geom.centroid, D(m=500))
+                centroid__dwithin=(geom.centroid, 0.0045)
             ).exclude(job=job).order_by('-detection_date').first()
 
             if existing:
@@ -454,8 +499,21 @@ class MiningDetectionPipeline:
 
         DetectedSite, _, _, _, Alert, *_ = _get_detection_models()
 
+        # Statuses that mean "an inspector is already handling this site"
+        active_statuses = [
+            Alert.AlertStatus.OPEN,
+            Alert.AlertStatus.ACKNOWLEDGED,
+            Alert.AlertStatus.DISPATCHED,
+        ]
+
+        created = 0
         for site in sites:
             if site.legal_status != DetectedSite.LegalStatus.ILLEGAL:
+                continue
+
+            # Skip if an active alert already exists — avoids alert spam on
+            # every dedup scan of a known site.
+            if Alert.objects.filter(detected_site=site, status__in=active_statuses).exists():
                 continue
 
             if site.recurrence_count > 1:
@@ -487,9 +545,33 @@ class MiningDetectionPipeline:
                     f"Recurrence: {site.recurrence_count}x"
                 ),
             )
+            created += 1
 
-        alert_count = Alert.objects.filter(detected_site__in=sites).count()
-        logger.info(f"[Pipeline] Generated {alert_count} alerts")
+        logger.info(f"[Pipeline] Generated {created} new alerts")
+
+    # ------------------------------------------------------------------
+    # Step 10b — Auto-promote tile to hotspot when mining is found
+    # ------------------------------------------------------------------
+
+    def _auto_promote_tile(self, job: Job, sites: List) -> None:
+        """
+        If this was an automated scan of a NORMAL tile and detections were found,
+        promote the tile to HOTSPOT so it gets checked daily instead of weekly.
+        """
+        if not sites or not job.scan_tile_id:
+            return
+        try:
+            from apps.scanning.models import ScanTile
+            tile = job.scan_tile
+            if tile.priority == ScanTile.Priority.NORMAL:
+                tile.priority = ScanTile.Priority.HOTSPOT
+                tile.save(update_fields=['priority'])
+                logger.info(
+                    f"[Pipeline] Auto-promoted tile '{tile.name}' to HOTSPOT "
+                    f"({len(sites)} detection(s) found)"
+                )
+        except Exception as exc:
+            logger.warning(f"[Pipeline] Auto-promote failed silently: {exc}")
 
     # ------------------------------------------------------------------
     # Step 11 — Enqueue timelapse fetches

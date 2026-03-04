@@ -1,11 +1,12 @@
 {% load static %}
 {# Variables in scope: assignment, alert, site, d (full dict with centroid_lng, centroid_lat, timelapse_frames, photo_urls), card_tab #}
-<div class="assignment-card visible bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+<div class="assignment-card visible gw-card overflow-hidden"
      data-tab="{{ card_tab }}"
      data-assignment="{{ assignment.id }}">
 
     <!-- Card header -->
-    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+    <div class="px-6 py-4 flex items-center justify-between"
+         style="border-bottom: 1px solid var(--border-subtle);">
         <div class="flex items-center space-x-3">
             <!-- Severity dot -->
             <div class="w-2.5 h-2.5 rounded-full flex-shrink-0
@@ -14,17 +15,17 @@
                 {% elif alert and alert.severity == 'medium' %}bg-yellow-400
                 {% else %}bg-gray-400{% endif %}"></div>
             <div>
-                <h3 class="text-base font-semibold text-gray-900">
+                <h3 class="text-base font-semibold" style="color: var(--text-primary);">
                     {% if alert %}{{ alert.title }}{% else %}Assignment {{ assignment.id|truncatechars:8 }}{% endif %}
                 </h3>
-                <p class="text-xs text-gray-500 mt-0.5">
+                <p class="text-xs mt-0.5" style="color: var(--text-secondary);">
                     Assigned {{ assignment.assigned_at|date:"M d, Y" }}
                     {% if assignment.status == 'pending' and assignment.due_date %}
                         &nbsp;·&nbsp;
                         {% if assignment.sla_escalated %}
-                            <span class="text-rose-600 font-semibold">SLA breached</span>
+                            <span class="font-semibold" style="color: var(--status-critical);">SLA breached</span>
                         {% elif assignment.sla_reminder_sent %}
-                            <span class="text-orange-600 font-semibold">Overdue — due {{ assignment.due_date|date:"M d" }}</span>
+                            <span class="font-semibold" style="color: var(--status-moderate);">Overdue — due {{ assignment.due_date|date:"M d" }}</span>
                         {% else %}
                             Due {{ assignment.due_date|date:"M d" }}
                         {% endif %}
@@ -35,24 +36,45 @@
         <div class="flex items-center space-x-2">
             {% if alert %}
             <span class="px-2 py-0.5 text-xs font-medium rounded-full
-                {% if alert.severity == 'critical' %}bg-red-100 text-red-800
-                {% elif alert.severity == 'high' %}bg-orange-100 text-orange-800
-                {% elif alert.severity == 'medium' %}bg-yellow-100 text-yellow-800
-                {% else %}bg-gray-100 text-gray-700{% endif %}">
+                {% if alert.severity == 'critical' %}gw-badge--critical
+                {% elif alert.severity == 'high' %}gw-badge--high
+                {% elif alert.severity == 'medium' %}gw-badge--moderate
+                {% else %}gw-badge--info{% endif %}">
                 {{ alert.get_severity_display }}
             </span>
             {% endif %}
-            {% if assignment.status == 'pending' and assignment.outcome == 'inconclusive' %}
-            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">Inconclusive — Update Required</span>
-            {% elif assignment.status == 'pending' %}
-            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Pending</span>
-            {% elif assignment.outcome == 'mining_confirmed' %}
-            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800">Mining Confirmed</span>
-            {% elif assignment.outcome == 'false_positive' %}
-            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">False Positive</span>
-            {% elif assignment.outcome == 'inconclusive' %}
-            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">Inconclusive</span>
+            {% if alert and alert.detected_site and alert.detected_site.job %}
+            {% if alert.detected_site.job.source == 'automated' %}
+            <span class="px-1.5 py-0.5 text-[10px] font-semibold rounded"
+                  style="background:rgba(212,160,23,0.12);color:var(--accent);border:1px solid rgba(212,160,23,0.3);">
+                Auto
+            </span>
+            {% else %}
+            <span class="px-1.5 py-0.5 text-[10px] font-semibold rounded"
+                  style="background:var(--surface-3);color:var(--text-tertiary);border:1px solid var(--border-subtle);">
+                Manual
+            </span>
             {% endif %}
+            {% endif %}
+            {% if assignment.status == 'pending' and assignment.outcome == 'inconclusive' %}
+            <span class="px-2 py-0.5 text-xs font-medium rounded-full gw-badge--info">Inconclusive — Update Required</span>
+            {% elif assignment.status == 'pending' %}
+            <span class="px-2 py-0.5 text-xs font-medium rounded-full gw-badge--moderate">Pending</span>
+            {% elif assignment.outcome == 'mining_confirmed' %}
+            <span class="px-2 py-0.5 text-xs font-medium rounded-full gw-badge--critical">Mining Confirmed</span>
+            {% elif assignment.outcome == 'false_positive' %}
+            <span class="px-2 py-0.5 text-xs font-medium rounded-full gw-badge--resolved">False Positive</span>
+            {% elif assignment.outcome == 'inconclusive' %}
+            <span class="px-2 py-0.5 text-xs font-medium rounded-full gw-badge--info">Inconclusive</span>
+            {% endif %}
+            <!-- Print button -->
+            <button onclick="printDetectionCard(this)" title="Print this detection report"
+                    class="print-hide btn-ghost p-1 rounded" style="color: var(--text-tertiary);">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                </svg>
+            </button>
         </div>
     </div>
 
@@ -63,46 +85,70 @@
 
             <!-- Site details -->
             {% if site %}
-            <div class="bg-gray-50 rounded-lg p-4 space-y-2">
-                <h4 class="text-sm font-medium text-gray-900 mb-2">Site Details</h4>
+            <div class="rounded-lg p-4 space-y-2"
+                 style="background: var(--surface-3); border: 1px solid var(--border-subtle);">
+                <h4 class="text-sm font-medium mb-2" style="color: var(--text-primary);">Site Details</h4>
                 <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-                    <div class="text-gray-500">Confidence</div>
-                    <div class="font-medium text-gray-900">
+                    <div style="color: var(--text-secondary);">Confidence</div>
+                    <div class="font-medium" style="color: var(--text-primary);">
                         {% widthratio site.confidence_score 1 100 %}%
                     </div>
-                    <div class="text-gray-500">Area</div>
-                    <div class="font-medium text-gray-900">{{ site.area_hectares|floatformat:2 }} ha</div>
-                    <div class="text-gray-500">Detection Date</div>
-                    <div class="font-medium text-gray-900">{{ site.detection_date|date:"M d, Y" }}</div>
-                    <div class="text-gray-500">Region</div>
-                    <div class="font-medium text-gray-900">{{ site.region.name|default:"Unknown" }}</div>
-                    <div class="text-gray-500">Legal Status</div>
+                    <div style="color: var(--text-secondary);">Area</div>
+                    <div class="font-medium" style="color: var(--text-primary);">{{ site.area_hectares|floatformat:2 }} ha</div>
+                    <div style="color: var(--text-secondary);">Detection Date</div>
+                    <div class="font-medium" style="color: var(--text-primary);">{{ site.detection_date|date:"M d, Y" }}</div>
+                    <div style="color: var(--text-secondary);">Region</div>
+                    <div class="font-medium" style="color: var(--text-primary);">{{ site.region.name|default:"Unknown" }}</div>
+                    <div style="color: var(--text-secondary);">Legal Status</div>
                     <div class="font-medium
-                        {% if site.legal_status == 'illegal' %}text-red-600
-                        {% elif site.legal_status == 'legal' %}text-green-600
-                        {% else %}text-gray-500{% endif %}">
+                        {% if site.legal_status == 'illegal' %}text-red-500
+                        {% elif site.legal_status == 'legal' %}text-green-500
+                        {% else %}{% endif %}"
+                         {% if site.legal_status != 'illegal' and site.legal_status != 'legal' %}style="color: var(--text-secondary);"{% endif %}>
                         {{ site.get_legal_status_display }}
                     </div>
                     {% if site.recurrence_count > 1 %}
-                    <div class="text-gray-500">Recurrences</div>
-                    <div class="font-medium text-orange-600">{{ site.recurrence_count }}×</div>
+                    <div style="color: var(--text-secondary);">Recurrences</div>
+                    <div class="font-medium text-orange-500">{{ site.recurrence_count }}×</div>
                     {% endif %}
                 </div>
                 {% if alert and alert.description %}
-                <p class="text-xs text-gray-500 pt-1 border-t border-gray-200 mt-2">{{ alert.description }}</p>
+                <p class="text-xs pt-1 mt-2" style="color: var(--text-secondary); border-top: 1px solid var(--border-subtle);">{{ alert.description }}</p>
                 {% endif %}
             </div>
             {% endif %}
 
             <!-- Mini-map -->
             <div>
-                <h4 class="text-sm font-medium text-gray-900 mb-2">Site Location</h4>
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-sm font-medium" style="color: var(--text-primary);">Site Location</h4>
+                    {% if d.centroid_lng %}
+                    <button onclick="(function(btn, lat, lng) {
+                            var text = parseFloat(lat).toFixed(6) + ', ' + parseFloat(lng).toFixed(6);
+                            navigator.clipboard.writeText(text).then(function() {
+                                var orig = btn.textContent;
+                                btn.textContent = 'Copied!';
+                                setTimeout(function() { btn.textContent = orig; }, 1500);
+                            }).catch(function() { prompt('Coordinates:', text); });
+                        })(this, '{{ d.centroid_lat|default:'' }}', '{{ d.centroid_lng|default:'' }}')"
+                        title="Copy coordinates to clipboard"
+                        class="print-hide btn-ghost text-[11px] px-2 py-0.5 flex items-center gap-1"
+                        style="color: var(--text-tertiary);">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                        Copy coords
+                    </button>
+                    {% endif %}
+                </div>
                 <div class="mini-map-wrap rounded-lg"
                      onclick="openInLiveMap('{{ d.centroid_lng|default:'' }}', '{{ d.centroid_lat|default:'' }}')">
                     <div class="mini-map"
                          data-lng="{{ d.centroid_lng|default:'' }}"
                          data-lat="{{ d.centroid_lat|default:'' }}"
-                         id="map-{{ assignment.id }}">
+                         id="map-{{ assignment.id }}"
+                         style="border: 1px solid var(--border-subtle);">
                     </div>
                     {% if d.centroid_lng %}
                     <div class="mini-map-overlay">
@@ -113,17 +159,63 @@
             </div>
         </div>
 
+        <!-- ML Analysis Images -->
+        {% if d.patch_images %}
+        <div>
+            <h4 class="text-sm font-medium mb-2" style="color: var(--text-primary);">ML Analysis</h4>
+            <div class="grid grid-cols-2 gap-2">
+                {% if d.patch_images.false_color %}
+                <div>
+                    <p class="text-xs mb-1" style="color: var(--text-tertiary);">False Colour</p>
+                    <a href="{{ d.patch_images.false_color }}" target="_blank" rel="noopener">
+                        <img src="{{ d.patch_images.false_color }}" alt="False Colour"
+                             class="w-full rounded" style="height:180px;object-fit:cover;background:var(--surface-3);border:1px solid var(--border-subtle);">
+                    </a>
+                </div>
+                {% endif %}
+                {% if d.patch_images.prediction_mask %}
+                <div>
+                    <p class="text-xs mb-1" style="color: var(--text-tertiary);">Prediction Mask</p>
+                    <a href="{{ d.patch_images.prediction_mask }}" target="_blank" rel="noopener">
+                        <img src="{{ d.patch_images.prediction_mask }}" alt="Prediction Mask"
+                             class="w-full rounded" style="height:180px;object-fit:cover;background:var(--surface-3);border:1px solid var(--border-subtle);">
+                    </a>
+                </div>
+                {% endif %}
+                {% if d.patch_images.probability_heatmap %}
+                <div>
+                    <p class="text-xs mb-1" style="color: var(--text-tertiary);">Probability Heatmap</p>
+                    <a href="{{ d.patch_images.probability_heatmap }}" target="_blank" rel="noopener">
+                        <img src="{{ d.patch_images.probability_heatmap }}" alt="Probability Heatmap"
+                             class="w-full rounded" style="height:180px;object-fit:cover;background:var(--surface-3);border:1px solid var(--border-subtle);">
+                    </a>
+                </div>
+                {% endif %}
+                {% if d.patch_images.overlay %}
+                <div>
+                    <p class="text-xs mb-1" style="color: var(--text-tertiary);">Overlay</p>
+                    <a href="{{ d.patch_images.overlay }}" target="_blank" rel="noopener">
+                        <img src="{{ d.patch_images.overlay }}" alt="Overlay"
+                             class="w-full rounded" style="height:180px;object-fit:cover;background:var(--surface-3);border:1px solid var(--border-subtle);">
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            <p class="text-xs mt-1.5" style="color: var(--text-tertiary);">Click any image to open full-size.</p>
+        </div>
+        {% endif %}
+
         <!-- Timelapse frames -->
         {% if d.timelapse_frames %}
         <div data-tl-assignment="{{ assignment.id }}">
             <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-gray-900">Satellite Timelapse</h4>
+                <h4 class="text-sm font-medium" style="color: var(--text-primary);">Satellite Timelapse</h4>
                 <div class="flex items-center gap-2">
-                    <span id="tl-year-{{ assignment.id }}" class="text-xs font-semibold text-gray-500">
+                    <span id="tl-year-{{ assignment.id }}" class="text-xs font-semibold" style="color: var(--text-secondary);">
                         {{ d.timelapse_frames.0.year }}
                     </span>
                     <button id="tl-play-{{ assignment.id }}" type="button"
-                            class="px-2.5 py-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
+                            class="btn-ghost px-2.5 py-1 text-xs font-medium rounded-lg transition-colors">
                         ▶ Play
                     </button>
                 </div>
@@ -134,7 +226,8 @@
             <div class="flex gap-2" style="height: 288px;">
 
                 <!-- Featured image: fills all remaining space, no black bars -->
-                <div class="flex-1 min-w-0 overflow-hidden rounded-xl border border-gray-200">
+                <div class="flex-1 min-w-0 overflow-hidden rounded-lg"
+                     style="border: 1px solid var(--border-subtle);">
                     <img id="tl-featured-{{ assignment.id }}"
                          src="{{ d.timelapse_frames.0.thumbnail_url }}"
                          alt="Timelapse frame"
@@ -146,8 +239,8 @@
                     {% for frame in d.timelapse_frames %}
                     <div class="flex-1 min-h-0 flex flex-col">
                         {% if frame.thumbnail_url %}
-                        <div class="flex-1 min-h-0 overflow-hidden rounded-lg border border-gray-200"
-                             style="{% if forloop.first %}outline: 2px solid #f59e0b; outline-offset: 1px;{% endif %}">
+                        <div class="flex-1 min-h-0 overflow-hidden rounded-lg"
+                             style="border: 1px solid var(--border-subtle); {% if forloop.first %}outline: 2px solid #f59e0b; outline-offset: 1px;{% endif %}">
                             <img src="{{ frame.thumbnail_url }}"
                                  data-src="{{ frame.thumbnail_url }}"
                                  data-year="{{ frame.year }}"
@@ -155,12 +248,13 @@
                                  class="tl-thumb{% if forloop.first %} active{% endif %} w-full h-full object-cover cursor-pointer">
                         </div>
                         {% else %}
-                        <div class="flex-1 min-h-0 rounded-lg border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center">
-                            <span class="text-xs text-gray-300">—</span>
+                        <div class="flex-1 min-h-0 rounded-lg flex items-center justify-center"
+                             style="border: 1px dashed var(--border-default); background: var(--surface-3);">
+                            <span class="text-xs" style="color: var(--text-tertiary);">—</span>
                         </div>
                         {% endif %}
                         <p class="text-center leading-tight mt-0.5 flex-shrink-0"
-                           style="font-size: 10px; color: #9ca3af;">{{ frame.year }}</p>
+                           style="font-size: 10px; color: var(--text-tertiary);">{{ frame.year }}</p>
                     </div>
                     {% endfor %}
                 </div>
@@ -172,9 +266,10 @@
 
         <!-- Dispatch notes from admin -->
         {% if assignment.notes and assignment.status == 'pending' %}
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p class="text-xs font-medium text-blue-700 mb-1">Notes from dispatcher</p>
-            <p class="text-sm text-blue-800">{{ assignment.notes }}</p>
+        <div class="rounded-lg p-3"
+             style="background: var(--status-info-bg); border: 1px solid var(--status-info-border);">
+            <p class="text-xs font-medium mb-1" style="color: var(--status-info);">Notes from dispatcher</p>
+            <p class="text-sm" style="color: var(--status-info);">{{ assignment.notes }}</p>
         </div>
         {% endif %}
 
@@ -184,30 +279,31 @@
             {% csrf_token %}
             <input type="hidden" id="outcome-input-{{ assignment.id }}" name="outcome" value="">
 
-            <h4 class="text-sm font-medium text-gray-900 mb-3">Submit Field Report</h4>
+            <h4 class="text-sm font-medium mb-3" style="color: var(--text-primary);">Submit Field Report</h4>
 
             {% if assignment.outcome == 'inconclusive' %}
-            <div class="mb-4 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-                <svg class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="mb-4 flex items-start gap-2 rounded-lg px-4 py-3"
+                 style="background: var(--status-moderate-bg); border: 1px solid var(--status-moderate-border);">
+                <svg class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--status-moderate);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
                 </svg>
                 <div>
-                    <p class="text-xs font-semibold text-amber-700">Previous submission: Inconclusive</p>
-                    <p class="text-xs text-amber-600 mt-0.5">You can update your report below when you have more information.</p>
+                    <p class="text-xs font-semibold" style="color: var(--status-moderate);">Previous submission: Inconclusive</p>
+                    <p class="text-xs mt-0.5" style="color: var(--status-moderate);">You can update your report below when you have more information.</p>
                 </div>
             </div>
             {% endif %}
 
             <!-- Outcome buttons -->
             <div class="mb-4">
-                <label class="block text-xs text-gray-500 mb-2">What did you find at the site?</label>
+                <label class="gw-label mb-2">What did you find at the site?</label>
                 <div class="flex flex-wrap gap-2">
                     <button type="button"
                             data-outcome="mining_confirmed"
                             onclick="selectOutcome('{{ assignment.id }}', 'mining_confirmed')"
-                            class="outcome-btn flex items-center space-x-2 px-4 py-2.5 border-2 border-red-300 bg-red-50 text-red-700 rounded-lg text-sm font-medium hover:bg-red-100"
-                            style="opacity:0.7">
+                            class="outcome-btn btn-secondary flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium"
+                            style="border-color: var(--status-critical-border); background: var(--status-critical-bg); color: var(--status-critical); opacity: 0.7;">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
@@ -217,8 +313,8 @@
                     <button type="button"
                             data-outcome="false_positive"
                             onclick="selectOutcome('{{ assignment.id }}', 'false_positive')"
-                            class="outcome-btn flex items-center space-x-2 px-4 py-2.5 border-2 border-green-300 bg-green-50 text-green-700 rounded-lg text-sm font-medium hover:bg-green-100"
-                            style="opacity:0.7">
+                            class="outcome-btn btn-secondary flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium"
+                            style="border-color: var(--status-resolved-border); background: var(--status-resolved-bg); color: var(--status-resolved); opacity: 0.7;">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M5 13l4 4L19 7"/>
@@ -228,8 +324,8 @@
                     <button type="button"
                             data-outcome="inconclusive"
                             onclick="selectOutcome('{{ assignment.id }}', 'inconclusive')"
-                            class="outcome-btn flex items-center space-x-2 px-4 py-2.5 border-2 border-gray-300 bg-gray-50 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-100"
-                            style="opacity:0.7">
+                            class="outcome-btn btn-secondary flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium"
+                            style="opacity: 0.7;">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -241,37 +337,37 @@
 
             <!-- Visit date -->
             <div class="mb-4">
-                <label for="visit-date-{{ assignment.id }}" class="block text-xs text-gray-500 mb-1">
+                <label for="visit-date-{{ assignment.id }}" class="gw-label mb-1">
                     Date of Field Visit
                 </label>
                 <input type="date" id="visit-date-{{ assignment.id }}" name="visit_date"
-                       class="block w-full sm:w-48 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-active-gold focus:border-transparent">
+                       class="gw-input block w-full sm:w-48">
             </div>
 
             <!-- Field notes -->
             <div class="mb-4">
-                <label for="notes-{{ assignment.id }}" class="block text-xs text-gray-500 mb-1">
+                <label for="notes-{{ assignment.id }}" class="gw-label mb-1">
                     Field Notes
                 </label>
                 <textarea id="notes-{{ assignment.id }}" name="notes" rows="3"
                           placeholder="Describe what you observed at the site..."
-                          class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-active-gold focus:border-transparent"></textarea>
+                          class="gw-input block w-full"></textarea>
             </div>
 
             <!-- Evidence photos — drag-and-drop zone -->
             <div class="mb-5">
-                <label class="block text-xs text-gray-500 mb-2">Evidence Photos (optional)</label>
+                <label class="gw-label mb-2">Evidence Photos (optional)</label>
                 <div id="drop-zone-{{ assignment.id }}"
-                     class="drop-zone border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-active-gold hover:bg-amber-50 transition-colors"
+                     class="gw-drop-zone drop-zone rounded-lg p-4 text-center cursor-pointer transition-colors"
                      data-assignment="{{ assignment.id }}">
-                    <svg class="w-7 h-7 mx-auto text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-7 h-7 mx-auto mb-1" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                               d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                     </svg>
-                    <p class="text-sm text-gray-500">Drag photos here or
-                        <span class="text-active-gold font-medium underline">click to browse</span>
+                    <p class="text-sm" style="color: var(--text-secondary);">Drag photos here or
+                        <span class="font-medium underline" style="color: var(--accent);">click to browse</span>
                     </p>
-                    <p class="text-xs text-gray-400 mt-0.5">JPG, PNG · max 10 MB each</p>
+                    <p class="text-xs mt-0.5" style="color: var(--text-tertiary);">JPG, PNG · max 10 MB each</p>
                     <input type="file" name="evidence_photos" id="file-input-{{ assignment.id }}"
                            multiple accept="image/*" class="hidden">
                 </div>
@@ -280,39 +376,42 @@
 
             <!-- Submit -->
             <button type="button" onclick="submitReport('{{ assignment.id }}')"
-                    class="px-5 py-2 bg-active-gold text-white rounded-lg text-sm font-semibold hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-active-gold transition-colors">
+                    class="btn-primary px-5 py-2 rounded-lg text-sm font-semibold focus:outline-none transition-colors">
                 Submit Report
             </button>
         </form>
 
         <!-- ---- RESOLVED: show outcome + report details ---- -->
         {% else %}
-        <div class="border-t border-gray-100 pt-4 space-y-3">
-            <h4 class="text-sm font-medium text-gray-900">Field Report</h4>
+        <div class="pt-4 space-y-3" style="border-top: 1px solid var(--border-subtle);">
+            <h4 class="text-sm font-medium" style="color: var(--text-primary);">Field Report</h4>
 
             <!-- Outcome banner -->
             {% if assignment.outcome == 'mining_confirmed' %}
-            <div class="flex items-center space-x-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-                <svg class="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="flex items-center space-x-2 rounded-lg px-4 py-3"
+                 style="background: var(--status-critical-bg); border: 1px solid var(--status-critical-border);">
+                <svg class="w-5 h-5 flex-shrink-0" style="color: var(--status-critical);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
                 </svg>
-                <span class="text-sm font-semibold text-red-700">Mining Confirmed — Illegal activity verified on the ground</span>
+                <span class="text-sm font-semibold" style="color: var(--status-critical);">Mining Confirmed — Illegal activity verified on the ground</span>
             </div>
             {% elif assignment.outcome == 'false_positive' %}
-            <div class="flex items-center space-x-2 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
-                <svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="flex items-center space-x-2 rounded-lg px-4 py-3"
+                 style="background: var(--status-resolved-bg); border: 1px solid var(--status-resolved-border);">
+                <svg class="w-5 h-5 flex-shrink-0" style="color: var(--status-resolved);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                 </svg>
-                <span class="text-sm font-semibold text-green-700">False Positive — No mining activity found</span>
+                <span class="text-sm font-semibold" style="color: var(--status-resolved);">False Positive — No mining activity found</span>
             </div>
             {% elif assignment.outcome == 'inconclusive' %}
-            <div class="flex items-center space-x-2 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
-                <svg class="w-5 h-5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="flex items-center space-x-2 rounded-lg px-4 py-3"
+                 style="background: var(--surface-3); border: 1px solid var(--border-default);">
+                <svg class="w-5 h-5 flex-shrink-0" style="color: var(--text-secondary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
-                <span class="text-sm font-semibold text-gray-600">Inconclusive — Could not determine outcome</span>
+                <span class="text-sm font-semibold" style="color: var(--text-secondary);">Inconclusive — Could not determine outcome</span>
             </div>
             {% endif %}
 
@@ -320,28 +419,29 @@
             <div class="grid grid-cols-2 gap-4 text-sm">
                 {% if assignment.visit_date %}
                 <div>
-                    <span class="text-gray-500">Visit Date:</span>
-                    <span class="ml-1 font-medium text-gray-900">{{ assignment.visit_date|date:"M d, Y" }}</span>
+                    <span style="color: var(--text-secondary);">Visit Date:</span>
+                    <span class="ml-1 font-medium" style="color: var(--text-primary);">{{ assignment.visit_date|date:"M d, Y" }}</span>
                 </div>
                 {% endif %}
                 <div>
-                    <span class="text-gray-500">Completed:</span>
-                    <span class="ml-1 font-medium text-gray-900">{{ assignment.completed_at|date:"M d, Y"|default:"—" }}</span>
+                    <span style="color: var(--text-secondary);">Completed:</span>
+                    <span class="ml-1 font-medium" style="color: var(--text-primary);">{{ assignment.completed_at|date:"M d, Y"|default:"—" }}</span>
                 </div>
             </div>
             {% if assignment.notes %}
-            <p class="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">{{ assignment.notes }}</p>
+            <p class="text-sm rounded-lg p-3" style="color: var(--text-primary); background: var(--surface-3);">{{ assignment.notes }}</p>
             {% endif %}
 
             <!-- Evidence photos -->
             {% if d.photo_urls %}
             <div>
-                <p class="text-xs text-gray-500 mb-2">Evidence Photos</p>
+                <p class="text-xs mb-2" style="color: var(--text-secondary);">Evidence Photos</p>
                 <div class="flex flex-wrap gap-2">
                     {% for url in d.photo_urls %}
                     <a href="{{ url }}" target="_blank">
                         <img src="{{ url }}" alt="Evidence photo"
-                             class="w-24 h-16 object-cover rounded-lg border border-gray-200 hover:opacity-80 transition-opacity">
+                             class="w-24 h-16 object-cover rounded-lg hover:opacity-80 transition-opacity"
+                             style="border: 1px solid var(--border-subtle);">
                     </a>
                     {% endfor %}
                 </div>
