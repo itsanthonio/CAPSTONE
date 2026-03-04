@@ -25,13 +25,22 @@
             <h1 class="text-2xl font-bold" style="color: var(--text-primary);">Alerts</h1>
             <p class="text-sm mt-0.5" style="color: var(--text-secondary);">Detection alerts requiring inspector attention</p>
         </div>
-        <button id="export-csv-btn" class="btn-secondary inline-flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-            </svg>
-            Export CSV
-        </button>
+        <div class="flex items-center gap-3">
+            <button id="add-alert-btn"
+                    class="btn-primary inline-flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add Alert
+            </button>
+            <button id="export-csv-btn" class="btn-secondary inline-flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                Export CSV
+            </button>
+        </div>
     </div>
 
     <!-- Summary strip -->
@@ -462,6 +471,144 @@
     </div>
 </div>
 
+<!-- Add Alert Modal -->
+<div id="add-alert-modal" class="fixed inset-0 bg-black bg-opacity-40 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+            <h3 class="text-lg font-semibold text-gray-900">Add New Alert</h3>
+            <button onclick="window._alertsPage.closeAddAlertModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        
+        <form id="add-alert-form" class="p-6 space-y-4 overflow-y-auto flex-1">
+            <!-- Basic Information -->
+            <div class="space-y-4">
+                <h4 class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">Basic Information</h4>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                        <input type="text" name="title" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Alert Type *</label>
+                        <select name="alert_type" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">Select Type</option>
+                            <option value="new_detection">New Detection</option>
+                            <option value="expansion_detected">Site Expansion Detected</option>
+                            <option value="recurring_site">Recurring Illegal Site</option>
+                            <option value="high_confidence">High Confidence Detection</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea name="description" rows="3"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Severity *</label>
+                        <select name="severity" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">Select Severity</option>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select name="status"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="open">Open</option>
+                            <option value="acknowledged">Acknowledged</option>
+                            <option value="dispatched">Dispatched</option>
+                            <option value="resolved">Resolved</option>
+                            <option value="dismissed">Dismissed</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Location Information -->
+            <div class="space-y-4">
+                <h4 class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">Location Information</h4>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Latitude *</label>
+                        <input type="number" step="any" name="latitude" required
+                               placeholder="e.g., 5.5913"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Longitude *</label>
+                        <input type="number" step="any" name="longitude" required
+                               placeholder="e.g., -0.1793"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Confidence Score</label>
+                        <input type="number" step="0.01" min="0" max="1" name="confidence_score" value="0.8"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Area (hectares)</label>
+                        <input type="number" step="0.01" min="0" name="area_hectares" value="0.01"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Legal Status</label>
+                    <select name="legal_status"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="unknown">Unknown</option>
+                        <option value="legal">Legal</option>
+                        <option value="illegal">Illegal</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Assignment -->
+            <div class="space-y-4">
+                <h4 class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">Assignment</h4>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Assign to Inspector</label>
+                    <select name="assigned_to_id"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">Unassigned</option>
+                    </select>
+                </div>
+            </div>
+        </form>
+        
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 shrink-0">
+            <button type="button" onclick="window._alertsPage.closeAddAlertModal()"
+                    class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                Cancel
+            </button>
+            <button type="submit" form="add-alert-form"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                Create Alert
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Inspector Modal Functions - Defined Immediately -->
 <script>
 // Inspector Assignment Variables
@@ -743,6 +890,23 @@ function showConfirm(title, message) {
                         ` : a.status === 'dispatched' ? `
                             <span class="italic" style="color: var(--text-tertiary);">Awaiting inspector report</span>
                         ` : `<span style="color: var(--text-tertiary);">—</span>`}
+
+                        ${window._alertsPage.isAdmin ? `
+                            <button onclick="window._alertsPage.editAlert('${a.id}')"
+                                    class="p-1.5 rounded hover:bg-gray-50 transition-colors"
+                                    style="color: var(--text-secondary);" title="Edit Alert">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                                </svg>
+                            </button>
+                            <button onclick="window._alertsPage.deleteAlert('${a.id}')"
+                                    class="p-1.5 rounded hover:bg-gray-50 transition-colors"
+                                    style="color: var(--text-secondary);" title="Delete Alert">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"/>
+                                </svg>
+                            </button>
+                        ` : ''}
                     </div>
                 </td>
             </tr>`;
@@ -1295,7 +1459,6 @@ function showConfirm(title, message) {
 
     // ── Init ──
     document.addEventListener('DOMContentLoaded', function () {
-
         // Restore saved filters from localStorage
         try {
             const saved = localStorage.getItem('gw_alert_filters');
@@ -1387,6 +1550,20 @@ function showConfirm(title, message) {
             if (e.target === this) closeModal();
         });
 
+        // Add Alert button and modal setup
+        if (document.getElementById('add-alert-btn')) {
+            document.getElementById('add-alert-btn').addEventListener('click', () => window._alertsPage.openAddAlertModal());
+        }
+        
+        // Add Alert form submission
+        const addAlertForm = document.getElementById('add-alert-form');
+        if (addAlertForm) {
+            addAlertForm.addEventListener('submit', window._alertsPage.handleAddAlertSubmit);
+        }
+        
+        // Load inspectors for assignment dropdown
+        window._alertsPage.loadInspectorsForCreate();
+
         updateSortIcons();
     });
 
@@ -1402,6 +1579,319 @@ function showConfirm(title, message) {
         selectInspector,
         assignInspector,
         refreshAlerts: () => loadAlerts(currentPage),
+        isAdmin: document.body.dataset.userRole === 'admin',
+        
+        // Alert Creation Functions
+        openAddAlertModal: function() {
+            const modal = document.getElementById('add-alert-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                // Reset form
+                const form = document.getElementById('add-alert-form');
+                if (form) {
+                    form.reset();
+                }
+            }
+        },
+        
+        closeAddAlertModal: function() {
+            const modal = document.getElementById('add-alert-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        },
+        
+        loadInspectorsForCreate: function() {
+            // Load inspectors for the assignment dropdown in create modal
+            fetch('/accounts/api/inspectors/')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.querySelector('select[name="assigned_to_id"]');
+                    if (select) {
+                        // Keep the "Unassigned" option
+                        select.innerHTML = '<option value="">Unassigned</option>';
+                        data.forEach(inspector => {
+                            const option = document.createElement('option');
+                            option.value = inspector.id;
+                            option.textContent = inspector.name;
+                            select.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error loading inspectors:', error));
+        },
+        
+        handleAddAlertSubmit: async function(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+            
+            try {
+                const response = await fetch('/api/alerts/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(data),
+                    credentials: 'include'
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.error || 'Failed to create alert');
+                }
+                
+                // Close modal and refresh alerts
+                this.closeAddAlertModal();
+                this.refreshAlerts();
+                
+                // Show success message
+                alert('Alert created successfully!');
+                
+            } catch (error) {
+                alert('Error creating alert: ' + error.message);
+            }
+        },
+        
+        editAlert: async function(id) {
+            try {
+                const response = await fetch(`/api/alerts/${id}/`, { credentials: 'include' });
+                if (!response.ok) throw new Error('Failed to load alert');
+                const alertData = await response.json();
+                
+                // Create comprehensive edit modal
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+                        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+                            <h3 class="text-lg font-semibold text-gray-900">Edit Alert</h3>
+                            <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <form id="edit-alert-form-${id}" class="p-6 space-y-4 overflow-y-auto flex-1">
+                            <!-- Basic Information -->
+                            <div class="space-y-4">
+                                <h4 class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">Basic Information</h4>
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                                        <input type="text" name="title" value="${alertData.title}" required
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Alert Type</label>
+                                        <select name="alert_type" required
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                            <option value="new_detection" ${alertData.alert_type === 'new_detection' ? 'selected' : ''}>New Detection</option>
+                                            <option value="expansion_detected" ${alertData.alert_type === 'expansion_detected' ? 'selected' : ''}>Site Expansion Detected</option>
+                                            <option value="recurring_site" ${alertData.alert_type === 'recurring_site' ? 'selected' : ''}>Recurring Illegal Site</option>
+                                            <option value="high_confidence" ${alertData.alert_type === 'high_confidence' ? 'selected' : ''}>High Confidence Detection</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                    <textarea name="description" rows="3"
+                                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">${alertData.description || ''}</textarea>
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Severity</label>
+                                        <select name="severity" required
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                            <option value="low" ${alertData.severity === 'low' ? 'selected' : ''}>Low</option>
+                                            <option value="medium" ${alertData.severity === 'medium' ? 'selected' : ''}>Medium</option>
+                                            <option value="high" ${alertData.severity === 'high' ? 'selected' : ''}>High</option>
+                                            <option value="critical" ${alertData.severity === 'critical' ? 'selected' : ''}>Critical</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                        <select name="status"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                            <option value="open" ${alertData.status === 'open' ? 'selected' : ''}>Open</option>
+                                            <option value="acknowledged" ${alertData.status === 'acknowledged' ? 'selected' : ''}>Acknowledged</option>
+                                            <option value="dispatched" ${alertData.status === 'dispatched' ? 'selected' : ''}>Dispatched</option>
+                                            <option value="resolved" ${alertData.status === 'resolved' ? 'selected' : ''}>Resolved</option>
+                                            <option value="dismissed" ${alertData.status === 'dismissed' ? 'selected' : ''}>Dismissed</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Location Information -->
+                            <div class="space-y-4">
+                                <h4 class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">Location Information</h4>
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
+                                        <input type="number" step="any" name="latitude" 
+                                               value="${alertData.site?.lat || ''}"
+                                               placeholder="e.g., 5.5913"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
+                                        <input type="number" step="any" name="longitude" 
+                                               value="${alertData.site?.lng || ''}"
+                                               placeholder="e.g., -0.1793"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    </div>
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Confidence Score</label>
+                                        <input type="number" step="0.01" min="0" max="1" name="confidence_score" 
+                                               value="${alertData.site?.confidence_pct ? (alertData.site.confidence_pct / 100).toFixed(2) : ''}"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Area (hectares)</label>
+                                        <input type="number" step="0.01" min="0" name="area_hectares" 
+                                               value="${alertData.site?.area_hectares || ''}"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Assignment -->
+                            <div class="space-y-4">
+                                <h4 class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">Assignment</h4>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Assign to Inspector</label>
+                                    <select name="assigned_to_id"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                        <option value="">Unassigned</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </form>
+                        
+                        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 shrink-0">
+                            <button type="button" onclick="this.closest('.fixed').remove()"
+                                    class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                                Cancel
+                            </button>
+                            <button type="submit" form="edit-alert-form-${id}"
+                                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // Load inspectors for assignment dropdown
+                this.loadInspectorsForEdit(alertData.assigned_to_id);
+                
+                // Handle form submission
+                const form = document.getElementById(`edit-alert-form-${id}`);
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(form);
+                    const data = Object.fromEntries(formData.entries());
+                    
+                    try {
+                        const response = await fetch(`/api/alerts/${id}/update/`, {
+                            method: 'PUT',
+                            headers: { 
+                                'Content-Type': 'application/json', 
+                                'X-CSRFToken': getCookie('csrftoken') 
+                            },
+                            body: JSON.stringify(data),
+                            credentials: 'include'
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (!response.ok) {
+                            throw new Error(result.error || 'Failed to update alert');
+                        }
+                        
+                        modal.remove();
+                        this.closeModal();
+                        this.refreshAlerts();
+                        
+                        // Show success message
+                        alert('Alert updated successfully!');
+                        
+                    } catch (error) {
+                        alert('Error updating alert: ' + error.message);
+                    }
+                });
+                
+            } catch (error) {
+                alert('Error loading alert: ' + error.message);
+            }
+        },
+        
+        loadInspectorsForEdit: function(currentAssignedId) {
+            // Use the correct endpoint that works for dispatch modal
+            fetch('/accounts/api/inspectors/', {
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to load inspectors');
+                return response.json();
+            })
+            .then(data => {
+                // Find the edit form select element
+                const select = document.querySelector('form[id^="edit-alert-form-"] select[name="assigned_to_id"]');
+                
+                if (select) {
+                    select.innerHTML = '<option value="">Unassigned</option>';
+                    data.forEach(inspector => {
+                        const option = document.createElement('option');
+                        option.value = inspector.user;
+                        option.textContent = inspector.user;
+                        if (currentAssignedId && inspector.user === currentAssignedId) {
+                            option.selected = true;
+                        }
+                        select.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => console.error('Error loading inspectors:', error));
+        },
+        
+        deleteAlert: async function(id) {
+            if (!confirm('Are you sure you want to delete this alert? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/alerts/${id}/delete/`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) throw new Error('Failed to delete alert');
+                
+                this.closeModal();
+                this.refreshAlerts();
+            } catch (error) {
+                alert('Error deleting alert: ' + error.message);
+            }
+        },
     };
 
     // ── Real-time polling: show banner when open alert count changes ──

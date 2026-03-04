@@ -496,8 +496,6 @@ function getCookie(name) {
 }
 
 /* ---------- Real-time polling + AJAX refresh ---------- */
-let _knownPending = {{ pending_count }};
-
 async function refreshAssignments() {
     try {
         const r = await fetch(window.location.pathname, { credentials: 'include' });
@@ -528,15 +526,48 @@ async function refreshAssignments() {
     }
 }
 
-setInterval(async function () {
-    try {
-        const r = await fetch('/api/my-assignments/', { credentials: 'include' });
-        if (!r.ok) return;
-        const d = await r.json();
-        if (d.count > _knownPending) {
-            document.getElementById('new-assignment-banner').classList.remove('hidden');
+/* ---------- Delete Assignment ---------- */
+function deleteAssignment(assignmentId) {
+    if (!confirm('Are you sure you want to delete this assignment? This will remove the assignment from your list and unassign you from the alert.')) {
+        return;
+    }
+
+    fetch(`/accounts/api/assignments/${assignmentId}/delete/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Assignment deleted successfully', 'success');
+            const card = document.querySelector(`[data-assignment="${assignmentId}"]`);
+            if (card) card.remove();
+            const container = document.getElementById('cards-container');
+            if (container && container.children.length === 0) location.reload();
+        } else {
+            showToast(data.error || 'Failed to delete assignment', 'error');
         }
-    } catch (_) {}
-}, 30000);
+    })
+    .catch(() => showToast('Network error. Please try again.', 'error'));
+}
+
+/* ---------- Real-time polling — new assignments ---------- */
+(function () {
+    let knownPending = parseInt('{{ pending_count|default:0 }}');
+    setInterval(async function () {
+        try {
+            const r = await fetch('/api/my-assignments/', { credentials: 'include' });
+            if (!r.ok) return;
+            const d = await r.json();
+            if (d.count > knownPending) {
+                document.getElementById('new-assignment-banner').classList.remove('hidden');
+            }
+        } catch (_) {}
+    }, 30000);
+})();
 </script>
 {% endblock %}

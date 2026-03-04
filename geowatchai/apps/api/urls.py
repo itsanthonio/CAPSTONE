@@ -15,7 +15,7 @@ app_name = 'api'
 urlpatterns = [
     path('', include(router.urls)),
     path('regions/', RegionGeoJSONView.as_view({'get': 'list'}), name='regions'),
-    path('alerts/', AlertViewSet.as_view({'get': 'list'}), name='alert-list'),
+    path('alerts/', AlertViewSet.as_view({'get': 'list', 'post': 'create'}), name='alert-list'),
     path('alerts/bulk_action/', AlertViewSet.as_view({'post': 'bulk_action'}), name='alert-bulk-action'),
     path('alerts/bulk-assign-inspector/', AlertViewSet.as_view({'post': 'bulk_assign_inspector'}), name='alert-bulk-assign-inspector'),
     path('alerts/<pk>/', AlertViewSet.as_view({'get': 'retrieve'}), name='alert-detail'),
@@ -23,6 +23,9 @@ urlpatterns = [
     path('alerts/<pk>/dismiss/', AlertViewSet.as_view({'post': 'dismiss'}), name='alert-dismiss'),
     path('alerts/<pk>/dispatch/', AlertViewSet.as_view({'post': 'dispatch_alert'}), name='alert-dispatch'),
     path('alerts/<pk>/resolve/', AlertViewSet.as_view({'post': 'resolve'}), name='alert-resolve'),
+    path('alerts/<pk>/assign_inspector/', AlertViewSet.as_view({'post': 'assign_inspector'}), name='alert-assign-inspector'),
+    path('alerts/<pk>/update/', AlertViewSet.as_view({'put': 'update', 'patch': 'update'}), name='alert-update'),
+    path('alerts/<pk>/delete/', AlertViewSet.as_view({'delete': 'delete'}), name='alert-delete'),
     path('my-assignments/', my_assignments_notifications, name='my-assignments'),
     path('notifications/', include('apps.notifications.urls')),
 ]
