@@ -1102,7 +1102,19 @@ def dashboard_model_insights(request):
 @user_passes_test(is_inspector_or_admin)
 def dashboard_settings(request):
     """Settings view for all authenticated users"""
-    return render(request, 'dashboard/settings.html')
+    # Get or create user preferences
+    from apps.accounts.models import UserPreferences
+    preferences, created = UserPreferences.objects.get_or_create(user=request.user)
+    
+    context = {
+        'preferences': preferences,
+        'settings': {
+            'APP_NAME': 'GalamseyWatch',
+            'APP_VERSION': '2.1.0',
+            'ENVIRONMENT': 'Development'
+        }
+    }
+    return render(request, 'dashboard/settings.html', context)
 
 
 @user_passes_test(is_inspector_or_admin)

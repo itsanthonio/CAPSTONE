@@ -3,6 +3,112 @@ from django.contrib.auth.models import User
 from django.contrib.gis.db import models
 
 
+class UserPreferences(models.Model):
+    """
+    User-specific preferences for theme, notifications, and display settings.
+    One-to-one with User. Created automatically via signal.
+    """
+    
+    class Theme(models.TextChoices):
+        LIGHT = 'light', 'Light'
+        DARK = 'dark', 'Dark'
+        AUTO = 'auto', 'Auto (System)'
+    
+    class Layout(models.TextChoices):
+        COMPACT = 'compact', 'Compact'
+        SPACED = 'spaced', 'Spaced'
+        COMFORTABLE = 'comfortable', 'Comfortable'
+    
+    class Language(models.TextChoices):
+        ENGLISH = 'en', 'English'
+        FRENCH = 'fr', 'French'
+        SPANISH = 'es', 'Spanish'
+    
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='preferences'
+    )
+    
+    # Theme & Display
+    theme = models.CharField(
+        max_length=10,
+        choices=Theme.choices,
+        default=Theme.LIGHT
+    )
+    layout = models.CharField(
+        max_length=15,
+        choices=Layout.choices,
+        default=Layout.COMFORTABLE
+    )
+    font_size = models.CharField(
+        max_length=15,
+        choices=[
+            ('small', 'Small'),
+            ('medium', 'Medium'),
+            ('large', 'Large'),
+            ('extra_large', 'Extra Large'),
+        ],
+        default='medium'
+    )
+    high_contrast = models.BooleanField(default=False)
+    
+    # Dashboard Customization
+    show_alerts_widget = models.BooleanField(default=True)
+    show_assignments_widget = models.BooleanField(default=True)
+    show_reports_widget = models.BooleanField(default=True)
+    show_audit_widget = models.BooleanField(default=True)
+    default_page = models.CharField(
+        max_length=20,
+        choices=[
+            ('home', 'Home'),
+            ('alerts', 'Alerts'),
+            ('inspector', 'Inspector'),
+            ('report', 'Report'),
+        ],
+        default='home'
+    )
+    
+    # Notification Preferences
+    email_notifications = models.BooleanField(default=True)
+    quiet_hours_enabled = models.BooleanField(default=False)
+    quiet_hours_start = models.TimeField(default='22:00')
+    quiet_hours_end = models.TimeField(default='08:00')
+    timezone = models.CharField(
+        max_length=50,
+        default='UTC'
+    )
+    language = models.CharField(
+        max_length=5,
+        choices=Language.choices,
+        default=Language.ENGLISH
+    )
+    critical_alerts_override = models.BooleanField(default=True)
+    
+    # Privacy Settings
+    activity_visibility = models.BooleanField(default=True)
+    location_sharing = models.BooleanField(default=False)
+    
+    # Mobile Settings
+    mobile_push_notifications = models.BooleanField(default=True)
+    mobile_offline_sync = models.BooleanField(default=True)
+    mobile_theme = models.CharField(
+        max_length=10,
+        choices=Theme.choices,
+        default=Theme.AUTO
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'User Preferences'
+        verbose_name_plural = 'User Preferences'
+    
+    def __str__(self):
+        return f"{self.user.username} Preferences"
+
+
 class UserProfile(models.Model):
     """
     Extends Django's built-in User with role and organization.
