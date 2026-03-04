@@ -624,6 +624,7 @@ class AlertViewSet(viewsets.ViewSet):
             'status_display': a.get_status_display(),
             'created_at': a.created_at.isoformat(),
             'assigned_to': a.assigned_to.get_full_name() or a.assigned_to.username if a.assigned_to else None,
+            'assigned_to_id': a.assigned_to.username if a.assigned_to else None,
             'field_verification': field_verification,
             'site': {
                 'id': str(site.id),
@@ -740,25 +741,99 @@ class AlertViewSet(viewsets.ViewSet):
 
     @action(detail=True, methods=['put', 'patch'])
     def update(self, request, pk=None):
-        """Update alert details"""
+        """Update alert details and associated site information"""
         if not _is_admin(request.user):
             return Response({'error': 'Admin access required.'}, status=403)
         
         from apps.detections.models import Alert
-        alert = get_object_or_404(Alert, pk=pk)
+        from apps.accounts.models import InspectorAssignment, UserProfile
+        from django.utils import timezone
+        from django.contrib.gis.geos import Point
         
-        # Update allowed fields
-        allowed_fields = ['title', 'description', 'severity', 'alert_type']
+        alert = get_object_or_404(Alert, pk=pk)
+        prev_status = alert.status
+        prev_assigned_to = alert.assigned_to_id
+        
+        # Update alert fields
+        alert_allowed_fields = ['title', 'description', 'severity', 'alert_type', 'status']
         updated_fields = []
         
-        for field in allowed_fields:
+        for field in alert_allowed_fields:
             if field in request.data:
                 setattr(alert, field, request.data[field])
                 updated_fields.append(field)
         
-        if updated_fields:
+        # Handle status-specific timestamp updates
+        if 'status' in request.data:
+            if request.data['status'] == 'acknowledged' and prev_status != 'acknowledged':
+                alert.acknowledged_at = timezone.now()
+            elif request.data['status'] == 'resolved' and prev_status != 'resolved':
+                alert.resolved_at = timezone.now()
+                alert.resolution_notes = request.data.get('resolution_notes', '')
+        
+        # Handle inspector assignment
+        if 'assigned_to_id' in request.data:
+            new_assigned_username = request.data['assigned_to_id']
+            if new_assigned_username:
+                try:
+                    # Find user by username and verify they are an inspector
+                    from django.contrib.auth.models import User
+                    user = User.objects.get(username=new_assigned_username)
+                    inspector_profile = UserProfile.objects.get(
+                        user=user, 
+                        role=UserProfile.Role.INSPECTOR
+                    )
+                    alert.assigned_to = user
+                    updated_fields.append('assigned_to')
+                    
+                    # Remove all existing assignments for this alert first
+                    InspectorAssignment.objects.filter(alert=alert).delete()
+                    
+                    # Create new assignment for the new inspector
+                    InspectorAssignment.objects.create(
+                        inspector=inspector_profile,
+                        alert=alert,
+                        status=InspectorAssignment.Status.PENDING
+                    )
+                        
+                except (User.DoesNotExist, UserProfile.DoesNotExist):
+                    return Response({'error': 'Invalid inspector username.'}, status=400)
+            else:
+                alert.assigned_to = None
+                updated_fields.append('assigned_to')
+                # Remove all existing assignments when unassigned
+                InspectorAssignment.objects.filter(alert=alert).delete()
+        
+        # Update associated DetectedSite if site data is provided
+        site_updated = False
+        if any(field in request.data for field in ['latitude', 'longitude', 'confidence_score', 'area_hectares']):
+            site = alert.detected_site
+            
+            # Update location if provided
+            if 'latitude' in request.data and 'longitude' in request.data:
+                try:
+                    lat = float(request.data['latitude'])
+                    lng = float(request.data['longitude'])
+                    point = Point(lng, lat, srid=4326)
+                    site.centroid = point
+                    site_updated = True
+                except (ValueError, TypeError):
+                    return Response({'error': 'Invalid coordinates provided.'}, status=400)
+            
+            # Update other site fields
+            site_fields = ['confidence_score', 'area_hectares']
+            for field in site_fields:
+                if field in request.data:
+                    setattr(site, field, float(request.data[field]))
+                    site_updated = True
+            
+            if site_updated:
+                site.save()
+        
+        if updated_fields or site_updated:
             alert.save()
-            _audit(request.user, 'alert.update', alert.id, updated_fields=updated_fields)
+            _audit(request.user, 'alert.update', alert.id, 
+                   updated_fields=updated_fields, site_updated=site_updated)
             
             # Return updated alert data
             return Response({
@@ -773,6 +848,12 @@ class AlertViewSet(viewsets.ViewSet):
                 'status_display': alert.get_status_display(),
                 'created_at': alert.created_at.isoformat(),
                 'assigned_to': alert.assigned_to.get_full_name() or alert.assigned_to.username if alert.assigned_to else None,
+                'site': {
+                    'lat': alert.detected_site.centroid.y if alert.detected_site.centroid else None,
+                    'lng': alert.detected_site.centroid.x if alert.detected_site.centroid else None,
+                    'confidence_pct': round(alert.detected_site.confidence_score * 100, 1),
+                    'area_hectares': round(alert.detected_site.area_hectares, 2),
+                }
             })
         
         return Response({'error': 'No valid fields to update.'}, status=400)
@@ -798,6 +879,102 @@ class AlertViewSet(viewsets.ViewSet):
         _audit(request.user, 'alert.delete', alert.id, alert_info=alert_info)
         
         return Response({'message': 'Alert deleted successfully.'})
+
+    @action(detail=False, methods=['post'])
+    def create(self, request):
+        """Manually create an alert with associated detection site"""
+        if not _is_admin(request.user):
+            return Response({'error': 'Admin access required.'}, status=403)
+        
+        from apps.detections.models import Alert, DetectedSite, Region
+        from apps.accounts.models import InspectorAssignment, UserProfile
+        from django.contrib.gis.geos import Point, Polygon
+        from django.utils import timezone
+        import uuid
+        
+        try:
+            data = request.data
+            
+            # Validate required fields
+            required_fields = ['title', 'latitude', 'longitude', 'severity', 'alert_type']
+            for field in required_fields:
+                if field not in data or not data[field]:
+                    return Response({'error': f'{field} is required.'}, status=400)
+            
+            # Create geometry from lat/lng
+            try:
+                lat = float(data['latitude'])
+                lng = float(data['longitude'])
+                point = Point(lng, lat, srid=4326)
+                
+                # Create a small polygon around the point (100m x 100m)
+                buffer_distance = 0.001  # ~100m
+                coords = [
+                    (lng - buffer_distance, lat - buffer_distance),
+                    (lng + buffer_distance, lat - buffer_distance),
+                    (lng + buffer_distance, lat + buffer_distance),
+                    (lng - buffer_distance, lat + buffer_distance),
+                    (lng - buffer_distance, lat - buffer_distance)
+                ]
+                polygon = Polygon(coords, srid=4326)
+                
+            except (ValueError, TypeError):
+                return Response({'error': 'Invalid coordinates provided.'}, status=400)
+            
+            # Create DetectedSite first
+            detected_site = DetectedSite.objects.create(
+                geometry=polygon,
+                centroid=point,
+                confidence_score=float(data.get('confidence_score', 0.8)),
+                area_hectares=float(data.get('area_hectares', 0.01)),
+                detection_date=timezone.now().date(),
+                status='reviewed',  # Manually created sites are pre-reviewed
+                legal_status=data.get('legal_status', 'unknown'),
+                region_id=data.get('region_id'),
+                recurrence_count=0
+            )
+            
+            # Create Alert
+            alert = Alert.objects.create(
+                detected_site=detected_site,
+                alert_type=data['alert_type'],
+                severity=data['severity'],
+                status=data.get('status', 'open'),
+                title=data['title'],
+                description=data.get('description', ''),
+                assigned_to_id=data.get('assigned_to_id') if data.get('assigned_to_id') else None
+            )
+            
+            # Create InspectorAssignment if inspector is assigned
+            if data.get('assigned_to_id') and alert.status == 'dispatched':
+                try:
+                    inspector_profile = UserProfile.objects.get(
+                        user_id=data['assigned_to_id'], 
+                        role=UserProfile.Role.INSPECTOR
+                    )
+                    InspectorAssignment.objects.create(
+                        inspector=inspector_profile,
+                        alert=alert,
+                        status=InspectorAssignment.Status.PENDING
+                    )
+                except UserProfile.DoesNotExist:
+                    # If inspector not found, don't fail the whole operation
+                    pass
+            
+            _audit(request.user, 'alert.create', alert.id, 
+                   title=alert.title, severity=alert.severity)
+            
+            return Response({
+                'id': str(alert.id),
+                'title': alert.title,
+                'severity': alert.severity,
+                'status': alert.status,
+                'alert_type': alert.alert_type,
+                'message': 'Alert created successfully.'
+            })
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
 
     @action(detail=False, methods=['post'])
     def bulk_action(self, request):
