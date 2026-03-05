@@ -1395,7 +1395,7 @@ def submit_field_report(request, assignment_id):
         except Exception:
             pass
 
-        cache.delete_many([f'dashboard_stats_{w}' for w in range(2, 53)])
+        cache.delete_many([f'dashboard_stats_{w}_{td}' for w in range(2, 53) for td in (7, 30, 90, 365)])
         return JsonResponse({
             'success': True,
             'outcome': outcome,
