@@ -6,14 +6,15 @@
 {% block content %}
 <!-- New-alerts banner (shown by polling JS) -->
 <div id="new-alerts-banner"
-     class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-amber-50 border border-amber-300 rounded-xl px-5 py-3 shadow-lg flex items-center gap-3 text-sm text-amber-900">
+     class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 text-sm px-5 py-3 rounded-lg"
+     style="background: var(--surface-2); border: 1px solid var(--status-moderate-border); color: var(--status-moderate);">
     <span id="new-alerts-text"></span>
     <button onclick="document.getElementById('new-alerts-banner').classList.add('hidden'); window._alertsPage.refreshAlerts();"
-            class="px-3 py-1 bg-amber-500 text-white rounded-lg text-xs font-semibold hover:bg-amber-600 transition-colors">
+            class="btn-primary px-3 py-1 text-xs font-semibold">
         Refresh
     </button>
     <button onclick="document.getElementById('new-alerts-banner').classList.add('hidden');"
-            class="text-amber-600 hover:text-amber-900 text-xs ml-1">✕</button>
+            class="text-xs ml-1" style="color: var(--text-tertiary);">✕</button>
 </div>
 
 <div class="p-6 space-y-5">
@@ -21,19 +22,18 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Alerts</h1>
-            <p class="text-gray-500 text-sm mt-0.5">Detection alerts requiring inspector attention</p>
+            <h1 class="text-2xl font-bold" style="color: var(--text-primary);">Alerts</h1>
+            <p class="text-sm mt-0.5" style="color: var(--text-secondary);">Detection alerts requiring inspector attention</p>
         </div>
         <div class="flex items-center gap-3">
             <button id="add-alert-btn"
-                    class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                    class="btn-primary inline-flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
                 Add Alert
             </button>
-            <button id="export-csv-btn"
-                    class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
+            <button id="export-csv-btn" class="btn-secondary inline-flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
@@ -46,57 +46,61 @@
     <!-- Summary strip -->
     <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
 
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3">
-            <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">Total</p>
-            <p class="text-2xl font-bold text-gray-900 mt-0.5">{{ summary.total }}</p>
+        <div class="gw-card px-4 py-3">
+            <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--text-tertiary);">Total</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--text-primary);">{{ summary.total }}</p>
         </div>
 
-        <div class="bg-red-50 rounded-xl border border-red-100 shadow-sm px-4 py-3 cursor-pointer hover:border-red-300 transition-colors"
+        <div class="gw-card px-4 py-3 cursor-pointer border-l-[3px]"
+             style="border-left-color: var(--status-critical);"
              onclick="document.getElementById('filter-status').value='open'; document.getElementById('apply-filters').click();">
-            <p class="text-xs font-medium text-red-400 uppercase tracking-wide">Open</p>
-            <p class="text-2xl font-bold text-red-600 mt-0.5">{{ summary.open }}</p>
-            {% if summary.critical %}<p class="text-xs text-red-400 mt-0.5">{{ summary.critical }} critical</p>{% endif %}
+            <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--status-critical);">Open</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-critical);">{{ summary.open }}</p>
+            {% if summary.critical %}<p class="text-xs mt-0.5" style="color: var(--text-tertiary);">{{ summary.critical }} critical</p>{% endif %}
         </div>
 
-        <div class="bg-amber-50 rounded-xl border border-amber-100 shadow-sm px-4 py-3 cursor-pointer hover:border-amber-300 transition-colors"
+        <div class="gw-card px-4 py-3 cursor-pointer border-l-[3px]"
+             style="border-left-color: var(--status-moderate);"
              onclick="document.getElementById('filter-status').value='acknowledged'; document.getElementById('apply-filters').click();">
-            <p class="text-xs font-medium text-amber-500 uppercase tracking-wide">Acknowledged</p>
-            <p class="text-2xl font-bold text-amber-600 mt-0.5">{{ summary.acknowledged }}</p>
+            <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--status-moderate);">Acknowledged</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-moderate);">{{ summary.acknowledged }}</p>
         </div>
 
-        <div class="bg-purple-50 rounded-xl border border-purple-100 shadow-sm px-4 py-3 cursor-pointer hover:border-purple-300 transition-colors"
+        <div class="gw-card px-4 py-3 cursor-pointer border-l-[3px]"
+             style="border-left-color: var(--status-dispatched);"
              onclick="document.getElementById('filter-status').value='dispatched'; document.getElementById('apply-filters').click();">
-            <p class="text-xs font-medium text-purple-400 uppercase tracking-wide">Dispatched</p>
-            <p class="text-2xl font-bold text-purple-600 mt-0.5">{{ summary.dispatched }}</p>
+            <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--status-dispatched);">Dispatched</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-dispatched);">{{ summary.dispatched }}</p>
         </div>
 
-        <div class="bg-green-50 rounded-xl border border-green-100 shadow-sm px-4 py-3 cursor-pointer hover:border-green-300 transition-colors"
+        <div class="gw-card px-4 py-3 cursor-pointer border-l-[3px]"
+             style="border-left-color: var(--status-resolved);"
              onclick="document.getElementById('filter-status').value='resolved'; document.getElementById('apply-filters').click();">
-            <p class="text-xs font-medium text-green-500 uppercase tracking-wide">Resolved</p>
-            <p class="text-2xl font-bold text-green-600 mt-0.5">{{ summary.resolved }}</p>
+            <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--status-resolved);">Resolved</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-resolved);">{{ summary.resolved }}</p>
         </div>
 
-        <div class="bg-gray-50 rounded-xl border border-gray-200 shadow-sm px-4 py-3 cursor-pointer hover:border-gray-300 transition-colors"
+        <div class="gw-card px-4 py-3 cursor-pointer"
              onclick="document.getElementById('filter-status').value='dismissed'; document.getElementById('apply-filters').click();">
-            <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">Dismissed</p>
-            <p class="text-2xl font-bold text-gray-500 mt-0.5">{{ summary.dismissed }}</p>
+            <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--text-tertiary);">Dismissed</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--text-secondary);">{{ summary.dismissed }}</p>
         </div>
 
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 cursor-pointer hover:border-amber-300 transition-colors"
+        <div class="gw-card px-4 py-3 cursor-pointer"
              onclick="document.getElementById('filter-severity').value='high'; document.getElementById('apply-filters').click();">
-            <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">High+</p>
-            <p class="text-2xl font-bold text-orange-500 mt-0.5">{{ summary.critical|add:summary.high }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">need action</p>
+            <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--text-tertiary);">High+</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-high);">{{ summary.critical|add:summary.high }}</p>
+            <p class="text-xs mt-0.5" style="color: var(--text-tertiary);">need action</p>
         </div>
 
     </div>
 
     <!-- Filters -->
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="gw-card p-5">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Status</label>
-                <select id="filter-status" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <label class="gw-label">Status</label>
+                <select id="filter-status" class="gw-select w-full">
                     <option value="">All</option>
                     <option value="open">Open</option>
                     <option value="acknowledged">Acknowledged</option>
@@ -106,8 +110,8 @@
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Severity</label>
-                <select id="filter-severity" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <label class="gw-label">Severity</label>
+                <select id="filter-severity" class="gw-select w-full">
                     <option value="">All</option>
                     <option value="critical">Critical</option>
                     <option value="high">High</option>
@@ -116,8 +120,8 @@
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Type</label>
-                <select id="filter-type" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <label class="gw-label">Type</label>
+                <select id="filter-type" class="gw-select w-full">
                     <option value="">All</option>
                     <option value="new_detection">New Detection</option>
                     <option value="expansion_detected">Site Expansion</option>
@@ -125,11 +129,19 @@
                     <option value="high_confidence">High Confidence</option>
                 </select>
             </div>
+            <div>
+                <label class="gw-label">Source</label>
+                <select id="filter-source" class="gw-select w-full">
+                    <option value="">All</option>
+                    <option value="manual">Manual</option>
+                    <option value="automated">Automated</option>
+                </select>
+            </div>
             <div class="flex items-end gap-2">
-                <button id="apply-filters" class="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                <button id="apply-filters" class="btn-primary flex-1">
                     Apply
                 </button>
-                <button id="reset-filters" class="px-4 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-colors">
+                <button id="reset-filters" class="btn-secondary px-4 py-2">
                     Reset
                 </button>
             </div>
@@ -137,56 +149,57 @@
     </div>
 
     <!-- Inspector Assignment Modal -->
-    <div id="inspector-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 z-50 hidden">
+    <div id="inspector-modal" class="fixed inset-0 z-50 hidden" style="background: rgba(0,0,0,0.6);">
         <div class="flex items-center justify-center min-h-screen px-4">
-            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
-                <div class="flex items-center justify-between p-6 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-900">Assign Inspector</h3>
-                    <button onclick="closeInspectorModal()" class="text-gray-400 hover:text-gray-600">
+            <div class="rounded-lg w-full max-w-2xl mx-4 overflow-hidden"
+                 style="background: var(--surface-1); border: 1px solid var(--border-default);">
+                <div class="flex items-center justify-between p-6" style="border-bottom: 1px solid var(--border-default);">
+                    <h3 class="text-lg font-semibold" style="color: var(--text-primary);">Assign Inspector</h3>
+                    <button onclick="closeInspectorModal()" style="color: var(--text-tertiary);">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
-                
+
                 <div class="p-6">
                     <!-- Inspector Search -->
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Search Inspectors</label>
+                        <label class="gw-label">Search Inspectors</label>
                         <div class="relative">
-                            <input type="text" id="inspector-search" 
+                            <input type="text" id="inspector-search"
                                    placeholder="Search by name or organization..."
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                   class="gw-input w-full">
                             <div class="absolute inset-y-0 right-0 flex items-center pr-3">
-                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                     style="color: var(--text-tertiary);">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0m-6 18l-6-6m6 6v6"></path>
                                 </svg>
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Inspector List -->
-                    <div id="inspector-list" class="max-h-60 overflow-y-auto border border border-gray-200 rounded-lg">
-                        <div class="p-2 text-sm text-gray-500">Loading inspectors...</div>
+                    <div id="inspector-list" class="max-h-60 overflow-y-auto rounded-lg mb-4"
+                         style="border: 1px solid var(--border-default);">
+                        <div class="p-2 text-sm" style="color: var(--text-secondary);">Loading inspectors...</div>
                     </div>
-                    
+
                     <!-- Assignment Notes -->
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Assignment Notes (Optional)</label>
-                        <textarea id="assignment-notes" rows="3" 
+                        <label class="gw-label">Assignment Notes (Optional)</label>
+                        <textarea id="assignment-notes" rows="3"
                                   placeholder="Add any notes for the inspector..."
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                                  class="gw-input w-full"></textarea>
                     </div>
                 </div>
-                
+
                 <!-- Action Buttons -->
                 <div class="flex justify-end gap-3 px-6 pb-6">
-                    <button onclick="closeInspectorModal()" 
-                            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                    <button onclick="closeInspectorModal()" class="btn-secondary">
                         Cancel
                     </button>
-                    <button onclick="assignInspector()" 
-                            class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                    <button onclick="assignInspector()" class="btn-primary">
                         Assign to Selected Inspector
                     </button>
                 </div>
@@ -195,88 +208,100 @@
     </div>
 
     <!-- Table card -->
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h2 class="text-sm font-semibold text-gray-900">Detection Alerts</h2>
-            <span id="result-count" class="text-xs text-gray-500">Loading…</span>
+    <div class="gw-card overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4" style="border-bottom: 1px solid var(--border-subtle);">
+            <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Detection Alerts</h2>
+            <span id="result-count" class="text-xs" style="color: var(--text-secondary);">Loading…</span>
         </div>
 
         <!-- Loading -->
         <div id="table-loading" class="py-16 text-center">
-            <div class="inline-block w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
-            <p class="text-sm text-gray-500">Loading alerts…</p>
+            <div class="inline-block w-6 h-6 border-2 border-t-transparent rounded-full animate-spin mb-3"
+                 style="border-color: var(--status-info); border-top-color: transparent;"></div>
+            <p class="text-sm" style="color: var(--text-secondary);">Loading alerts…</p>
         </div>
 
         <!-- Empty -->
         <div id="table-empty" class="py-16 text-center hidden">
-            <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                 style="color: var(--text-tertiary);">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                       d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
             </svg>
-            <p class="text-sm text-gray-500">No alerts match your filters.</p>
+            <p class="text-sm" style="color: var(--text-secondary);">No alerts match your filters.</p>
         </div>
 
         <!-- Table -->
         <div id="table-wrapper" class="hidden overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-100">
-                <thead class="bg-gray-50">
+            <table class="gw-table min-w-full">
+                <thead>
                     <tr>
                         <th class="px-3 py-3 w-8">
-                            <input type="checkbox" id="select-all-cb" class="rounded border-gray-300 text-blue-600 cursor-pointer">
+                            <input type="checkbox" id="select-all-cb"
+                                   class="rounded cursor-pointer"
+                                   style="border-color: var(--border-default); accent-color: var(--status-info);">
                         </th>
-                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none group" data-sort="severity">
-                            Severity <span class="sort-icon text-gray-300 group-hover:text-gray-500 ml-0.5">↕</span>
+                        <th class="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">ID</th>
+                        <th class="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Title</th>
+                        <th class="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider cursor-pointer select-none group" data-sort="severity" style="color: var(--text-secondary);">
+                            Severity <span class="sort-icon ml-0.5" style="color: var(--text-tertiary);">↕</span>
                         </th>
-                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none group" data-sort="-detected_site__confidence_score">
-                            Confidence <span class="sort-icon text-gray-300 group-hover:text-gray-500 ml-0.5">↕</span>
+                        <th class="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Type</th>
+                        <th class="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Location</th>
+                        <th class="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider cursor-pointer select-none group" data-sort="-detected_site__confidence_score" style="color: var(--text-secondary);">
+                            Confidence <span class="sort-icon ml-0.5" style="color: var(--text-tertiary);">↕</span>
                         </th>
-                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none group" data-sort="-created_at">
-                            Created <span class="sort-icon text-gray-300 group-hover:text-gray-500 ml-0.5">↓</span>
+                        <th class="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Status</th>
+                        <th class="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Source</th>
+                        <th class="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider cursor-pointer select-none group" data-sort="-created_at" style="color: var(--text-secondary);">
+                            Created <span class="sort-icon ml-0.5" style="color: var(--text-tertiary);">↓</span>
                         </th>
-                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        <th class="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Actions</th>
                     </tr>
                 </thead>
-                <tbody id="alerts-tbody" class="bg-white divide-y divide-gray-100"></tbody>
+                <tbody id="alerts-tbody"></tbody>
             </table>
         </div>
 
         <!-- Pagination -->
-        <div id="pagination" class="hidden px-5 py-4 border-t border-gray-100 flex items-center justify-between">
-            <span id="pagination-info" class="text-xs text-gray-500"></span>
+        <div id="pagination" class="hidden px-5 py-4 flex items-center justify-between" style="border-top: 1px solid var(--border-subtle);">
+            <span id="pagination-info" class="text-xs" style="color: var(--text-secondary);"></span>
             <div class="flex gap-1" id="pagination-buttons"></div>
         </div>
     </div>
 </div>
 
 <!-- ── Bulk Action Bar ── -->
-<div id="bulk-bar" class="hidden fixed bottom-16 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-2xl border border-gray-700">
-    <span id="bulk-count" class="text-sm font-semibold mr-2 text-gray-200"></span>
-    <button id="bulk-acknowledge" class="hidden px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg transition-colors">Acknowledge</button>
-    <button id="bulk-dispatch"    class="hidden px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-lg transition-colors">Dispatch</button>
-    <button id="bulk-dismiss"     class="hidden px-3 py-1.5 bg-gray-600 hover:bg-gray-500 text-white text-xs font-semibold rounded-lg transition-colors">Dismiss</button>
+<div id="bulk-bar" class="hidden fixed bottom-16 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-5 py-3 rounded-lg"
+     style="background: var(--surface-3); border: 1px solid var(--border-strong); color: var(--text-primary);">
+    <span id="bulk-count" class="text-sm font-semibold mr-2" style="color: var(--text-secondary);"></span>
+    <button id="bulk-acknowledge" class="hidden px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+            style="background: var(--status-info); color: #fff;">Acknowledge</button>
+    <button id="bulk-dispatch"    class="hidden px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+            style="background: var(--status-dispatched); color: #fff;">Dispatch</button>
+    <button id="bulk-dismiss"     class="hidden px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+            style="background: var(--surface-4); color: var(--text-secondary);">Dismiss</button>
     <!-- Bulk assign inspector -->
     <select id="bulk-inspector-select"
-            class="hidden px-2 py-1.5 bg-gray-800 border border-gray-600 text-white text-xs rounded-lg focus:outline-none">
+            class="hidden gw-select text-xs">
         <option value="">Assign inspector…</option>
     </select>
     <button id="bulk-assign-inspector-btn"
-            class="hidden px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-semibold rounded-lg transition-colors">
+            class="hidden px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+            style="background: var(--status-resolved); color: #fff;">
         Assign
     </button>
-    <button id="bulk-cancel" class="ml-2 text-gray-400 hover:text-white text-sm transition-colors" title="Clear selection">✕</button>
+    <button id="bulk-cancel" class="ml-2 text-sm transition-colors" style="color: var(--text-tertiary);" title="Clear selection">✕</button>
 </div>
 
 <!-- ── Alert Detail Modal ── -->
-<div id="alert-modal" class="fixed inset-0 bg-black bg-opacity-40 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
-            <h3 class="text-base font-semibold text-gray-900">Alert Detail</h3>
-            <button id="modal-close" class="text-gray-400 hover:text-gray-600">
+<div id="alert-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4"
+     style="background: rgba(0,0,0,0.6);">
+    <div class="rounded-lg w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col"
+         style="background: var(--surface-1); border: 1px solid var(--border-default);">
+        <div class="flex items-center justify-between px-6 py-4 shrink-0" style="border-bottom: 1px solid var(--border-subtle);">
+            <h3 class="text-base font-semibold" style="color: var(--text-primary);">Alert Detail</h3>
+            <button id="modal-close" style="color: var(--text-tertiary);">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -289,114 +314,160 @@
                     <span id="modal-status-badge"   class="px-2.5 py-1 rounded-full text-xs font-semibold"></span>
                 </div>
                 <div>
-                    <p class="text-xs text-gray-500 mb-0.5">Title</p>
-                    <p id="modal-title" class="text-sm font-semibold text-gray-900"></p>
+                    <p class="text-xs mb-0.5" style="color: var(--text-secondary);">Title</p>
+                    <p id="modal-title" class="text-sm font-semibold" style="color: var(--text-primary);"></p>
                 </div>
                 <div>
-                    <p class="text-xs text-gray-500 mb-0.5">Description</p>
-                    <p id="modal-description" class="text-sm text-gray-700 whitespace-pre-line"></p>
+                    <p class="text-xs mb-0.5" style="color: var(--text-secondary);">Description</p>
+                    <p id="modal-description" class="text-sm whitespace-pre-line" style="color: var(--text-primary);"></p>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <p class="text-xs text-gray-500 mb-0.5">Type</p>
-                        <p id="modal-type" class="text-sm text-gray-900"></p>
+                        <p class="text-xs mb-0.5" style="color: var(--text-secondary);">Type</p>
+                        <p id="modal-type" class="text-sm" style="color: var(--text-primary);"></p>
                     </div>
                     <div>
-                        <p class="text-xs text-gray-500 mb-0.5">Detected</p>
-                        <p id="modal-date" class="text-sm text-gray-900"></p>
+                        <p class="text-xs mb-0.5" style="color: var(--text-secondary);">Detected</p>
+                        <p id="modal-date" class="text-sm" style="color: var(--text-primary);"></p>
                     </div>
                     <div>
-                        <p class="text-xs text-gray-500 mb-0.5">Confidence</p>
-                        <p id="modal-confidence" class="text-sm text-gray-900"></p>
+                        <p class="text-xs mb-0.5" style="color: var(--text-secondary);">Confidence</p>
+                        <p id="modal-confidence" class="text-sm" style="color: var(--text-primary);"></p>
                     </div>
                     <div>
-                        <p class="text-xs text-gray-500 mb-0.5">Area</p>
-                        <p id="modal-area" class="text-sm text-gray-900"></p>
+                        <p class="text-xs mb-0.5" style="color: var(--text-secondary);">Area</p>
+                        <p id="modal-area" class="text-sm" style="color: var(--text-primary);"></p>
                     </div>
                     <div>
-                        <p class="text-xs text-gray-500 mb-0.5">Location</p>
-                        <p id="modal-location" class="text-sm text-gray-900"></p>
+                        <p class="text-xs mb-0.5" style="color: var(--text-secondary);">Location</p>
+                        <p id="modal-location" class="text-sm" style="color: var(--text-primary);"></p>
                     </div>
                     <div>
-                        <p class="text-xs text-gray-500 mb-0.5">Recurrences</p>
-                        <p id="modal-recurrence" class="text-sm text-gray-900"></p>
+                        <p class="text-xs mb-0.5" style="color: var(--text-secondary);">Recurrences</p>
+                        <p id="modal-recurrence" class="text-sm" style="color: var(--text-primary);"></p>
                     </div>
                 </div>
                 <!-- Field Verification Result (shown when alert is resolved via inspector report) -->
-                <div id="modal-field-verification" class="hidden border border-gray-200 rounded-lg overflow-hidden">
-                    <div class="bg-gray-50 px-4 py-2 border-b border-gray-200 flex items-center gap-2">
-                        <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div id="modal-field-verification" class="hidden rounded-lg overflow-hidden"
+                     style="border: 1px solid var(--border-default);">
+                    <div class="px-4 py-2 flex items-center gap-2" style="background: var(--surface-3); border-bottom: 1px solid var(--border-default);">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                             style="color: var(--text-secondary);">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
-                        <p class="text-xs font-semibold text-gray-700 uppercase tracking-wide">Field Verification Result</p>
+                        <p class="text-xs font-semibold uppercase tracking-wide" style="color: var(--text-secondary);">Field Verification Result</p>
                     </div>
                     <div class="px-4 py-4 space-y-3">
                         <div class="flex items-center gap-2">
-                            <span class="text-xs text-gray-500 shrink-0">Outcome:</span>
+                            <span class="text-xs shrink-0" style="color: var(--text-secondary);">Outcome:</span>
                             <span id="modal-fv-outcome" class="px-2.5 py-0.5 rounded-full text-xs font-bold"></span>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <p class="text-xs text-gray-500 mb-0.5">Inspector</p>
-                                <p id="modal-fv-inspector" class="text-sm font-medium text-gray-900"></p>
+                                <p class="text-xs mb-0.5" style="color: var(--text-secondary);">Inspector</p>
+                                <p id="modal-fv-inspector" class="text-sm font-medium" style="color: var(--text-primary);"></p>
                             </div>
                             <div>
-                                <p class="text-xs text-gray-500 mb-0.5">Visit Date</p>
-                                <p id="modal-fv-date" class="text-sm text-gray-900"></p>
+                                <p class="text-xs mb-0.5" style="color: var(--text-secondary);">Visit Date</p>
+                                <p id="modal-fv-date" class="text-sm" style="color: var(--text-primary);"></p>
                             </div>
                         </div>
                         <div id="modal-fv-notes-block" class="hidden">
-                            <p class="text-xs text-gray-500 mb-1">Inspector Notes</p>
-                            <p id="modal-fv-notes" class="text-sm text-gray-700 italic bg-gray-50 border border-gray-100 rounded p-2.5"></p>
+                            <p class="text-xs mb-1" style="color: var(--text-secondary);">Inspector Notes</p>
+                            <p id="modal-fv-notes" class="text-sm italic rounded p-2.5"
+                               style="color: var(--text-primary); background: var(--surface-3); border: 1px solid var(--border-subtle);"></p>
                         </div>
                         <div id="modal-fv-photos-block" class="hidden">
-                            <p class="text-xs text-gray-500 mb-2">Evidence Photos</p>
+                            <p class="text-xs mb-2" style="color: var(--text-secondary);">Evidence Photos</p>
                             <div id="modal-fv-photos" class="grid grid-cols-3 gap-2"></div>
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- ML Analysis Images -->
+            <div id="alert-ml-panels" class="hidden px-6 py-5" style="border-top: 1px solid var(--border-subtle);">
+                <h4 class="text-sm font-semibold mb-3" style="color: var(--text-primary);">ML Analysis</h4>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">False Colour</p>
+                        <a id="alert-img-false-color-link" href="#" target="_blank">
+                            <img id="alert-img-false-color" src="" alt="False Colour"
+                                 class="w-full rounded" style="height:100px;object-fit:cover;background:var(--surface-3);"/>
+                        </a>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Prediction Mask</p>
+                        <a id="alert-img-prediction-mask-link" href="#" target="_blank">
+                            <img id="alert-img-prediction-mask" src="" alt="Prediction Mask"
+                                 class="w-full rounded" style="height:100px;object-fit:cover;background:var(--surface-3);"/>
+                        </a>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Probability Heatmap</p>
+                        <a id="alert-img-probability-heatmap-link" href="#" target="_blank">
+                            <img id="alert-img-probability-heatmap" src="" alt="Probability Heatmap"
+                                 class="w-full rounded" style="height:100px;object-fit:cover;background:var(--surface-3);"/>
+                        </a>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Overlay</p>
+                        <a id="alert-img-overlay-link" href="#" target="_blank">
+                            <img id="alert-img-overlay" src="" alt="Overlay"
+                                 class="w-full rounded" style="height:100px;object-fit:cover;background:var(--surface-3);"/>
+                        </a>
+                    </div>
+                </div>
+                <p class="text-xs mt-2" style="color: var(--text-tertiary);">Click any image to open full-size.</p>
+            </div>
+
             <!-- Timelapse Section -->
-            <div class="border-t border-gray-100 px-6 py-5">
-                <h4 class="text-sm font-semibold text-gray-900 mb-3">Site Timelapse</h4>
+            <div class="px-6 py-5" style="border-top: 1px solid var(--border-subtle);">
+                <h4 class="text-sm font-semibold mb-3" style="color: var(--text-primary);">Site Timelapse</h4>
 
                 <!-- Loading -->
                 <div id="modal-tl-loading" class="py-6 text-center">
-                    <div class="inline-block w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
-                    <p class="text-xs text-gray-400">Loading imagery…</p>
+                    <div class="inline-block w-5 h-5 border-2 border-t-transparent rounded-full animate-spin mb-2"
+                         style="border-color: var(--status-info); border-top-color: transparent;"></div>
+                    <p class="text-xs" style="color: var(--text-tertiary);">Loading imagery…</p>
                 </div>
 
                 <!-- Empty -->
                 <div id="modal-tl-empty" class="hidden py-6 text-center">
-                    <svg class="w-8 h-8 text-gray-200 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                         style="color: var(--text-tertiary);">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                     </svg>
-                    <p class="text-xs text-gray-400">No satellite imagery available yet.</p>
-                    <p class="text-xs text-gray-300 mt-0.5">Imagery is fetched asynchronously after detection.</p>
+                    <p class="text-xs" style="color: var(--text-tertiary);">No satellite imagery available yet.</p>
+                    <p class="text-xs mt-0.5" style="color: var(--text-tertiary);">Imagery is fetched asynchronously after detection.</p>
                 </div>
 
                 <!-- Viewer -->
                 <div id="modal-tl-viewer" class="hidden">
-                    <div class="relative bg-gray-900 rounded-lg overflow-hidden" style="height:220px;">
+                    <div class="relative rounded-lg overflow-hidden" style="height:220px; background: var(--surface-base);">
                         <img id="modal-tl-img" src="" alt="Satellite imagery" class="w-full h-full object-cover"/>
-                        <div id="modal-tl-img-fallback" class="hidden absolute inset-0 flex items-center justify-center text-gray-500 text-xs bg-gray-800">No image</div>
-                        <div class="absolute top-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-0.5 rounded font-semibold" id="modal-tl-year"></div>
+                        <div id="modal-tl-img-fallback" class="hidden absolute inset-0 flex items-center justify-center text-xs"
+                             style="background: var(--surface-3); color: var(--text-tertiary);">No image</div>
+                        <div class="absolute top-2 left-2 text-xs px-2 py-0.5 rounded font-semibold"
+                             style="background: rgba(0,0,0,0.6); color: var(--text-primary);" id="modal-tl-year"></div>
                         <div class="absolute top-2 right-2 flex gap-2">
-                            <span class="bg-black bg-opacity-60 text-green-400 text-xs px-2 py-0.5 rounded">NDVI <span id="modal-tl-ndvi">—</span></span>
-                            <span class="bg-black bg-opacity-60 text-orange-400 text-xs px-2 py-0.5 rounded">BSI <span id="modal-tl-bsi">—</span></span>
+                            <span class="text-xs px-2 py-0.5 rounded"
+                                  style="background: rgba(0,0,0,0.6); color: var(--viz-forest);">NDVI <span id="modal-tl-ndvi">—</span></span>
+                            <span class="text-xs px-2 py-0.5 rounded"
+                                  style="background: rgba(0,0,0,0.6); color: var(--status-high);">BSI <span id="modal-tl-bsi">—</span></span>
                         </div>
                     </div>
                     <div class="mt-3">
                         <input id="modal-tl-slider" type="range" min="0" max="0" value="0"
                                class="w-full accent-blue-600" oninput="window._alertsPage.onSliderChange(this.value)"/>
-                        <div id="modal-tl-ticks" class="flex justify-between text-xs text-gray-400 mt-1 px-0.5"></div>
+                        <div id="modal-tl-ticks" class="flex justify-between text-xs mt-1 px-0.5"
+                             style="color: var(--text-tertiary);"></div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 shrink-0" id="modal-actions"></div>
+        <div class="px-6 py-4 flex justify-end gap-3 shrink-0" style="border-top: 1px solid var(--border-subtle);" id="modal-actions"></div>
     </div>
 </div>
 
@@ -544,7 +615,6 @@
 var selectedInspector = null;
 var currentAlertId = null;
 
-// Inspector Modal Functions - Immediately Available
 var openInspectorModal = function(alertId) {
     currentAlertId = alertId;
     var modal = document.getElementById('inspector-modal');
@@ -575,24 +645,26 @@ var loadInspectors = function() {
             var inspectorList = document.getElementById('inspector-list');
             if (inspectorList) {
                 inspectorList.innerHTML = '';
-                
+
                 // Handle case where no inspectors are available
                 if (!data || data.length === 0) {
-                    inspectorList.innerHTML = '<div class="p-4 text-center text-gray-500">No inspectors available</div>';
+                    inspectorList.innerHTML = '<div class="p-4 text-center" style="color: var(--text-secondary);">No inspectors available</div>';
                     return;
                 }
-                
+
                 data.forEach(inspector => {
                     var item = document.createElement('div');
-                    item.className = 'p-3 hover:bg-gray-50 cursor-pointer border border-gray-200 rounded-lg mb-2';
+                    item.className = 'p-3 cursor-pointer';
+                    item.style.cssText = 'border-bottom: 1px solid var(--border-subtle);';
                     item.innerHTML = `
                         <div class="flex items-center justify-between">
                             <div>
-                                <div class="font-medium text-gray-900">${inspector.user}</div>
-                                <div class="text-sm text-gray-500">${inspector.organization}</div>
-                                <div class="text-xs text-green-600">${inspector.is_available ? 'Available' : 'Busy'}</div>
+                                <div class="font-medium" style="color: var(--text-primary);">${inspector.user}</div>
+                                <div class="text-sm" style="color: var(--text-secondary);">${inspector.organization}</div>
+                                <div class="text-xs" style="color: ${inspector.is_available ? 'var(--status-resolved)' : 'var(--status-critical)'};">${inspector.is_available ? 'Available' : 'Busy'}</div>
                             </div>
-                            <input type="radio" name="inspector" value="${inspector.user}" class="inspector-radio">
+                            <input type="radio" name="inspector" value="${inspector.user}" class="inspector-radio"
+                                   style="accent-color: var(--status-dispatched);">
                         </div>
                     `;
                     item.onclick = function() { selectInspector(inspector); };
@@ -604,7 +676,7 @@ var loadInspectors = function() {
             console.error('Error loading inspectors:', error);
             var inspectorList = document.getElementById('inspector-list');
             if (inspectorList) {
-                inspectorList.innerHTML = '<div class="p-4 text-center text-red-500">Error loading inspectors. Please try again.</div>';
+                inspectorList.innerHTML = '<div class="p-4 text-center" style="color: var(--status-critical);">Error loading inspectors. Please try again.</div>';
             }
         });
 };
@@ -622,7 +694,7 @@ var assignInspector = function() {
         alert('Please select an inspector first.');
         return;
     }
-    
+
     fetch('/accounts/api/assignments/', {
         method: 'POST',
         headers: {
@@ -668,11 +740,58 @@ window.selectInspector = selectInspector;
 window.assignInspector = assignInspector;
 </script>
 
+<!-- ── Confirm Modal ── -->
+<div id="confirm-modal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center p-4"
+     style="background: rgba(0,0,0,0.6);">
+    <div class="rounded-lg w-full max-w-xs overflow-hidden"
+         style="background: var(--surface-2); border: 1px solid var(--border-default);">
+        <div class="px-5 py-5">
+            <h3 id="confirm-modal-title" class="text-sm font-semibold mb-2" style="color: var(--text-primary);"></h3>
+            <p id="confirm-modal-message" class="text-sm" style="color: var(--text-secondary);"></p>
+        </div>
+        <div class="px-5 py-3 flex justify-end gap-2" style="border-top: 1px solid var(--border-subtle);">
+            <button id="confirm-modal-cancel" class="btn-secondary text-sm px-4 py-2">Cancel</button>
+            <button id="confirm-modal-ok" class="btn-primary text-sm px-4 py-2">Confirm</button>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 
 {% block extra_js %}
 <script>
+// ── Confirm modal helper ──────────────────────────────────────────────────────
+function showToast(message, type) {
+    const bg = type === 'error' ? 'var(--status-critical)' : type === 'success' ? 'var(--status-resolved)' : 'var(--accent)';
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;top:16px;right:16px;padding:10px 18px;border-radius:8px;z-index:9999;color:#fff;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.4);background:' + bg + ';transition:opacity 0.3s;';
+    el.textContent = message;
+    document.body.appendChild(el);
+    setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 3200);
+}
+
+function showConfirm(title, message) {
+    return new Promise(function (resolve) {
+        document.getElementById('confirm-modal-title').textContent = title;
+        document.getElementById('confirm-modal-message').textContent = message;
+        var modal = document.getElementById('confirm-modal');
+        modal.classList.remove('hidden');
+        var okBtn = document.getElementById('confirm-modal-ok');
+        var cancelBtn = document.getElementById('confirm-modal-cancel');
+        function done(result) {
+            modal.classList.add('hidden');
+            okBtn.removeEventListener('click', onOk);
+            cancelBtn.removeEventListener('click', onCancel);
+            resolve(result);
+        }
+        var onOk = function () { done(true); };
+        var onCancel = function () { done(false); };
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+    });
+}
+
 (function () {
     let currentPage   = 1;
     let activeFilters = {};
@@ -684,17 +803,17 @@ window.assignInspector = assignInspector;
 
     // ── Severity / status styling ──
     const SEVERITY_CLASS = {
-        critical: 'bg-red-100 text-red-800',
-        high:     'bg-orange-100 text-orange-700',
-        medium:   'bg-yellow-100 text-yellow-700',
-        low:      'bg-gray-100 text-gray-600',
+        critical: 'gw-badge--critical',
+        high:     'gw-badge--high',
+        medium:   'gw-badge--moderate',
+        low:      'gw-badge--info',
     };
     const STATUS_CLASS = {
-        open:         'bg-red-100 text-red-700',
-        acknowledged: 'bg-blue-100 text-blue-700',
-        dispatched:   'bg-purple-100 text-purple-700',
-        resolved:     'bg-green-100 text-green-700',
-        dismissed:    'bg-gray-100 text-gray-500',
+        open:         'gw-badge--critical',
+        acknowledged: 'gw-badge--moderate',
+        dispatched:   'gw-badge--dispatched',
+        resolved:     'gw-badge--resolved',
+        dismissed:    'gw-badge--info',
     };
 
     // ── Fetch ──
@@ -728,64 +847,70 @@ window.assignInspector = assignInspector;
         if (!alerts.length) { showEmpty(); return; }
 
         tbody.innerHTML = alerts.map(a => {
-            const sevCls = SEVERITY_CLASS[a.severity] || 'bg-gray-100 text-gray-600';
-            const staCls = STATUS_CLASS[a.status]     || 'bg-gray-100 text-gray-600';
+            const sevCls = SEVERITY_CLASS[a.severity] || 'gw-badge--info';
+            const staCls = STATUS_CLASS[a.status]     || 'gw-badge--info';
             const locStr = a.site.lat != null
                 ? `${a.site.lat}° N, ${Math.abs(a.site.lng)}° W`
                 : (a.site.region || '—');
             const isSelectable = a.status === 'open' || a.status === 'acknowledged';
+            const srcBadge = a.source === 'automated'
+                ? `<span class="px-1.5 py-0.5 text-[10px] font-semibold rounded" style="background:rgba(212,160,23,0.12);color:var(--accent);border:1px solid rgba(212,160,23,0.3);">Auto</span>`
+                : `<span class="px-1.5 py-0.5 text-[10px] font-semibold rounded" style="background:var(--surface-3);color:var(--text-tertiary);border:1px solid var(--border-subtle);">Manual</span>`;
 
-            return `<tr class="hover:bg-gray-50 cursor-pointer" data-id="${a.id}" data-status="${a.status}" onclick="window._alertsPage.openModal('${a.id}')">
+            return `<tr class="cursor-pointer" style="border-bottom: 1px solid var(--border-subtle);"
+                        onmouseover="this.style.background='var(--surface-3)'" onmouseout="this.style.background=''"
+                        data-id="${a.id}" data-status="${a.status}" onclick="window._alertsPage.openModal('${a.id}')">
                 <td class="px-3 py-3 w-8" onclick="event.stopPropagation()">
-                    ${isSelectable ? `<input type="checkbox" class="row-cb rounded border-gray-300 text-blue-600 cursor-pointer"
+                    ${isSelectable ? `<input type="checkbox" class="row-cb rounded cursor-pointer"
+                        style="border-color: var(--border-default); accent-color: var(--status-info);"
                         data-id="${a.id}" data-status="${a.status}"
                         onchange="window._alertsPage.onRowCheck(this)">` : ''}
                 </td>
-                <td class="px-5 py-3 text-xs font-mono text-gray-500">${a.short_id}</td>
-                <td class="px-5 py-3 text-sm font-medium text-gray-900 max-w-xs truncate">${a.title}</td>
+                <td class="px-5 py-3 text-xs font-mono" style="color: var(--text-secondary);">${a.short_id}</td>
+                <td class="px-5 py-3 text-sm font-medium max-w-xs truncate" style="color: var(--text-primary);">${a.title}</td>
                 <td class="px-5 py-3">
-                    <span class="px-2 py-0.5 rounded-full text-xs font-semibold ${sevCls}">${a.severity_display}</span>
+                    <span class="${sevCls}">${a.severity_display}</span>
                 </td>
-                <td class="px-5 py-3 text-xs text-gray-600">${a.alert_type_display}</td>
-                <td class="px-5 py-3 text-xs text-gray-600">${locStr}</td>
+                <td class="px-5 py-3 text-xs" style="color: var(--text-secondary);">${a.alert_type_display}</td>
+                <td class="px-5 py-3 text-xs" style="color: var(--text-secondary);">${locStr}</td>
                 <td class="px-5 py-3">
                     <div class="flex items-center gap-2">
-                        <span class="text-xs font-medium text-gray-900">${a.site.confidence_pct}%</span>
-                        <div class="w-12 bg-gray-100 rounded-full h-1.5">
-                            <div class="h-1.5 rounded-full bg-blue-500" style="width:${a.site.confidence_pct}%"></div>
+                        <span class="text-xs font-medium tabular-nums" style="color: var(--text-primary);">${a.site.confidence_pct}%</span>
+                        <div class="w-12 rounded-full h-1.5" style="background: var(--border-subtle);">
+                            <div class="h-1.5 rounded-full" style="width:${a.site.confidence_pct}%; background: var(--viz-legal);"></div>
                         </div>
                     </div>
                 </td>
                 <td class="px-5 py-3">
-                    <span class="px-2 py-0.5 rounded-full text-xs font-semibold ${staCls}">${a.status_display}</span>
+                    <span class="${staCls}">${a.status_display}</span>
                 </td>
-                <td class="px-5 py-3 text-xs text-gray-500">${a.created_at}</td>
+                <td class="px-5 py-3">${srcBadge}</td>
+                <td class="px-5 py-3 text-xs" style="color: var(--text-secondary);">${a.created_at}</td>
                 <td class="px-5 py-3 text-xs" onclick="event.stopPropagation()">
                     <div class="flex items-center gap-2">
                         ${a.status === 'open' ? `
                             <button onclick="window._alertsPage.action('${a.id}','acknowledge')"
-                                    class="text-blue-600 hover:underline text-xs">Acknowledge</button>
+                                    class="hover:underline" style="color: var(--status-info);">Acknowledge</button>
                             <button onclick="window._alertsPage.action('${a.id}','dismiss')"
-                                    class="text-gray-400 hover:underline text-xs">Dismiss</button>
+                                    class="hover:underline" style="color: var(--text-tertiary);">Dismiss</button>
                         ` : a.status === 'acknowledged' ? `
                             <button onclick="window.openInspectorModal('${a.id}')"
-                                    class="text-purple-600 hover:underline text-xs">Dispatch</button>
+                                    class="hover:underline" style="color: var(--status-dispatched);">Dispatch Inspector</button>
                         ` : a.status === 'dispatched' ? `
-                            <span class="text-xs text-gray-400 italic">Awaiting report</span>
-                        ` : `<span class="text-gray-300 text-xs">—</span>`}
-                        
+                            <span class="italic" style="color: var(--text-tertiary);">Awaiting inspector report</span>
+                        ` : `<span style="color: var(--text-tertiary);">—</span>`}
+
                         ${window._alertsPage.isAdmin ? `
-                            <button onclick="window._alertsPage.editAlert('${a.id}')" 
-                                    class="text-gray-500 hover:text-gray-700 p-1.5 rounded hover:bg-gray-50 transition-colors" 
-                                    title="Edit Alert">
+                            <button onclick="window._alertsPage.editAlert('${a.id}')"
+                                    class="p-1.5 rounded hover:bg-gray-50 transition-colors"
+                                    style="color: var(--text-secondary);" title="Edit Alert">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l-3 3m0 0l-3-3m3 3V3"/>
                                 </svg>
                             </button>
-                            <button onclick="window._alertsPage.deleteAlert('${a.id}')" 
-                                    class="text-gray-500 hover:text-gray-700 p-1.5 rounded hover:bg-gray-50 transition-colors" 
-                                    title="Delete Alert">
+                            <button onclick="window._alertsPage.deleteAlert('${a.id}')"
+                                    class="p-1.5 rounded hover:bg-gray-50 transition-colors"
+                                    style="color: var(--text-secondary);" title="Delete Alert">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"/>
                                 </svg>
@@ -814,11 +939,15 @@ window.assignInspector = assignInspector;
         const addBtn = (label, page, active, disabled) => {
             const b = document.createElement('button');
             b.textContent = label;
-            b.className = `px-3 py-1 text-xs rounded border ${
-                active   ? 'bg-blue-600 text-white border-blue-600' :
-                disabled ? 'text-gray-300 border-gray-200 cursor-not-allowed' :
-                           'text-gray-600 border-gray-300 hover:bg-gray-50'
-            }`;
+            if (active) {
+                b.style.cssText = `padding: 4px 10px; font-size: 12px; border-radius: 4px; background: var(--status-info); color: #fff; border: 1px solid var(--status-info);`;
+            } else if (disabled) {
+                b.style.cssText = `padding: 4px 10px; font-size: 12px; border-radius: 4px; color: var(--text-tertiary); border: 1px solid var(--border-subtle); cursor: not-allowed;`;
+            } else {
+                b.style.cssText = `padding: 4px 10px; font-size: 12px; border-radius: 4px; color: var(--text-secondary); border: 1px solid var(--border-default); cursor: pointer;`;
+                b.onmouseover = () => b.style.background = 'var(--surface-3)';
+                b.onmouseout  = () => b.style.background = '';
+            }
             if (!disabled && !active) b.onclick = () => loadAlerts(page);
             btns.appendChild(b);
         };
@@ -829,7 +958,7 @@ window.assignInspector = assignInspector;
             } else if (Math.abs(p - data.page) === 3) {
                 const dots = document.createElement('span');
                 dots.textContent = '…';
-                dots.className = 'px-1 text-gray-400 text-xs self-center';
+                dots.style.cssText = 'padding: 0 4px; font-size: 12px; color: var(--text-tertiary); align-self: center;';
                 btns.appendChild(dots);
             }
         }
@@ -877,12 +1006,12 @@ window.assignInspector = assignInspector;
                 ? `${site.lat}° N, ${Math.abs(site.lng)}° W`
                 : (site.region || '—');
 
-            const sevCls = SEVERITY_CLASS[a.severity] || 'bg-gray-100 text-gray-600';
-            const staCls = STATUS_CLASS[a.status]     || 'bg-gray-100 text-gray-600';
+            const sevCls = SEVERITY_CLASS[a.severity] || 'gw-badge--info';
+            const staCls = STATUS_CLASS[a.status]     || 'gw-badge--info';
             document.getElementById('modal-severity-badge').textContent  = a.severity_display;
-            document.getElementById('modal-severity-badge').className    = `px-2.5 py-1 rounded-full text-xs font-semibold ${sevCls}`;
+            document.getElementById('modal-severity-badge').className    = sevCls;
             document.getElementById('modal-status-badge').textContent    = a.status_display;
-            document.getElementById('modal-status-badge').className      = `px-2.5 py-1 rounded-full text-xs font-semibold ${staCls}`;
+            document.getElementById('modal-status-badge').className      = staCls;
 
             // Field verification panel
             const fvBlock = document.getElementById('modal-field-verification');
@@ -890,14 +1019,14 @@ window.assignInspector = assignInspector;
             if (fv) {
                 fvBlock.classList.remove('hidden');
 
-                const OUTCOME_CLASS = {
-                    mining_confirmed: 'bg-red-100 text-red-800',
-                    false_positive:   'bg-green-100 text-green-800',
-                    inconclusive:     'bg-yellow-100 text-yellow-700',
+                const OUTCOME_STYLE = {
+                    mining_confirmed: 'background: var(--status-critical-bg); color: var(--status-critical); border: 1px solid var(--status-critical-border);',
+                    false_positive:   'background: var(--status-resolved-bg); color: var(--status-resolved); border: 1px solid var(--status-resolved-border);',
+                    inconclusive:     'background: var(--status-moderate-bg); color: var(--status-moderate); border: 1px solid var(--status-moderate-border);',
                 };
                 const outcomeEl = document.getElementById('modal-fv-outcome');
                 outcomeEl.textContent = fv.outcome_display || fv.outcome || '—';
-                outcomeEl.className   = `px-2.5 py-0.5 rounded-full text-xs font-bold ${OUTCOME_CLASS[fv.outcome] || 'bg-gray-100 text-gray-600'}`;
+                outcomeEl.style.cssText = OUTCOME_STYLE[fv.outcome] || 'background: var(--surface-3); color: var(--text-secondary);';
 
                 document.getElementById('modal-fv-inspector').textContent = fv.inspector_name || '—';
                 document.getElementById('modal-fv-date').textContent      = fv.visit_date || '—';
@@ -916,10 +1045,11 @@ window.assignInspector = assignInspector;
                     photosBlock.classList.remove('hidden');
                     photosGrid.innerHTML = fv.photos.map(url => `
                         <a href="${url}" target="_blank" rel="noopener"
-                           class="block aspect-square rounded overflow-hidden border border-gray-200 hover:border-gray-400 transition-colors">
+                           class="block aspect-square rounded overflow-hidden"
+                           style="border: 1px solid var(--border-default); transition: border-color 0.15s;">
                             <img src="${url}" alt="Evidence photo"
                                  class="w-full h-full object-cover"
-                                 onerror="this.parentElement.innerHTML='<div class=\'w-full h-full bg-gray-100 flex items-center justify-center text-xs text-gray-400\'>No preview</div>'"/>
+                                 onerror="this.parentElement.innerHTML='<div style=\'width:100%;height:100%;background:var(--surface-3);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text-tertiary)\'>No preview</div>'"/>
                         </a>`).join('');
                 } else {
                     photosBlock.classList.add('hidden');
@@ -931,27 +1061,45 @@ window.assignInspector = assignInspector;
 
             // Action buttons
             const actDiv = document.getElementById('modal-actions');
-            actDiv.innerHTML = `<button onclick="window._alertsPage.closeModal()"
-                class="px-4 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50">Close</button>`;
-            
+            actDiv.innerHTML = `<button onclick="window._alertsPage.closeModal()" class="btn-secondary">Close</button>`;
             if (a.status === 'open') {
                 actDiv.innerHTML += `
                     <button onclick="window._alertsPage.action('${id}','dismiss');window._alertsPage.closeModal()"
-                        class="px-4 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50">Dismiss</button>
+                        class="btn-secondary">Dismiss</button>
                     <button onclick="window._alertsPage.action('${id}','acknowledge');window._alertsPage.closeModal()"
-                        class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Acknowledge</button>`;
+                        class="btn-primary">Acknowledge</button>`;
             } else if (a.status === 'acknowledged') {
                 actDiv.innerHTML += `
                     <button onclick="window._alertsPage.closeModal();window.openInspectorModal('${id}')"
-                        class="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700">Dispatch Inspector</button>`;
+                        class="btn-primary">Dispatch Inspector</button>`;
             } else if (a.status === 'dispatched') {
                 actDiv.innerHTML += `
-                    <div class="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 text-gray-500 text-sm rounded-lg">
-                        <svg class="w-4 h-4 text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm"
+                         style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-secondary);">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                             style="color: var(--status-dispatched);">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                         Awaiting inspector field report
                     </div>`;
+            }
+
+            // ML Analysis panels
+            const mlPanel = document.getElementById('alert-ml-panels');
+            const imgs = site && site.patch_images;
+            if (imgs && Object.values(imgs).some(Boolean)) {
+                mlPanel.classList.remove('hidden');
+                [
+                    ['alert-img-false-color',         'alert-img-false-color-link',         imgs.false_color],
+                    ['alert-img-prediction-mask',     'alert-img-prediction-mask-link',     imgs.prediction_mask],
+                    ['alert-img-probability-heatmap', 'alert-img-probability-heatmap-link', imgs.probability_heatmap],
+                    ['alert-img-overlay',             'alert-img-overlay-link',             imgs.overlay],
+                ].forEach(([imgId, linkId, url]) => {
+                    document.getElementById(imgId).src   = url || '';
+                    document.getElementById(linkId).href = url || '#';
+                });
+            } else {
+                mlPanel.classList.add('hidden');
             }
 
             // Load timelapse for the detected site
@@ -1015,6 +1163,15 @@ window.assignInspector = assignInspector;
         };
         const endpoint = endpointMap[verb] || verb;
 
+        // Confirmation for destructive actions
+        if (verb === 'dismiss') {
+            const ok = await showConfirm(
+                'Dismiss Alert',
+                'Dismiss this alert? It will be removed from the active list and marked as resolved.'
+            );
+            if (!ok) return;
+        }
+
         // ── Inspector Modal ──────────────────────────────────────────────
         let selectedInspector = null;
         let currentAlertId = null;
@@ -1041,22 +1198,24 @@ window.assignInspector = assignInspector;
                         'Accept': 'application/json',
                     }
                 });
-                
+
                 if (!response.ok) throw new Error('Failed to load inspectors');
-                
+
                 const inspectors = await response.json();
                 const listContainer = document.getElementById('inspector-list');
-                
+
                 listContainer.innerHTML = inspectors.map(inspector => `
-                    <div class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer inspector-item" 
-                         data-inspector-id="${inspector.id}" 
+                    <div class="p-3 cursor-pointer inspector-item"
+                         style="border-bottom: 1px solid var(--border-subtle);"
+                         onmouseover="this.style.background='var(--surface-3)'" onmouseout="this.style.background=''"
+                         data-inspector-id="${inspector.id}"
                          onclick="selectInspector('${inspector.id}')">
                         <div class="flex items-center justify-between">
                             <div class="flex-1">
-                                <div class="font-medium text-gray-900">${inspector.user__username}</div>
-                                <div class="text-sm text-gray-500">${inspector.organization} - ${inspector.get_role_display()}</div>
+                                <div class="font-medium" style="color: var(--text-primary);">${inspector.user__username}</div>
+                                <div class="text-sm" style="color: var(--text-secondary);">${inspector.organization} - ${inspector.get_role_display()}</div>
                             </div>
-                            <div class="text-sm ${inspector.is_available ? 'text-green-600' : 'text-red-600'}">
+                            <div class="text-sm" style="color: ${inspector.is_available ? 'var(--status-resolved)' : 'var(--status-critical)'};">
                                 ${inspector.is_available ? 'Available' : 'Busy'}
                             </div>
                         </div>
@@ -1065,20 +1224,22 @@ window.assignInspector = assignInspector;
             } catch (error) {
                 console.error('Error loading inspectors:', error);
                 const listContainer = document.getElementById('inspector-list');
-                listContainer.innerHTML = '<div class="p-2 text-sm text-red-600">Failed to load inspectors</div>';
+                listContainer.innerHTML = '<div class="p-2 text-sm" style="color: var(--status-critical);">Failed to load inspectors</div>';
             }
         }
 
         function selectInspector(inspectorId) {
             // Remove previous selection
             document.querySelectorAll('.inspector-item').forEach(item => {
-                item.classList.remove('bg-purple-50', 'border-purple-200');
+                item.style.background = '';
+                item.style.borderColor = 'var(--border-subtle)';
             });
-            
+
             // Add selection to clicked item
             const selectedItem = document.querySelector(`[data-inspector-id="${inspectorId}"]`);
             if (selectedItem) {
-                selectedItem.classList.add('bg-purple-50', 'border-purple-200');
+                selectedItem.style.background = 'var(--status-dispatched-bg)';
+                selectedItem.style.borderColor = 'var(--status-dispatched-border)';
                 selectedInspector = inspectorId;
             }
         }
@@ -1105,20 +1266,20 @@ window.assignInspector = assignInspector;
                 });
 
                 if (!response.ok) throw new Error('Failed to create assignment');
-                
+
                 const result = await response.json();
-                
+
                 if (result.success) {
                     // Update alert status in UI
                     window._alertsPage.refreshAlerts();
                     closeInspectorModal();
-                    
+
                     // Show success message
                     const successMsg = document.createElement('div');
-                    successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+                    successMsg.style.cssText = 'position:fixed;top:16px;right:16px;padding:8px 16px;border-radius:6px;z-index:9999;background:var(--status-resolved);color:#fff;font-size:14px;';
                     successMsg.textContent = 'Inspector assigned successfully!';
                     document.body.appendChild(successMsg);
-                    
+
                     setTimeout(() => {
                         successMsg.remove();
                     }, 3000);
@@ -1140,8 +1301,18 @@ window.assignInspector = assignInspector;
                 },
                 body: JSON.stringify({}),
             });
-            if (res.ok) loadAlerts(currentPage);
-        } catch(e) { console.error('Action failed:', e); }
+            if (res.ok) {
+                loadAlerts(currentPage);
+                const labels = { acknowledge: 'Acknowledged', dismiss: 'Dismissed', resolve: 'Resolved' };
+                showToast(labels[verb] || 'Done', 'success');
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                showToast(errData.error || `Failed to ${verb} alert (${res.status})`, 'error');
+            }
+        } catch(e) {
+            console.error('Action failed:', e);
+            showToast('Action failed – check your connection', 'error');
+        }
     }
 
     // ── Bulk selection ──
@@ -1270,7 +1441,7 @@ window.assignInspector = assignInspector;
         const data = await res.json();
         const rows = data.results || [];
 
-        const headers = ['ID','Title','Severity','Type','Status','Region','Lat','Lng','Confidence %','Area (ha)','Detection Date','Recurrences','Created At'];
+        const headers = ['ID','Title','Severity','Type','Status','Source','Region','Lat','Lng','Confidence %','Area (ha)','Detection Date','Recurrences','Created At'];
         const lines = [headers.join(',')];
         rows.forEach(a => {
             lines.push([
@@ -1279,6 +1450,7 @@ window.assignInspector = assignInspector;
                 a.severity_display,
                 a.alert_type_display,
                 a.status_display,
+                a.source || 'manual',
                 a.site.region || '',
                 a.site.lat ?? '',
                 a.site.lng ?? '',
@@ -1314,6 +1486,7 @@ window.assignInspector = assignInspector;
                 if (activeFilters.status)      document.getElementById('filter-status').value   = activeFilters.status;
                 if (activeFilters.severity)    document.getElementById('filter-severity').value = activeFilters.severity;
                 if (activeFilters.alert_type)  document.getElementById('filter-type').value     = activeFilters.alert_type;
+                if (activeFilters.source)      document.getElementById('filter-source').value   = activeFilters.source;
             }
         } catch(_) {}
 
@@ -1333,9 +1506,11 @@ window.assignInspector = assignInspector;
             const status   = document.getElementById('filter-status').value;
             const severity = document.getElementById('filter-severity').value;
             const atype    = document.getElementById('filter-type').value;
+            const source   = document.getElementById('filter-source').value;
             if (status)   activeFilters.status      = status;
             if (severity) activeFilters.severity    = severity;
             if (atype)    activeFilters.alert_type  = atype;
+            if (source)   activeFilters.source      = source;
             localStorage.setItem('gw_alert_filters', JSON.stringify(activeFilters));
             loadAlerts(1);
         });
@@ -1344,6 +1519,7 @@ window.assignInspector = assignInspector;
             document.getElementById('filter-status').value   = '';
             document.getElementById('filter-severity').value = '';
             document.getElementById('filter-type').value     = '';
+            document.getElementById('filter-source').value  = '';
             activeFilters = {};
             localStorage.removeItem('gw_alert_filters');
             loadAlerts(1);
@@ -1509,31 +1685,36 @@ window.assignInspector = assignInspector;
                 const modal = document.createElement('div');
                 modal.className = 'fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4';
                 modal.innerHTML = `
-                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-                        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
-                            <h3 class="text-lg font-semibold text-gray-900">Edit Alert</h3>
-                            <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                    <div class="rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
+                         style="background: var(--surface-2); color: var(--text-primary);">
+                        <div class="flex items-center justify-between px-6 py-4 shrink-0"
+                             style="border-bottom: 1px solid var(--border-subtle);">
+                            <h3 class="text-lg font-semibold" style="color: var(--text-primary);">Edit Alert</h3>
+                            <button onclick="this.closest('.fixed').remove()" style="color: var(--text-tertiary);">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                 </svg>
                             </button>
                         </div>
-                        
+
                         <form id="edit-alert-form-${id}" class="p-6 space-y-4 overflow-y-auto flex-1">
                             <!-- Basic Information -->
                             <div class="space-y-4">
-                                <h4 class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">Basic Information</h4>
-                                
+                                <h4 class="text-sm font-semibold pb-2"
+                                    style="color: var(--text-primary); border-bottom: 1px solid var(--border-subtle);">Basic Information</h4>
+
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Title</label>
                                         <input type="text" name="title" value="${alertData.title}" required
-                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                               class="w-full px-3 py-2 rounded-lg focus:outline-none"
+                                               style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-primary);">
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Alert Type</label>
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Alert Type</label>
                                         <select name="alert_type" required
-                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                                class="w-full px-3 py-2 rounded-lg focus:outline-none"
+                                                style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-primary);">
                                             <option value="new_detection" ${alertData.alert_type === 'new_detection' ? 'selected' : ''}>New Detection</option>
                                             <option value="expansion_detected" ${alertData.alert_type === 'expansion_detected' ? 'selected' : ''}>Site Expansion Detected</option>
                                             <option value="recurring_site" ${alertData.alert_type === 'recurring_site' ? 'selected' : ''}>Recurring Illegal Site</option>
@@ -1541,18 +1722,20 @@ window.assignInspector = assignInspector;
                                         </select>
                                     </div>
                                 </div>
-                                
+
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Description</label>
                                     <textarea name="description" rows="3"
-                                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">${alertData.description || ''}</textarea>
+                                              class="w-full px-3 py-2 rounded-lg focus:outline-none"
+                                              style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-primary);">${alertData.description || ''}</textarea>
                                 </div>
-                                
+
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Severity</label>
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Severity</label>
                                         <select name="severity" required
-                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                                class="w-full px-3 py-2 rounded-lg focus:outline-none"
+                                                style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-primary);">
                                             <option value="low" ${alertData.severity === 'low' ? 'selected' : ''}>Low</option>
                                             <option value="medium" ${alertData.severity === 'medium' ? 'selected' : ''}>Medium</option>
                                             <option value="high" ${alertData.severity === 'high' ? 'selected' : ''}>High</option>
@@ -1560,9 +1743,10 @@ window.assignInspector = assignInspector;
                                         </select>
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Status</label>
                                         <select name="status"
-                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                                class="w-full px-3 py-2 rounded-lg focus:outline-none"
+                                                style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-primary);">
                                             <option value="open" ${alertData.status === 'open' ? 'selected' : ''}>Open</option>
                                             <option value="acknowledged" ${alertData.status === 'acknowledged' ? 'selected' : ''}>Acknowledged</option>
                                             <option value="dispatched" ${alertData.status === 'dispatched' ? 'selected' : ''}>Dispatched</option>
@@ -1572,65 +1756,74 @@ window.assignInspector = assignInspector;
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <!-- Location Information -->
                             <div class="space-y-4">
-                                <h4 class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">Location Information</h4>
-                                
+                                <h4 class="text-sm font-semibold pb-2"
+                                    style="color: var(--text-primary); border-bottom: 1px solid var(--border-subtle);">Location Information</h4>
+
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
-                                        <input type="number" step="any" name="latitude" 
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Latitude</label>
+                                        <input type="number" step="any" name="latitude"
                                                value="${alertData.site?.lat || ''}"
                                                placeholder="e.g., 5.5913"
-                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                               class="w-full px-3 py-2 rounded-lg focus:outline-none"
+                                               style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-primary);">
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
-                                        <input type="number" step="any" name="longitude" 
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Longitude</label>
+                                        <input type="number" step="any" name="longitude"
                                                value="${alertData.site?.lng || ''}"
                                                placeholder="e.g., -0.1793"
-                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                               class="w-full px-3 py-2 rounded-lg focus:outline-none"
+                                               style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-primary);">
                                     </div>
                                 </div>
-                                
+
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Confidence Score</label>
-                                        <input type="number" step="0.01" min="0" max="1" name="confidence_score" 
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Confidence Score</label>
+                                        <input type="number" step="0.01" min="0" max="1" name="confidence_score"
                                                value="${alertData.site?.confidence_pct ? (alertData.site.confidence_pct / 100).toFixed(2) : ''}"
-                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                               class="w-full px-3 py-2 rounded-lg focus:outline-none"
+                                               style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-primary);">
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Area (hectares)</label>
-                                        <input type="number" step="0.01" min="0" name="area_hectares" 
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Area (hectares)</label>
+                                        <input type="number" step="0.01" min="0" name="area_hectares"
                                                value="${alertData.site?.area_hectares || ''}"
-                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                               class="w-full px-3 py-2 rounded-lg focus:outline-none"
+                                               style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-primary);">
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <!-- Assignment -->
                             <div class="space-y-4">
-                                <h4 class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">Assignment</h4>
-                                
+                                <h4 class="text-sm font-semibold pb-2"
+                                    style="color: var(--text-primary); border-bottom: 1px solid var(--border-subtle);">Assignment</h4>
+
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Assign to Inspector</label>
+                                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Assign to Inspector</label>
                                     <select name="assigned_to_id"
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                            class="w-full px-3 py-2 rounded-lg focus:outline-none"
+                                            style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-primary);">
                                         <option value="">Unassigned</option>
                                     </select>
                                 </div>
                             </div>
                         </form>
-                        
-                        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 shrink-0">
+
+                        <div class="px-6 py-4 flex justify-end gap-3 shrink-0"
+                             style="border-top: 1px solid var(--border-subtle);">
                             <button type="button" onclick="this.closest('.fixed').remove()"
-                                    class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                                    class="px-4 py-2 rounded-lg"
+                                    style="border: 1px solid var(--border-default); color: var(--text-primary); background: transparent;">
                                 Cancel
                             </button>
                             <button type="submit" form="edit-alert-form-${id}"
-                                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                    class="btn-primary px-4 py-2 rounded-lg">
                                 Save Changes
                             </button>
                         </div>
@@ -1668,13 +1861,11 @@ window.assignInspector = assignInspector;
                         
                         modal.remove();
                         this.closeModal();
-                        this.refreshAlerts();
-                        
-                        // Show success message
-                        alert('Alert updated successfully!');
-                        
+                        loadAlerts(currentPage);
+                        showToast('Alert updated', 'success');
+
                     } catch (error) {
-                        alert('Error updating alert: ' + error.message);
+                        showToast('Error updating alert: ' + error.message, 'error');
                     }
                 });
                 
@@ -1719,20 +1910,24 @@ window.assignInspector = assignInspector;
             if (!confirm('Are you sure you want to delete this alert? This action cannot be undone.')) {
                 return;
             }
-            
+
             try {
                 const response = await fetch(`/api/alerts/${id}/delete/`, {
                     method: 'DELETE',
                     headers: { 'X-CSRFToken': getCookie('csrftoken') },
                     credentials: 'include'
                 });
-                
-                if (!response.ok) throw new Error('Failed to delete alert');
-                
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error || `HTTP ${response.status}`);
+                }
+
                 this.closeModal();
-                this.refreshAlerts();
+                loadAlerts(currentPage);
+                showToast('Alert deleted', 'success');
             } catch (error) {
-                alert('Error deleting alert: ' + error.message);
+                showToast('Error deleting alert: ' + error.message, 'error');
             }
         },
     };

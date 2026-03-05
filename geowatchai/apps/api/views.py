@@ -736,7 +736,7 @@ class AlertViewSet(viewsets.ViewSet):
             a.resolved_at = timezone.now()
             a.resolution_notes = request.data.get('resolution_notes', '')
         a.save()
-        cache.delete_many([f'dashboard_stats_{w}' for w in range(2, 53)])
+        cache.delete_many([f'dashboard_stats_{w}_{td}' for w in range(2, 53) for td in (7, 30, 90, 365)])
         _audit(request.user, f'alert.{new_status}', a.id,
                prev_status=prev_status, severity=a.severity)
         return Response({'id': str(a.id), 'status': a.status})
@@ -1084,7 +1084,7 @@ class AlertViewSet(viewsets.ViewSet):
             updated = qs.update(status=verb)
 
         from django.core.cache import cache
-        cache.delete_many([f'dashboard_stats_{w}' for w in range(2, 53)])
+        cache.delete_many([f'dashboard_stats_{w}_{td}' for w in range(2, 53) for td in (7, 30, 90, 365)])
         _audit(request.user, f'alert.bulk_{verb}', '',
                alert_ids=ids, updated=updated)
         return Response({'updated': updated})
@@ -1179,7 +1179,7 @@ class AlertViewSet(viewsets.ViewSet):
                 created += 1
 
         from django.core.cache import cache
-        cache.delete_many([f'dashboard_stats_{w}' for w in range(2, 53)])
+        cache.delete_many([f'dashboard_stats_{w}_{td}' for w in range(2, 53) for td in (7, 30, 90, 365)])
 
         # Push a single in-app notification summarising all newly assigned alerts
         try:
