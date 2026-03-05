@@ -79,7 +79,7 @@
 
     <!-- Theme CSS -->
     <style>
-    /* Theme variables */
+    /* Theme variables – used by settings.html theme system */
     :root {
         --primary-color: #3b82f6;
         --text-color: #1f2937;
@@ -104,90 +104,6 @@
         --nav-bg: #1f2937;
     }
 
-    /* Apply theme to page elements */
-    body {
-        background-color: var(--bg-color);
-        color: var(--text-color);
-    }
-
-    .bg-white {
-        background-color: var(--card-bg) !important;
-    }
-
-    .bg-gray-50 {
-        background-color: var(--bg-color) !important;
-    }
-
-    .text-gray-900 {
-        color: var(--text-color) !important;
-    }
-
-    .text-gray-700 {
-        color: var(--text-color) !important;
-    }
-
-    .text-gray-600 {
-        color: #9ca3af !important;
-    }
-
-    .text-gray-500 {
-        color: #6b7280 !important;
-    }
-
-    .border-gray-200 {
-        border-color: var(--border-color) !important;
-    }
-
-    .border-gray-300 {
-        border-color: var(--input-border) !important;
-    }
-
-    /* Header and Navigation */
-    header {
-        background-color: var(--nav-bg) !important;
-        border-color: var(--border-color) !important;
-    }
-
-    /* Sidebar */
-    .sidebar {
-        background-color: var(--sidebar-bg) !important;
-        border-color: var(--border-color) !important;
-    }
-
-    /* Form elements */
-    input[type="text"],
-    input[type="email"],
-    input[type="time"],
-    input[type="password"],
-    input[type="number"],
-    input[type="search"],
-    select,
-    textarea {
-        background-color: var(--input-bg);
-        border-color: var(--input-border);
-        color: var(--text-color);
-    }
-
-    input[type="text"]:focus,
-    input[type="email"]:focus,
-    input[type="time"]:focus,
-    input[type="password"]:focus,
-    input[type="number"]:focus,
-    input[type="search"]:focus,
-    select:focus,
-    textarea:focus {
-        border-color: var(--primary-color);
-    }
-
-    /* Buttons */
-    .bg-blue-600 {
-        background-color: var(--primary-color) !important;
-    }
-
-    .bg-blue-600:hover {
-        background-color: #2563eb !important;
-    }
-
     /* Font size classes */
     .font-small { font-size: 14px; }
     .font-medium { font-size: 16px; }
@@ -199,7 +115,7 @@
     .layout-spaced { line-height: 1.6; }
     .layout-comfortable { line-height: 1.8; }
 
-    /* High contrast */
+    /* High contrast mode */
     .high-contrast {
         --primary-color: #000000;
         --text-color: #000000;
@@ -220,18 +136,6 @@
         --input-border: #ffffff;
         --sidebar-bg: #000000;
         --nav-bg: #000000;
-    }
-
-    .high-contrast .text-gray-900,
-    .high-contrast .text-gray-700,
-    .high-contrast .text-gray-600,
-    .high-contrast .text-gray-500 {
-        color: var(--text-color) !important;
-    }
-
-    .high-contrast .border-gray-200,
-    .high-contrast .border-gray-300 {
-        border-color: var(--border-color) !important;
     }
     </style>
 
