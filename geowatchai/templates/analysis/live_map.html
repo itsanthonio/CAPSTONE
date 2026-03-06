@@ -4,7 +4,7 @@
 {% block title %}Live Map - GalamseyWatch{% endblock %}
 
 {% block content %}
-<div class="flex h-screen pt-16">
+<div class="flex" style="height:calc(100vh - 3rem)">
 
     <!-- Map -->
     <div class="flex-1 relative">
@@ -266,6 +266,8 @@
 
 
 {% block extra_js %}
+<script src="{% static 'js/ghana_places.js' %}"></script>
+<script src="{% static 'js/map_search.js' %}"></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-gl-draw@1.4.3/dist/mapbox-gl-draw.js"></script>
 <link rel="stylesheet"
@@ -361,9 +363,15 @@ async function openSiteModal(siteId) {
         document.getElementById('site-region').textContent         = site.region || 'Unknown';
 
         const lat = site.lat, lng = site.lng;
-        document.getElementById('site-coords').textContent = (lat != null && lng != null)
-            ? `${lat}° N, ${Math.abs(lng)}° W`
-            : '—';
+        const coordEl = document.getElementById('site-coords');
+        if (lat != null && lng != null) {
+            coordEl.innerHTML = `<a href="https://earth.google.com/web/search/${lat},${lng}"
+                target="_blank" rel="noopener noreferrer" title="Open in Google Earth"
+                style="color:inherit;text-decoration:underline;text-decoration-style:dotted;"
+                >${lat}° N, ${Math.abs(lng)}° W ↗</a>`;
+        } else {
+            coordEl.textContent = '—';
+        }
 
         const concBlock = document.getElementById('site-concession-block');
         if (site.concession) {
@@ -499,7 +507,10 @@ function applyDetectionFilter() {
             } catch (_) {}
         }
         const coordStr = (lat != null && lng != null)
-            ? `${parseFloat(lat).toFixed(4)}° N, ${Math.abs(parseFloat(lng)).toFixed(4)}° W`
+            ? `<a href="https://earth.google.com/web/search/${parseFloat(lat).toFixed(6)},${parseFloat(lng).toFixed(6)}"
+                   target="_blank" rel="noopener noreferrer" title="Open in Google Earth" onclick="event.stopPropagation()"
+                   style="color:var(--text-tertiary);text-decoration:underline;text-decoration-style:dotted;"
+               >${parseFloat(lat).toFixed(4)}° N, ${Math.abs(parseFloat(lng)).toFixed(4)}° W ↗</a>`
             : '—';
 
         let legalStyle;
@@ -552,6 +563,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     window.mapHandler.onDetectionsUpdated(renderDetectionSidebar);
     window.mapHandler.onSiteClick(openSiteModal);
+
+    initMapSearch('live-map', (lng, lat) => window.mapHandler.map.flyTo({ center: [lng, lat], zoom: 13 }));
 
     // Start background polling — begins 5s after load so initial fetch settles first
     setTimeout(() => window.mapHandler.startSitePolling(60000), 5000);

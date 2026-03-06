@@ -566,6 +566,8 @@
 
 {% block extra_js %}
 <script src="{% static 'js/map_handler.js' %}"></script>
+<script src="{% static 'js/ghana_places.js' %}"></script>
+<script src="{% static 'js/map_search.js' %}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     let trendChart = null;
@@ -670,6 +672,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const dashboardMap = new MapHandler('dashboard-map', { center: [-1.6244, 6.6885], zoom: 7 });
     dashboardMap.onSiteClick(siteId => window._sitePanel.load(siteId));
+    initMapSearch('dashboard-map', (lng, lat) => dashboardMap.map.flyTo({ center: [lng, lat], zoom: 13 }));
     // Resize after DOM settles so MapLibre fills the flex container
     setTimeout(() => dashboardMap.map.resize(), 0);
 

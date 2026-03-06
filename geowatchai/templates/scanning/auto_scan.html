@@ -459,6 +459,8 @@
 
 
 {% block extra_js %}
+<script src="{% static 'js/ghana_places.js' %}"></script>
+<script src="{% static 'js/map_search.js' %}"></script>
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <!-- Leaflet.heat (heatmap) -->
@@ -488,6 +490,8 @@
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
         subdomains: 'abcd', maxZoom: 19,
     }).addTo(map);
+
+    initMapSearch('auto-scan-map', function (lng, lat) { map.flyTo([lat, lng], 13); });
 
     // ── Custom panes ───────────────────────────────────────────────────────
     // pane-grid is created inside GridCanvasLayer.onAdd so that the canvas

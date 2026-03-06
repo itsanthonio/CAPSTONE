@@ -936,6 +936,27 @@ class AlertViewSet(viewsets.ViewSet):
         
         return Response({'error': 'No valid fields to update.'}, status=400)
 
+    @action(detail=False, methods=['get'])
+    def summary(self, request):
+        """Return alert counts by status and severity."""
+        from apps.detections.models import Alert
+        from django.db.models import Count
+        rows = Alert.objects.values('status', 'severity').annotate(cnt=Count('id'))
+        by_status, by_severity = {}, {}
+        for row in rows:
+            by_status[row['status']] = by_status.get(row['status'], 0) + row['cnt']
+            by_severity[row['severity']] = by_severity.get(row['severity'], 0) + row['cnt']
+        return Response({
+            'total':        sum(by_status.values()),
+            'open':         by_status.get('open', 0),
+            'acknowledged': by_status.get('acknowledged', 0),
+            'dispatched':   by_status.get('dispatched', 0),
+            'resolved':     by_status.get('resolved', 0),
+            'dismissed':    by_status.get('dismissed', 0),
+            'critical':     by_severity.get('critical', 0),
+            'high':         by_severity.get('high', 0),
+        })
+
     @action(detail=True, methods=['delete'])
     def delete(self, request, pk=None):
         """Delete an alert (admin only)"""
