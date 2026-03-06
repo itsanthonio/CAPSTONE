@@ -58,7 +58,7 @@ def fetch_site_timelapse(self, site_id: str) -> dict:
         lon, lat = centroid.x, centroid.y
 
         ee_point = ee.Geometry.Point([lon, lat])
-        ee_region = ee_point.buffer(500).bounds()
+        ee_region = ee_point.buffer(1500).bounds()
 
         frames_created = 0
         years_with_data = []
@@ -96,7 +96,7 @@ def fetch_site_timelapse(self, site_id: str) -> dict:
                 # Get GEE thumbnail URL — only used server-side to download
                 gee_url = rgb.getThumbURL({
                     'region': ee_region,
-                    'dimensions': 256,
+                    'dimensions': 800,
                     'format': 'png',
                     'min': 0,
                     'max': 3000,

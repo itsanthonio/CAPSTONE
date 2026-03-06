@@ -336,47 +336,38 @@ class PostProcessor:
             raise
 
 
-def save_patch_images(job, tensor: np.ndarray, probability_mask: np.ndarray) -> bool:
+def save_patch_images(job, tensor: np.ndarray, probability_mask: np.ndarray,
+                      sites=None, raster_meta: dict = None) -> bool:
     """
-    Generate 4 ML visualization PNGs for a completed scan and store their
-    relative paths on the Job record.
+    Generate 4 ML visualization PNGs.
+
+    Always saves whole-AOI images on the Job record (overview / backward compat).
+    If sites + raster_meta are provided, also saves per-site cropped images
+    on each DetectedSite record so the UI shows the exact detection polygon.
 
     Tensor band order (from PreprocessingService.MODEL_BAND_ORDER):
         0: B3 (Green), 1: B4 (Red), 2: B8 (NIR),
         3: B11 (SWIR1), 4: B12 (SWIR2), 5: BSI
 
-    Images produced:
-        1. false_color.png       — False colour composite (R=B4, G=B3, B=NIR),
-                                   percentile-stretched [p2, p98] per channel
-        2. prediction_mask.png   — Binary threshold mask (>=0.5), 'hot' colourmap
-        3. probability_heatmap.png — Raw probability [0,1], 'hot' colourmap
-        4. overlay.png           — False colour + semi-transparent red on detections
-
-    Returns True on success, False if anything fails (caller should log).
+    Returns True on success, False if anything fails.
     """
     try:
         from pathlib import Path
         from PIL import Image
         from django.conf import settings
 
-        # Minimum display size — upscale small GeoTIFFs so images don't look
-        # like 3×3 pixel thumbnails (HLS is 30 m/px; a tiny AOI = tiny raster).
-        MIN_SIDE = 512
+        MIN_SIDE = 1024  # minimum output dimension (upscale tiny rasters)
+        PAD = 15         # extra pixel padding around each site crop
 
         job_id = str(job.id)
-        out_dir = Path(settings.MEDIA_ROOT) / 'job_images' / job_id
-        out_dir.mkdir(parents=True, exist_ok=True)
 
         # ── Prepare arrays ────────────────────────────────────────────────
-        # Squeeze channel dim from inference output: (1,H,W) → (H,W)
         if probability_mask.ndim == 3 and probability_mask.shape[0] == 1:
             prob = probability_mask.squeeze(0)
         else:
-            prob = probability_mask  # already (H, W)
+            prob = probability_mask
 
-        # Ensure tensor is (6, H, W) float
         t = tensor.astype(np.float32)
-
         h, w = prob.shape
 
         def _stretch(arr):
@@ -397,47 +388,43 @@ def save_patch_images(job, tensor: np.ndarray, probability_mask: np.ndarray) -> 
             b = np.clip(v * 3.0 - 2.0, 0.0, 1.0)
             return (np.stack([r, g, b], axis=-1) * 255).astype(np.uint8)
 
-        def _upscale(img: Image.Image) -> Image.Image:
-            """Upscale with nearest-neighbour so pixel boundaries stay sharp."""
+        def _upscale(img: Image.Image, resample=Image.LANCZOS) -> Image.Image:
             if img.width >= MIN_SIDE and img.height >= MIN_SIDE:
                 return img
             scale = max(MIN_SIDE / img.width, MIN_SIDE / img.height)
             new_w = max(MIN_SIDE, int(img.width  * scale))
             new_h = max(MIN_SIDE, int(img.height * scale))
-            return img.resize((new_w, new_h), Image.NEAREST)
+            return img.resize((new_w, new_h), resample)
 
-        def _save(arr_uint8, filename):
-            _upscale(Image.fromarray(arr_uint8)).save(str(out_dir / filename))
+        def _save_img(arr_uint8, path: Path, resample=Image.LANCZOS):
+            # Use LANCZOS for photo-like imagery (smooth), NEAREST for binary masks (sharp edges)
+            _upscale(Image.fromarray(arr_uint8), resample).save(str(path))
 
-        # ── 1. False colour ───────────────────────────────────────────────
-        r_ch = _stretch(t[1])   # B4 = Red
-        g_ch = _stretch(t[0])   # B3 = Green
-        b_ch = _stretch(t[2])   # B8 = NIR
-        false_color = (np.stack([r_ch, g_ch, b_ch], axis=-1) * 255).astype(np.uint8)
-        _save(false_color, 'false_color.png')
+        def _make_four(t_crop, p_crop):
+            """Build the 4 image arrays from cropped tensor + probability."""
+            rc = _stretch(t_crop[1])   # B4 = Red
+            gc = _stretch(t_crop[0])   # B3 = Green
+            bc = _stretch(t_crop[2])   # B8 = NIR
+            fc = (np.stack([rc, gc, bc], axis=-1) * 255).astype(np.uint8)
+            bin_c = (p_crop >= 0.5).astype(np.float32)
+            base  = fc.astype(np.float32)
+            ov    = base.copy()
+            m     = bin_c.astype(bool)
+            ov[m, 0] = base[m, 0] * 0.5 + 127.5
+            ov[m, 1] = base[m, 1] * 0.5
+            ov[m, 2] = base[m, 2] * 0.5
+            return fc, bin_c, p_crop, np.clip(ov, 0, 255).astype(np.uint8)
 
-        # ── 2. Binary prediction mask ────────────────────────────────────
-        binary = (prob >= 0.5).astype(np.float32)
-        _save(_hot(binary), 'prediction_mask.png')
+        # ── 1. Whole-AOI images (saved on Job) ────────────────────────────
+        out_dir = Path(settings.MEDIA_ROOT) / 'job_images' / job_id
+        out_dir.mkdir(parents=True, exist_ok=True)
 
-        # ── 3. Probability heatmap ───────────────────────────────────────
-        _save(_hot(prob), 'probability_heatmap.png')
+        fc, binary, _, overlay_arr = _make_four(t, prob)
+        _save_img(fc,                          out_dir / 'false_color.png')
+        _save_img(_hot(binary),                out_dir / 'prediction_mask.png',   Image.NEAREST)
+        _save_img(_hot(prob),                  out_dir / 'probability_heatmap.png')
+        _save_img(overlay_arr,                 out_dir / 'overlay.png')
 
-        # ── 4. Overlay: false colour + transparent red on detections ─────
-        # Matches the notebook exactly:
-        #   overlay = np.zeros((*pred.shape, 4))
-        #   overlay[pred == 1] = [1, 0, 0, 0.5]
-        # Composite: alpha-blend the RGBA red layer over the RGB base.
-        base   = false_color.astype(np.float32)           # (H, W, 3) float
-        mask   = binary.astype(bool)                       # (H, W)
-        result = base.copy()
-        alpha  = 0.5
-        result[mask, 0] = base[mask, 0] * (1 - alpha) + 255 * alpha   # R
-        result[mask, 1] = base[mask, 1] * (1 - alpha)                  # G
-        result[mask, 2] = base[mask, 2] * (1 - alpha)                  # B
-        _save(np.clip(result, 0, 255).astype(np.uint8), 'overlay.png')
-
-        # ── Store relative paths on Job ───────────────────────────────────
         rel = f'job_images/{job_id}/'
         job.img_false_color         = rel + 'false_color.png'
         job.img_prediction_mask     = rel + 'prediction_mask.png'
@@ -447,8 +434,61 @@ def save_patch_images(job, tensor: np.ndarray, probability_mask: np.ndarray) -> 
             'img_false_color', 'img_prediction_mask',
             'img_probability_heatmap', 'img_overlay',
         ])
+        logger.info(f"Saved whole-AOI patch images for job {job_id}")
 
-        logger.info(f"Saved patch images for job {job_id}")
+        # ── 2. Per-site cropped images (saved on DetectedSite) ────────────
+        if sites and raster_meta and 'transform' in raster_meta:
+            from rasterio.transform import rowcol as _rowcol
+            transform = raster_meta['transform']
+
+            for site in sites:
+                try:
+                    # site.geometry.extent → (minx, miny, maxx, maxy) in WGS84
+                    minx, miny, maxx, maxy = site.geometry.extent
+
+                    # Geographic coordinates → pixel row/col
+                    r0, c0 = _rowcol(transform, minx, maxy)  # top-left corner
+                    r1, c1 = _rowcol(transform, maxx, miny)  # bottom-right corner
+
+                    # Clamp to raster bounds and add padding
+                    r_min = max(0, min(r0, r1) - PAD)
+                    r_max = min(h, max(r0, r1) + PAD)
+                    c_min = max(0, min(c0, c1) - PAD)
+                    c_max = min(w, max(c0, c1) + PAD)
+
+                    if r_max <= r_min or c_max <= c_min:
+                        logger.warning(f"Empty crop for site {site.id}, skipping")
+                        continue
+
+                    # Crop both tensor and probability mask to this site
+                    t_crop = t[:, r_min:r_max, c_min:c_max]
+                    p_crop = prob[r_min:r_max, c_min:c_max]
+
+                    fc_s, bin_s, p_s, ov_s = _make_four(t_crop, p_crop)
+
+                    site_id = str(site.id)
+                    s_dir = Path(settings.MEDIA_ROOT) / 'site_images' / site_id
+                    s_dir.mkdir(parents=True, exist_ok=True)
+
+                    _save_img(fc_s,                    s_dir / 'false_color.png')
+                    _save_img(_hot(bin_s),             s_dir / 'prediction_mask.png',   Image.NEAREST)
+                    _save_img(_hot(p_s),               s_dir / 'probability_heatmap.png')
+                    _save_img(ov_s,                    s_dir / 'overlay.png')
+
+                    s_rel = f'site_images/{site_id}/'
+                    site.img_false_color         = s_rel + 'false_color.png'
+                    site.img_prediction_mask     = s_rel + 'prediction_mask.png'
+                    site.img_probability_heatmap = s_rel + 'probability_heatmap.png'
+                    site.img_overlay             = s_rel + 'overlay.png'
+                    site.save(update_fields=[
+                        'img_false_color', 'img_prediction_mask',
+                        'img_probability_heatmap', 'img_overlay',
+                    ])
+                    logger.info(f"Saved per-site images for site {site_id}")
+
+                except Exception as exc:
+                    logger.warning(f"Failed per-site images for site {getattr(site, 'id', '?')}: {exc}")
+
         return True
 
     except Exception as exc:

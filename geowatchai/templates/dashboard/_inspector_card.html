@@ -175,36 +175,40 @@
                 {% if d.patch_images.false_color %}
                 <div>
                     <p class="text-xs mb-1" style="color: var(--text-tertiary);">False Colour</p>
-                    <a href="{{ d.patch_images.false_color }}" target="_blank" rel="noopener">
+                    <a href="{{ d.patch_images.false_color }}" target="_blank" rel="noopener"
+                       style="display:block;background:var(--surface-3);border:1px solid var(--border-subtle);border-radius:0.375rem;overflow:hidden;">
                         <img src="{{ d.patch_images.false_color }}" alt="False Colour"
-                             class="w-full rounded" style="height:180px;object-fit:cover;background:var(--surface-3);border:1px solid var(--border-subtle);">
+                             class="w-full" style="display:block;object-fit:contain;">
                     </a>
                 </div>
                 {% endif %}
                 {% if d.patch_images.prediction_mask %}
                 <div>
                     <p class="text-xs mb-1" style="color: var(--text-tertiary);">Prediction Mask</p>
-                    <a href="{{ d.patch_images.prediction_mask }}" target="_blank" rel="noopener">
+                    <a href="{{ d.patch_images.prediction_mask }}" target="_blank" rel="noopener"
+                       style="display:block;background:var(--surface-3);border:1px solid var(--border-subtle);border-radius:0.375rem;overflow:hidden;">
                         <img src="{{ d.patch_images.prediction_mask }}" alt="Prediction Mask"
-                             class="w-full rounded" style="height:180px;object-fit:cover;background:var(--surface-3);border:1px solid var(--border-subtle);">
+                             class="w-full" style="display:block;object-fit:contain;">
                     </a>
                 </div>
                 {% endif %}
                 {% if d.patch_images.probability_heatmap %}
                 <div>
                     <p class="text-xs mb-1" style="color: var(--text-tertiary);">Probability Heatmap</p>
-                    <a href="{{ d.patch_images.probability_heatmap }}" target="_blank" rel="noopener">
+                    <a href="{{ d.patch_images.probability_heatmap }}" target="_blank" rel="noopener"
+                       style="display:block;background:var(--surface-3);border:1px solid var(--border-subtle);border-radius:0.375rem;overflow:hidden;">
                         <img src="{{ d.patch_images.probability_heatmap }}" alt="Probability Heatmap"
-                             class="w-full rounded" style="height:180px;object-fit:cover;background:var(--surface-3);border:1px solid var(--border-subtle);">
+                             class="w-full" style="display:block;object-fit:contain;">
                     </a>
                 </div>
                 {% endif %}
                 {% if d.patch_images.overlay %}
                 <div>
                     <p class="text-xs mb-1" style="color: var(--text-tertiary);">Overlay</p>
-                    <a href="{{ d.patch_images.overlay }}" target="_blank" rel="noopener">
+                    <a href="{{ d.patch_images.overlay }}" target="_blank" rel="noopener"
+                       style="display:block;background:var(--surface-3);border:1px solid var(--border-subtle);border-radius:0.375rem;overflow:hidden;">
                         <img src="{{ d.patch_images.overlay }}" alt="Overlay"
-                             class="w-full rounded" style="height:180px;object-fit:cover;background:var(--surface-3);border:1px solid var(--border-subtle);">
+                             class="w-full" style="display:block;object-fit:contain;">
                     </a>
                 </div>
                 {% endif %}

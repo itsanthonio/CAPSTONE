@@ -407,26 +407,32 @@ class DetectedSiteViewSet(viewsets.ReadOnlyModelViewSet):
                 'overlap_pct': site.concession_overlap_pct,
             }
 
-        # Build patch image URLs (stored as MEDIA-relative paths on the job)
+        # Build patch image URLs — prefer per-site crops, fall back to job-level
         from django.conf import settings
+        def _media_url(rel_path):
+            if not rel_path:
+                return None
+            return request.build_absolute_uri(settings.MEDIA_URL + rel_path)
+
         patch_images = None
-        job = getattr(site, 'job', None)
-        if job:
-            def _media_url(rel_path):
-                if not rel_path:
-                    return None
-                return request.build_absolute_uri(
-                    settings.MEDIA_URL + rel_path
-                )
+        # Try site-level images first (per-polygon crop)
+        if site.img_false_color:
             patch_images = {
-                'false_color':         _media_url(job.img_false_color),
-                'prediction_mask':     _media_url(job.img_prediction_mask),
-                'probability_heatmap': _media_url(job.img_probability_heatmap),
-                'overlay':             _media_url(job.img_overlay),
+                'false_color':         _media_url(site.img_false_color),
+                'prediction_mask':     _media_url(site.img_prediction_mask),
+                'probability_heatmap': _media_url(site.img_probability_heatmap),
+                'overlay':             _media_url(site.img_overlay),
             }
-            # Return None instead of the dict if all images are missing
-            if not any(patch_images.values()):
-                patch_images = None
+        # Fall back to whole-AOI job images for older scans
+        if not patch_images:
+            job = getattr(site, 'job', None)
+            if job and job.img_false_color:
+                patch_images = {
+                    'false_color':         _media_url(job.img_false_color),
+                    'prediction_mask':     _media_url(job.img_prediction_mask),
+                    'probability_heatmap': _media_url(job.img_probability_heatmap),
+                    'overlay':             _media_url(job.img_overlay),
+                }
 
         return Response({
             'id': str(site.id),
@@ -679,21 +685,28 @@ class AlertViewSet(viewsets.ViewSet):
         except Exception:
             pass
 
-        # Build patch image URLs from the site's job
+        # Build patch image URLs — prefer per-site crops, fall back to job-level
         from django.conf import settings as _settings
+        def _murl(rel):
+            return request.build_absolute_uri(_settings.MEDIA_URL + rel) if rel else None
+
         patch_images = None
-        job = getattr(site, 'job', None)
-        if job:
-            def _murl(rel):
-                return request.build_absolute_uri(_settings.MEDIA_URL + rel) if rel else None
-            imgs = {
-                'false_color':         _murl(job.img_false_color),
-                'prediction_mask':     _murl(job.img_prediction_mask),
-                'probability_heatmap': _murl(job.img_probability_heatmap),
-                'overlay':             _murl(job.img_overlay),
+        if site.img_false_color:
+            patch_images = {
+                'false_color':         _murl(site.img_false_color),
+                'prediction_mask':     _murl(site.img_prediction_mask),
+                'probability_heatmap': _murl(site.img_probability_heatmap),
+                'overlay':             _murl(site.img_overlay),
             }
-            if any(imgs.values()):
-                patch_images = imgs
+        if not patch_images:
+            job = getattr(site, 'job', None)
+            if job and job.img_false_color:
+                patch_images = {
+                    'false_color':         _murl(job.img_false_color),
+                    'prediction_mask':     _murl(job.img_prediction_mask),
+                    'probability_heatmap': _murl(job.img_probability_heatmap),
+                    'overlay':             _murl(job.img_overlay),
+                }
 
         return Response({
             'id': str(a.id),
