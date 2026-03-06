@@ -408,6 +408,12 @@ class DetectedSite(models.Model):
     reviewed_at = models.DateTimeField(null=True, blank=True)
     review_notes = models.TextField(blank=True)
 
+    # Per-site cropped ML visualization images (relative to MEDIA_ROOT)
+    img_false_color         = models.CharField(max_length=500, blank=True, default='')
+    img_prediction_mask     = models.CharField(max_length=500, blank=True, default='')
+    img_probability_heatmap = models.CharField(max_length=500, blank=True, default='')
+    img_overlay             = models.CharField(max_length=500, blank=True, default='')
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

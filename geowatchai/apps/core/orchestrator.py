@@ -82,12 +82,13 @@ class MiningDetectionPipeline:
             tensor, raster_meta = self._preprocess(job, geotiff_path)
             probability_mask = self._infer(job, tensor)
             result, polygons = self._postprocess(job, probability_mask, raster_meta, geotiff_path)
-            self._save_patch_images(job, tensor, probability_mask)
             satellite_imagery = self._log_satellite_imagery(
                 scene_id, satellite, cloud_cover, job, geotiff_path, raster_meta
             )
             model_run = self._log_model_run(job, satellite_imagery)
             detected_sites = self._create_detected_sites(job, result, model_run, satellite_imagery)
+            # Save images AFTER sites exist so we can generate per-site crops
+            self._save_patch_images(job, tensor, probability_mask, detected_sites, raster_meta)
             self._auto_promote_tile(job, detected_sites)
             self._assign_regions(detected_sites)
             self._classify_legal_status(detected_sites)
@@ -316,11 +317,12 @@ class MiningDetectionPipeline:
     # ------------------------------------------------------------------
 
     def _save_patch_images(self, job: Job, tensor: np.ndarray,
-                           probability_mask: np.ndarray):
-        """Generate and persist the 4 ML visualization PNGs. Never raises."""
+                           probability_mask: np.ndarray,
+                           detected_sites=None, raster_meta=None):
+        """Generate and persist ML visualization PNGs (whole-AOI + per-site). Never raises."""
         try:
             from apps.postprocessing.services import save_patch_images
-            save_patch_images(job, tensor, probability_mask)
+            save_patch_images(job, tensor, probability_mask, detected_sites, raster_meta)
         except Exception as exc:
             logger.warning(f"[Pipeline] Patch image generation skipped: {exc}")
 
