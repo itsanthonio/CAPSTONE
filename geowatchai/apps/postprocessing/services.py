@@ -380,10 +380,13 @@ def save_patch_images(job, tensor: np.ndarray, probability_mask: np.ndarray) -> 
         h, w = prob.shape
 
         def _stretch(arr):
-            """Percentile stretch to [0, 1]: clips to [p2, p98] then rescales."""
-            lo, hi = np.percentile(arr, 2), np.percentile(arr, 98)
+            """Percentile stretch to [0, 1]: excludes inf/nan then clips to [p2, p98]."""
+            valid = arr[np.isfinite(arr)]
+            if len(valid) < 10:
+                return np.full_like(arr, 0.5)
+            lo, hi = np.percentile(valid, 2), np.percentile(valid, 98)
             if hi <= lo:
-                return np.zeros_like(arr)
+                return np.full_like(arr, 0.5)
             return np.clip((arr - lo) / (hi - lo), 0.0, 1.0)
 
         def _hot(arr_2d):
