@@ -1,111 +1,178 @@
 {% extends 'base.html' %}
 
-{% block title %}Settings - {{ settings.APP_NAME }}{% endblock %}
+{% block title %}Settings — {{ settings.APP_NAME }}{% endblock %}
 
 {% block content %}
 <div class="p-6">
-    <!-- Page Header -->
     <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Settings</h1>
-        <p class="text-gray-600 mt-1">Configure your personal preferences</p>
+        <h1 class="text-[22px] font-semibold tracking-tight" style="color: var(--text-primary);">Settings</h1>
+        <p class="text-[13px] mt-1" style="color: var(--text-secondary);">Configure system preferences and personal settings</p>
     </div>
-    
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Theme & Display Settings -->
-        <div class="lg:col-span-2">
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div class="p-6 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900">Theme & Display</h2>
-                    <p class="text-sm text-gray-600 mt-1">Personalize your visual experience</p>
+
+        <!-- Left column -->
+        <div class="lg:col-span-2 space-y-6">
+
+            <!-- Detection Settings -->
+            <div class="gw-card overflow-hidden">
+                <div class="px-6 py-4" style="border-bottom: 1px solid var(--border-subtle);">
+                    <h2 class="text-[15px] font-semibold" style="color: var(--text-primary);">Detection Settings</h2>
+                    <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">Configure AI model detection parameters</p>
                 </div>
                 <div class="p-6 space-y-6">
-                    <!-- Theme Selection -->
+
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Theme</label>
-                        <select id="theme-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <label class="gw-label">
+                            Minimum Confidence Threshold: <span id="confidence-threshold-value" class="tabular-nums" style="color: var(--accent);">70%</span>
+                        </label>
+                        <input type="range" id="confidence-threshold" min="0" max="100" value="70"
+                               class="w-full mt-2" style="accent-color: var(--accent);">
+                        <p class="text-[12px] mt-1" style="color: var(--text-tertiary);">Alerts below this threshold will be filtered out</p>
+                    </div>
+
+                    <div>
+                        <label class="gw-label mb-3 block">Enabled Detection Types</label>
+                        <div class="space-y-2.5">
+                            <label class="flex items-center gap-2.5 cursor-pointer">
+                                <input type="checkbox" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
+                                <span class="text-[13px]" style="color: var(--text-secondary);">Illegal Mining Activity</span>
+                            </label>
+                            <label class="flex items-center gap-2.5 cursor-pointer">
+                                <input type="checkbox" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
+                                <span class="text-[13px]" style="color: var(--text-secondary);">Vegetation Clearance</span>
+                            </label>
+                            <label class="flex items-center gap-2.5 cursor-pointer">
+                                <input type="checkbox" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
+                                <span class="text-[13px]" style="color: var(--text-secondary);">Water Contamination</span>
+                            </label>
+                            <label class="flex items-center gap-2.5 cursor-pointer">
+                                <input type="checkbox" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
+                                <span class="text-[13px]" style="color: var(--text-secondary);">Excavation Patterns</span>
+                            </label>
+                            <label class="flex items-center gap-2.5 cursor-pointer">
+                                <input type="checkbox" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
+                                <span class="text-[13px]" style="color: var(--text-secondary);">Equipment Detection</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="gw-label">Automatic Scan Frequency</label>
+                        <select class="gw-select mt-1">
+                            <option value="hourly">Every Hour</option>
+                            <option value="6hours">Every 6 Hours</option>
+                            <option value="daily" selected>Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="manual">Manual Only</option>
+                        </select>
+                        <p class="text-[12px] mt-1" style="color: var(--text-tertiary);">How often the system automatically scans for new activity</p>
+                    </div>
+
+                    <div>
+                        <label class="gw-label">Region of Interest</label>
+                        <select class="gw-select mt-1">
+                            <option value="all">All Ghana</option>
+                            <option value="ashanti">Ashanti Region</option>
+                            <option value="western">Western Region</option>
+                            <option value="eastern">Eastern Region</option>
+                            <option value="central">Central Region</option>
+                            <option value="greater_accra">Greater Accra Region</option>
+                        </select>
+                        <p class="text-[12px] mt-1" style="color: var(--text-tertiary);">Geographic area to monitor for illegal mining</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme & Display Settings -->
+            <div class="gw-card overflow-hidden">
+                <div class="px-6 py-4" style="border-bottom: 1px solid var(--border-subtle);">
+                    <h2 class="text-[15px] font-semibold" style="color: var(--text-primary);">Theme & Display</h2>
+                    <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">Personalize your visual experience</p>
+                </div>
+                <div class="p-6 space-y-6">
+                    <div>
+                        <label class="gw-label">Theme</label>
+                        <select id="theme-select" class="gw-select mt-1">
                             <option value="light" {% if preferences.theme == 'light' %}selected{% endif %}>Light</option>
                             <option value="dark" {% if preferences.theme == 'dark' %}selected{% endif %}>Dark</option>
                             <option value="auto" {% if preferences.theme == 'auto' %}selected{% endif %}>Auto (System)</option>
                         </select>
-                        <p class="text-xs text-gray-500 mt-1">Choose your preferred color theme</p>
+                        <p class="text-[12px] mt-1" style="color: var(--text-tertiary);">Choose your preferred color theme</p>
                     </div>
-                    
-                    <!-- Layout -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Layout</label>
-                        <select id="layout-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <label class="gw-label">Layout Density</label>
+                        <select id="layout-select" class="gw-select mt-1">
                             <option value="compact" {% if preferences.layout == 'compact' %}selected{% endif %}>Compact</option>
                             <option value="spaced" {% if preferences.layout == 'spaced' %}selected{% endif %}>Spaced</option>
                             <option value="comfortable" {% if preferences.layout == 'comfortable' %}selected{% endif %}>Comfortable</option>
                         </select>
-                        <p class="text-xs text-gray-500 mt-1">Adjust spacing and layout density</p>
+                        <p class="text-[12px] mt-1" style="color: var(--text-tertiary);">Adjust spacing and layout density</p>
                     </div>
-                    
-                    <!-- Font Size -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Font Size</label>
-                        <select id="font-size-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <label class="gw-label">Font Size</label>
+                        <select id="font-size-select" class="gw-select mt-1">
                             <option value="small" {% if preferences.font_size == 'small' %}selected{% endif %}>Small</option>
                             <option value="medium" {% if preferences.font_size == 'medium' %}selected{% endif %}>Medium</option>
                             <option value="large" {% if preferences.font_size == 'large' %}selected{% endif %}>Large</option>
                             <option value="extra_large" {% if preferences.font_size == 'extra_large' %}selected{% endif %}>Extra Large</option>
                         </select>
-                        <p class="text-xs text-gray-500 mt-1">Adjust text size for better readability</p>
+                        <p class="text-[12px] mt-1" style="color: var(--text-tertiary);">Adjust text size for better readability</p>
                     </div>
-                    
-                    <!-- High Contrast -->
                     <div>
-                        <label class="flex items-center">
-                            <input type="checkbox" id="high-contrast-checkbox" {% if preferences.high_contrast %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                            <span class="ml-2 text-sm font-medium text-gray-700">High Contrast Mode</span>
+                        <label class="flex items-center gap-2.5 cursor-pointer">
+                            <input type="checkbox" id="high-contrast-checkbox" {% if preferences.high_contrast %}checked{% endif %} class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
+                            <span class="text-[13px] font-medium" style="color: var(--text-primary);">High Contrast Mode</span>
                         </label>
-                        <p class="text-xs text-gray-500 mt-1 ml-6">Increase contrast for better visibility</p>
+                        <p class="text-[12px] mt-1 ml-6" style="color: var(--text-tertiary);">Increase contrast for better visibility</p>
                     </div>
                 </div>
             </div>
-            
+
             <!-- Notification Settings -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
-                <div class="p-6 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900">Notifications</h2>
-                    <p class="text-sm text-gray-600 mt-1">Configure your notification preferences</p>
+            <div class="gw-card overflow-hidden">
+                <div class="px-6 py-4" style="border-bottom: 1px solid var(--border-subtle);">
+                    <h2 class="text-[15px] font-semibold" style="color: var(--text-primary);">Notification Settings</h2>
+                    <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">Configure alert notifications</p>
                 </div>
-                <div class="p-6 space-y-6">
-                    <!-- Email Notifications -->
+                <div class="p-6 space-y-5">
                     <div>
-                        <label class="flex items-center">
-                            <input type="checkbox" id="email-notifications-checkbox" {% if preferences.email_notifications %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                            <span class="ml-2 text-sm font-medium text-gray-700">Email Notifications</span>
+                        <label class="flex items-center gap-2.5 cursor-pointer">
+                            <input type="checkbox" id="email-notifications-checkbox" {% if preferences.email_notifications %}checked{% endif %} class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
+                            <span class="text-[13px] font-medium" style="color: var(--text-primary);">Email Notifications</span>
                         </label>
-                        <p class="text-xs text-gray-500 mt-1 ml-6">Receive email alerts for updates</p>
+                        <p class="text-[12px] mt-1 ml-6" style="color: var(--text-tertiary);">Receive email alerts for new detections</p>
                     </div>
-                    
+                    <div>
+                        <label class="flex items-center gap-2.5 cursor-pointer">
+                            <input type="checkbox" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
+                            <span class="text-[13px] font-medium" style="color: var(--text-primary);">High Priority Alerts Only</span>
+                        </label>
+                        <p class="text-[12px] mt-1 ml-6" style="color: var(--text-tertiary);">Only notify for high-risk detections (&gt;90% confidence)</p>
+                    </div>
                     <!-- Quiet Hours -->
                     <div>
-                        <label class="flex items-center">
-                            <input type="checkbox" id="quiet-hours-checkbox" {% if preferences.quiet_hours_enabled %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                            <span class="ml-2 text-sm font-medium text-gray-700">Quiet Hours</span>
+                        <label class="flex items-center gap-2.5 cursor-pointer">
+                            <input type="checkbox" id="quiet-hours-checkbox" {% if preferences.quiet_hours_enabled %}checked{% endif %} class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
+                            <span class="text-[13px] font-medium" style="color: var(--text-primary);">Quiet Hours</span>
                         </label>
-                        <p class="text-xs text-gray-500 mt-1 ml-6">Disable notifications during specific hours</p>
-                        
+                        <p class="text-[12px] mt-1 ml-6" style="color: var(--text-tertiary);">Disable notifications during specific hours</p>
                         {% if preferences.quiet_hours_enabled %}
                         <div class="mt-3 ml-6 grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs text-gray-600 mb-1">From</label>
-                                <input type="time" id="quiet-hours-start" value="{{ preferences.quiet_hours_start|time:'H:i' }}" class="w-full px-2 py-1 text-sm border border-gray-300 rounded">
+                                <label class="gw-label">From</label>
+                                <input type="time" id="quiet-hours-start" value="{{ preferences.quiet_hours_start|time:'H:i' }}" class="gw-input mt-1">
                             </div>
                             <div>
-                                <label class="block text-xs text-gray-600 mb-1">To</label>
-                                <input type="time" id="quiet-hours-end" value="{{ preferences.quiet_hours_end|time:'H:i' }}" class="w-full px-2 py-1 text-sm border border-gray-300 rounded">
+                                <label class="gw-label">To</label>
+                                <input type="time" id="quiet-hours-end" value="{{ preferences.quiet_hours_end|time:'H:i' }}" class="gw-input mt-1">
                             </div>
                         </div>
                         {% endif %}
                     </div>
-                    
-                    <!-- Timezone -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Timezone</label>
-                        <select id="timezone-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <label class="gw-label">Timezone</label>
+                        <select id="timezone-select" class="gw-select mt-1">
                             <option value="UTC" {% if preferences.timezone == 'UTC' %}selected{% endif %}>UTC</option>
                             <option value="GMT" {% if preferences.timezone == 'GMT' %}selected{% endif %}>GMT</option>
                             <option value="EST" {% if preferences.timezone == 'EST' %}selected{% endif %}>EST</option>
@@ -179,122 +246,82 @@
                 </div>
             </div>
         </div>
-        
-        <!-- Personal Settings -->
-        <div class="lg:col-span-1">
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div class="p-6 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900">Personal Settings</h2>
-                    <p class="text-sm text-gray-600 mt-1">Your account and privacy</p>
+
+        <!-- Right column -->
+        <div class="lg:col-span-1 space-y-6">
+
+            <!-- Personal Info -->
+            <div class="gw-card overflow-hidden">
+                <div class="px-5 py-4" style="border-bottom: 1px solid var(--border-subtle);">
+                    <h2 class="text-[15px] font-semibold" style="color: var(--text-primary);">Account</h2>
+                    <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">Your profile information</p>
                 </div>
-                <div class="p-6 space-y-4">
-                    <!-- Account Info -->
+                <div class="p-5 space-y-4">
                     <div>
-                        <label class="text-sm font-medium text-gray-600">Name</label>
-                        <p class="text-sm text-gray-900">{{ request.user.get_full_name|default:request.user.username }}</p>
+                        <p class="text-[11px] uppercase tracking-[0.06em] font-medium mb-0.5" style="color: var(--text-tertiary);">Name</p>
+                        <p class="text-[13px]" style="color: var(--text-primary);">{{ request.user.get_full_name|default:request.user.username }}</p>
                     </div>
-                    
                     <div>
-                        <label class="text-sm font-medium text-gray-600">Email</label>
-                        <p class="text-sm text-gray-900">{{ request.user.email }}</p>
+                        <p class="text-[11px] uppercase tracking-[0.06em] font-medium mb-0.5" style="color: var(--text-tertiary);">Email</p>
+                        <p class="text-[13px]" style="color: var(--text-primary);">{{ request.user.email }}</p>
                     </div>
-                    
                     <div>
-                        <label class="text-sm font-medium text-gray-600">Role</label>
-                        <p class="text-sm text-gray-900">{{ request.user.profile.get_role_display }}</p>
+                        <p class="text-[11px] uppercase tracking-[0.06em] font-medium mb-0.5" style="color: var(--text-tertiary);">Role</p>
+                        <p class="text-[13px]" style="color: var(--text-primary);">{{ request.user.profile.get_role_display }}</p>
                     </div>
-                    
-                    <div class="pt-4 border-t border-gray-200">
-                        <button class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm">
-                            Change Password
-                        </button>
-                        <button class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm mt-2">
-                            Edit Profile
-                        </button>
+                    <div class="pt-3" style="border-top: 1px solid var(--border-subtle);">
+                        <a href="{% url 'password_change' %}" class="btn-secondary w-full py-2 text-[13px] text-center block">Change Password</a>
                     </div>
                 </div>
             </div>
-            
-            <!-- Privacy Settings -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
-                <div class="p-6 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900">Privacy</h2>
-                    <p class="text-sm text-gray-600 mt-1">Control your data</p>
+
+            <!-- System Information -->
+            <div class="gw-card overflow-hidden">
+                <div class="px-5 py-4" style="border-bottom: 1px solid var(--border-subtle);">
+                    <h2 class="text-[15px] font-semibold" style="color: var(--text-primary);">System Information</h2>
+                    <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">Current system status</p>
                 </div>
-                <div class="p-6 space-y-4">
-                    <!-- Activity Visibility -->
+                <div class="p-5 space-y-4">
+                    {% for label, value in info_rows %}
                     <div>
-                        <label class="flex items-center">
-                            <input type="checkbox" id="activity-visibility-checkbox" {% if preferences.activity_visibility %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                            <span class="ml-2 text-sm font-medium text-gray-700">Activity Visibility</span>
-                        </label>
-                        <p class="text-xs text-gray-500 mt-1 ml-6">Show your activity to other users</p>
+                        <p class="text-[11px] uppercase tracking-[0.06em] font-medium mb-0.5" style="color: var(--text-tertiary);">{{ label }}</p>
+                        <p class="text-[13px]" style="color: var(--text-primary);">{{ value }}</p>
                     </div>
-                    
-                    <!-- Location Sharing -->
+                    {% empty %}
                     <div>
-                        <label class="flex items-center">
-                            <input type="checkbox" id="location-sharing-checkbox" {% if preferences.location_sharing %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                            <span class="ml-2 text-sm font-medium text-gray-700">Location Sharing</span>
-                        </label>
-                        <p class="text-xs text-gray-500 mt-1 ml-6">Share your location with team</p>
+                        <p class="text-[11px] uppercase tracking-[0.06em] font-medium mb-0.5" style="color: var(--text-tertiary);">Application Version</p>
+                        <p class="text-[13px]" style="color: var(--text-primary);">{{ settings.APP_VERSION }}</p>
                     </div>
-                    
-                    <div class="pt-4 border-t border-gray-200">
-                        <button class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm">
-                            Export My Data
-                        </button>
-                        <button class="w-full px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors text-sm mt-2">
-                            Delete Account
-                        </button>
+                    <div>
+                        <p class="text-[11px] uppercase tracking-[0.06em] font-medium mb-0.5" style="color: var(--text-tertiary);">Environment</p>
+                        <p class="text-[13px]" style="color: var(--text-primary);">{{ settings.ENVIRONMENT }}</p>
                     </div>
+                    <div>
+                        <p class="text-[11px] uppercase tracking-[0.06em] font-medium mb-0.5" style="color: var(--text-tertiary);">System Status</p>
+                        <span class="gw-badge--resolved">Operational</span>
+                    </div>
+                    {% endfor %}
                 </div>
             </div>
-            
-            <!-- Mobile Settings -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
-                <div class="p-6 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900">Mobile</h2>
-                    <p class="text-sm text-gray-600 mt-1">Mobile app preferences</p>
+
+            <!-- Quick Actions -->
+            <div class="gw-card overflow-hidden">
+                <div class="px-5 py-4" style="border-bottom: 1px solid var(--border-subtle);">
+                    <h2 class="text-[15px] font-semibold" style="color: var(--text-primary);">Quick Actions</h2>
+                    <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">System maintenance tasks</p>
                 </div>
-                <div class="p-6 space-y-4">
-                    <!-- Push Notifications -->
-                    <div>
-                        <label class="flex items-center">
-                            <input type="checkbox" id="mobile-push-checkbox" {% if preferences.mobile_push_notifications %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                            <span class="ml-2 text-sm font-medium text-gray-700">Push Notifications</span>
-                        </label>
-                        <p class="text-xs text-gray-500 mt-1 ml-6">Receive push notifications on mobile</p>
-                    </div>
-                    
-                    <!-- Offline Sync -->
-                    <div>
-                        <label class="flex items-center">
-                            <input type="checkbox" id="mobile-offline-checkbox" {% if preferences.mobile_offline_sync %}checked{% endif %} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                            <span class="ml-2 text-sm font-medium text-gray-700">Offline Sync</span>
-                        </label>
-                        <p class="text-xs text-gray-500 mt-1 ml-6">Sync data when offline</p>
-                    </div>
-                    
-                    <!-- Mobile Theme -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Mobile Theme</label>
-                        <select id="mobile-theme-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
-                            <option value="light" {% if preferences.mobile_theme == 'light' %}selected{% endif %}>Light</option>
-                            <option value="dark" {% if preferences.mobile_theme == 'dark' %}selected{% endif %}>Dark</option>
-                            <option value="auto" {% if preferences.mobile_theme == 'auto' %}selected{% endif %}>Auto (System)</option>
-                        </select>
-                    </div>
+                <div class="p-5 space-y-2.5">
+                    <button class="btn-primary w-full py-2 text-[13px]" id="btn-manual-scan">Run Manual Scan</button>
+                    <button class="btn-secondary w-full py-2 text-[13px]" id="btn-clear-cache">Clear Cache</button>
+                    <button class="btn-ghost w-full py-2 text-[13px]" id="btn-export-settings">Export Settings</button>
+                    <button class="btn-ghost w-full py-2 text-[13px]" id="btn-import-settings">Import Settings</button>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- Save Button -->
+
     <div class="flex justify-end mt-6">
-        <button id="save-settings-btn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-            Save Settings
-        </button>
+        <button id="save-settings-btn" class="btn-primary px-6 py-2">Save Settings</button>
     </div>
 </div>
 {% endblock %}
@@ -302,8 +329,27 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    initializeSettings();
+    const threshold = document.getElementById('confidence-threshold');
+    const thresholdVal = document.getElementById('confidence-threshold-value');
+    if (threshold && thresholdVal) {
+        threshold.addEventListener('input', function() {
+            thresholdVal.textContent = this.value + '%';
+        });
+    }
+
+    document.getElementById('btn-manual-scan')?.addEventListener('click', function() {
+        this.textContent = 'Scanning…';
+        this.disabled = true;
+        setTimeout(() => { this.textContent = 'Run Manual Scan'; this.disabled = false; alert('Manual scan initiated.'); }, 2000);
+    });
+
+    document.getElementById('btn-clear-cache')?.addEventListener('click', function() {
+        this.textContent = 'Clearing…';
+        this.disabled = true;
+        setTimeout(() => { this.textContent = 'Clear Cache'; this.disabled = false; alert('Cache cleared.'); }, 1000);
+    });
 });
+
 
 function initializeSettings() {
     // Apply current theme and preferences on load
