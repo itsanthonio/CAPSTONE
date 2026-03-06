@@ -48,48 +48,48 @@
 
         <div class="gw-card px-4 py-3">
             <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--text-tertiary);">Total</p>
-            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--text-primary);">{{ summary.total }}</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--text-primary);" id="s-total">{{ summary.total }}</p>
         </div>
 
         <div class="gw-card px-4 py-3 cursor-pointer border-l-[3px]"
              style="border-left-color: var(--status-critical);"
              onclick="document.getElementById('filter-status').value='open'; document.getElementById('apply-filters').click();">
             <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--status-critical);">Open</p>
-            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-critical);">{{ summary.open }}</p>
-            {% if summary.critical %}<p class="text-xs mt-0.5" style="color: var(--text-tertiary);">{{ summary.critical }} critical</p>{% endif %}
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-critical);" id="s-open">{{ summary.open }}</p>
+            <p class="text-xs mt-0.5" style="color: var(--text-tertiary);"><span id="s-critical">{{ summary.critical }}</span> critical</p>
         </div>
 
         <div class="gw-card px-4 py-3 cursor-pointer border-l-[3px]"
              style="border-left-color: var(--status-moderate);"
              onclick="document.getElementById('filter-status').value='acknowledged'; document.getElementById('apply-filters').click();">
             <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--status-moderate);">Acknowledged</p>
-            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-moderate);">{{ summary.acknowledged }}</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-moderate);" id="s-acknowledged">{{ summary.acknowledged }}</p>
         </div>
 
         <div class="gw-card px-4 py-3 cursor-pointer border-l-[3px]"
              style="border-left-color: var(--status-dispatched);"
              onclick="document.getElementById('filter-status').value='dispatched'; document.getElementById('apply-filters').click();">
             <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--status-dispatched);">Dispatched</p>
-            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-dispatched);">{{ summary.dispatched }}</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-dispatched);" id="s-dispatched">{{ summary.dispatched }}</p>
         </div>
 
         <div class="gw-card px-4 py-3 cursor-pointer border-l-[3px]"
              style="border-left-color: var(--status-resolved);"
              onclick="document.getElementById('filter-status').value='resolved'; document.getElementById('apply-filters').click();">
             <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--status-resolved);">Resolved</p>
-            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-resolved);">{{ summary.resolved }}</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-resolved);" id="s-resolved">{{ summary.resolved }}</p>
         </div>
 
         <div class="gw-card px-4 py-3 cursor-pointer"
              onclick="document.getElementById('filter-status').value='dismissed'; document.getElementById('apply-filters').click();">
             <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--text-tertiary);">Dismissed</p>
-            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--text-secondary);">{{ summary.dismissed }}</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--text-secondary);" id="s-dismissed">{{ summary.dismissed }}</p>
         </div>
 
         <div class="gw-card px-4 py-3 cursor-pointer"
              onclick="document.getElementById('filter-severity').value='high'; document.getElementById('apply-filters').click();">
             <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--text-tertiary);">High+</p>
-            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-high);">{{ summary.critical|add:summary.high }}</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-high);" id="s-highplus">{{ summary.critical|add:summary.high }}</p>
             <p class="text-xs mt-0.5" style="color: var(--text-tertiary);">need action</p>
         </div>
 
@@ -241,22 +241,22 @@
                                    class="rounded cursor-pointer"
                                    style="border-color: var(--border-default); accent-color: var(--status-info);">
                         </th>
-                        <th class="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">ID</th>
-                        <th class="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Title</th>
-                        <th class="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider cursor-pointer select-none group" data-sort="severity" style="color: var(--text-secondary);">
+                        <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">ID</th>
+                        <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Title</th>
+                        <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider cursor-pointer select-none group" data-sort="severity" style="color: var(--text-secondary);">
                             Severity <span class="sort-icon ml-0.5" style="color: var(--text-tertiary);">↕</span>
                         </th>
-                        <th class="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Type</th>
-                        <th class="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Location</th>
-                        <th class="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider cursor-pointer select-none group" data-sort="-detected_site__confidence_score" style="color: var(--text-secondary);">
+                        <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Type</th>
+                        <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Location</th>
+                        <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider cursor-pointer select-none group" data-sort="-detected_site__confidence_score" style="color: var(--text-secondary);">
                             Confidence <span class="sort-icon ml-0.5" style="color: var(--text-tertiary);">↕</span>
                         </th>
-                        <th class="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Status</th>
-                        <th class="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Source</th>
-                        <th class="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider cursor-pointer select-none group" data-sort="-created_at" style="color: var(--text-secondary);">
+                        <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Status</th>
+                        <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Source</th>
+                        <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider cursor-pointer select-none group" data-sort="-created_at" style="color: var(--text-secondary);">
                             Created <span class="sort-icon ml-0.5" style="color: var(--text-tertiary);">↓</span>
                         </th>
-                        <th class="px-5 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Actions</th>
+                        <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="alerts-tbody"></tbody>
@@ -817,6 +817,22 @@ function showConfirm(title, message) {
     };
 
     // ── Fetch ──
+    function refreshSummary() {
+        fetch('/api/alerts/summary/', { credentials: 'include' })
+            .then(r => r.json())
+            .then(s => {
+                document.getElementById('s-total').textContent        = s.total;
+                document.getElementById('s-open').textContent         = s.open;
+                document.getElementById('s-acknowledged').textContent = s.acknowledged;
+                document.getElementById('s-dispatched').textContent   = s.dispatched;
+                document.getElementById('s-resolved').textContent     = s.resolved;
+                document.getElementById('s-dismissed').textContent    = s.dismissed;
+                document.getElementById('s-highplus').textContent     = s.critical + s.high;
+                document.getElementById('s-critical').textContent     = s.critical;
+            })
+            .catch(() => {});
+    }
+
     async function loadAlerts(page = 1) {
         currentPage = page;
         // Clear selection on each load
@@ -835,6 +851,7 @@ function showConfirm(title, message) {
             renderPagination(data);
             document.getElementById('result-count').textContent =
                 `${data.total} alert${data.total !== 1 ? 's' : ''}`;
+            refreshSummary();
         } catch (e) {
             console.error('Failed to load alerts:', e);
             showEmpty();
@@ -850,7 +867,11 @@ function showConfirm(title, message) {
             const sevCls = SEVERITY_CLASS[a.severity] || 'gw-badge--info';
             const staCls = STATUS_CLASS[a.status]     || 'gw-badge--info';
             const locStr = a.site.lat != null
-                ? `${a.site.lat}° N, ${Math.abs(a.site.lng)}° W`
+                ? `<a href="https://earth.google.com/web/search/${a.site.lat},${a.site.lng}"
+                       target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()"
+                       title="Open in Google Earth"
+                       style="color:var(--text-secondary);text-decoration:underline;text-decoration-style:dotted;"
+                   >${a.site.lat}° N, ${Math.abs(a.site.lng)}° W ↗</a>`
                 : (a.site.region || '—');
             const isSelectable = a.status === 'open' || a.status === 'acknowledged';
             const srcBadge = a.source === 'automated'
@@ -866,27 +887,27 @@ function showConfirm(title, message) {
                         data-id="${a.id}" data-status="${a.status}"
                         onchange="window._alertsPage.onRowCheck(this)">` : ''}
                 </td>
-                <td class="px-5 py-3 text-xs font-mono" style="color: var(--text-secondary);">${a.short_id}</td>
-                <td class="px-5 py-3 text-sm font-medium max-w-xs truncate" style="color: var(--text-primary);">${a.title}</td>
-                <td class="px-5 py-3">
+                <td class="px-3 py-3 text-xs font-mono" style="color: var(--text-secondary);">${a.short_id}</td>
+                <td class="px-3 py-3 text-sm font-medium max-w-[160px] truncate" style="color: var(--text-primary);">${a.title}</td>
+                <td class="px-3 py-3">
                     <span class="${sevCls}">${a.severity_display}</span>
                 </td>
-                <td class="px-5 py-3 text-xs" style="color: var(--text-secondary);">${a.alert_type_display}</td>
-                <td class="px-5 py-3 text-xs" style="color: var(--text-secondary);">${locStr}</td>
-                <td class="px-5 py-3">
+                <td class="px-3 py-3 text-xs" style="color: var(--text-secondary);">${a.alert_type_display}</td>
+                <td class="px-3 py-3 text-xs" style="color: var(--text-secondary);">${locStr}</td>
+                <td class="px-3 py-3">
                     <div class="flex items-center gap-2">
                         <span class="text-xs font-medium tabular-nums" style="color: var(--text-primary);">${a.site.confidence_pct}%</span>
-                        <div class="w-12 rounded-full h-1.5" style="background: var(--border-subtle);">
+                        <div class="w-10 rounded-full h-1.5" style="background: var(--border-subtle);">
                             <div class="h-1.5 rounded-full" style="width:${a.site.confidence_pct}%; background: var(--viz-legal);"></div>
                         </div>
                     </div>
                 </td>
-                <td class="px-5 py-3">
+                <td class="px-3 py-3">
                     <span class="${staCls}">${a.status_display}</span>
                 </td>
-                <td class="px-5 py-3">${srcBadge}</td>
-                <td class="px-5 py-3 text-xs" style="color: var(--text-secondary);">${a.created_at}</td>
-                <td class="px-5 py-3 text-xs" onclick="event.stopPropagation()">
+                <td class="px-3 py-3">${srcBadge}</td>
+                <td class="px-3 py-3 text-xs" style="color: var(--text-secondary);">${a.created_at}</td>
+                <td class="px-3 py-3 text-xs" onclick="event.stopPropagation()">
                     <div class="flex items-center gap-2">
                         ${a.status === 'open' ? `
                             <button onclick="window._alertsPage.action('${a.id}','acknowledge')"
@@ -1002,9 +1023,15 @@ function showConfirm(title, message) {
             document.getElementById('modal-confidence').textContent  = site.confidence_pct + '%';
             document.getElementById('modal-area').textContent        = site.area_hectares + ' ha';
             document.getElementById('modal-recurrence').textContent  = site.recurrence_count + 'x';
-            document.getElementById('modal-location').textContent    = site.lat != null
-                ? `${site.lat}° N, ${Math.abs(site.lng)}° W`
-                : (site.region || '—');
+            const locEl = document.getElementById('modal-location');
+            if (site.lat != null) {
+                locEl.innerHTML = `<a href="https://earth.google.com/web/search/${site.lat},${site.lng}"
+                    target="_blank" rel="noopener noreferrer" title="Open in Google Earth"
+                    style="color:inherit;text-decoration:underline;text-decoration-style:dotted;"
+                    >${site.lat}° N, ${Math.abs(site.lng)}° W ↗</a>`;
+            } else {
+                locEl.textContent = site.region || '—';
+            }
 
             const sevCls = SEVERITY_CLASS[a.severity] || 'gw-badge--info';
             const staCls = STATUS_CLASS[a.status]     || 'gw-badge--info';
