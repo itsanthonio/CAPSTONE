@@ -32,7 +32,14 @@ urlpatterns = [
     path('account/', views.my_account, name='my_account'),
     path('regions/', views.region_list, name='region_list'),
     path('regions/<uuid:region_id>/', views.region_detail, name='region_detail'),
-    
+
+    # User management (admin-only)
+    path('users/', views.user_management, name='user_management'),
+    path('users/create/', views.user_create, name='user_create'),
+    path('users/<int:user_id>/edit/', views.user_edit, name='user_edit'),
+    path('users/<int:user_id>/toggle-active/', views.user_toggle_active, name='user_toggle_active'),
+    path('users/<int:user_id>/reset-password/', views.user_reset_password, name='user_reset_password'),
+
     # Include accounts API URLs
     path('api/', include('apps.accounts.urls')),
 ]

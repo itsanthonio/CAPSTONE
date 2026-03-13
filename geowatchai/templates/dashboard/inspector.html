@@ -6,7 +6,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-    .mini-map { height: 180px; border-radius: 0.5rem; overflow: hidden; }
+    .mini-map { height: 150px; border-radius: 0.5rem; overflow: hidden; }
     .mini-map-wrap { position: relative; cursor: pointer; }
     .mini-map-overlay {
         position: absolute; bottom: 0; right: 0; z-index: 800;
@@ -27,6 +27,12 @@
     .tl-thumb { opacity: 0.55; cursor: pointer; transition: opacity 0.15s; }
     .tl-thumb:hover { opacity: 0.85; }
     .tl-thumb.active { opacity: 1; }
+    /* Collapsible section toggle button */
+    .assignment-card button[onclick="toggleSection(this)"] {
+        border-bottom: 1px solid var(--border-subtle);
+        background: none;
+    }
+    .assignment-card button[onclick="toggleSection(this)"]:hover { background: var(--surface-3); border-radius: 0.25rem; }
     /* Print isolation — only the dynamically appended overlay is rendered */
     #print-overlay { display: none; }
     @media print {
@@ -168,6 +174,19 @@
 
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+/* ---------- Collapsible section toggle ---------- */
+function toggleSection(btn) {
+    const body = btn.nextElementSibling;
+    const chevron = btn.querySelector('.section-chevron');
+    const isHidden = body.classList.toggle('hidden');
+    chevron.style.transform = isHidden ? '' : 'rotate(180deg)';
+    // Ensure timelapse is initialised when first opened
+    if (!isHidden) {
+        requestAnimationFrame(initMiniMaps);
+        initTimelapse();
+    }
+}
+
 /* ---------- Availability toggle ---------- */
 let _availabilityBusy = false;
 
@@ -400,6 +419,8 @@ function submitReport(assignmentId) {
 /* ---------- Timelapse slideshow ---------- */
 function initTimelapse() {
     document.querySelectorAll('[data-tl-assignment]').forEach(container => {
+        if (container._tlInit) return;   // already initialised
+        container._tlInit = true;
         const aid = container.dataset.tlAssignment;
         const featured = document.getElementById(`tl-featured-${aid}`);
         const yearLabel = document.getElementById(`tl-year-${aid}`);

@@ -1814,3 +1814,273 @@ def my_account(request):
         'org_choices': UserProfile.Organization.choices,
         'errors': errors,
     })
+
+
+# ---------------------------------------------------------------------------
+# User Management (admin-only)
+# ---------------------------------------------------------------------------
+
+@user_passes_test(is_admin)
+def user_management(request):
+    """Admin user management — searchable/filterable table of all users."""
+    qs = User.objects.select_related('profile').order_by('username')
+
+    search     = request.GET.get('q', '').strip()
+    role_filter = request.GET.get('role', '').strip()
+    org_filter  = request.GET.get('org', '').strip()
+
+    if search:
+        qs = qs.filter(
+            Q(username__icontains=search) |
+            Q(email__icontains=search) |
+            Q(first_name__icontains=search) |
+            Q(last_name__icontains=search)
+        )
+    if role_filter:
+        qs = qs.filter(profile__role=role_filter)
+    if org_filter:
+        qs = qs.filter(profile__organization=org_filter)
+
+    return render(request, 'dashboard/user_management.html', {
+        'users':        qs,
+        'search':       search,
+        'role_filter':  role_filter,
+        'org_filter':   org_filter,
+        'role_choices': UserProfile.Role.choices,
+        'org_choices':  UserProfile.Organization.choices,
+        'total_count':  User.objects.count(),
+    })
+
+
+def _user_to_dict(user):
+    """Serialise a User + UserProfile into a plain dict for JSON responses."""
+    profile = user.profile
+    return {
+        'id':                    user.id,
+        'username':              user.username,
+        'email':                 user.email,
+        'first_name':            user.first_name,
+        'last_name':             user.last_name,
+        'full_name':             user.get_full_name(),
+        'role':                  profile.role,
+        'role_display':          profile.get_role_display(),
+        'organization':          profile.organization,
+        'organization_display':  profile.get_organization_display() if profile.organization else '',
+        'phone_number':          profile.phone_number or '',
+        'is_active':             user.is_active,
+        'date_joined':           user.date_joined.strftime('%b %d, %Y'),
+    }
+
+
+@user_passes_test(is_admin)
+def user_create(request):
+    """Create a new user account (admin bypass — no PIN/email verification needed)."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    from django.core.validators import validate_email as _validate_email_addr
+    from django.core.exceptions import ValidationError as _VE
+
+    username   = request.POST.get('username', '').strip()
+    email      = request.POST.get('email', '').strip()
+    password   = request.POST.get('password', '').strip()
+    role       = request.POST.get('role', '').strip()
+    org        = request.POST.get('organization', '').strip()
+    phone      = request.POST.get('phone_number', '').strip()
+    first_name = request.POST.get('first_name', '').strip()
+    last_name  = request.POST.get('last_name', '').strip()
+
+    errors = {}
+    if not username:
+        errors['username'] = 'Username is required.'
+    elif User.objects.filter(username=username).exists():
+        errors['username'] = 'Username already taken.'
+
+    if not email:
+        errors['email'] = 'Email is required.'
+    else:
+        try:
+            _validate_email_addr(email)
+        except _VE:
+            errors['email'] = 'Enter a valid email address.'
+        else:
+            if User.objects.filter(email=email).exists():
+                errors['email'] = 'Email already in use.'
+
+    if not password or len(password) < 8:
+        errors['password'] = 'Password must be at least 8 characters.'
+
+    valid_roles = [c[0] for c in UserProfile.Role.choices]
+    if not role or role not in valid_roles:
+        errors['role'] = 'Select a valid role.'
+
+    if errors:
+        return JsonResponse({'success': False, 'errors': errors}, status=400)
+
+    user = User.objects.create_user(
+        username=username,
+        email=email,
+        password=password,
+        first_name=first_name,
+        last_name=last_name,
+        is_active=True,
+    )
+    profile = user.profile
+    profile.role = role
+    if org:
+        profile.organization = org
+    if phone:
+        profile.phone_number = phone
+    profile.save()
+
+    try:
+        from apps.detections.models import AuditLog
+        AuditLog.objects.create(
+            user=request.user,
+            action='user.created',
+            object_id=str(user.pk),
+            detail={'username': username, 'role': role, 'created_by': request.user.username},
+        )
+    except Exception:
+        pass
+
+    return JsonResponse({'success': True, 'message': f'User "{username}" created successfully.', 'user': _user_to_dict(user)})
+
+
+@user_passes_test(is_admin)
+def user_edit(request, user_id):
+    """Edit an existing user's details."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    from django.core.validators import validate_email as _validate_email_addr
+    from django.core.exceptions import ValidationError as _VE
+
+    target_user = get_object_or_404(User, pk=user_id)
+    profile     = target_user.profile
+
+    email      = request.POST.get('email', '').strip()
+    role       = request.POST.get('role', '').strip()
+    org        = request.POST.get('organization', '').strip()
+    phone      = request.POST.get('phone_number', '').strip()
+    first_name = request.POST.get('first_name', '').strip()
+    last_name  = request.POST.get('last_name', '').strip()
+
+    errors = {}
+    if email:
+        try:
+            _validate_email_addr(email)
+        except _VE:
+            errors['email'] = 'Enter a valid email address.'
+        else:
+            if User.objects.filter(email=email).exclude(pk=target_user.pk).exists():
+                errors['email'] = 'That email is already in use.'
+
+    valid_roles = [c[0] for c in UserProfile.Role.choices]
+    if role and role not in valid_roles:
+        errors['role'] = 'Select a valid role.'
+
+    valid_orgs = [c[0] for c in UserProfile.Organization.choices]
+    if org and org not in valid_orgs:
+        errors['organization'] = 'Select a valid organisation.'
+
+    if errors:
+        return JsonResponse({'success': False, 'errors': errors}, status=400)
+
+    if email:
+        target_user.email = email
+    target_user.first_name = first_name
+    target_user.last_name  = last_name
+    target_user.save()
+
+    if role:
+        profile.role = role
+    if org is not None:
+        profile.organization = org
+    profile.phone_number = phone
+    profile.save()
+
+    try:
+        from apps.detections.models import AuditLog
+        AuditLog.objects.create(
+            user=request.user,
+            action='user.edited',
+            object_id=str(target_user.pk),
+            detail={'username': target_user.username, 'edited_by': request.user.username},
+        )
+    except Exception:
+        pass
+
+    return JsonResponse({'success': True, 'message': f'User "{target_user.username}" updated.', 'user': _user_to_dict(target_user)})
+
+
+@user_passes_test(is_admin)
+def user_toggle_active(request, user_id):
+    """Toggle a user's is_active status."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    target_user = get_object_or_404(User, pk=user_id)
+
+    if target_user == request.user:
+        return JsonResponse({'success': False, 'error': 'You cannot deactivate your own account.'}, status=400)
+
+    target_user.is_active = not target_user.is_active
+    target_user.save()
+
+    action = 'activated' if target_user.is_active else 'deactivated'
+
+    try:
+        from apps.detections.models import AuditLog
+        AuditLog.objects.create(
+            user=request.user,
+            action=f'user.{action}',
+            object_id=str(target_user.pk),
+            detail={'username': target_user.username, 'by': request.user.username},
+        )
+    except Exception:
+        pass
+
+    return JsonResponse({
+        'success':   True,
+        'is_active': target_user.is_active,
+        'message':   f'User "{target_user.username}" has been {action}.',
+    })
+
+
+@user_passes_test(is_admin)
+def user_reset_password(request, user_id):
+    """Send a password-reset email to the target user."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    target_user = get_object_or_404(User, pk=user_id)
+
+    if not target_user.email:
+        return JsonResponse({'success': False, 'error': 'This user has no email address on file.'}, status=400)
+
+    uid   = urlsafe_base64_encode(force_bytes(target_user.pk))
+    token = default_token_generator.make_token(target_user)
+
+    reset_url = request.build_absolute_uri(
+        reverse('password_reset_confirm', kwargs={'uidb64': uid, 'token': token})
+    )
+
+    subject = f'Password Reset — {django_settings.APP_NAME}'
+    body    = (
+        f'Hi {target_user.get_full_name() or target_user.username},\n\n'
+        f'An administrator has requested a password reset for your account.\n\n'
+        f'Click the link below to set a new password (valid for 24 hours):\n{reset_url}\n\n'
+        f'If you did not expect this email, you can ignore it.\n\n'
+        f'— {django_settings.APP_NAME} Team'
+    )
+
+    def _send():
+        try:
+            send_mail(subject, body, django_settings.DEFAULT_FROM_EMAIL, [target_user.email], fail_silently=True)
+        except Exception:
+            pass
+
+    threading.Thread(target=_send, daemon=True).start()
+
+    return JsonResponse({'success': True, 'message': f'Password reset email sent to {target_user.email}.'})
