@@ -1,0 +1,602 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}User Management — GalamseyWatch{% endblock %}
+
+{% block extra_css %}
+<style>
+    .status-pill-active   { background: var(--status-resolved-bg);  color: var(--status-resolved);  border: 1px solid var(--status-resolved-border); }
+    .status-pill-inactive { background: var(--status-critical-bg);  color: var(--status-critical);  border: 1px solid var(--status-critical-border); }
+    .role-pill-admin      { background: rgba(212,160,23,0.12);       color: var(--accent);           border: 1px solid rgba(212,160,23,0.3); }
+    .role-pill-inspector  { background: var(--status-info-bg);       color: var(--status-info);      border: 1px solid var(--status-info-border); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-5">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold" style="color: var(--text-primary);">User Management</h1>
+            <p class="text-sm mt-0.5" style="color: var(--text-secondary);">
+                <span id="user-count">{{ total_count }}</span> account{{ total_count|pluralize }} total
+            </p>
+        </div>
+        <button onclick="openCreateModal()"
+                class="btn-primary flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Create User
+        </button>
+    </div>
+
+    <!-- Filters -->
+    <form method="get" class="flex flex-wrap gap-3 items-end">
+        <div class="flex-1 min-w-[200px]">
+            <label class="gw-label mb-1">Search</label>
+            <input type="text" name="q" value="{{ search }}"
+                   placeholder="Username, email, or name…"
+                   class="gw-input block w-full">
+        </div>
+        <div>
+            <label class="gw-label mb-1">Role</label>
+            <select name="role" class="gw-input">
+                <option value="">All roles</option>
+                {% for val, label in role_choices %}
+                <option value="{{ val }}" {% if role_filter == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="gw-label mb-1">Organisation</label>
+            <select name="org" class="gw-input">
+                <option value="">All organisations</option>
+                {% for val, label in org_choices %}
+                <option value="{{ val }}" {% if org_filter == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn-primary px-4 py-2 rounded-lg text-sm font-semibold">Filter</button>
+        {% if search or role_filter or org_filter %}
+        <a href="{% url 'dashboard:user_management' %}"
+           class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium">Clear</a>
+        {% endif %}
+    </form>
+
+    <!-- Table -->
+    <div class="gw-card overflow-hidden">
+        {% if users %}
+        <div class="overflow-x-auto">
+            <table id="users-table" class="w-full text-sm">
+                <thead>
+                    <tr style="border-bottom: 1px solid var(--border-subtle);">
+                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">User</th>
+                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">Role</th>
+                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">Organisation</th>
+                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">Phone</th>
+                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">Status</th>
+                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">Joined</th>
+                        <th class="px-4 py-3"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y" style="divide-color: var(--border-subtle);">
+                    {% for u in users %}
+                    <tr id="user-row-{{ u.id }}" class="hover:bg-surface-3 transition-colors" style="transition-duration:100ms;">
+                        <!-- User -->
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-semibold"
+                                     style="background: var(--surface-3); color: var(--text-secondary); border: 1px solid var(--border-subtle);">
+                                    {{ u.username|first|upper }}
+                                </div>
+                                <div>
+                                    <p class="font-medium" style="color: var(--text-primary);">{{ u.username }}</p>
+                                    <p class="text-xs" style="color: var(--text-tertiary);">{{ u.email|default:"—" }}</p>
+                                    {% if u.first_name or u.last_name %}
+                                    <p class="text-xs" style="color: var(--text-tertiary);">{{ u.get_full_name }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <!-- Role -->
+                        <td class="px-4 py-3">
+                            {% if u.profile.role == 'admin' %}
+                            <span class="role-pill-admin px-2 py-0.5 text-xs font-semibold rounded-full">Admin</span>
+                            {% else %}
+                            <span class="role-pill-inspector px-2 py-0.5 text-xs font-semibold rounded-full">Inspector</span>
+                            {% endif %}
+                        </td>
+                        <!-- Organisation -->
+                        <td class="px-4 py-3" style="color: var(--text-secondary);">
+                            {{ u.profile.get_organization_display|default:"—" }}
+                        </td>
+                        <!-- Phone -->
+                        <td class="px-4 py-3" style="color: var(--text-secondary);">
+                            {{ u.profile.phone_number|default:"—" }}
+                        </td>
+                        <!-- Status -->
+                        <td class="px-4 py-3">
+                            <span id="status-pill-{{ u.id }}"
+                                  class="px-2 py-0.5 text-xs font-semibold rounded-full
+                                  {% if u.is_active %}status-pill-active{% else %}status-pill-inactive{% endif %}">
+                                {% if u.is_active %}Active{% else %}Inactive{% endif %}
+                            </span>
+                        </td>
+                        <!-- Joined -->
+                        <td class="px-4 py-3 text-xs" style="color: var(--text-tertiary);">
+                            {{ u.date_joined|date:"M d, Y" }}
+                        </td>
+                        <!-- Actions -->
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-1 justify-end">
+                                <!-- Edit -->
+                                <button onclick="openEditModal({{ u.id }}, '{{ u.username|escapejs }}', '{{ u.email|escapejs }}', '{{ u.first_name|escapejs }}', '{{ u.last_name|escapejs }}', '{{ u.profile.role }}', '{{ u.profile.organization }}', '{{ u.profile.phone_number|escapejs }}')"
+                                        class="btn-ghost p-1.5 rounded" title="Edit user"
+                                        style="color: var(--text-tertiary);">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                </button>
+                                <!-- Reset password -->
+                                <button onclick="resetPassword({{ u.id }}, '{{ u.username|escapejs }}', '{{ u.email|escapejs }}')"
+                                        class="btn-ghost p-1.5 rounded" title="Send password reset email"
+                                        style="color: var(--text-tertiary);">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                                    </svg>
+                                </button>
+                                <!-- Toggle active -->
+                                <button onclick="toggleActive({{ u.id }}, '{{ u.username|escapejs }}', {{ u.is_active|yesno:'true,false' }})"
+                                        id="toggle-btn-{{ u.id }}"
+                                        class="btn-ghost p-1.5 rounded"
+                                        title="{% if u.is_active %}Deactivate{% else %}Activate{% endif %} account"
+                                        style="color: {% if u.is_active %}var(--status-critical){% else %}var(--status-resolved){% endif %};">
+                                    {% if u.is_active %}
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                                    </svg>
+                                    {% else %}
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    {% endif %}
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-12 text-center">
+            <svg class="w-10 h-10 mx-auto mb-3" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <p class="text-sm font-medium" style="color: var(--text-primary);">No users found</p>
+            <p class="text-xs mt-1" style="color: var(--text-secondary);">Try adjusting your search or filters.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- ─── Create User Modal ──────────────────────────────── -->
+<div id="create-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+     style="background: rgba(0,0,0,0.6);">
+    <div class="w-full max-w-lg gw-card overflow-hidden" style="max-height: 90vh; overflow-y: auto;">
+        <div class="px-5 py-4 flex items-center justify-between" style="border-bottom: 1px solid var(--border-subtle);">
+            <h2 class="text-base font-semibold" style="color: var(--text-primary);">Create User</h2>
+            <button onclick="closeModal('create-modal')" class="btn-ghost p-1 rounded" style="color: var(--text-tertiary);">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="p-5 space-y-4">
+            <div id="create-errors" class="hidden rounded-lg px-4 py-3 text-sm"
+                 style="background: var(--status-critical-bg); border: 1px solid var(--status-critical-border); color: var(--status-critical);"></div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="gw-label mb-1">First Name</label>
+                    <input type="text" id="c-first-name" class="gw-input block w-full" placeholder="Optional">
+                </div>
+                <div>
+                    <label class="gw-label mb-1">Last Name</label>
+                    <input type="text" id="c-last-name" class="gw-input block w-full" placeholder="Optional">
+                </div>
+            </div>
+
+            <div>
+                <label class="gw-label mb-1">Username <span style="color:var(--status-critical)">*</span></label>
+                <input type="text" id="c-username" class="gw-input block w-full" placeholder="e.g. john_doe" autocomplete="off">
+                <p id="c-err-username" class="hidden text-xs mt-1" style="color: var(--status-critical);"></p>
+            </div>
+            <div>
+                <label class="gw-label mb-1">Email <span style="color:var(--status-critical)">*</span></label>
+                <input type="email" id="c-email" class="gw-input block w-full" placeholder="user@agency.gov.gh" autocomplete="off">
+                <p id="c-err-email" class="hidden text-xs mt-1" style="color: var(--status-critical);"></p>
+            </div>
+            <div>
+                <label class="gw-label mb-1">Password <span style="color:var(--status-critical)">*</span></label>
+                <input type="password" id="c-password" class="gw-input block w-full" placeholder="Min. 8 characters" autocomplete="new-password">
+                <p id="c-err-password" class="hidden text-xs mt-1" style="color: var(--status-critical);"></p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="gw-label mb-1">Role <span style="color:var(--status-critical)">*</span></label>
+                    <select id="c-role" class="gw-input block w-full">
+                        <option value="">Select role…</option>
+                        {% for val, label in role_choices %}
+                        <option value="{{ val }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <p id="c-err-role" class="hidden text-xs mt-1" style="color: var(--status-critical);"></p>
+                </div>
+                <div>
+                    <label class="gw-label mb-1">Organisation</label>
+                    <select id="c-org" class="gw-input block w-full">
+                        <option value="">Select…</option>
+                        {% for val, label in org_choices %}
+                        <option value="{{ val }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="gw-label mb-1">Phone Number</label>
+                <input type="tel" id="c-phone" class="gw-input block w-full" placeholder="+233 …">
+            </div>
+        </div>
+        <div class="px-5 py-4 flex justify-end gap-3" style="border-top: 1px solid var(--border-subtle);">
+            <button onclick="closeModal('create-modal')" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium">Cancel</button>
+            <button onclick="submitCreate()" id="create-submit-btn"
+                    class="btn-primary px-5 py-2 rounded-lg text-sm font-semibold">Create User</button>
+        </div>
+    </div>
+</div>
+
+<!-- ─── Edit User Modal ────────────────────────────────── -->
+<div id="edit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+     style="background: rgba(0,0,0,0.6);">
+    <div class="w-full max-w-lg gw-card overflow-hidden" style="max-height: 90vh; overflow-y: auto;">
+        <div class="px-5 py-4 flex items-center justify-between" style="border-bottom: 1px solid var(--border-subtle);">
+            <h2 class="text-base font-semibold" style="color: var(--text-primary);">Edit User: <span id="edit-modal-title" class="font-normal"></span></h2>
+            <button onclick="closeModal('edit-modal')" class="btn-ghost p-1 rounded" style="color: var(--text-tertiary);">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="p-5 space-y-4">
+            <input type="hidden" id="e-user-id">
+            <div id="edit-errors" class="hidden rounded-lg px-4 py-3 text-sm"
+                 style="background: var(--status-critical-bg); border: 1px solid var(--status-critical-border); color: var(--status-critical);"></div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="gw-label mb-1">First Name</label>
+                    <input type="text" id="e-first-name" class="gw-input block w-full">
+                </div>
+                <div>
+                    <label class="gw-label mb-1">Last Name</label>
+                    <input type="text" id="e-last-name" class="gw-input block w-full">
+                </div>
+            </div>
+            <div>
+                <label class="gw-label mb-1">Email</label>
+                <input type="email" id="e-email" class="gw-input block w-full">
+                <p id="e-err-email" class="hidden text-xs mt-1" style="color: var(--status-critical);"></p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="gw-label mb-1">Role</label>
+                    <select id="e-role" class="gw-input block w-full">
+                        {% for val, label in role_choices %}
+                        <option value="{{ val }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <p id="e-err-role" class="hidden text-xs mt-1" style="color: var(--status-critical);"></p>
+                </div>
+                <div>
+                    <label class="gw-label mb-1">Organisation</label>
+                    <select id="e-org" class="gw-input block w-full">
+                        <option value="">Select…</option>
+                        {% for val, label in org_choices %}
+                        <option value="{{ val }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="gw-label mb-1">Phone Number</label>
+                <input type="tel" id="e-phone" class="gw-input block w-full">
+            </div>
+        </div>
+        <div class="px-5 py-4 flex justify-end gap-3" style="border-top: 1px solid var(--border-subtle);">
+            <button onclick="closeModal('edit-modal')" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium">Cancel</button>
+            <button onclick="submitEdit()" id="edit-submit-btn"
+                    class="btn-primary px-5 py-2 rounded-lg text-sm font-semibold">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container" class="fixed top-4 right-4 space-y-2 z-[60]"></div>
+
+<script>
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+/* ── Row builder (mirrors the Django template) ── */
+function esc(s) {
+    return String(s).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+function rolePill(role, roleDisplay) {
+    return role === 'admin'
+        ? `<span class="role-pill-admin px-2 py-0.5 text-xs font-semibold rounded-full">${roleDisplay}</span>`
+        : `<span class="role-pill-inspector px-2 py-0.5 text-xs font-semibold rounded-full">${roleDisplay}</span>`;
+}
+function statusPill(id, isActive) {
+    return `<span id="status-pill-${id}" class="px-2 py-0.5 text-xs font-semibold rounded-full ${isActive ? 'status-pill-active' : 'status-pill-inactive'}">${isActive ? 'Active' : 'Inactive'}</span>`;
+}
+function toggleBtnHTML(id, username, isActive) {
+    const icon = isActive
+        ? `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>`
+        : `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+    return `<button onclick="toggleActive(${id}, '${esc(username)}', ${isActive})"
+                    id="toggle-btn-${id}"
+                    class="btn-ghost p-1.5 rounded"
+                    title="${isActive ? 'Deactivate' : 'Activate'} account"
+                    style="color:${isActive ? 'var(--status-critical)' : 'var(--status-resolved)'};">${icon}</button>`;
+}
+function buildRowHTML(u) {
+    const initial  = u.username.charAt(0).toUpperCase();
+    const fullName = u.full_name ? `<p class="text-xs" style="color:var(--text-tertiary);">${u.full_name}</p>` : '';
+    return `
+        <td class="px-4 py-3">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-semibold"
+                     style="background:var(--surface-3);color:var(--text-secondary);border:1px solid var(--border-subtle);">${initial}</div>
+                <div>
+                    <p class="font-medium" style="color:var(--text-primary);">${u.username}</p>
+                    <p class="text-xs" style="color:var(--text-tertiary);">${u.email || '—'}</p>
+                    ${fullName}
+                </div>
+            </div>
+        </td>
+        <td class="px-4 py-3">${rolePill(u.role, u.role_display)}</td>
+        <td class="px-4 py-3" style="color:var(--text-secondary);">${u.organization_display || '—'}</td>
+        <td class="px-4 py-3" style="color:var(--text-secondary);">${u.phone_number || '—'}</td>
+        <td class="px-4 py-3">${statusPill(u.id, u.is_active)}</td>
+        <td class="px-4 py-3 text-xs" style="color:var(--text-tertiary);">${u.date_joined}</td>
+        <td class="px-4 py-3">
+            <div class="flex items-center gap-1 justify-end">
+                <button onclick="openEditModal(${u.id},'${esc(u.username)}','${esc(u.email)}','${esc(u.first_name)}','${esc(u.last_name)}','${u.role}','${u.organization}','${esc(u.phone_number)}')"
+                        class="btn-ghost p-1.5 rounded" title="Edit user" style="color:var(--text-tertiary);">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                </button>
+                <button onclick="resetPassword(${u.id},'${esc(u.username)}','${esc(u.email)}')"
+                        class="btn-ghost p-1.5 rounded" title="Send password reset email" style="color:var(--text-tertiary);">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                    </svg>
+                </button>
+                ${toggleBtnHTML(u.id, u.username, u.is_active)}
+            </div>
+        </td>`;
+}
+
+/* ── Modal helpers ────────────────────────────── */
+function openCreateModal() {
+    ['c-username','c-email','c-password','c-first-name','c-last-name','c-phone'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    document.getElementById('c-role').value = '';
+    document.getElementById('c-org').value  = '';
+    clearErrors('create');
+    document.getElementById('create-modal').classList.remove('hidden');
+}
+
+function openEditModal(userId, username, email, firstName, lastName, role, org, phone) {
+    document.getElementById('e-user-id').value     = userId;
+    document.getElementById('e-email').value       = email;
+    document.getElementById('e-first-name').value  = firstName;
+    document.getElementById('e-last-name').value   = lastName;
+    document.getElementById('e-role').value        = role;
+    document.getElementById('e-org').value         = org;
+    document.getElementById('e-phone').value       = phone;
+    document.getElementById('edit-modal-title').textContent = username;
+    clearErrors('edit');
+    document.getElementById('edit-modal').classList.remove('hidden');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.add('hidden');
+}
+
+['create-modal','edit-modal'].forEach(id => {
+    document.getElementById(id).addEventListener('click', function(e) {
+        if (e.target === this) closeModal(id);
+    });
+});
+
+function clearErrors(prefix) {
+    const box = document.getElementById(`${prefix}-errors`);
+    box.classList.add('hidden');
+    box.textContent = '';
+    ['username','email','password','role'].forEach(f => {
+        const el = document.getElementById(`${prefix[0]}-err-${f}`);
+        if (el) { el.classList.add('hidden'); el.textContent = ''; }
+    });
+}
+
+function showFieldErrors(prefix, errors) {
+    const general = [];
+    Object.entries(errors).forEach(([field, msg]) => {
+        const el = document.getElementById(`${prefix[0]}-err-${field}`);
+        if (el) { el.textContent = msg; el.classList.remove('hidden'); }
+        else     general.push(msg);
+    });
+    if (general.length) {
+        const box = document.getElementById(`${prefix}-errors`);
+        box.textContent = general.join(' ');
+        box.classList.remove('hidden');
+    }
+}
+
+/* ── Create ───────────────────────────────────── */
+function submitCreate() {
+    clearErrors('create');
+    const btn = document.getElementById('create-submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Creating…';
+
+    const data = new FormData();
+    data.append('csrfmiddlewaretoken', CSRF);
+    data.append('username',     document.getElementById('c-username').value);
+    data.append('email',        document.getElementById('c-email').value);
+    data.append('password',     document.getElementById('c-password').value);
+    data.append('first_name',   document.getElementById('c-first-name').value);
+    data.append('last_name',    document.getElementById('c-last-name').value);
+    data.append('role',         document.getElementById('c-role').value);
+    data.append('organization', document.getElementById('c-org').value);
+    data.append('phone_number', document.getElementById('c-phone').value);
+
+    fetch('{% url "dashboard:user_create" %}', { method: 'POST', body: data })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                showToast(d.message, 'success');
+                closeModal('create-modal');
+                // Insert new row at top of table
+                const tbody = document.querySelector('#users-table tbody');
+                const tr = document.createElement('tr');
+                tr.id = `user-row-${d.user.id}`;
+                tr.className = 'hover:bg-surface-3 transition-colors';
+                tr.style.cssText = 'transition-duration:100ms;border-bottom:1px solid var(--border-subtle);';
+                tr.innerHTML = buildRowHTML(d.user);
+                tbody.prepend(tr);
+                // Update total count
+                const counter = document.getElementById('user-count');
+                if (counter) counter.textContent = parseInt(counter.textContent) + 1;
+            } else {
+                if (d.errors) showFieldErrors('create', d.errors);
+                else showToast(d.error || 'Failed to create user.', 'error');
+            }
+        })
+        .catch(() => showToast('Network error. Please try again.', 'error'))
+        .finally(() => { btn.disabled = false; btn.textContent = 'Create User'; });
+}
+
+/* ── Edit ─────────────────────────────────────── */
+function submitEdit() {
+    clearErrors('edit');
+    const btn    = document.getElementById('edit-submit-btn');
+    const userId = document.getElementById('e-user-id').value;
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    const data = new FormData();
+    data.append('csrfmiddlewaretoken', CSRF);
+    data.append('email',        document.getElementById('e-email').value);
+    data.append('first_name',   document.getElementById('e-first-name').value);
+    data.append('last_name',    document.getElementById('e-last-name').value);
+    data.append('role',         document.getElementById('e-role').value);
+    data.append('organization', document.getElementById('e-org').value);
+    data.append('phone_number', document.getElementById('e-phone').value);
+
+    fetch(`/dashboard/users/${userId}/edit/`, { method: 'POST', body: data })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                showToast(d.message, 'success');
+                closeModal('edit-modal');
+                // Update existing row in-place
+                const tr = document.getElementById(`user-row-${userId}`);
+                if (tr) tr.innerHTML = buildRowHTML(d.user);
+            } else {
+                if (d.errors) showFieldErrors('edit', d.errors);
+                else showToast(d.error || 'Failed to update user.', 'error');
+            }
+        })
+        .catch(() => showToast('Network error. Please try again.', 'error'))
+        .finally(() => { btn.disabled = false; btn.textContent = 'Save Changes'; });
+}
+
+/* ── Toggle active ────────────────────────────── */
+function toggleActive(userId, username, currentlyActive) {
+    const verb = currentlyActive ? 'Deactivate' : 'Activate';
+    if (!confirm(`${verb} account "${username}"?`)) return;
+
+    const data = new FormData();
+    data.append('csrfmiddlewaretoken', CSRF);
+
+    fetch(`/dashboard/users/${userId}/toggle-active/`, { method: 'POST', body: data })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                showToast(d.message, d.is_active ? 'success' : 'info');
+                const pill = document.getElementById(`status-pill-${userId}`);
+                if (pill) {
+                    pill.textContent = d.is_active ? 'Active' : 'Inactive';
+                    pill.className = `px-2 py-0.5 text-xs font-semibold rounded-full ${d.is_active ? 'status-pill-active' : 'status-pill-inactive'}`;
+                }
+                const btn = document.getElementById(`toggle-btn-${userId}`);
+                if (btn) {
+                    btn.title = `${d.is_active ? 'Deactivate' : 'Activate'} account`;
+                    btn.style.color = d.is_active ? 'var(--status-critical)' : 'var(--status-resolved)';
+                    btn.innerHTML = d.is_active
+                        ? `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>`
+                        : `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+                    btn.setAttribute('onclick', `toggleActive(${userId}, '${esc(username)}', ${d.is_active})`);
+                }
+            } else {
+                showToast(d.error || 'Failed to update account status.', 'error');
+            }
+        })
+        .catch(() => showToast('Network error. Please try again.', 'error'));
+}
+
+/* ── Reset password ───────────────────────────── */
+function resetPassword(userId, username, email) {
+    if (!email) { showToast('This user has no email address on file.', 'error'); return; }
+    if (!confirm(`Send a password reset email to "${username}" (${email})?`)) return;
+
+    const data = new FormData();
+    data.append('csrfmiddlewaretoken', CSRF);
+
+    fetch(`/dashboard/users/${userId}/reset-password/`, { method: 'POST', body: data })
+        .then(r => r.json())
+        .then(d => showToast(d.message || d.error, d.success ? 'success' : 'error'))
+        .catch(() => showToast('Network error. Please try again.', 'error'));
+}
+
+/* ── Toast ────────────────────────────────────── */
+function showToast(msg, type) {
+    const t = document.createElement('div');
+    t.className = 'border px-4 py-3 rounded text-sm shadow-lg';
+    const styles = {
+        success: ['var(--status-resolved-bg)',  'var(--status-resolved-border)',  'var(--status-resolved)'],
+        error:   ['var(--status-critical-bg)',  'var(--status-critical-border)',  'var(--status-critical)'],
+        info:    ['var(--status-info-bg)',       'var(--status-info-border)',       'var(--status-info)'],
+    };
+    const [bg, border, color] = styles[type] || styles.info;
+    t.style.cssText = `background:${bg};border-color:${border};color:${color};`;
+    t.textContent = msg;
+    document.getElementById('toast-container').appendChild(t);
+    setTimeout(() => t.remove(), 4000);
+}
+</script>
+{% endblock %}
