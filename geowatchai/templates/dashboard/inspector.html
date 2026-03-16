@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}My Assignments — GalamseyWatch{% endblock %}
+{% block title %}My Assignments — SankofaWatch{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
@@ -84,7 +84,7 @@
     </div>
 
     {% if error %}
-    <div class="rounded-lg p-4 text-sm"
+    <div class="rounded-lg p-4 text-sm" role="alert" aria-live="assertive"
          style="background: var(--status-critical-bg); border: 1px solid var(--status-critical-border); color: var(--status-critical);">
         <strong>Error loading assignments:</strong> {{ error }}
     </div>
@@ -158,7 +158,7 @@
     </div>
     {% else %}
     <div class="gw-card p-12 text-center">
-        <svg class="w-12 h-12 mx-auto mb-4" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-12 h-12 mx-auto mb-4" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
         </svg>

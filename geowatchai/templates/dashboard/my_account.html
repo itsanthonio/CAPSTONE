@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}My Account — GalamseyWatch AI{% endblock %}
+{% block title %}My Account — SankofaWatch{% endblock %}
 
 {% block content %}
 <div class="p-6 max-w-2xl mx-auto space-y-6">
@@ -14,7 +14,9 @@
 
     {% if messages %}
     {% for msg in messages %}
-    <div class="{% if 'success' in msg.tags %}gw-alert-success{% else %}gw-alert-error{% endif %} flex gap-2.5">
+    <div class="{% if 'success' in msg.tags %}gw-alert-success{% else %}gw-alert-error{% endif %} flex gap-2.5"
+         role="{% if 'success' in msg.tags %}status{% else %}alert{% endif %}"
+         aria-live="{% if 'success' in msg.tags %}polite{% else %}assertive{% endif %}">
         <p class="text-[13px]">{{ msg }}</p>
     </div>
     {% endfor %}

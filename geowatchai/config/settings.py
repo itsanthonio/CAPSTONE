@@ -161,7 +161,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Africa/Accra'
 
 USE_I18N = True
 
@@ -241,13 +241,13 @@ CORS_ALLOWED_ORIGINS = [
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Africa/Accra'
 USE_I18N = True
 USE_TZ = True
 
 # Application Configuration
 APP_VERSION = '2.0.0'
-APP_NAME = 'GalamseyWatch AI'
+APP_NAME = 'SankofaWatch'
 
 # Authentication Settings
 LOGIN_URL = '/accounts/login/'
@@ -295,7 +295,7 @@ EMAIL_PORT          = config('EMAIL_PORT',          default=587, cast=int)
 EMAIL_USE_TLS       = config('EMAIL_USE_TLS',       default=True, cast=bool)
 EMAIL_HOST_USER     = config('EMAIL_HOST_USER',     default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL  = config('DEFAULT_FROM_EMAIL',  default='GalamseyWatch AI <noreply@galamseywatch.ai>')
+DEFAULT_FROM_EMAIL  = config('DEFAULT_FROM_EMAIL',  default='SankofaWatch <noreply@sankofawatch.ai>')
 
 # ── Celery Configuration ─────────────────────────────────────────────────────
 CELERY_BROKER_URL       = 'redis://localhost:6379/0'
@@ -338,27 +338,32 @@ CELERY_BEAT_SCHEDULE = {
     'check-assignment-sla-daily': {
         'task': 'apps.core.tasks.check_assignment_sla',
         'schedule': crontab(hour=7, minute=0),
+        'options': {'queue': 'priority'},
     },
     'escalate-stale-critical-alerts': {
         'task': 'apps.core.tasks.escalate_stale_alerts',
         'schedule': crontab(minute=0),  # Every hour
+        'options': {'queue': 'priority'},
     },
     # Automated Ghana scanner — fires every 5 minutes
     # The task itself checks the 6am–6pm window and skips outside it
     'auto-scan-tick': {
         'task': 'apps.scanning.tasks.auto_scan_tick',
         'schedule': crontab(minute='*/5'),
+        'options': {'queue': 'priority'},
     },
     # Daily digest of automated detections — sent at 18:00 (end of scanning window)
     # Manual scan alerts are NOT included; this is automated-only
     'automated-scan-daily-digest': {
         'task': 'apps.scanning.tasks.automated_scan_daily_digest',
         'schedule': crontab(hour=18, minute=0),
+        'options': {'queue': 'priority'},
     },
     # Daily concession expiry check — deactivates expired, emails about soon-expiring
     'check-concession-expiry': {
         'task': 'apps.core.tasks.check_concession_expiry',
         'schedule': crontab(hour=9, minute=0),
+        'options': {'queue': 'priority'},
     },
 }
 

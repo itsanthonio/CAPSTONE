@@ -215,7 +215,7 @@ def automated_scan_daily_digest():
     suffix = f'\n  ... and {total - 30} more.' if total > 30 else ''
 
     body = (
-        f"GalamseyWatch AI — Automated Scan Daily Digest\n"
+        f"SankofaWatch — Automated Scan Daily Digest\n"
         f"Date: {today.strftime('%B %d, %Y')}\n"
         f"{'=' * 52}\n\n"
         f"Total detections today: {total}\n\n"
@@ -223,12 +223,12 @@ def automated_scan_daily_digest():
         f"Detections:\n{detail_lines}{suffix}\n\n"
         f"View all alerts: {site_url}/dashboard/alerts/\n"
         f"View auto-scan map: {site_url}/scanning/auto-scan/\n\n"
-        f"— GalamseyWatch AI"
+        f"— SankofaWatch"
     )
 
     try:
         send_mail(
-            subject=f"[GalamseyWatch] Daily Digest — {total} automated detection(s) on {today}",
+            subject=f"[SankofaWatch] Daily Digest — {total} automated detection(s) on {today}",
             message=body,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=ops_emails,

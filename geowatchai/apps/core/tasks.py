@@ -57,7 +57,7 @@ def escalate_stale_alerts():
     if ops_emails:
         try:
             send_mail(
-                subject=f"[GalamseyWatch] {count} Critical Alert(s) Unactioned for 48h",
+                subject=f"[SankofaWatch] {count} Critical Alert(s) Unactioned for 48h",
                 message=body,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=ops_emails,
@@ -197,7 +197,7 @@ def check_concession_expiry():
             )
             try:
                 send_mail(
-                    subject=f"[GalamseyWatch] {len(expiring)} Concession(s) Expiring Within 30 Days",
+                    subject=f"[SankofaWatch] {len(expiring)} Concession(s) Expiring Within 30 Days",
                     message=body,
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=ops_emails,

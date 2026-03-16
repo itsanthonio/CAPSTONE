@@ -1,9 +1,10 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Live Map - GalamseyWatch{% endblock %}
+{% block title %}Live Map - SankofaWatch{% endblock %}
 
 {% block content %}
+<h1 class="sr-only">Live Map — SankofaWatch</h1>
 <div class="flex" style="height:calc(100vh - 3rem)">
 
     <!-- Map -->
@@ -11,26 +12,29 @@
         <div id="live-map" class="w-full h-full"></div>
 
         <!-- Zoom Controls -->
-        <div class="absolute top-4 right-4 z-20 flex flex-col gap-2">
+        <div class="absolute top-4 right-4 z-20 flex flex-col gap-2" role="group" aria-label="Map zoom controls">
             <button onclick="if(window.mapHandler) window.mapHandler.zoomIn();"
+                    aria-label="Zoom in"
                     class="rounded-lg p-2 transition-all"
                     style="background: var(--surface-2); border: 1px solid var(--border-default); color: var(--text-primary);">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m0 0l-3-3m3 3l3-3"></path>
                 </svg>
             </button>
             <button onclick="if(window.mapHandler) window.mapHandler.zoomOut();"
+                    aria-label="Zoom out"
                     class="rounded-lg p-2 transition-all"
                     style="background: var(--surface-2); border: 1px solid var(--border-default); color: var(--text-primary);">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
                 </svg>
             </button>
             <!-- Locate Me -->
-            <button id="locate-me-btn" onclick="locateMe()" title="Center map on my location"
+            <button id="locate-me-btn" onclick="locateMe()"
+                    aria-label="Center map on my location"
                     class="rounded-lg p-2 transition-all"
                     style="background: var(--surface-2); border: 1px solid var(--border-default); color: var(--text-primary);">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <circle cx="12" cy="12" r="3" stroke-width="2"/>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
@@ -59,6 +63,7 @@
 
     <!-- Detection Sidebar -->
     <aside class="w-80 flex flex-col shrink-0 overflow-hidden"
+           aria-label="Detection results"
            style="background: var(--surface-1); border-left: 1px solid var(--border-default);">
 
         <!-- Sidebar header -->
@@ -67,7 +72,9 @@
             <div class="flex items-center justify-between">
                 <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Detections</h2>
                 <span id="detection-count"
-                      class="px-2 py-0.5 bg-red-500 text-white text-xs font-semibold rounded-full min-w-[20px] text-center">
+                      class="px-2 py-0.5 bg-red-500 text-white text-xs font-semibold rounded-full min-w-[20px] text-center"
+                      aria-live="polite"
+                      aria-label="detection count">
                     0
                 </span>
             </div>
@@ -77,17 +84,19 @@
         <div class="px-4 py-3 shrink-0"
              style="border-bottom: 1px solid var(--border-subtle);">
             <div class="flex items-center justify-between mb-1.5">
-                <span class="text-xs" style="color: var(--text-secondary);">Min Confidence</span>
-                <span id="confidence-value" class="text-xs font-semibold" style="color: var(--text-primary);">50%</span>
+                <label for="confidence-slider" class="text-xs" style="color: var(--text-secondary);">Min Confidence</label>
+                <span id="confidence-value" class="text-xs font-semibold" style="color: var(--text-primary);" aria-live="polite">50%</span>
             </div>
             <input type="range" id="confidence-slider" min="0" max="100" value="50"
-                   class="w-full" style="accent-color: var(--accent);"/>
+                   class="w-full" style="accent-color: var(--accent);"
+                   aria-label="Minimum confidence threshold"
+                   aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" aria-valuetext="50%"/>
         </div>
 
         <!-- Detection list -->
         <div class="flex-1 overflow-y-auto">
             <div id="detection-empty" class="py-10 px-4 text-center">
-                <svg class="w-10 h-10 mx-auto mb-2" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-10 h-10 mx-auto mb-2" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                           d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
                 </svg>
@@ -103,16 +112,18 @@
 
 <!-- ── Site Detail Modal ── -->
 <div id="site-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4"
-     style="background: rgba(0,0,0,0.6);">
+     style="background: rgba(0,0,0,0.6);"
+     role="dialog" aria-modal="true" aria-labelledby="site-modal-title">
     <div class="gw-card w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden rounded-lg">
 
         <div class="flex items-center justify-between px-6 py-4 shrink-0"
              style="border-bottom: 1px solid var(--border-subtle);">
-            <h3 class="text-base font-semibold" style="color: var(--text-primary);">Detection Details</h3>
+            <h3 id="site-modal-title" class="text-base font-semibold" style="color: var(--text-primary);">Detection Details</h3>
             <button id="site-modal-close" style="color: var(--text-tertiary);"
+                    aria-label="Close Detection Details dialog"
                     onmouseover="this.style.color='var(--text-primary)'"
                     onmouseout="this.style.color='var(--text-tertiary)'">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
@@ -326,7 +337,9 @@ async function loadSiteTimelapse(siteId) {
 // ── Site modal ─────────────────────────────────────────────────────────────
 async function openSiteModal(siteId) {
     _siteTlFrames = [];
-    document.getElementById('site-modal').classList.remove('hidden');
+    const siteModal = document.getElementById('site-modal');
+    siteModal.classList.remove('hidden');
+    window.trapFocus && window.trapFocus(siteModal, document.activeElement);
     document.getElementById('site-tl-loading').classList.remove('hidden');
     document.getElementById('site-tl-empty').classList.add('hidden');
     document.getElementById('site-tl-viewer').classList.add('hidden');
@@ -413,7 +426,9 @@ async function openSiteModal(siteId) {
 }
 
 function closeSiteModal() {
-    document.getElementById('site-modal').classList.add('hidden');
+    const siteModal = document.getElementById('site-modal');
+    siteModal.classList.add('hidden');
+    window.releaseFocus && window.releaseFocus(siteModal);
 }
 
 // ── Locate Me ──────────────────────────────────────────────────────────────

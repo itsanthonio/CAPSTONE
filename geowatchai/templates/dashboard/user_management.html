@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}User Management — GalamseyWatch{% endblock %}
+{% block title %}User Management — SankofaWatch{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -25,7 +25,7 @@
         </div>
         <button onclick="openCreateModal()"
                 class="btn-primary flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
             Create User
@@ -33,16 +33,16 @@
     </div>
 
     <!-- Filters -->
-    <form method="get" class="flex flex-wrap gap-3 items-end">
+    <form method="get" class="flex flex-wrap gap-3 items-end" role="search" aria-label="Filter users">
         <div class="flex-1 min-w-[200px]">
-            <label class="gw-label mb-1">Search</label>
-            <input type="text" name="q" value="{{ search }}"
+            <label for="user-search-input" class="gw-label mb-1">Search</label>
+            <input type="text" id="user-search-input" name="q" value="{{ search }}"
                    placeholder="Username, email, or name…"
                    class="gw-input block w-full">
         </div>
         <div>
-            <label class="gw-label mb-1">Role</label>
-            <select name="role" class="gw-input">
+            <label for="role-filter-select" class="gw-label mb-1">Role</label>
+            <select id="role-filter-select" name="role" class="gw-input">
                 <option value="">All roles</option>
                 {% for val, label in role_choices %}
                 <option value="{{ val }}" {% if role_filter == val %}selected{% endif %}>{{ label }}</option>
@@ -50,8 +50,8 @@
             </select>
         </div>
         <div>
-            <label class="gw-label mb-1">Organisation</label>
-            <select name="org" class="gw-input">
+            <label for="org-filter-select" class="gw-label mb-1">Organisation</label>
+            <select id="org-filter-select" name="org" class="gw-input">
                 <option value="">All organisations</option>
                 {% for val, label in org_choices %}
                 <option value="{{ val }}" {% if org_filter == val %}selected{% endif %}>{{ label }}</option>
@@ -133,18 +133,20 @@
                             <div class="flex items-center gap-1 justify-end">
                                 <!-- Edit -->
                                 <button onclick="openEditModal({{ u.id }}, '{{ u.username|escapejs }}', '{{ u.email|escapejs }}', '{{ u.first_name|escapejs }}', '{{ u.last_name|escapejs }}', '{{ u.profile.role }}', '{{ u.profile.organization }}', '{{ u.profile.phone_number|escapejs }}')"
-                                        class="btn-ghost p-1.5 rounded" title="Edit user"
+                                        class="btn-ghost p-1.5 rounded"
+                                        aria-label="Edit {{ u.username }}"
                                         style="color: var(--text-tertiary);">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                               d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                     </svg>
                                 </button>
                                 <!-- Reset password -->
                                 <button onclick="resetPassword({{ u.id }}, '{{ u.username|escapejs }}', '{{ u.email|escapejs }}')"
-                                        class="btn-ghost p-1.5 rounded" title="Send password reset email"
+                                        class="btn-ghost p-1.5 rounded"
+                                        aria-label="Send password reset email to {{ u.username }}"
                                         style="color: var(--text-tertiary);">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                               d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
                                     </svg>
@@ -153,15 +155,15 @@
                                 <button onclick="toggleActive({{ u.id }}, '{{ u.username|escapejs }}', {{ u.is_active|yesno:'true,false' }})"
                                         id="toggle-btn-{{ u.id }}"
                                         class="btn-ghost p-1.5 rounded"
-                                        title="{% if u.is_active %}Deactivate{% else %}Activate{% endif %} account"
+                                        aria-label="{% if u.is_active %}Deactivate{% else %}Activate{% endif %} {{ u.username }}"
                                         style="color: {% if u.is_active %}var(--status-critical){% else %}var(--status-resolved){% endif %};">
                                     {% if u.is_active %}
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                               d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
                                     </svg>
                                     {% else %}
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                               d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                     </svg>
@@ -176,7 +178,7 @@
         </div>
         {% else %}
         <div class="p-12 text-center">
-            <svg class="w-10 h-10 mx-auto mb-3" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-10 h-10 mx-auto mb-3" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                       d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
@@ -190,12 +192,13 @@
 
 <!-- ─── Create User Modal ──────────────────────────────── -->
 <div id="create-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
-     style="background: rgba(0,0,0,0.6);">
+     style="background: rgba(0,0,0,0.6);"
+     role="dialog" aria-modal="true" aria-labelledby="create-modal-title">
     <div class="w-full max-w-lg gw-card overflow-hidden" style="max-height: 90vh; overflow-y: auto;">
         <div class="px-5 py-4 flex items-center justify-between" style="border-bottom: 1px solid var(--border-subtle);">
-            <h2 class="text-base font-semibold" style="color: var(--text-primary);">Create User</h2>
-            <button onclick="closeModal('create-modal')" class="btn-ghost p-1 rounded" style="color: var(--text-tertiary);">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <h2 id="create-modal-title" class="text-base font-semibold" style="color: var(--text-primary);">Create User</h2>
+            <button onclick="closeModal('create-modal')" class="btn-ghost p-1 rounded" aria-label="Close Create User dialog" style="color: var(--text-tertiary);">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
@@ -266,12 +269,13 @@
 
 <!-- ─── Edit User Modal ────────────────────────────────── -->
 <div id="edit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
-     style="background: rgba(0,0,0,0.6);">
+     style="background: rgba(0,0,0,0.6);"
+     role="dialog" aria-modal="true" aria-labelledby="edit-modal-heading">
     <div class="w-full max-w-lg gw-card overflow-hidden" style="max-height: 90vh; overflow-y: auto;">
         <div class="px-5 py-4 flex items-center justify-between" style="border-bottom: 1px solid var(--border-subtle);">
-            <h2 class="text-base font-semibold" style="color: var(--text-primary);">Edit User: <span id="edit-modal-title" class="font-normal"></span></h2>
-            <button onclick="closeModal('edit-modal')" class="btn-ghost p-1 rounded" style="color: var(--text-tertiary);">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <h2 id="edit-modal-heading" class="text-base font-semibold" style="color: var(--text-primary);">Edit User: <span id="edit-modal-title" class="font-normal"></span></h2>
+            <button onclick="closeModal('edit-modal')" class="btn-ghost p-1 rounded" aria-label="Close Edit User dialog" style="color: var(--text-tertiary);">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
@@ -406,7 +410,9 @@ function openCreateModal() {
     document.getElementById('c-role').value = '';
     document.getElementById('c-org').value  = '';
     clearErrors('create');
-    document.getElementById('create-modal').classList.remove('hidden');
+    const cm = document.getElementById('create-modal');
+    cm.classList.remove('hidden');
+    window.trapFocus && window.trapFocus(cm, document.activeElement);
 }
 
 function openEditModal(userId, username, email, firstName, lastName, role, org, phone) {
@@ -419,11 +425,15 @@ function openEditModal(userId, username, email, firstName, lastName, role, org, 
     document.getElementById('e-phone').value       = phone;
     document.getElementById('edit-modal-title').textContent = username;
     clearErrors('edit');
-    document.getElementById('edit-modal').classList.remove('hidden');
+    const em = document.getElementById('edit-modal');
+    em.classList.remove('hidden');
+    window.trapFocus && window.trapFocus(em, document.activeElement);
 }
 
 function closeModal(id) {
-    document.getElementById(id).classList.add('hidden');
+    const modal = document.getElementById(id);
+    modal.classList.add('hidden');
+    window.releaseFocus && window.releaseFocus(modal);
 }
 
 ['create-modal','edit-modal'].forEach(id => {

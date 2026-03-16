@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Dashboard - GalamseyWatch{% endblock %}
+{% block title %}Dashboard - SankofaWatch{% endblock %}
 
 {% block content %}
 <div class="p-6 space-y-6">
@@ -14,14 +14,14 @@
         </div>
         <div class="flex items-center gap-2">
             <a href="{% url 'dashboard:report' %}" class="btn-secondary inline-flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
                 Export Report
             </a>
             <a href="{% url 'analysis:live_map' %}" class="btn-primary inline-flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
                 </svg>
@@ -35,7 +35,7 @@
     <div class="rounded-lg p-4 flex items-start gap-3"
          style="background: var(--status-moderate-bg); border: 1px solid var(--status-moderate-border);">
         <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-             style="color: var(--status-moderate);">
+             style="color: var(--status-moderate);" aria-hidden="true" focusable="false">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
@@ -56,12 +56,12 @@
                     <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Detected Sites</p>
                     <p id="kpi-detected-sites" class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ stats.total_detected_sites }}</p>
                     <p class="text-xs mt-1" style="color: var(--text-secondary);">
-                        <span id="kpi-illegal" class="font-semibold" style="color: var(--status-critical);">{{ stats.illegal_sites }}</span> illegal
+                        <span id="kpi-illegal" class="font-semibold" style="color: var(--status-critical);">{{ stats.illegal_sites }}</span> outside legal concessions
                     </p>
                 </div>
-                <div class="w-10 h-10 flex items-center justify-center shrink-0">
+                <div class="w-10 h-10 flex items-center justify-center shrink-0" aria-hidden="true">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                         style="color: var(--status-critical);">
+                         style="color: var(--status-critical);" aria-hidden="true" focusable="false">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -84,9 +84,9 @@
                         · <span id="kpi-high" class="font-semibold" style="color: var(--status-high);">{{ stats.high_alerts }}</span> high
                     </p>
                 </div>
-                <div class="w-10 h-10 flex items-center justify-center shrink-0">
+                <div class="w-10 h-10 flex items-center justify-center shrink-0" aria-hidden="true">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                         style="color: var(--status-high);">
+                         style="color: var(--status-high);" aria-hidden="true" focusable="false">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                     </svg>
@@ -106,18 +106,18 @@
                 <div>
                     <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">High-Risk Zones</p>
                     <p id="kpi-high-risk" class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ stats.high_risk_zones }}</p>
-                    <p class="text-xs mt-1" style="color: var(--text-secondary);">recurring or critical sites</p>
+                    <p class="text-xs mt-1" style="color: var(--text-secondary);">sites with repeat detections or critical confidence</p>
                 </div>
-                <div class="w-10 h-10 flex items-center justify-center shrink-0">
+                <div class="w-10 h-10 flex items-center justify-center shrink-0" aria-hidden="true">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                         style="color: var(--status-moderate);">
+                         style="color: var(--status-moderate);" aria-hidden="true" focusable="false">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                     </svg>
                 </div>
             </div>
             <div class="mt-3 pt-3 text-xs" style="border-top: 1px solid var(--border-subtle); color: var(--text-secondary);">
-                <span id="kpi-total-area">{{ stats.total_area_ha }}</span> ha total illegal area
+                <span id="kpi-total-area">{{ stats.total_area_ha }}</span> ha of degraded land
             </div>
         </div>
 
@@ -137,9 +137,9 @@
                         {% endif %}
                     </p>
                 </div>
-                <div class="w-10 h-10 flex items-center justify-center shrink-0">
+                <div class="w-10 h-10 flex items-center justify-center shrink-0" aria-hidden="true">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                         style="color: var(--status-info);">
+                         style="color: var(--status-info);" aria-hidden="true" focusable="false">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -228,9 +228,10 @@
                     <p id="velocity-subtitle" class="text-xs mt-0.5" style="color: var(--text-secondary);">Illegal sites per week — last {{ velocity_weeks }} weeks</p>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
+                    <label for="velocity-window-select" class="sr-only">Detection velocity lookback window</label>
                     <select id="velocity-window-select"
                             class="gw-select text-xs"
-                            title="Lookback window">
+                            aria-label="Detection velocity lookback window">
                         <option value="4"  {% if velocity_weeks == 4  %}selected{% endif %}>4W</option>
                         <option value="8"  {% if velocity_weeks == 8  %}selected{% endif %}>8W</option>
                         <option value="12" {% if velocity_weeks == 12 %}selected{% endif %}>12W</option>
@@ -353,6 +354,7 @@
 
             <!-- Top Regions -->
             <div class="gw-card overflow-hidden">
+                <div class="kente-bar"></div>
                 <div class="px-5 pt-4 pb-3 flex items-center justify-between" style="border-bottom: 1px solid var(--border-subtle);">
                     <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Top Regions</h2>
                     <span class="text-xs" style="color: var(--text-tertiary);">by detection count</span>
@@ -392,7 +394,9 @@
             </div>
 
             <!-- Recent detections feed -->
-            <div class="gw-card p-5">
+            <div class="gw-card overflow-hidden">
+            <div class="kente-bar"></div>
+            <div class="p-5">
                 <div class="flex items-center justify-between mb-3">
                     <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Recent Detections</h2>
                     <a href="{% url 'dashboard:alerts' %}" class="text-xs font-medium hover:underline" style="color: var(--text-link);">View all →</a>
@@ -427,12 +431,14 @@
                 <p class="text-xs italic" style="color: var(--text-tertiary);">No detections yet.</p>
                 {% endif %}
             </div>
+            </div>
 
         </div>
     </div>
 
     <!-- ── Detection Trend ── -->
     <div class="gw-card overflow-hidden">
+        <div class="kente-bar"></div>
         <div class="px-5 pt-4 pb-3 flex items-center justify-between" style="border-bottom: 1px solid var(--border-subtle);">
             <div>
                 <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Detection Trend</h2>
@@ -446,7 +452,8 @@
                     <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm inline-block" style="background: var(--viz-illegal); opacity:0.75;"></span>Illegal</span>
                     <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm inline-block" style="background: var(--viz-legal); opacity:0.65;"></span>Legal</span>
                 </div>
-                <select id="trend-period-select" class="gw-select text-xs" title="Period">
+                <label for="trend-period-select" class="sr-only">Detection trend time period</label>
+                <select id="trend-period-select" class="gw-select text-xs" aria-label="Detection trend time period">
                     <option value="7"   {% if trend_days == 7   %}selected{% endif %}>7d</option>
                     <option value="30"  {% if trend_days == 30  %}selected{% endif %}>30d</option>
                     <option value="90"  {% if trend_days == 90  %}selected{% endif %}>90d</option>

@@ -21,7 +21,7 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-APP_NAME = getattr(settings, 'APP_NAME', 'GalamseyWatch AI')
+APP_NAME = getattr(settings, 'APP_NAME', 'SankofaWatch')
 
 # ─────────────────────────────────────────────
 # HTML primitives

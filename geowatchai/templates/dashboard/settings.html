@@ -23,43 +23,44 @@
                 <div class="p-6 space-y-6">
 
                     <div>
-                        <label class="gw-label">
+                        <label for="confidence-threshold" class="gw-label">
                             Minimum Confidence Threshold: <span id="confidence-threshold-value" class="tabular-nums" style="color: var(--accent);">70%</span>
                         </label>
                         <input type="range" id="confidence-threshold" min="0" max="100" value="70"
-                               class="w-full mt-2" style="accent-color: var(--accent);">
+                               class="w-full mt-2" style="accent-color: var(--accent);"
+                               aria-valuemin="0" aria-valuemax="100" aria-valuenow="70" aria-valuetext="70%">
                         <p class="text-[12px] mt-1" style="color: var(--text-tertiary);">Alerts below this threshold will be filtered out</p>
                     </div>
 
                     <div>
-                        <label class="gw-label mb-3 block">Enabled Detection Types</label>
-                        <div class="space-y-2.5">
+                        <p class="gw-label mb-3" id="detection-types-label">Enabled Detection Types</p>
+                        <div class="space-y-2.5" role="group" aria-labelledby="detection-types-label">
                             <label class="flex items-center gap-2.5 cursor-pointer">
-                                <input type="checkbox" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
+                                <input type="checkbox" id="det-illegal" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
                                 <span class="text-[13px]" style="color: var(--text-secondary);">Illegal Mining Activity</span>
                             </label>
                             <label class="flex items-center gap-2.5 cursor-pointer">
-                                <input type="checkbox" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
+                                <input type="checkbox" id="det-vegetation" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
                                 <span class="text-[13px]" style="color: var(--text-secondary);">Vegetation Clearance</span>
                             </label>
                             <label class="flex items-center gap-2.5 cursor-pointer">
-                                <input type="checkbox" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
+                                <input type="checkbox" id="det-water" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
                                 <span class="text-[13px]" style="color: var(--text-secondary);">Water Contamination</span>
                             </label>
                             <label class="flex items-center gap-2.5 cursor-pointer">
-                                <input type="checkbox" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
+                                <input type="checkbox" id="det-excavation" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
                                 <span class="text-[13px]" style="color: var(--text-secondary);">Excavation Patterns</span>
                             </label>
                             <label class="flex items-center gap-2.5 cursor-pointer">
-                                <input type="checkbox" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
+                                <input type="checkbox" id="det-equipment" checked class="w-3.5 h-3.5 rounded" style="accent-color: var(--accent);">
                                 <span class="text-[13px]" style="color: var(--text-secondary);">Equipment Detection</span>
                             </label>
                         </div>
                     </div>
 
                     <div>
-                        <label class="gw-label">Automatic Scan Frequency</label>
-                        <select class="gw-select mt-1">
+                        <label for="scan-frequency-select" class="gw-label">Automatic Scan Frequency</label>
+                        <select id="scan-frequency-select" class="gw-select mt-1">
                             <option value="hourly">Every Hour</option>
                             <option value="6hours">Every 6 Hours</option>
                             <option value="daily" selected>Daily</option>
@@ -70,8 +71,8 @@
                     </div>
 
                     <div>
-                        <label class="gw-label">Region of Interest</label>
-                        <select class="gw-select mt-1">
+                        <label for="region-of-interest-select" class="gw-label">Region of Interest</label>
+                        <select id="region-of-interest-select" class="gw-select mt-1">
                             <option value="all">All Ghana</option>
                             <option value="ashanti">Ashanti Region</option>
                             <option value="western">Western Region</option>
@@ -92,7 +93,7 @@
                 </div>
                 <div class="p-6 space-y-6">
                     <div>
-                        <label class="gw-label">Theme</label>
+                        <label for="theme-select" class="gw-label">Theme</label>
                         <select id="theme-select" class="gw-select mt-1">
                             <option value="light" {% if preferences.theme == 'light' %}selected{% endif %}>Light</option>
                             <option value="dark" {% if preferences.theme == 'dark' %}selected{% endif %}>Dark</option>
@@ -101,7 +102,7 @@
                         <p class="text-[12px] mt-1" style="color: var(--text-tertiary);">Choose your preferred color theme</p>
                     </div>
                     <div>
-                        <label class="gw-label">Layout Density</label>
+                        <label for="layout-select" class="gw-label">Layout Density</label>
                         <select id="layout-select" class="gw-select mt-1">
                             <option value="compact" {% if preferences.layout == 'compact' %}selected{% endif %}>Compact</option>
                             <option value="spaced" {% if preferences.layout == 'spaced' %}selected{% endif %}>Spaced</option>
@@ -110,7 +111,7 @@
                         <p class="text-[12px] mt-1" style="color: var(--text-tertiary);">Adjust spacing and layout density</p>
                     </div>
                     <div>
-                        <label class="gw-label">Font Size</label>
+                        <label for="font-size-select" class="gw-label">Font Size</label>
                         <select id="font-size-select" class="gw-select mt-1">
                             <option value="small" {% if preferences.font_size == 'small' %}selected{% endif %}>Small</option>
                             <option value="medium" {% if preferences.font_size == 'medium' %}selected{% endif %}>Medium</option>
@@ -160,18 +161,18 @@
                         {% if preferences.quiet_hours_enabled %}
                         <div class="mt-3 ml-6 grid grid-cols-2 gap-4">
                             <div>
-                                <label class="gw-label">From</label>
-                                <input type="time" id="quiet-hours-start" value="{{ preferences.quiet_hours_start|time:'H:i' }}" class="gw-input mt-1">
+                                <label for="quiet-hours-start" class="gw-label">From</label>
+                                <input type="time" id="quiet-hours-start" value="{{ preferences.quiet_hours_start|time:'H:i' }}" class="gw-input mt-1" aria-label="Quiet hours start time">
                             </div>
                             <div>
-                                <label class="gw-label">To</label>
-                                <input type="time" id="quiet-hours-end" value="{{ preferences.quiet_hours_end|time:'H:i' }}" class="gw-input mt-1">
+                                <label for="quiet-hours-end" class="gw-label">To</label>
+                                <input type="time" id="quiet-hours-end" value="{{ preferences.quiet_hours_end|time:'H:i' }}" class="gw-input mt-1" aria-label="Quiet hours end time">
                             </div>
                         </div>
                         {% endif %}
                     </div>
                     <div>
-                        <label class="gw-label">Timezone</label>
+                        <label for="timezone-select" class="gw-label">Timezone</label>
                         <select id="timezone-select" class="gw-select mt-1">
                             <option value="UTC" {% if preferences.timezone == 'UTC' %}selected{% endif %}>UTC</option>
                             <option value="GMT" {% if preferences.timezone == 'GMT' %}selected{% endif %}>GMT</option>
@@ -183,8 +184,8 @@
                     
                     <!-- Language -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Language</label>
-                        <select id="language-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <label for="language-select" class="gw-label">Language</label>
+                        <select id="language-select" class="gw-select mt-1">
                             <option value="en" {% if preferences.language == 'en' %}selected{% endif %}>English</option>
                             <option value="fr" {% if preferences.language == 'fr' %}selected{% endif %}>French</option>
                             <option value="es" {% if preferences.language == 'es' %}selected{% endif %}>Spanish</option>

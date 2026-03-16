@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Auto Scan — GalamseyWatch{% endblock %}
+{% block title %}Auto Scan — SankofaWatch{% endblock %}
 
 {% block extra_css %}
 <!-- Leaflet + MarkerCluster CSS -->
@@ -207,6 +207,7 @@
 {% endblock extra_css %}
 
 {% block content %}
+<h1 class="sr-only">Auto Scan — SankofaWatch</h1>
 <div id="auto-scan-root" class="flex flex-col" style="height: calc(100vh - 48px);">
 
     <!-- ── Stats Bar ───────────────────────────────────────────────────── -->
@@ -249,7 +250,7 @@
         <!-- Sparkline (14-day trend) -->
         <div class="flex items-center gap-2">
             <span class="text-[10px] uppercase tracking-wide" style="color:var(--text-tertiary);">14d</span>
-            <svg id="sparkline-svg" width="80" height="20" style="overflow:visible;" title="Detections over last 14 days">
+            <svg id="sparkline-svg" width="80" height="20" style="overflow:visible;" aria-label="Detections over last 14 days" role="img">
                 <text x="40" y="14" text-anchor="middle" fill="rgba(240,246,252,0.15)" font-size="9">no data</text>
             </svg>
         </div>
@@ -257,8 +258,8 @@
         <div class="h-4 w-px" style="background:var(--border-subtle);"></div>
 
         <!-- Celestial scanning-window clock -->
-        <div class="flex items-center gap-2" title="Scanning window (6am–6pm) with current time">
-            <svg id="celestial-clock" width="32" height="32" viewBox="0 0 32 32"></svg>
+        <div class="flex items-center gap-2" aria-label="Scanning window 6am to 6pm with current time">
+            <svg id="celestial-clock" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true" focusable="false"></svg>
             <span class="text-[11px] font-mono tabular-nums" style="color:var(--text-tertiary);">
                 <span id="server-time">—</span>
             </span>
@@ -268,13 +269,21 @@
         <div class="flex-1"></div>
 
         <!-- Action buttons -->
-        <div class="flex items-center gap-2">
-            <button id="export-btn" class="btn-ghost text-xs px-2.5 py-1.5" title="Export today's detections">↓ Export</button>
-            <button id="sound-btn"  class="btn-ghost text-xs px-2.5 py-1.5" title="Toggle ambient sounds">🔕</button>
-            <button id="cinematic-btn" class="btn-ghost text-xs px-2.5 py-1.5" title="Cinematic mode (Esc to exit)">⤢</button>
+        <div class="flex items-center gap-2" role="group" aria-label="Scan controls">
+            <button id="export-btn" class="btn-ghost text-xs px-2.5 py-1.5" aria-label="Export today's detections">
+                <span aria-hidden="true">↓</span> Export
+            </button>
+            <button id="sound-btn"  class="btn-ghost text-xs px-2.5 py-1.5" aria-label="Toggle ambient sounds" aria-pressed="false">
+                <span id="sound-icon" aria-hidden="true">🔕</span>
+                <span class="sr-only">Sound</span>
+            </button>
+            <button id="cinematic-btn" class="btn-ghost text-xs px-2.5 py-1.5" aria-label="Toggle cinematic mode (Escape to exit)">
+                <span aria-hidden="true">⤢</span>
+                <span class="sr-only">Cinematic mode</span>
+            </button>
             {% if request.user.is_staff %}
-            <button id="toggle-btn" class="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5">
-                <span id="toggle-icon">⏸</span>
+            <button id="toggle-btn" class="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5" aria-label="Pause auto scan">
+                <span id="toggle-icon" aria-hidden="true">⏸</span>
                 <span id="toggle-label">Pause</span>
             </button>
             {% endif %}
@@ -304,21 +313,27 @@
             <div id="layer-controls" class="absolute top-3 right-3 rounded-lg px-3 py-2.5 text-[11px]"
                  style="z-index:1000; background:rgba(13,17,23,0.88); border:1px solid var(--border-subtle); backdrop-filter:blur(6px);">
                 <div class="text-[10px] uppercase tracking-wide mb-2.5 font-semibold" style="color:var(--text-tertiary);">Layers</div>
-                <div class="space-y-1.5">
-                    <label><input type="checkbox" id="toggle-grid"       checked> <span style="color:var(--text-secondary);">Grid</span></label>
-                    <label><input type="checkbox" id="toggle-hotspots"   checked> <span style="color:var(--text-secondary);">Hotspots</span></label>
-                    <label><input type="checkbox" id="toggle-scanned"    checked> <span style="color:var(--text-secondary);">Scanned tiles</span></label>
-                    <label><input type="checkbox" id="toggle-next"       checked> <span style="color:var(--text-secondary);">Next tiles</span></label>
-                    <label><input type="checkbox" id="toggle-detections" checked> <span style="color:var(--text-secondary);">Detections</span></label>
-                    <label><input type="checkbox" id="toggle-heatmap"         > <span style="color:var(--text-secondary);">Heatmap</span></label>
-                    <label><input type="checkbox" id="toggle-failures"   checked> <span style="color:var(--text-secondary);">Failures</span></label>
-                </div>
+                <fieldset style="border:none;margin:0;padding:0;">
+                    <legend class="sr-only">Map layer visibility</legend>
+                    <div class="space-y-1.5">
+                        <label for="toggle-grid"><input type="checkbox" id="toggle-grid" checked> <span style="color:var(--text-secondary);">Grid</span></label>
+                        <label for="toggle-hotspots"><input type="checkbox" id="toggle-hotspots" checked> <span style="color:var(--text-secondary);">Hotspots</span></label>
+                        <label for="toggle-scanned"><input type="checkbox" id="toggle-scanned" checked> <span style="color:var(--text-secondary);">Scanned tiles</span></label>
+                        <label for="toggle-next"><input type="checkbox" id="toggle-next" checked> <span style="color:var(--text-secondary);">Next tiles</span></label>
+                        <label for="toggle-detections"><input type="checkbox" id="toggle-detections" checked> <span style="color:var(--text-secondary);">Detections</span></label>
+                        <label for="toggle-heatmap"><input type="checkbox" id="toggle-heatmap"> <span style="color:var(--text-secondary);">Heatmap</span></label>
+                        <label for="toggle-failures"><input type="checkbox" id="toggle-failures" checked> <span style="color:var(--text-secondary);">Failures</span></label>
+                    </div>
+                </fieldset>
             </div>
 
             <!-- Scan history date scrubber -->
             <div class="absolute flex items-center gap-2" style="z-index:1000; bottom:108px; left:16px;">
-                <input type="date" id="history-date" title="View historical snapshot">
-                <button id="history-live-btn2" class="btn-ghost text-[10px] px-2 py-1 hidden">↺ Live</button>
+                <label for="history-date" class="sr-only">View historical scan snapshot by date</label>
+                <input type="date" id="history-date" aria-label="Historical snapshot date">
+                <button id="history-live-btn2" class="btn-ghost text-[10px] px-2 py-1 hidden" aria-label="Return to live view">
+                    <span aria-hidden="true">↺</span> Live
+                </button>
             </div>
 
             <!-- Radar overlay (for active tile) -->

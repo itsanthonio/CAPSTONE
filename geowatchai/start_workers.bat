@@ -1,9 +1,9 @@
 @echo off
-REM GalamseyWatch AI — Start all Celery workers (10 total) + Beat scheduler
+REM SankofaWatch — Start all Celery workers (10 total) + Beat scheduler
 REM Run this from the geowatchai directory with the venv activated.
 REM Open separate terminal windows for each worker so you can monitor them.
 
-echo Starting GalamseyWatch AI Celery workers...
+echo Starting SankofaWatch Celery workers...
 echo.
 echo Worker layout:
 echo   priority workers  x6  (all detection jobs — manual + automated)

@@ -976,7 +976,7 @@ def dashboard_report_pdf(request):
         if pisa_status.err:
             return HttpResponse('PDF generation failed.', status=500)
         pdf_buffer.seek(0)
-        filename = f"GalamseyWatch_Report_{date.today().isoformat()}.pdf"
+        filename = f"SankofaWatch_Report_{date.today().isoformat()}.pdf"
         response = HttpResponse(pdf_buffer, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
@@ -1109,7 +1109,7 @@ def dashboard_settings(request):
     context = {
         'preferences': preferences,
         'settings': {
-            'APP_NAME': 'GalamseyWatch',
+            'APP_NAME': 'SankofaWatch',
             'APP_VERSION': '2.1.0',
             'ENVIRONMENT': 'Development'
         }
@@ -1576,7 +1576,7 @@ def _send_activation_email(request, user):
     token = default_token_generator.make_token(user)
     relative_url = reverse('dashboard:activate', kwargs={'uidb64': uid, 'token': token})
     link = request.build_absolute_uri(relative_url)
-    subject = "Confirm your GalamseyWatch AI account"
+    subject = "Confirm your SankofaWatch account"
     plain_body = f"Hi {user.username},\n\nClick the link to activate your account:\n{link}\n\nThis link expires in 24 hours."
     html_body = render_to_string('registration/activation_email.html', {'link': link, 'user': user})
     send_mail(
@@ -1595,7 +1595,7 @@ def activation_sent(request):
 
 def _send_activation_pin_email(user, pin):
     """Send a 6-digit activation PIN to a newly registered user."""
-    subject = "Your GalamseyWatch AI account activation code"
+    subject = "Your SankofaWatch account activation code"
     plain_body = f"Hi {user.username},\n\nYour activation code is: {pin}\n\nThis code expires in 24 hours."
     html_body = render_to_string('registration/activation_pin_email.html', {'pin': pin, 'user': user})
     send_mail(
@@ -1688,7 +1688,7 @@ def activate_account(request, uidb64, token):
 
 def _send_pin_email(user, pin):
     """Send a 6-digit PIN to the user for password reset."""
-    subject = "Your GalamseyWatch AI password reset code"
+    subject = "Your SankofaWatch password reset code"
     plain_body = f"Hi {user.username},\n\nYour password reset code is: {pin}\n\nThis code expires in 10 minutes.\n\nIf you didn't request this, ignore this email."
     html_body = render_to_string('registration/pin_email.html', {'pin': pin, 'user': user})
     send_mail(

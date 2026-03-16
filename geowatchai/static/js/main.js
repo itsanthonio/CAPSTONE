@@ -1,4 +1,4 @@
-// Main JavaScript for GalamseyWatch AI
+// Main JavaScript for SankofaWatch
 
 // ── Chart.js dark theme defaults ──────────────────────────────────────────────
 if (typeof Chart !== 'undefined') {
@@ -446,7 +446,7 @@ const ChartHelpers = {
 };
 
 // Export helpers for use in other files
-window.GalamseyWatch = {
+window.SankofaWatch = {
     MapHelpers,
     ChartHelpers,
     makeRequest,

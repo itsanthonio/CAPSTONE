@@ -1,4 +1,4 @@
-// Main JavaScript for GalamseyWatch AI
+// Main JavaScript for SankofaWatch
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize navigation
     initializeNavigation();
@@ -375,7 +375,7 @@ const ChartHelpers = {
 };
 
 // Export helpers for use in other files
-window.GalamseyWatch = {
+window.SankofaWatch = {
     MapHelpers,
     ChartHelpers,
     makeRequest,

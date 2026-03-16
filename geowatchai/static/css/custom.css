@@ -1,5 +1,5 @@
 /* ============================================================
-   GalamseyWatch AI — "Operational Dark" Design System
+   SankofaWatch — "Operational Dark" Design System
    ============================================================ */
 
 /* ── 1. DESIGN TOKENS ──────────────────────────────────────── */
@@ -21,7 +21,7 @@
   /* Text scale */
   --text-primary:    #e6edf3;
   --text-secondary:  #8b949e;
-  --text-tertiary:   #484f58;
+  --text-tertiary:   #757e88;
   --text-inverse:    #0d1117;
   --text-link:       #388bfd;
 
@@ -945,6 +945,45 @@ input[type="radio"] {
   outline: none;
 }
 
+/* Screen-reader-only utility — visually hidden but announced */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Skip-to-content link — hidden until focused by keyboard */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.skip-link:focus {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: auto;
+  height: auto;
+  padding: 8px 20px;
+  background: var(--accent);
+  color: var(--text-inverse);
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 9999;
+  border-radius: 0 0 var(--radius-md) 0;
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 2px;
+}
+
 /* Reduce motion */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -954,4 +993,102 @@ input[type="radio"] {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ============================================================
+   SANKOFAWATCH — Adinkra & Ghanaian Cultural Design Elements
+   Sankofa (Akan/Twi): "Se wo were fi na wosankofa a yenkyi"
+   "It is not wrong to go back for what you forgot."
+   ============================================================ */
+
+/* ── Gye Nyame diamond divider ──────────────────────────────
+   Gye Nyame: "except God" — the most widely used Adinkra symbol.
+   Used as a section separator with a diamond centre motif.     */
+.adinkra-divider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 12px;
+  opacity: 0.35;
+}
+.adinkra-divider::before,
+.adinkra-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--accent) 30%,
+    var(--accent) 70%,
+    transparent
+  );
+}
+.adinkra-divider__glyph {
+  /* Gye Nyame-inspired: a diamond with a dot centre */
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--accent);
+  transform: rotate(45deg);
+  flex-shrink: 0;
+  position: relative;
+}
+.adinkra-divider__glyph::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  background: var(--accent);
+  border-radius: 0;
+}
+
+/* ── Sankofa watermark ──────────────────────────────────────
+   Subtle background mark using the Sankofa "SE" motif
+   (two concentric arcs — the bird's neck curl).               */
+.sankofa-watermark {
+  position: relative;
+}
+.sankofa-watermark::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 50% 60%,
+      rgba(var(--accent-rgb, 212,160,23), 0.03) 0%,
+      transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Kente-stripe accent bar ────────────────────────────────
+   Inspired by Kente cloth — alternating gold/green stripes.
+   Used as a top accent on cards or section headers.           */
+.kente-bar {
+  height: 3px;
+  background: repeating-linear-gradient(
+    90deg,
+    #d4a017 0px,   #d4a017 6px,
+    #1a7a4a 6px,   #1a7a4a 12px,
+    #d4a017 12px,  #d4a017 18px,
+    #b22222 18px,  #b22222 24px
+  );
+  border-radius: 2px 2px 0 0;
+  opacity: 0.7;
+}
+
+/* ── Dwennimmen spiral badge ────────────────────────────────
+   Dwennimmen: "ram's horns" — strength with humility.
+   Decorative pill badge for Adinkra-themed labels.            */
+.adinkra-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  background: rgba(212, 160, 23, 0.07);
+  border: 1px solid rgba(212, 160, 23, 0.18);
+  color: rgba(212, 160, 23, 0.75);
 }

@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GalamseyWatch AI — Protecting Ghana's Environment</title>
-    <meta name="description" content="AI-powered satellite detection of illegal galamsey mining across Ghana.">
+    <title>SankofaWatch — Protecting Ghana's Environment</title>
+    <meta name="description" content="SankofaWatch — AI-powered satellite detection of illegal galamsey mining across Ghana. Protecting forests, rivers, and communities.">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -247,22 +247,29 @@
 <nav class="relative z-10 flex items-center justify-between px-6 sm:px-10 py-5"
      style="border-bottom: 1px solid var(--border);">
     <div class="flex items-center gap-3">
+        <!-- Sankofa bird mark (Akan Adinkra: "go back and fetch it") -->
         <div class="w-9 h-9 rounded-xl flex items-center justify-center"
              style="background: var(--gold-dim); border: 1px solid var(--gold-border);">
-            <svg class="w-5 h-5" style="color: var(--gold);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                      d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" aria-hidden="true" focusable="false">
+                <ellipse cx="16" cy="18" rx="7" ry="4.5" fill="var(--gold)" fill-opacity="0.15" stroke="var(--gold)" stroke-width="1.5"/>
+                <path d="M12 16 Q16 11 21 15" stroke="var(--gold)" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+                <path d="M22 17 Q27 12 23.5 6" stroke="var(--gold)" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+                <path d="M11 14 Q7 11 8.5 7" stroke="var(--gold)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+                <circle cx="8.5" cy="5.5" r="2.3" fill="var(--gold)"/>
+                <circle cx="7.6" cy="5" r="0.55" fill="#0d1117" fill-opacity="0.6"/>
+                <path d="M7.5 6.5 L5 8" stroke="var(--gold)" stroke-width="1.3" stroke-linecap="round"/>
+                <ellipse cx="16" cy="14.5" rx="2.1" ry="1.5" fill="var(--gold)" fill-opacity="0.4" stroke="var(--gold)" stroke-width="1"/>
             </svg>
         </div>
         <span class="font-bold text-sm tracking-tight" style="color: var(--text);">
-            GalamseyWatch <span style="color: var(--gold);">AI</span>
+            Sankofa<span style="color: var(--gold);">Watch</span>
         </span>
     </div>
     <div class="flex items-center gap-3">
         {% if user.is_authenticated %}
             <a href="{% url 'dashboard:home' %}" class="btn-primary" style="padding: 9px 18px; font-size: 13px;">
                 Dashboard
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
             </a>
@@ -270,7 +277,7 @@
             <a href="{% url 'login' %}" class="btn-ghost">Sign In</a>
             <a href="{% url 'login' %}" class="btn-primary" style="padding: 9px 18px; font-size: 13px;">
                 Access Platform
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
             </a>
@@ -280,12 +287,31 @@
 
 <!-- ── Hero ── -->
 <section class="relative z-10 text-center px-6 pt-20 pb-14">
-    <!-- Live badge -->
-    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-10"
-         style="background: rgba(212,160,23,0.07); border: 1px solid var(--gold-border);
-                color: var(--gold); font-size: 11px; font-weight: 700; letter-spacing: 0.06em;">
-        <span class="live-dot"></span>
-        LIVE MONITORING &nbsp;·&nbsp; GHANA MINING BELT
+    <!-- Adinkra / Sankofa badge row -->
+    <div class="flex flex-col items-center gap-3 mb-10">
+        <!-- Live monitoring badge -->
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full"
+             style="background: rgba(212,160,23,0.07); border: 1px solid var(--gold-border);
+                    color: var(--gold); font-size: 11px; font-weight: 700; letter-spacing: 0.06em;">
+            <span class="live-dot"></span>
+            LIVE MONITORING &nbsp;·&nbsp; GHANA MINING BELT
+        </div>
+        <!-- Sankofa Adinkra proverb -->
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full"
+             style="background: rgba(212,160,23,0.04); border: 1px solid rgba(212,160,23,0.12);
+                    color: rgba(212,160,23,0.6); font-size: 10px; font-style: italic; letter-spacing: 0.04em;">
+            <!-- Sankofa bird glyph (Adinkra) -->
+            <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:12px;height:12px;flex-shrink:0;" aria-hidden="true" focusable="false">
+                <ellipse cx="9" cy="11" rx="4" ry="2.8" fill="var(--gold)" fill-opacity="0.15" stroke="var(--gold)" stroke-width="1"/>
+                <path d="M6.5 9.5 Q9 7 12 9" stroke="var(--gold)" stroke-width="0.9" stroke-linecap="round" fill="none"/>
+                <path d="M12.5 10 Q15 7.5 13.5 4" stroke="var(--gold)" stroke-width="1" stroke-linecap="round" fill="none"/>
+                <path d="M6 8.5 Q4 7 4.5 4.5" stroke="var(--gold)" stroke-width="0.9" stroke-linecap="round" fill="none"/>
+                <circle cx="4.5" cy="3.5" r="1.4" fill="var(--gold)"/>
+                <path d="M3.8 4.2 L2.2 5.2" stroke="var(--gold)" stroke-width="0.9" stroke-linecap="round"/>
+                <ellipse cx="9" cy="8.5" rx="1.3" ry="1" fill="var(--gold)" fill-opacity="0.4" stroke="var(--gold)" stroke-width="0.7"/>
+            </svg>
+            Se wo were fi na wosankofa a yenkyi &nbsp;— &nbsp;It is not wrong to go back for what you forgot
+        </div>
     </div>
 
     <h1 class="font-black tracking-tight mb-6 leading-tight"
@@ -296,9 +322,10 @@
 
     <p class="text-base sm:text-lg max-w-2xl mx-auto mb-10"
        style="color: var(--text-dim); line-height: 1.75;">
-        GalamseyWatch AI applies deep learning to Landsat &amp; Sentinel-2 satellite imagery,
-        automatically detecting illegal <em>galamsey</em> activity —
-        protecting Ghana's forests, rivers, and communities in real time.
+        SankofaWatch applies deep learning to Landsat &amp; Sentinel-2 satellite imagery,
+        automatically detecting illegal <em>galamsey</em> activity across Ghana's mining belt —
+        guarding the Pra, Offin, and Ankobra rivers, the Atewa Forest Reserve,
+        and the communities that depend on them.
     </p>
 
     <!-- Tech tags -->
@@ -317,26 +344,26 @@
 
         <div class="stat-card" style="animation-delay: 0.05s;">
             <div class="stat-number" data-target="{{ stats.total_area_ha }}" data-decimals="1" data-suffix=" ha">—</div>
-            <div class="text-sm font-semibold mt-3 mb-1" style="color: var(--text);">Area Monitored</div>
-            <div class="text-xs" style="color: var(--text-dim);">Illegal-use land mapped</div>
+            <div class="text-sm font-semibold mt-3 mb-1" style="color: var(--text);">Degraded Land</div>
+            <div class="text-xs" style="color: var(--text-dim);">Hectares of illegal mining mapped</div>
         </div>
 
         <div class="stat-card" style="animation-delay: 0.15s;">
             <div class="stat-number" data-target="{{ stats.illegal_sites }}" data-decimals="0" data-suffix="">—</div>
             <div class="text-sm font-semibold mt-3 mb-1" style="color: var(--text);">Illegal Sites</div>
-            <div class="text-xs" style="color: var(--text-dim);">AI-confirmed detections</div>
+            <div class="text-xs" style="color: var(--text-dim);">AI-confirmed, outside licensed concessions</div>
         </div>
 
         <div class="stat-card" style="animation-delay: 0.25s;">
             <div class="stat-number" data-target="{{ stats.alerts_resolved }}" data-decimals="0" data-suffix="">—</div>
-            <div class="text-sm font-semibold mt-3 mb-1" style="color: var(--text);">Alerts Resolved</div>
-            <div class="text-xs" style="color: var(--text-dim);">Field-verified by inspectors</div>
+            <div class="text-sm font-semibold mt-3 mb-1" style="color: var(--text);">Cases Closed</div>
+            <div class="text-xs" style="color: var(--text-dim);">Verified by field inspectors on the ground</div>
         </div>
 
         <div class="stat-card" style="animation-delay: 0.35s;">
             <div class="stat-number" data-target="{{ stats.regions_covered }}" data-decimals="0" data-suffix="">—</div>
-            <div class="text-sm font-semibold mt-3 mb-1" style="color: var(--text);">Regions Covered</div>
-            <div class="text-xs" style="color: var(--text-dim);">Across the mining belt</div>
+            <div class="text-sm font-semibold mt-3 mb-1" style="color: var(--text);">Regions Monitored</div>
+            <div class="text-xs" style="color: var(--text-dim);">Across Ghana's Western, Ashanti &amp; Eastern belts</div>
         </div>
 
     </div>
@@ -349,7 +376,7 @@
         <div class="info-card" style="animation-delay: 0.45s; border-color: rgba(212,160,23,0.18);">
             <div class="icon-box"
                  style="background: rgba(212,160,23,0.09); border: 1px solid rgba(212,160,23,0.2);">
-                <svg class="w-5 h-5" style="color: var(--gold);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5" style="color: var(--gold);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
@@ -363,7 +390,7 @@
         <div class="info-card" style="animation-delay: 0.55s; border-color: rgba(56,139,253,0.18);">
             <div class="icon-box"
                  style="background: rgba(56,139,253,0.09); border: 1px solid rgba(56,139,253,0.2);">
-                <svg class="w-5 h-5" style="color: #388bfd;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5" style="color: #388bfd;" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M13 10V3L4 14h7v7l9-11h-7z"/>
                 </svg>
@@ -380,7 +407,7 @@
         <div class="info-card" style="animation-delay: 0.65s; border-color: rgba(63,185,80,0.18);">
             <div class="icon-box"
                  style="background: rgba(63,185,80,0.09); border: 1px solid rgba(63,185,80,0.2);">
-                <svg class="w-5 h-5" style="color: #3fb950;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5" style="color: #3fb950;" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
                 </svg>
@@ -412,7 +439,7 @@
         <div class="feature-card" style="animation-delay: 0.1s;">
             <div class="icon-box mb-4"
                  style="background: var(--gold-dim); border: 1px solid var(--gold-border);">
-                <svg class="w-5 h-5" style="color: var(--gold);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5" style="color: var(--gold);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
                           d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/>
                 </svg>
@@ -427,7 +454,7 @@
         <div class="feature-card" style="animation-delay: 0.2s;">
             <div class="icon-box mb-4"
                  style="background: rgba(56,139,253,0.09); border: 1px solid rgba(56,139,253,0.2);">
-                <svg class="w-5 h-5" style="color: #388bfd;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5" style="color: #388bfd;" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
                           d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
@@ -442,7 +469,7 @@
         <div class="feature-card" style="animation-delay: 0.3s;">
             <div class="icon-box mb-4"
                  style="background: rgba(63,185,80,0.09); border: 1px solid rgba(63,185,80,0.2);">
-                <svg class="w-5 h-5" style="color: #3fb950;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5" style="color: #3fb950;" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
                           d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                 </svg>
@@ -457,11 +484,79 @@
     </div>
 </section>
 
+<!-- ── What is Galamsey? ── -->
+<section class="relative z-10 max-w-5xl mx-auto px-6 pb-20">
+    <div class="gradient-divider mb-16"></div>
+
+    <p class="text-center text-[11px] uppercase tracking-[0.18em] mb-3"
+       style="color: rgba(230,237,243,0.3);">Understanding the Crisis</p>
+    <h2 class="text-center font-bold mb-10"
+        style="font-size: clamp(1.3rem, 3vw, 1.8rem); color: var(--text);">
+        What is <span style="color: var(--gold); font-style: italic;">Galamsey</span>?
+    </h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+
+        <div class="feature-card">
+            <div class="icon-box mb-4"
+                 style="background: rgba(212,160,23,0.09); border: 1px solid rgba(212,160,23,0.2);">
+                <!-- Drop / mercury icon -->
+                <svg class="w-5 h-5" style="color: var(--gold);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                          d="M12 3C12 3 5 10 5 15a7 7 0 0014 0c0-5-7-12-7-12z"/>
+                </svg>
+            </div>
+            <h3 class="text-sm font-bold mb-2" style="color: var(--text);">The Human Cost</h3>
+            <p class="text-xs leading-relaxed" style="color: var(--text-dim);">
+                <em>Galamsey</em> — from "gather them and sell" — is illegal artisanal gold mining
+                operating outside licensed concessions. Unregulated operations discharge mercury and
+                cyanide directly into rivers, threatening the drinking water of millions of Ghanaians
+                living downstream and poisoning fishing communities that depend on the water.
+            </p>
+        </div>
+
+        <div class="feature-card">
+            <div class="icon-box mb-4"
+                 style="background: rgba(63,185,80,0.09); border: 1px solid rgba(63,185,80,0.2);">
+                <!-- Tree / forest icon -->
+                <svg class="w-5 h-5" style="color: #3fb950;" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                          d="M12 2L8 8H4l8 6-3 8 3-2 3 2-3-8 8-6h-4L12 2z"/>
+                </svg>
+            </div>
+            <h3 class="text-sm font-bold mb-2" style="color: var(--text);">Ecosystems Under Threat</h3>
+            <p class="text-xs leading-relaxed" style="color: var(--text-dim);">
+                The Pra, Offin, and Ankobra river basins — once clean — have suffered severe
+                water-quality degradation. The Atewa Forest Reserve in Ghana's Eastern Region,
+                a globally significant biodiversity hotspot and the source of three major rivers,
+                faces ongoing encroachment from illegal miners pushing ever deeper into the forest.
+            </p>
+        </div>
+
+    </div>
+
+    <!-- Ashesi credit card -->
+    <div class="feature-card text-center" style="border-color: rgba(212,160,23,0.15);">
+        <!-- Adinkra Gye Nyame diamond -->
+        <div class="flex justify-center mb-3">
+            <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:16px;height:16px;opacity:.5;" aria-hidden="true" focusable="false">
+                <path d="M10 1 L19 10 L10 19 L1 10 Z" stroke="var(--gold)" stroke-width="1.2" fill="none"/>
+                <circle cx="10" cy="10" r="3" fill="var(--gold)" fill-opacity="0.45"/>
+            </svg>
+        </div>
+        <p class="text-xs leading-relaxed max-w-xl mx-auto" style="color: var(--text-dim);">
+            SankofaWatch was built at <strong style="color: var(--text);">Ashesi University</strong>,
+            Berekuso, Ghana — named for the Sankofa bird that flies forward while looking back,
+            a reminder that protecting Ghana's future means learning from and restoring its past.
+        </p>
+    </div>
+</section>
+
 <!-- ── CTA ── -->
 <section class="relative z-10 text-center pb-24 px-6">
     {% if user.is_authenticated %}
         <a href="{% url 'dashboard:home' %}" class="btn-primary text-base">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
             </svg>
@@ -470,23 +565,30 @@
     {% else %}
         <a href="{% url 'login' %}" class="btn-primary text-base">
             Access the Platform
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
             </svg>
         </a>
     {% endif %}
     <p class="text-xs mt-5" style="color: rgba(230,237,243,0.22);">
-        Ashesi University Capstone · GalamseyWatch AI
+        Ashesi University Capstone · SankofaWatch
     </p>
 </section>
 
 <!-- ── Footer ── -->
 <footer class="relative z-10 px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-2"
         style="border-top: 1px solid var(--border);">
-    <span class="text-xs" style="color: rgba(230,237,243,0.28);">
-        © 2026 GalamseyWatch AI &nbsp;·&nbsp; Ashesi University Capstone
-    </span>
+    <div class="flex items-center gap-2">
+        <!-- Adinkra Gye Nyame-inspired diamond mark: "none greater" -->
+        <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:10px;height:10px;opacity:.35;" aria-hidden="true" focusable="false">
+            <path d="M7 1 L13 7 L7 13 L1 7 Z" stroke="var(--gold)" stroke-width="1" fill="none"/>
+            <circle cx="7" cy="7" r="2" fill="var(--gold)" fill-opacity="0.5"/>
+        </svg>
+        <span class="text-xs" style="color: rgba(230,237,243,0.28);">
+            © 2026 SankofaWatch &nbsp;·&nbsp; Ashesi University Capstone
+        </span>
+    </div>
     <span class="text-xs" style="color: rgba(230,237,243,0.18);">
         Satellite intelligence protecting Ghana's environment
     </span>

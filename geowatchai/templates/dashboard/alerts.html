@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Alerts — GalamseyWatch{% endblock %}
+{% block title %}Alerts — SankofaWatch{% endblock %}
 
 {% block content %}
 <!-- New-alerts banner (shown by polling JS) -->
@@ -14,6 +14,7 @@
         Refresh
     </button>
     <button onclick="document.getElementById('new-alerts-banner').classList.add('hidden');"
+            aria-label="Dismiss notification"
             class="text-xs ml-1" style="color: var(--text-tertiary);">✕</button>
 </div>
 
@@ -28,13 +29,13 @@
         <div class="flex items-center gap-3">
             <button id="add-alert-btn"
                     class="btn-primary inline-flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
                 Add Alert
             </button>
             <button id="export-csv-btn" class="btn-secondary inline-flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                 </svg>
@@ -44,54 +45,60 @@
     </div>
 
     <!-- Summary strip -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3" role="group" aria-label="Alert status summary">
 
         <div class="gw-card px-4 py-3">
             <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--text-tertiary);">Total</p>
             <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--text-primary);" id="s-total">{{ summary.total }}</p>
         </div>
 
-        <div class="gw-card px-4 py-3 cursor-pointer border-l-[3px]"
+        <button class="gw-card px-4 py-3 text-left border-l-[3px] hover:bg-surface-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-critical"
              style="border-left-color: var(--status-critical);"
+             aria-label="Filter by Open status"
              onclick="document.getElementById('filter-status').value='open'; document.getElementById('apply-filters').click();">
             <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--status-critical);">Open</p>
             <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-critical);" id="s-open">{{ summary.open }}</p>
             <p class="text-xs mt-0.5" style="color: var(--text-tertiary);"><span id="s-critical">{{ summary.critical }}</span> critical</p>
-        </div>
+        </button>
 
-        <div class="gw-card px-4 py-3 cursor-pointer border-l-[3px]"
+        <button class="gw-card px-4 py-3 text-left border-l-[3px] hover:bg-surface-3 transition-colors"
              style="border-left-color: var(--status-moderate);"
+             aria-label="Filter by Acknowledged status"
              onclick="document.getElementById('filter-status').value='acknowledged'; document.getElementById('apply-filters').click();">
             <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--status-moderate);">Acknowledged</p>
             <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-moderate);" id="s-acknowledged">{{ summary.acknowledged }}</p>
-        </div>
+        </button>
 
-        <div class="gw-card px-4 py-3 cursor-pointer border-l-[3px]"
+        <button class="gw-card px-4 py-3 text-left border-l-[3px] hover:bg-surface-3 transition-colors"
              style="border-left-color: var(--status-dispatched);"
+             aria-label="Filter by Dispatched status"
              onclick="document.getElementById('filter-status').value='dispatched'; document.getElementById('apply-filters').click();">
             <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--status-dispatched);">Dispatched</p>
             <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-dispatched);" id="s-dispatched">{{ summary.dispatched }}</p>
-        </div>
+        </button>
 
-        <div class="gw-card px-4 py-3 cursor-pointer border-l-[3px]"
+        <button class="gw-card px-4 py-3 text-left border-l-[3px] hover:bg-surface-3 transition-colors"
              style="border-left-color: var(--status-resolved);"
+             aria-label="Filter by Resolved status"
              onclick="document.getElementById('filter-status').value='resolved'; document.getElementById('apply-filters').click();">
             <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--status-resolved);">Resolved</p>
             <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-resolved);" id="s-resolved">{{ summary.resolved }}</p>
-        </div>
+        </button>
 
-        <div class="gw-card px-4 py-3 cursor-pointer"
+        <button class="gw-card px-4 py-3 text-left hover:bg-surface-3 transition-colors"
+             aria-label="Filter by Dismissed status"
              onclick="document.getElementById('filter-status').value='dismissed'; document.getElementById('apply-filters').click();">
             <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--text-tertiary);">Dismissed</p>
             <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--text-secondary);" id="s-dismissed">{{ summary.dismissed }}</p>
-        </div>
+        </button>
 
-        <div class="gw-card px-4 py-3 cursor-pointer"
+        <button class="gw-card px-4 py-3 text-left hover:bg-surface-3 transition-colors"
+             aria-label="Filter by High and Critical severity"
              onclick="document.getElementById('filter-severity').value='high'; document.getElementById('apply-filters').click();">
             <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--text-tertiary);">High+</p>
             <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-high);" id="s-highplus">{{ summary.critical|add:summary.high }}</p>
             <p class="text-xs mt-0.5" style="color: var(--text-tertiary);">need action</p>
-        </div>
+        </button>
 
     </div>
 
@@ -99,7 +106,7 @@
     <div class="gw-card p-5">
         <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div>
-                <label class="gw-label">Status</label>
+                <label for="filter-status" class="gw-label">Status</label>
                 <select id="filter-status" class="gw-select w-full">
                     <option value="">All</option>
                     <option value="open">Open</option>
@@ -110,7 +117,7 @@
                 </select>
             </div>
             <div>
-                <label class="gw-label">Severity</label>
+                <label for="filter-severity" class="gw-label">Severity</label>
                 <select id="filter-severity" class="gw-select w-full">
                     <option value="">All</option>
                     <option value="critical">Critical</option>
@@ -120,7 +127,7 @@
                 </select>
             </div>
             <div>
-                <label class="gw-label">Type</label>
+                <label for="filter-type" class="gw-label">Type</label>
                 <select id="filter-type" class="gw-select w-full">
                     <option value="">All</option>
                     <option value="new_detection">New Detection</option>
@@ -130,7 +137,7 @@
                 </select>
             </div>
             <div>
-                <label class="gw-label">Source</label>
+                <label for="filter-source" class="gw-label">Source</label>
                 <select id="filter-source" class="gw-select w-full">
                     <option value="">All</option>
                     <option value="manual">Manual</option>
@@ -149,14 +156,15 @@
     </div>
 
     <!-- Inspector Assignment Modal -->
-    <div id="inspector-modal" class="fixed inset-0 z-50 hidden" style="background: rgba(0,0,0,0.6);">
+    <div id="inspector-modal" class="fixed inset-0 z-50 hidden" style="background: rgba(0,0,0,0.6);"
+         role="dialog" aria-modal="true" aria-labelledby="inspector-modal-title">
         <div class="flex items-center justify-center min-h-screen px-4">
             <div class="rounded-lg w-full max-w-2xl mx-4 overflow-hidden"
                  style="background: var(--surface-1); border: 1px solid var(--border-default);">
                 <div class="flex items-center justify-between p-6" style="border-bottom: 1px solid var(--border-default);">
-                    <h3 class="text-lg font-semibold" style="color: var(--text-primary);">Assign Inspector</h3>
-                    <button onclick="closeInspectorModal()" style="color: var(--text-tertiary);">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <h3 id="inspector-modal-title" class="text-lg font-semibold" style="color: var(--text-primary);">Assign Inspector</h3>
+                    <button onclick="closeInspectorModal()" style="color: var(--text-tertiary);" aria-label="Close Assign Inspector dialog">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
@@ -165,7 +173,7 @@
                 <div class="p-6">
                     <!-- Inspector Search -->
                     <div class="mb-4">
-                        <label class="gw-label">Search Inspectors</label>
+                        <label for="inspector-search" class="gw-label">Search Inspectors</label>
                         <div class="relative">
                             <input type="text" id="inspector-search"
                                    placeholder="Search by name or organization..."
@@ -211,20 +219,20 @@
     <div class="gw-card overflow-hidden">
         <div class="flex items-center justify-between px-5 py-4" style="border-bottom: 1px solid var(--border-subtle);">
             <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Detection Alerts</h2>
-            <span id="result-count" class="text-xs" style="color: var(--text-secondary);">Loading…</span>
+            <span id="result-count" class="text-xs" style="color: var(--text-secondary);" aria-live="polite" aria-atomic="true">Loading…</span>
         </div>
 
         <!-- Loading -->
-        <div id="table-loading" class="py-16 text-center">
+        <div id="table-loading" class="py-16 text-center" role="status" aria-label="Loading alerts">
             <div class="inline-block w-6 h-6 border-2 border-t-transparent rounded-full animate-spin mb-3"
-                 style="border-color: var(--status-info); border-top-color: transparent;"></div>
+                 style="border-color: var(--status-info); border-top-color: transparent;" aria-hidden="true"></div>
             <p class="text-sm" style="color: var(--text-secondary);">Loading alerts…</p>
         </div>
 
         <!-- Empty -->
         <div id="table-empty" class="py-16 text-center hidden">
             <svg class="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                 style="color: var(--text-tertiary);">
+                 style="color: var(--text-tertiary);" aria-hidden="true" focusable="false">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                       d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
             </svg>
@@ -237,8 +245,10 @@
                 <thead>
                     <tr>
                         <th class="px-3 py-3 w-8">
+                            <label for="select-all-cb" class="sr-only">Select all alerts</label>
                             <input type="checkbox" id="select-all-cb"
                                    class="rounded cursor-pointer"
+                                   aria-label="Select all alerts"
                                    style="border-color: var(--border-default); accent-color: var(--status-info);">
                         </th>
                         <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">ID</th>
@@ -283,6 +293,7 @@
             style="background: var(--surface-4); color: var(--text-secondary);">Dismiss</button>
     <!-- Bulk assign inspector -->
     <select id="bulk-inspector-select"
+            aria-label="Assign inspector"
             class="hidden gw-select text-xs">
         <option value="">Assign inspector…</option>
     </select>
@@ -291,18 +302,19 @@
             style="background: var(--status-resolved); color: #fff;">
         Assign
     </button>
-    <button id="bulk-cancel" class="ml-2 text-sm transition-colors" style="color: var(--text-tertiary);" title="Clear selection">✕</button>
+    <button id="bulk-cancel" class="ml-2 text-sm transition-colors" style="color: var(--text-tertiary);" aria-label="Clear selection">✕</button>
 </div>
 
 <!-- ── Alert Detail Modal ── -->
 <div id="alert-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4"
-     style="background: rgba(0,0,0,0.6);">
+     style="background: rgba(0,0,0,0.6);"
+     role="dialog" aria-modal="true" aria-labelledby="alert-modal-title">
     <div class="rounded-lg w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col"
          style="background: var(--surface-1); border: 1px solid var(--border-default);">
         <div class="flex items-center justify-between px-6 py-4 shrink-0" style="border-bottom: 1px solid var(--border-subtle);">
-            <h3 class="text-base font-semibold" style="color: var(--text-primary);">Alert Detail</h3>
-            <button id="modal-close" style="color: var(--text-tertiary);">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <h3 id="alert-modal-title" class="text-base font-semibold" style="color: var(--text-primary);">Alert Detail</h3>
+            <button id="modal-close" style="color: var(--text-tertiary);" aria-label="Close Alert Detail dialog">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
@@ -869,7 +881,7 @@ function showConfirm(title, message) {
             const locStr = a.site.lat != null
                 ? `<a href="https://earth.google.com/web/search/${a.site.lat},${a.site.lng}"
                        target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()"
-                       title="Open in Google Earth"
+                       aria-label="Open site location for alert ${a.short_id} in Google Earth (opens in new tab)"
                        style="color:var(--text-secondary);text-decoration:underline;text-decoration-style:dotted;"
                    >${a.site.lat}° N, ${Math.abs(a.site.lng)}° W ↗</a>`
                 : (a.site.region || '—');
@@ -885,6 +897,7 @@ function showConfirm(title, message) {
                     ${isSelectable ? `<input type="checkbox" class="row-cb rounded cursor-pointer"
                         style="border-color: var(--border-default); accent-color: var(--status-info);"
                         data-id="${a.id}" data-status="${a.status}"
+                        aria-label="Select alert ${a.short_id}"
                         onchange="window._alertsPage.onRowCheck(this)">` : ''}
                 </td>
                 <td class="px-3 py-3 text-xs font-mono" style="color: var(--text-secondary);">${a.short_id}</td>
@@ -911,12 +924,15 @@ function showConfirm(title, message) {
                     <div class="flex items-center gap-2">
                         ${a.status === 'open' ? `
                             <button onclick="window._alertsPage.action('${a.id}','acknowledge')"
-                                    class="hover:underline" style="color: var(--status-info);">Acknowledge</button>
+                                    class="hover:underline" style="color: var(--status-info);"
+                                    aria-label="Acknowledge alert ${a.short_id}">Acknowledge</button>
                             <button onclick="window._alertsPage.action('${a.id}','dismiss')"
-                                    class="hover:underline" style="color: var(--text-tertiary);">Dismiss</button>
+                                    class="hover:underline" style="color: var(--text-tertiary);"
+                                    aria-label="Dismiss alert ${a.short_id}">Dismiss</button>
                         ` : a.status === 'acknowledged' ? `
                             <button onclick="window.openInspectorModal('${a.id}')"
-                                    class="hover:underline" style="color: var(--status-dispatched);">Dispatch Inspector</button>
+                                    class="hover:underline" style="color: var(--status-dispatched);"
+                                    aria-label="Dispatch inspector for alert ${a.short_id}">Dispatch Inspector</button>
                         ` : a.status === 'dispatched' ? `
                             <span class="italic" style="color: var(--text-tertiary);">Awaiting inspector report</span>
                         ` : `<span style="color: var(--text-tertiary);">—</span>`}
@@ -924,15 +940,17 @@ function showConfirm(title, message) {
                         ${window._alertsPage.isAdmin ? `
                             <button onclick="window._alertsPage.editAlert('${a.id}')"
                                     class="p-1.5 rounded hover:bg-gray-50 transition-colors"
-                                    style="color: var(--text-secondary);" title="Edit Alert">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    style="color: var(--text-secondary);"
+                                    aria-label="Edit alert ${a.short_id}">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                                 </svg>
                             </button>
                             <button onclick="window._alertsPage.deleteAlert('${a.id}')"
                                     class="p-1.5 rounded hover:bg-gray-50 transition-colors"
-                                    style="color: var(--text-secondary);" title="Delete Alert">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    style="color: var(--text-secondary);"
+                                    aria-label="Delete alert ${a.short_id}">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"/>
                                 </svg>
                             </button>
@@ -1006,7 +1024,9 @@ function showConfirm(title, message) {
     async function openModal(id, prefetchedData) {
         _currentId = id;
         _tlFrames  = [];
-        document.getElementById('alert-modal').classList.remove('hidden');
+        const modal = document.getElementById('alert-modal');
+        modal.classList.remove('hidden');
+        window.trapFocus && window.trapFocus(modal, document.activeElement);
         // Reset timelapse to loading state
         document.getElementById('modal-tl-loading').classList.remove('hidden');
         document.getElementById('modal-tl-empty').classList.add('hidden');
@@ -1177,7 +1197,9 @@ function showConfirm(title, message) {
     }
 
     function closeModal() {
-        document.getElementById('alert-modal').classList.add('hidden');
+        const modal = document.getElementById('alert-modal');
+        modal.classList.add('hidden');
+        window.releaseFocus && window.releaseFocus(modal);
     }
 
     // ── Status action ──
@@ -1207,12 +1229,14 @@ function showConfirm(title, message) {
             currentAlertId = alertId;
             const modal = document.getElementById('inspector-modal');
             modal.classList.remove('hidden');
+            window.trapFocus && window.trapFocus(modal, document.activeElement);
             loadInspectors();
         }
 
         function closeInspectorModal() {
             const modal = document.getElementById('inspector-modal');
             modal.classList.add('hidden');
+            window.releaseFocus && window.releaseFocus(modal);
             selectedInspector = null;
             currentAlertId = null;
         }

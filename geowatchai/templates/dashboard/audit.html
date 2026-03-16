@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Audit Trail — GalamseyWatch{% endblock %}
+{% block title %}Audit Trail — SankofaWatch{% endblock %}
 
 {% block content %}
 <div class="p-6 space-y-5">
@@ -12,16 +12,16 @@
             <h1 class="text-[22px] font-semibold tracking-tight" style="color: var(--text-primary);">Audit Trail</h1>
             <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">Complete record of system actions for compliance and accountability</p>
         </div>
-        <span id="audit-count" class="text-[12px] tabular-nums" style="color: var(--text-tertiary);">{{ page_obj.paginator.count }} record{{ page_obj.paginator.count|pluralize }}</span>
+        <span id="audit-count" class="text-[12px] tabular-nums" style="color: var(--text-tertiary);" aria-live="polite" aria-atomic="true">{{ page_obj.paginator.count }} record{{ page_obj.paginator.count|pluralize }}</span>
     </div>
 
     <!-- Filters -->
-    <form method="get" class="gw-card p-4">
+    <form method="get" class="gw-card p-4" role="search" aria-label="Filter audit records">
         <div class="flex flex-wrap items-end gap-3">
 
             <div class="flex flex-col gap-1 min-w-[180px]">
-                <label class="gw-label">Action</label>
-                <select name="action" class="gw-select">
+                <label for="audit-filter-action" class="gw-label">Action</label>
+                <select id="audit-filter-action" name="action" class="gw-select">
                     <option value="">All actions</option>
                     {% for ac in action_choices %}
                     <option value="{{ ac }}" {% if filters.action == ac %}selected{% endif %}>{{ ac }}</option>
@@ -30,8 +30,8 @@
             </div>
 
             <div class="flex flex-col gap-1 min-w-[160px]">
-                <label class="gw-label">User</label>
-                <select name="user" class="gw-select">
+                <label for="audit-filter-user" class="gw-label">User</label>
+                <select id="audit-filter-user" name="user" class="gw-select">
                     <option value="">All users</option>
                     <option value="__system__" {% if filters.user == '__system__' %}selected{% endif %}>System (auto)</option>
                     {% for username in user_choices %}
@@ -41,13 +41,13 @@
             </div>
 
             <div class="flex flex-col gap-1">
-                <label class="gw-label">From</label>
-                <input type="date" name="date_from" value="{{ filters.date_from }}" class="gw-input">
+                <label for="audit-filter-from" class="gw-label">From</label>
+                <input id="audit-filter-from" type="date" name="date_from" value="{{ filters.date_from }}" class="gw-input">
             </div>
 
             <div class="flex flex-col gap-1">
-                <label class="gw-label">To</label>
-                <input type="date" name="date_to" value="{{ filters.date_to }}" class="gw-input">
+                <label for="audit-filter-to" class="gw-label">To</label>
+                <input id="audit-filter-to" type="date" name="date_to" value="{{ filters.date_to }}" class="gw-input">
             </div>
 
             <div class="flex gap-2 pb-0.5">
@@ -161,7 +161,7 @@
                     <tr>
                         <td colspan="5" class="px-5 py-12 text-center">
                             <svg class="w-10 h-10 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                 style="color: var(--border-default);">
+                                 style="color: var(--border-default);" aria-hidden="true" focusable="false">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                             </svg>
                             <p class="text-[13px] font-medium" style="color: var(--text-secondary);">No audit records match your filters.</p>

@@ -35,10 +35,10 @@
         </div>
         <div class="flex items-center space-x-2">
             <!-- Delete assignment button -->
-            <button onclick="deleteAssignment('{{ assignment.id }}')" 
-                    class="text-gray-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50 transition-colors" 
-                    title="Delete Assignment">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button onclick="deleteAssignment('{{ assignment.id }}')"
+                    class="text-gray-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50 transition-colors"
+                    aria-label="Delete assignment">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"/>
                 </svg>
             </button>
@@ -76,9 +76,9 @@
             <span class="px-2 py-0.5 text-xs font-medium rounded-full gw-badge--info">Inconclusive</span>
             {% endif %}
             <!-- Print button -->
-            <button onclick="printDetectionCard(this)" title="Print this detection report"
+            <button onclick="printDetectionCard(this)" aria-label="Print this detection report"
                     class="print-hide btn-ghost p-1 rounded" style="color: var(--text-tertiary);">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                 </svg>
@@ -139,10 +139,10 @@
                                 setTimeout(function() { btn.textContent = orig; }, 1500);
                             }).catch(function() { prompt('Coordinates:', text); });
                         })(this, '{{ d.centroid_lat|default:'' }}', '{{ d.centroid_lng|default:'' }}')"
-                        title="Copy coordinates to clipboard"
+                        aria-label="Copy site coordinates to clipboard"
                         class="print-hide btn-ghost text-[11px] px-2 py-0.5 flex items-center gap-1"
                         style="color: var(--text-tertiary);">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                         </svg>
@@ -175,7 +175,7 @@
                     style="color: var(--text-primary);">
                 <span>ML Analysis</span>
                 <svg class="section-chevron w-4 h-4 transition-transform" style="color: var(--text-tertiary);"
-                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                 </svg>
             </button>
@@ -235,7 +235,7 @@
                     style="color: var(--text-primary);">
                 <span>Satellite Timelapse</span>
                 <svg class="section-chevron w-4 h-4 transition-transform" style="color: var(--text-tertiary);"
-                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                 </svg>
             </button>
@@ -245,6 +245,7 @@
                         {{ d.timelapse_frames.0.year }}
                     </span>
                     <button id="tl-play-{{ assignment.id }}" type="button"
+                            aria-label="Play timelapse"
                             class="btn-ghost px-2.5 py-1 text-xs font-medium rounded-lg transition-colors">
                         ▶ Play
                     </button>
@@ -314,7 +315,7 @@
             {% if assignment.outcome == 'inconclusive' %}
             <div class="mb-4 flex items-start gap-2 rounded-lg px-4 py-3"
                  style="background: var(--status-moderate-bg); border: 1px solid var(--status-moderate-border);">
-                <svg class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--status-moderate);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--status-moderate);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
                 </svg>
@@ -327,14 +328,14 @@
 
             <!-- Outcome + Visit date (inline row) -->
             <div class="mb-3">
-                <label class="gw-label mb-1.5">What did you find at the site?</label>
-                <div class="flex flex-wrap items-center gap-2">
+                <p class="gw-label mb-1.5" id="outcome-label-{{ assignment.id }}">What did you find at the site?</p>
+                <div class="flex flex-wrap items-center gap-2" role="group" aria-labelledby="outcome-label-{{ assignment.id }}">
                     <button type="button"
                             data-outcome="mining_confirmed"
                             onclick="selectOutcome('{{ assignment.id }}', 'mining_confirmed')"
                             class="outcome-btn btn-secondary flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
                             style="border-color: var(--status-critical-border); background: var(--status-critical-bg); color: var(--status-critical); opacity: 0.7;">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
                         </svg>
@@ -345,7 +346,7 @@
                             onclick="selectOutcome('{{ assignment.id }}', 'false_positive')"
                             class="outcome-btn btn-secondary flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
                             style="border-color: var(--status-resolved-border); background: var(--status-resolved-bg); color: var(--status-resolved); opacity: 0.7;">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M5 13l4 4L19 7"/>
                         </svg>
@@ -356,7 +357,7 @@
                             onclick="selectOutcome('{{ assignment.id }}', 'inconclusive')"
                             class="outcome-btn btn-secondary flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
                             style="opacity: 0.7;">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
@@ -382,12 +383,12 @@
 
             <!-- Evidence photos — drag-and-drop zone -->
             <div class="mb-3">
-                <label class="gw-label mb-1">Evidence Photos (optional)</label>
+                <p class="gw-label mb-1">Evidence Photos <span class="font-normal" style="color:var(--text-tertiary);">(optional)</span></p>
                 <div id="drop-zone-{{ assignment.id }}"
                      class="gw-drop-zone drop-zone rounded-lg p-3 text-center cursor-pointer transition-colors"
                      data-assignment="{{ assignment.id }}">
                     <p class="text-xs" style="color: var(--text-secondary);">
-                        <svg class="w-4 h-4 inline-block mr-1 -mt-0.5" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-4 h-4 inline-block mr-1 -mt-0.5" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                   d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                         </svg>
@@ -416,7 +417,7 @@
             {% if assignment.outcome == 'mining_confirmed' %}
             <div class="flex items-center space-x-2 rounded-lg px-4 py-3"
                  style="background: var(--status-critical-bg); border: 1px solid var(--status-critical-border);">
-                <svg class="w-5 h-5 flex-shrink-0" style="color: var(--status-critical);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 flex-shrink-0" style="color: var(--status-critical);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
                 </svg>
@@ -425,7 +426,7 @@
             {% elif assignment.outcome == 'false_positive' %}
             <div class="flex items-center space-x-2 rounded-lg px-4 py-3"
                  style="background: var(--status-resolved-bg); border: 1px solid var(--status-resolved-border);">
-                <svg class="w-5 h-5 flex-shrink-0" style="color: var(--status-resolved);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 flex-shrink-0" style="color: var(--status-resolved);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                 </svg>
                 <span class="text-sm font-semibold" style="color: var(--status-resolved);">False Positive — No mining activity found</span>
@@ -433,7 +434,7 @@
             {% elif assignment.outcome == 'inconclusive' %}
             <div class="flex items-center space-x-2 rounded-lg px-4 py-3"
                  style="background: var(--surface-3); border: 1px solid var(--border-default);">
-                <svg class="w-5 h-5 flex-shrink-0" style="color: var(--text-secondary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 flex-shrink-0" style="color: var(--text-secondary);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>

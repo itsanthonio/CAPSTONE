@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}{{ region.name }} — GalamseyWatch{% endblock %}
+{% block title %}{{ region.name }} — SankofaWatch{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -349,10 +349,11 @@
 </div>
 
 <!-- Lightbox -->
-<div id="lightbox" onclick="closeLightbox()">
-    <button id="lightbox-close" onclick="closeLightbox()">✕</button>
+<div id="lightbox" onclick="closeLightbox()"
+     role="dialog" aria-modal="true" aria-label="Image lightbox">
+    <button id="lightbox-close" onclick="closeLightbox()" aria-label="Close lightbox">✕</button>
     <img id="lightbox-img" src="" alt="">
-    <p id="lightbox-caption"></p>
+    <p id="lightbox-caption" aria-live="polite"></p>
 </div>
 
 {% endblock %}
@@ -361,12 +362,17 @@
 <script>
 function openLightbox(src, caption) {
     document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox-img').alt = caption || '';
     document.getElementById('lightbox-caption').textContent = caption || '';
-    document.getElementById('lightbox').classList.add('open');
+    const lb = document.getElementById('lightbox');
+    lb.classList.add('open');
+    window.trapFocus && window.trapFocus(lb, document.activeElement);
 }
 function closeLightbox() {
-    document.getElementById('lightbox').classList.remove('open');
+    const lb = document.getElementById('lightbox');
+    lb.classList.remove('open');
     document.getElementById('lightbox-img').src = '';
+    window.releaseFocus && window.releaseFocus(lb);
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
 
