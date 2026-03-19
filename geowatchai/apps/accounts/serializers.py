@@ -1,26 +1,33 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import UserProfile, InspectorAssignment
+from .models import UserProfile, InspectorAssignment, Organisation
+
+
+class OrganisationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Organisation
+        fields = ['id', 'name']
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
     user = serializers.CharField(read_only=True)
     role = serializers.ChoiceField(choices=UserProfile.Role.choices)
-    organization = serializers.ChoiceField(choices=UserProfile.Organization.choices)
+    organisation = OrganisationSerializer(read_only=True)
     phone_number = serializers.CharField(max_length=20, allow_blank=True)
     is_available = serializers.BooleanField(read_only=True)
-    
+
     class Meta:
         model = UserProfile
-        fields = ['user', 'role', 'organization', 'phone_number', 'is_available']
+        fields = ['user', 'role', 'organisation', 'phone_number', 'is_available']
 
 
 class InspectorSerializer(serializers.ModelSerializer):
     user = serializers.CharField(read_only=True)
-    
+    organisation = OrganisationSerializer(read_only=True)
+
     class Meta:
         model = UserProfile
-        fields = ['user', 'role', 'organization', 'is_available']
+        fields = ['user', 'role', 'organisation', 'is_available']
 
 
 class InspectorAssignmentSerializer(serializers.ModelSerializer):

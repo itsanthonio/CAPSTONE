@@ -132,6 +132,8 @@ class PostProcessor:
                                transform: Affine) -> List[Dict[str, Any]]:
         """
         Calculate confidence scores for each polygon using the original probability mask.
+        Also computes the hotspot coordinate: the pixel of maximum probability within
+        each polygon, which is more accurate than the geometric centroid.
 
         Args:
             polygons: List of polygon dictionaries (geometries in raster CRS)
@@ -156,10 +158,23 @@ class PostProcessor:
 
             if polygon_mask.sum() > 0:
                 confidence = float(probability_mask[polygon_mask].mean())
+
+                # Find the pixel with the highest probability within this polygon.
+                # That pixel is the model's most confident point — more accurate than
+                # the geometric centroid for locating the mining on the map.
+                masked_prob = np.where(polygon_mask, probability_mask, -1)
+                max_row, max_col = np.unravel_index(masked_prob.argmax(), masked_prob.shape)
+                # Convert pixel (col, row) → (lon, lat) using the raster transform.
+                # +0.5 shifts to the pixel centre rather than its top-left corner.
+                hotspot_lon, hotspot_lat = transform * (max_col + 0.5, max_row + 0.5)
             else:
                 confidence = 0.0
+                centroid = shapely_geom.centroid
+                hotspot_lon, hotspot_lat = centroid.x, centroid.y
 
             polygon['confidence_score'] = confidence
+            polygon['hotspot_lon'] = hotspot_lon
+            polygon['hotspot_lat'] = hotspot_lat
 
         return polygons
     
@@ -188,6 +203,8 @@ class PostProcessor:
                     "confidence_score": polygon['confidence_score'],
                     "area": polygon['area'],
                     "area_hectares": polygon['area'] / 10000.0,  # Convert m² to hectares
+                    "hotspot_lon": polygon.get('hotspot_lon'),
+                    "hotspot_lat": polygon.get('hotspot_lat'),
                     "job_id": job_id,
                     "model_version": model_version,
                     "threshold": self.threshold,

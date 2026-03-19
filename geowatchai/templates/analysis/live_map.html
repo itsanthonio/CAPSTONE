@@ -277,7 +277,6 @@
 
 
 {% block extra_js %}
-<script src="{% static 'js/ghana_places.js' %}"></script>
 <script src="{% static 'js/map_search.js' %}"></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-gl-draw@1.4.3/dist/mapbox-gl-draw.js"></script>
@@ -378,8 +377,24 @@ async function openSiteModal(siteId) {
         const lat = site.lat, lng = site.lng;
         const coordEl = document.getElementById('site-coords');
         if (lat != null && lng != null) {
-            coordEl.innerHTML = `<a href="https://earth.google.com/web/search/${lat},${lng}"
-                target="_blank" rel="noopener noreferrer" title="Open in Google Earth"
+            // Try to use the actual detection polygon from the map source for a precise link
+            let geLat = lat, geLng = lng, eyeDist = 600;
+            try {
+                const src = window.mapHandler && window.mapHandler.map.getSource('detections');
+                const data = src && src._data;
+                const feat = data && data.features.find(f => f.properties.site_id === siteId);
+                if (feat) {
+                    const c = turf.centroid(feat).geometry.coordinates;
+                    geLng = c[0];
+                    geLat = c[1];
+                    const bb = turf.bbox(feat);
+                    const dLat = (bb[3] - bb[1]) * 111320;
+                    const dLng = (bb[2] - bb[0]) * 111320 * Math.cos(geLat * Math.PI / 180);
+                    eyeDist = Math.max(Math.round(Math.sqrt(dLat ** 2 + dLng ** 2) * 3), 300);
+                }
+            } catch (_) {}
+            coordEl.innerHTML = `<a href="https://maps.google.com/maps?q=${geLat.toFixed(6)},${geLng.toFixed(6)}&t=k&z=17"
+                target="_blank" rel="noopener noreferrer" title="Open in Google Maps (Satellite)"
                 style="color:inherit;text-decoration:underline;text-decoration-style:dotted;"
                 >${lat}° N, ${Math.abs(lng)}° W ↗</a>`;
         } else {
@@ -521,9 +536,21 @@ function applyDetectionFilter() {
                 lng = c[0]; lat = c[1];
             } catch (_) {}
         }
-        const coordStr = (lat != null && lng != null)
-            ? `<a href="https://earth.google.com/web/search/${parseFloat(lat).toFixed(6)},${parseFloat(lng).toFixed(6)}"
-                   target="_blank" rel="noopener noreferrer" title="Open in Google Earth" onclick="event.stopPropagation()"
+        let geUrl = null;
+        if (lat != null && lng != null) {
+            let geLat = parseFloat(lat), geLng = parseFloat(lng), eyeDist = 600;
+            try {
+                if (f && f.geometry) {
+                    const bb = turf.bbox(f);
+                    const dLat = (bb[3] - bb[1]) * 111320;
+                    const dLng = (bb[2] - bb[0]) * 111320 * Math.cos(geLat * Math.PI / 180);
+                    eyeDist = Math.max(Math.round(Math.sqrt(dLat ** 2 + dLng ** 2) * 3), 300);
+                }
+            } catch (_) {}
+            geUrl = `https://maps.google.com/maps?q=${geLat.toFixed(6)},${geLng.toFixed(6)}&t=k&z=17`;
+        }
+        const coordStr = geUrl
+            ? `<a href="${geUrl}" target="_blank" rel="noopener noreferrer" title="Open in Google Earth" onclick="event.stopPropagation()"
                    style="color:var(--text-tertiary);text-decoration:underline;text-decoration-style:dotted;"
                >${parseFloat(lat).toFixed(4)}° N, ${Math.abs(parseFloat(lng)).toFixed(4)}° W ↗</a>`
             : '—';
@@ -607,6 +634,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Layer toggles (buttons in base.html left sidebar)
+    const satBtn = document.getElementById('toggle-satellite-layer');
+    if (satBtn) satBtn.addEventListener('click', () => window.mapHandler.toggleLayer('street-labels'));
     const detBtn = document.getElementById('toggle-detection-layer');
     if (detBtn) detBtn.addEventListener('click', () => window.mapHandler.toggleLayer('detections'));
     const conBtn = document.getElementById('toggle-concession-layer');
@@ -638,6 +667,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (e.target === this) closeSiteModal();
     });
     document.getElementById('site-modal-close').addEventListener('click', closeSiteModal);
+
 });
 </script>
 {% endblock %}

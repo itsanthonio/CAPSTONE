@@ -386,7 +386,31 @@ class MiningDetectionPipeline:
                 logger.warning(f"[Pipeline] Skipping non-polygon: {geom.geom_type}")
                 continue
 
-            area_ha = props.get('area', 0.0) / 10_000.0
+            # Clip detection polygon to the job AOI.
+            # The downloaded TIF is a rectangle (bounding box of the AOI), so
+            # detections near the edge can spill outside the drawn boundary.
+            # Intersecting with the AOI ensures every stored polygon is fully
+            # contained within what the user actually drew.
+            try:
+                clipped = geom.intersection(job.aoi_geometry)
+                if clipped.empty:
+                    logger.info("[Pipeline] Detection entirely outside AOI after clipping — skipped")
+                    continue
+                # intersection may return a MultiPolygon; keep only the largest part
+                if clipped.geom_type == 'MultiPolygon':
+                    clipped = max(clipped, key=lambda p: p.area)
+                if not isinstance(clipped, Polygon) or clipped.empty:
+                    continue
+                geom = clipped
+            except Exception as clip_err:
+                logger.warning(f"[Pipeline] AOI clip failed, using unclipped geometry: {clip_err}")
+
+            # Recalculate area from the clipped geometry (metric projection)
+            try:
+                geom_metric = geom.transform(32630, clone=True)  # UTM 30N — accurate for Ghana
+                area_ha = geom_metric.area / 10_000.0
+            except Exception:
+                area_ha = props.get('area', 0.0) / 10_000.0
 
             # Deduplication: if an existing site centroid is within 500 m,
             # increment its recurrence counter instead of creating a duplicate.
@@ -404,8 +428,16 @@ class MiningDetectionPipeline:
                 sites.append(existing)
                 continue
 
+            # Use the max-probability pixel as the centroid — more accurate than
+            # the geometric centroid for pointing to the actual mining core.
+            hotspot_lon = props.get('hotspot_lon')
+            hotspot_lat = props.get('hotspot_lat')
+            from django.contrib.gis.geos import Point as GEOSPoint
+            hotspot = GEOSPoint(hotspot_lon, hotspot_lat, srid=4326) if (hotspot_lon is not None and hotspot_lat is not None) else None
+
             site = DetectedSite.objects.create(
                 geometry=geom,
+                centroid=hotspot,
                 confidence_score=props.get('confidence_score', 0.0),
                 area_hectares=area_ha,
                 detection_date=job.end_date,

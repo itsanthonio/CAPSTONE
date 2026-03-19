@@ -311,9 +311,10 @@ class GeeService:
                 download_id = ee.data.getDownloadId({
                     'image': clipped,
                     'scale': config('MAX_RESOLUTION', default=30, cast=int),
+                    'crs': 'EPSG:4326',
                     'filePerBand': False,
                     'name': 'hls_imagery',
-                    'format': 'GEO_TIFF'  # Use the internal GEE constant name
+                    'format': 'GEO_TIFF'
                 })
                 
                 # 2. Construct the URL manually

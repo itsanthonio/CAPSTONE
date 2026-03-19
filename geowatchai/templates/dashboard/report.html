@@ -1,249 +1,112 @@
+{% extends 'base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SankofaWatch — Monthly Report</title>
-    <style>
-        /* ── Base ── */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            font-size: 13px;
-            color: #1f2937;
-            background: #f9fafb;
-            line-height: 1.5;
-        }
 
-        /* ── Page shell ── */
-        .page {
-            max-width: 900px;
-            margin: 24px auto;
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 4px 16px rgba(0,0,0,.06);
-            overflow: hidden;
-        }
+{% block title %}Report — SankofaWatch{% endblock %}
 
-        /* ── Header band ── */
-        .report-header {
-            background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
-            color: #fff;
-            padding: 32px 40px 28px;
-        }
-        .report-header .logo-row {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-        .report-header .logo-badge {
-            width: 40px; height: 40px;
-            background: rgba(245,158,11,0.25);
-            border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 20px;
-        }
-        .report-header h1 {
-            font-size: 22px;
-            font-weight: 700;
-            letter-spacing: -0.3px;
-        }
-        .report-header .subtitle { font-size: 13px; opacity: .75; margin-top: 2px; }
-        .report-header .meta-row {
-            display: flex;
-            gap: 24px;
-            margin-top: 16px;
-            font-size: 12px;
-            opacity: .85;
-        }
-        .report-header .meta-row span strong { font-weight: 600; }
+{% block extra_css %}
+<style>
+/* ── Bar chart ── */
+.bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.bar-label { width: 160px; font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+.bar-track { flex: 1; height: 8px; background: var(--surface-4); border-radius: 4px; overflow: hidden; }
+.bar-fill  { height: 100%; background: linear-gradient(90deg, var(--accent), var(--status-resolved)); border-radius: 4px; min-width: 2px; }
+.bar-count { width: 36px; text-align: right; font-size: 12px; font-weight: 600; color: var(--text-secondary); flex-shrink: 0; }
 
-        /* ── Body ── */
-        .report-body { padding: 32px 40px 40px; }
+/* ── Trend sparkline ── */
+#trend-sparkline { display: flex; gap: 2px; align-items: flex-end; height: 56px; }
+.trend-bar { flex: 1; border-radius: 2px 2px 0 0; min-height: 2px; background: var(--status-critical); opacity: 0.8; }
 
-        /* Section headings */
-        .section-title {
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: .6px;
-            color: #6b7280;
-            border-bottom: 1px solid #e5e7eb;
-            padding-bottom: 6px;
-            margin-bottom: 16px;
-            margin-top: 32px;
-        }
-        .section-title:first-child { margin-top: 0; }
+/* ── Tables ── */
+.report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.report-table thead th {
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-tertiary);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-default);
+}
+.report-table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    vertical-align: middle;
+}
+.report-table tbody tr:last-child td { border-bottom: none; }
+.report-table tbody tr:hover td { background: var(--surface-3); }
 
-        /* ── Stat grid ── */
-        .stat-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 14px;
-        }
-        .stat-card {
-            background: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 10px;
-            padding: 16px 14px;
-        }
-        .stat-card .label {
-            font-size: 10px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: .5px;
-            color: #9ca3af;
-        }
-        .stat-card .value {
-            font-size: 28px;
-            font-weight: 800;
-            color: #111827;
-            line-height: 1.1;
-            margin-top: 4px;
-        }
-        .stat-card .sub { font-size: 11px; color: #6b7280; margin-top: 3px; }
-        .stat-card.red   .value { color: #dc2626; }
-        .stat-card.amber .value { color: #d97706; }
-        .stat-card.green .value { color: #16a34a; }
-        .stat-card.blue  .value { color: #2563eb; }
+/* ── Badges ── */
+.rpt-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+}
+.rpt-badge-red    { background: var(--status-critical-bg);   color: var(--status-critical);  border: 1px solid var(--status-critical-border); }
+.rpt-badge-amber  { background: var(--status-high-bg);        color: var(--status-high);       border: 1px solid var(--status-high-border); }
+.rpt-badge-blue   { background: var(--status-info-bg);        color: var(--status-info);       border: 1px solid var(--status-info-border); }
+.rpt-badge-green  { background: var(--status-resolved-bg);    color: var(--status-resolved);   border: 1px solid var(--status-resolved-border); }
+.rpt-badge-gray   { background: var(--surface-4);             color: var(--text-secondary);    border: 1px solid var(--border-default); }
+.rpt-badge-purple { background: var(--status-dispatched-bg);  color: var(--status-dispatched); border: 1px solid var(--status-dispatched-border); }
 
-        /* ── Two-column layout ── */
-        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+/* ── Section divider ── */
+.rpt-section {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--text-tertiary);
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+    margin-top: 32px;
+}
+.rpt-section:first-child { margin-top: 0; }
 
-        /* ── Table ── */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 12px;
-        }
-        thead th {
-            text-align: left;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: .5px;
-            color: #6b7280;
-            padding: 6px 10px;
-            border-bottom: 2px solid #e5e7eb;
-        }
-        tbody tr:nth-child(even) { background: #f9fafb; }
-        tbody td {
-            padding: 8px 10px;
-            border-bottom: 1px solid #f3f4f6;
-            color: #374151;
-            vertical-align: middle;
-        }
-        tbody tr:last-child td { border-bottom: none; }
+@media print {
+    body { background: #fff !important; color: #111 !important; }
+    .gw-sidebar, .print-hide { display: none !important; }
+    .gw-card { box-shadow: none !important; border: 1px solid #e5e7eb !important; background: #fff !important; }
+    @page { margin: 12mm; }
+}
+</style>
+{% endblock %}
 
-        /* ── Badge pills ── */
-        .badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 999px;
-            font-size: 10px;
-            font-weight: 600;
-        }
-        .badge-red    { background: #fee2e2; color: #b91c1c; }
-        .badge-amber  { background: #fef3c7; color: #92400e; }
-        .badge-green  { background: #dcfce7; color: #15803d; }
-        .badge-blue   { background: #dbeafe; color: #1d4ed8; }
-        .badge-gray   { background: #f3f4f6; color: #4b5563; }
+{% block content %}
+<div class="p-6 space-y-6">
 
-        /* ── Bar chart (CSS only) ── */
-        .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-        .bar-label { width: 130px; font-size: 11px; color: #374151; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; flex-shrink: 0; }
-        .bar-track { flex: 1; height: 12px; background: #f3f4f6; border-radius: 6px; overflow: hidden; }
-        .bar-fill  { height: 100%; background: linear-gradient(90deg, #1b4332, #4ade80); border-radius: 6px; min-width: 2px; }
-        .bar-count { width: 36px; text-align: right; font-size: 11px; font-weight: 600; color: #374151; flex-shrink: 0; }
-
-        /* ── Trend sparkline grid ── */
-        .trend-table { display: flex; gap: 2px; align-items: flex-end; height: 60px; margin-top: 8px; }
-        .trend-bar   { flex: 1; border-radius: 2px 2px 0 0; min-height: 2px; }
-        .trend-bar.illegal { background: #ef4444; }
-        .trend-bar.legal   { background: #22c55e; }
-
-        /* ── Print action bar ── */
-        .print-bar {
-            background: #1b4332;
-            color: #fff;
-            padding: 12px 40px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 12px;
-        }
-        .print-bar a { color: #86efac; text-decoration: none; font-size: 12px; }
-        .print-bar a:hover { text-decoration: underline; }
-        .btn-print {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 18px;
-            background: #f59e0b;
-            color: #1c1917;
-            font-size: 12px;
-            font-weight: 700;
-            border: none;
-            border-radius: 7px;
-            cursor: pointer;
-            text-decoration: none;
-        }
-        .btn-print:hover { background: #d97706; }
-
-        /* ── Footer ── */
-        .report-footer {
-            border-top: 1px solid #e5e7eb;
-            padding: 14px 40px;
-            font-size: 10px;
-            color: #9ca3af;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        /* ── Print styles ── */
-        @media print {
-            body { background: #fff; }
-            .page { box-shadow: none; margin: 0; border-radius: 0; max-width: 100%; }
-            .print-bar { display: none !important; }
-            @page { margin: 14mm 14mm 14mm 14mm; }
-        }
-    </style>
-</head>
-<body>
-
-<div class="page">
-
-    <!-- Control bar (hidden on print) -->
-    <div class="print-bar no-print">
-        <a href="/dashboard/home/">&larr; Back to Dashboard</a>
-        <div style="display:flex;align-items:center;gap:10px;">
-            <!-- Date-range form -->
-            <form method="get" style="display:flex;align-items:center;gap:6px;">
-                <label for="report-start-date" style="font-size:11px;opacity:.8;">From</label>
-                <input id="report-start-date" type="date" name="start_date" value="{{ period_start|date:'Y-m-d' }}"
-                       style="padding:5px 8px;border:none;border-radius:6px;font-size:12px;background:rgba(255,255,255,0.15);color:#fff;colorscheme:dark;">
-                <label for="report-end-date" style="font-size:11px;opacity:.8;">To</label>
-                <input id="report-end-date" type="date" name="end_date" value="{{ period_end|date:'Y-m-d' }}"
-                       style="padding:5px 8px;border:none;border-radius:6px;font-size:12px;background:rgba(255,255,255,0.15);color:#fff;colorscheme:dark;">
-                <button type="submit"
-                        style="padding:5px 14px;background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">
-                    Apply
-                </button>
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold" style="color: var(--text-primary);">Detection Report</h1>
+            <p class="text-sm mt-0.5" style="color: var(--text-secondary);">
+                {% if org_name %}{{ org_name }} · {% endif %}
+                {{ period_start|date:"N j, Y" }} — {{ period_end|date:"N j, Y" }}
+            </p>
+        </div>
+        <div class="flex items-center gap-2 print-hide">
+            <!-- Date range form -->
+            <form method="get" class="flex items-center gap-2">
+                <input type="date" name="start_date" value="{{ period_start|date:'Y-m-d' }}"
+                       class="gw-input text-sm px-3 py-1.5">
+                <span class="text-sm" style="color: var(--text-tertiary);">to</span>
+                <input type="date" name="end_date" value="{{ period_end|date:'Y-m-d' }}"
+                       class="gw-input text-sm px-3 py-1.5">
+                <button type="submit" class="btn-secondary text-sm px-3 py-1.5">Apply</button>
             </form>
-            <!-- Download PDF -->
-            <a class="btn-print"
-               href="/dashboard/report/pdf/?start_date={{ period_start|date:'Y-m-d' }}&end_date={{ period_end|date:'Y-m-d' }}">
-                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <a href="/dashboard/report/pdf/?start_date={{ period_start|date:'Y-m-d' }}&end_date={{ period_end|date:'Y-m-d' }}"
+               class="btn-secondary inline-flex items-center gap-2 text-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                 </svg>
                 Download PDF
             </a>
-            <!-- Browser print fallback -->
-            <button class="btn-print" onclick="window.print()" style="background:#2d6a4f;">
-                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <button onclick="window.print()" class="btn-primary inline-flex items-center gap-2 text-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a1 1 0 001-1v-5a1 1 0 00-1-1H9a1 1 0 00-1 1v5a1 1 0 001 1zm1-16v4h4V5l-4-4H9z"/>
                 </svg>
@@ -252,214 +115,187 @@
         </div>
     </div>
 
-    <!-- Header -->
-    <div class="report-header">
-        <div class="logo-row">
-            <!-- Sankofa bird mark (Adinkra: learn from the past, protect the future) -->
-            <div class="logo-badge" style="display:flex;align-items:center;justify-content:center;">
-                <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:22px;height:22px;" aria-hidden="true" focusable="false">
-                    <ellipse cx="16" cy="18" rx="7" ry="4.5" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.5"/>
-                    <path d="M12 16 Q16 11 21 15" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" fill="none"/>
-                    <path d="M22 17 Q27 12 23.5 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/>
-                    <path d="M11 14 Q7 11 8.5 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-                    <circle cx="8.5" cy="5.5" r="2.3" fill="currentColor"/>
-                    <circle cx="7.6" cy="5" r="0.55" fill="white" fill-opacity="0.7"/>
-                    <path d="M7.5 6.5 L5 8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-                    <ellipse cx="16" cy="14.5" rx="2.1" ry="1.5" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1"/>
-                </svg>
-            </div>
-            <div>
-                <div style="font-size:11px;opacity:.7;text-transform:uppercase;letter-spacing:.8px;">SankofaWatch</div>
-                <div style="font-size:17px;font-weight:700;line-height:1.2;">Illegal Mining Detection Report</div>
-            </div>
+    <!-- ── 1. Executive Summary ── -->
+    <div class="rpt-section">Executive Summary</div>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Illegal Sites</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--status-critical);">{{ stats.illegal_sites }}</p>
+            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">of {{ stats.total_detected_sites }} total detected</p>
         </div>
-        <div class="meta-row">
-            <span><strong>Report Date:</strong> {{ report_date|date:"N j, Y" }}</span>
-            <span><strong>Period:</strong> {{ period_start|date:"N j, Y" }} — {{ period_end|date:"N j, Y" }}</span>
-            <span><strong>Coverage:</strong> Ghana</span>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Open Alerts</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--status-high);">{{ stats.open_alerts }}</p>
+            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">{{ stats.critical_alerts }} critical · {{ stats.high_alerts }} high</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Area Affected</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--accent);">{{ stats.total_area_ha }}</p>
+            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">hectares (illegal sites)</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">High-Risk Zones</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ stats.high_risk_zones }}</p>
+            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">recurring or critical sites</p>
         </div>
     </div>
 
-    <!-- Body -->
-    <div class="report-body">
-
-        <!-- ── 1. Executive Summary ── -->
-        <div class="section-title">Executive Summary</div>
-        <div class="stat-grid">
-            <div class="stat-card red">
-                <div class="label">Illegal Sites</div>
-                <div class="value">{{ stats.illegal_sites }}</div>
-                <div class="sub">of {{ stats.total_detected_sites }} total detected</div>
+    <!-- ── 2. Alert Status & Severity ── -->
+    <div class="rpt-section">Alert Status &amp; Severity</div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="gw-card">
+            <div class="px-5 py-3 border-b" style="border-color: var(--border-subtle);">
+                <h3 class="text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">By Status</h3>
             </div>
-            <div class="stat-card amber">
-                <div class="label">Open Alerts</div>
-                <div class="value">{{ stats.open_alerts }}</div>
-                <div class="sub">{{ stats.critical_alerts }} critical · {{ stats.high_alerts }} high</div>
-            </div>
-            <div class="stat-card blue">
-                <div class="label">Total Area Affected</div>
-                <div class="value">{{ stats.total_area_ha }}</div>
-                <div class="sub">hectares (illegal sites)</div>
-            </div>
-            <div class="stat-card green">
-                <div class="label">High-Risk Zones</div>
-                <div class="value">{{ stats.high_risk_zones }}</div>
-                <div class="sub">recurring or critical sites</div>
-            </div>
+            <table class="report-table">
+                <thead><tr><th>Status</th><th>Count</th></tr></thead>
+                <tbody>
+                    {% for status, cnt in alerts_by_status.items %}
+                    <tr>
+                        <td>
+                            {% if status == 'open' %}<span class="rpt-badge rpt-badge-red">Open</span>
+                            {% elif status == 'acknowledged' %}<span class="rpt-badge rpt-badge-amber">Acknowledged</span>
+                            {% elif status == 'dispatched' %}<span class="rpt-badge rpt-badge-purple">Dispatched</span>
+                            {% elif status == 'resolved' %}<span class="rpt-badge rpt-badge-green">Resolved</span>
+                            {% elif status == 'dismissed' %}<span class="rpt-badge rpt-badge-gray">Dismissed</span>
+                            {% else %}<span class="rpt-badge rpt-badge-gray">{{ status|capfirst }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="font-semibold" style="color: var(--text-primary);">{{ cnt }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="2" style="color: var(--text-tertiary);">No alert data</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-
-        <!-- ── 2. Alert Status Breakdown ── -->
-        <div class="section-title">Alert Status &amp; Severity</div>
-        <div class="two-col">
-            <div>
-                <table>
-                    <thead><tr><th>Status</th><th>Count</th></tr></thead>
-                    <tbody>
-                        {% for status, cnt in alerts_by_status.items %}
-                        <tr>
-                            <td>
-                                {% if status == 'open' %}<span class="badge badge-red">Open</span>
-                                {% elif status == 'acknowledged' %}<span class="badge badge-amber">Acknowledged</span>
-                                {% elif status == 'dispatched' %}<span class="badge badge-blue">Dispatched</span>
-                                {% elif status == 'resolved' %}<span class="badge badge-green">Resolved</span>
-                                {% elif status == 'dismissed' %}<span class="badge badge-gray">Dismissed</span>
-                                {% else %}<span class="badge badge-gray">{{ status|capfirst }}</span>
-                                {% endif %}
-                            </td>
-                            <td style="font-weight:600;">{{ cnt }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="2" style="color:#9ca3af;">No alert data</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <div class="gw-card">
+            <div class="px-5 py-3 border-b" style="border-color: var(--border-subtle);">
+                <h3 class="text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">By Severity</h3>
             </div>
-            <div>
-                <table>
-                    <thead><tr><th>Severity</th><th>Count</th></tr></thead>
-                    <tbody>
-                        {% for sev, cnt in alerts_by_severity.items %}
-                        <tr>
-                            <td>
-                                {% if sev == 'critical' %}<span class="badge badge-red">Critical</span>
-                                {% elif sev == 'high' %}<span class="badge badge-amber">High</span>
-                                {% elif sev == 'medium' %}<span class="badge badge-blue">Medium</span>
-                                {% else %}<span class="badge badge-gray">{{ sev|capfirst }}</span>
-                                {% endif %}
-                            </td>
-                            <td style="font-weight:600;">{{ cnt }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="2" style="color:#9ca3af;">No alert data</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+            <table class="report-table">
+                <thead><tr><th>Severity</th><th>Count</th></tr></thead>
+                <tbody>
+                    {% for sev, cnt in alerts_by_severity.items %}
+                    <tr>
+                        <td>
+                            {% if sev == 'critical' %}<span class="rpt-badge rpt-badge-red">Critical</span>
+                            {% elif sev == 'high' %}<span class="rpt-badge rpt-badge-amber">High</span>
+                            {% elif sev == 'medium' %}<span class="rpt-badge rpt-badge-blue">Medium</span>
+                            {% else %}<span class="rpt-badge rpt-badge-gray">{{ sev|capfirst }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="font-semibold" style="color: var(--text-primary);">{{ cnt }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="2" style="color: var(--text-tertiary);">No alert data</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
+    </div>
 
-        <!-- ── 3. Inspector Field Verification ── -->
-        <div class="section-title">Field Verification Outcomes</div>
-        <div class="stat-grid">
-            <div class="stat-card">
-                <div class="label">Assignments Resolved</div>
-                <div class="value">{{ resolved_assignments }}</div>
-            </div>
-            <div class="stat-card red">
-                <div class="label">Mining Confirmed</div>
-                <div class="value">{{ confirmed_mining }}</div>
-            </div>
-            <div class="stat-card green">
-                <div class="label">False Positives</div>
-                <div class="value">{{ false_positives }}</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">Model Accuracy</div>
-                <div class="value">
-                    {% if resolved_assignments > 0 %}
-                        {{ confirmed_mining|floatformat:0 }}/{{ resolved_assignments }}
-                    {% else %}
-                        —
-                    {% endif %}
-                </div>
-                <div class="sub">confirmed vs resolved</div>
-            </div>
+    <!-- ── 3. Field Verification ── -->
+    <div class="rpt-section">Field Verification Outcomes</div>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Assignments Resolved</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ resolved_assignments }}</p>
         </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Mining Confirmed</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--status-critical);">{{ confirmed_mining }}</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">False Positives</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--status-resolved);">{{ false_positives }}</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Model Accuracy</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">
+                {% if resolved_assignments > 0 %}{{ confirmed_mining }}/{{ resolved_assignments }}{% else %}—{% endif %}
+            </p>
+            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">confirmed vs resolved</p>
+        </div>
+    </div>
 
-        <!-- ── 3b. Inspector Performance Breakdown ── -->
-        {% if inspector_stats %}
-        <div class="section-title" style="margin-top:28px;">Inspector Performance Breakdown</div>
-        <table>
+    {% if inspector_stats %}
+    <div class="gw-card">
+        <div class="px-5 py-3 border-b" style="border-color: var(--border-subtle);">
+            <h3 class="text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">Inspector Performance Breakdown</h3>
+        </div>
+        <table class="report-table">
             <thead>
                 <tr>
                     <th>Inspector</th>
-                    <th style="text-align:center;">Total</th>
-                    <th style="text-align:center;">Confirmed</th>
-                    <th style="text-align:center;">False Pos.</th>
-                    <th style="text-align:center;">Inconclusive</th>
-                    <th style="text-align:center;">Pending</th>
-                    <th style="text-align:center;">Avg Days</th>
+                    <th class="text-center">Total</th>
+                    <th class="text-center">Confirmed</th>
+                    <th class="text-center">False Pos.</th>
+                    <th class="text-center">Inconclusive</th>
+                    <th class="text-center">Pending</th>
+                    <th class="text-center">Avg Days</th>
                 </tr>
             </thead>
             <tbody>
                 {% for row in inspector_stats %}
                 <tr>
-                    <td style="font-weight:600;">{{ row.inspector__user__username|default:"Unknown" }}</td>
-                    <td style="text-align:center;">{{ row.total }}</td>
-                    <td style="text-align:center;">
-                        {% if row.confirmed > 0 %}<span class="badge badge-red">{{ row.confirmed }}</span>{% else %}—{% endif %}
-                    </td>
-                    <td style="text-align:center;">
-                        {% if row.fp > 0 %}<span class="badge badge-green">{{ row.fp }}</span>{% else %}—{% endif %}
-                    </td>
-                    <td style="text-align:center;">{{ row.inconclusive|default:"—" }}</td>
-                    <td style="text-align:center;">
-                        {% if row.pending > 0 %}<span style="color:#f59e0b;font-weight:600;">{{ row.pending }}</span>{% else %}—{% endif %}
-                    </td>
-                    <td style="text-align:center;">
-                        {% if row.avg_days %}{{ row.avg_days }}d{% else %}—{% endif %}
-                    </td>
+                    <td class="font-medium" style="color: var(--text-primary);">{{ row.inspector__user__username|default:"Unknown" }}</td>
+                    <td class="text-center">{{ row.total }}</td>
+                    <td class="text-center">{% if row.confirmed > 0 %}<span class="rpt-badge rpt-badge-red">{{ row.confirmed }}</span>{% else %}—{% endif %}</td>
+                    <td class="text-center">{% if row.fp > 0 %}<span class="rpt-badge rpt-badge-green">{{ row.fp }}</span>{% else %}—{% endif %}</td>
+                    <td class="text-center">{{ row.inconclusive|default:"—" }}</td>
+                    <td class="text-center">{% if row.pending > 0 %}<span style="color: var(--status-high); font-weight: 600;">{{ row.pending }}</span>{% else %}—{% endif %}</td>
+                    <td class="text-center">{% if row.avg_days %}{{ row.avg_days }}d{% else %}—{% endif %}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        {% endif %}
+    </div>
+    {% endif %}
 
-        <!-- ── 4. Top Regions ── -->
-        {% if stats.top_regions %}
-        <div class="section-title">Top Regions by Detection Count</div>
+    <!-- ── 4. Top Regions ── -->
+    {% if stats.top_regions %}
+    <div class="rpt-section">Top Regions by Detection Count</div>
+    <div class="gw-card p-5 space-y-2">
         {% for region in stats.top_regions %}
         <div class="bar-row">
             <div class="bar-label" title="{{ region.region__name }}">
-                {% if region.region__id %}<a href="{% url 'dashboard:region_detail' region.region__id %}" style="color:inherit;text-decoration:underline dotted;">{{ region.region__name|default:"Unknown" }}</a>{% else %}{{ region.region__name|default:"Unknown" }}{% endif %}
+                {% if region.region__id %}
+                <a href="{% url 'dashboard:region_detail' region.region__id %}" style="color: var(--text-secondary); text-decoration: underline dotted;">{{ region.region__name|default:"Unknown" }}</a>
+                {% else %}{{ region.region__name|default:"Unknown" }}{% endif %}
             </div>
             <div class="bar-track">
-                <div class="bar-fill" style="width:{{ region.bar_pct }}%"></div>
+                <div class="bar-fill" style="width: {{ region.bar_pct }}%;"></div>
             </div>
             <div class="bar-count">{{ region.total }}</div>
-            <span class="badge badge-red" style="width:44px;text-align:center;">{{ region.illegal_pct }}%</span>
+            <span class="rpt-badge rpt-badge-red" style="width: 44px; text-align: center;">{{ region.illegal_pct }}%</span>
         </div>
         {% endfor %}
-        {% endif %}
+    </div>
+    {% endif %}
 
-        <!-- ── 5. Detection Trend (last 30 days) ── -->
-        {% if stats.trend_labels %}
-        <div class="section-title">Detection Trend — Last 30 Days</div>
-        <div id="trend-sparkline" style="display:flex;gap:2px;align-items:flex-end;height:64px;margin-bottom:4px;">
+    <!-- ── 5. Detection Trend ── -->
+    {% if stats.trend_labels %}
+    <div class="rpt-section">Detection Trend — Period</div>
+    <div class="gw-card p-5">
+        <div id="trend-sparkline" class="mb-2">
             {% for val in stats.trend_illegal %}
-            <div class="trend-bar illegal" data-val="{{ val }}" style="flex:1;border-radius:2px 2px 0 0;min-height:2px;background:#ef4444;" title="Illegal: {{ val }}"></div>
+            <div class="trend-bar" data-val="{{ val }}" title="Illegal: {{ val }}"></div>
             {% endfor %}
         </div>
-        <div style="font-size:10px;color:#9ca3af;display:flex;justify-content:space-between;">
+        <div class="flex justify-between text-[11px]" style="color: var(--text-tertiary);">
             <span>{{ stats.trend_labels.0 }}</span>
-            <span style="color:#ef4444;font-weight:600;">&#9632; Illegal detections</span>
+            <span style="color: var(--status-critical); font-weight: 600;">&#9632; Illegal detections</span>
             <span>{{ stats.trend_labels|last }}</span>
         </div>
-        {% endif %}
+    </div>
+    {% endif %}
 
-        <!-- ── 6. Recent Activity ── -->
-        {% if stats.recent_sites %}
-        <div class="section-title">Recent Detected Sites</div>
-        <table>
+    <!-- ── 6. Recent Detected Sites ── -->
+    {% if stats.recent_sites %}
+    <div class="rpt-section">Recent Detected Sites</div>
+    <div class="gw-card">
+        <table class="report-table">
             <thead>
                 <tr>
                     <th>Date</th>
@@ -477,9 +313,9 @@
                     <td>{{ site.region__name|default:"—" }}</td>
                     <td>
                         {% if site.legal_status == 'illegal' %}
-                            <span class="badge badge-red">Illegal</span>
+                        <span class="rpt-badge rpt-badge-red">Illegal</span>
                         {% else %}
-                            <span class="badge badge-green">Legal</span>
+                        <span class="rpt-badge rpt-badge-green">Legal</span>
                         {% endif %}
                     </td>
                     <td>{{ site.confidence_pct }}%</td>
@@ -489,36 +325,35 @@
                 {% endfor %}
             </tbody>
         </table>
-        {% endif %}
+    </div>
+    {% endif %}
 
-        <!-- ── 7. Scan Jobs ── -->
-        <div class="section-title">Scan Job Summary</div>
-        <div class="stat-grid" style="margin-bottom:16px;">
-            <div class="stat-card">
-                <div class="label">Total Jobs</div>
-                <div class="value">{{ stats.total_jobs }}</div>
-            </div>
-            <div class="stat-card green">
-                <div class="label">Completed</div>
-                <div class="value">{{ stats.completed_jobs }}</div>
-            </div>
-            <div class="stat-card red">
-                <div class="label">Failed</div>
-                <div class="value">{{ stats.failed_jobs }}</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">Success Rate</div>
-                <div class="value">
-                    {% if stats.total_jobs > 0 %}
-                        {% widthratio stats.completed_jobs stats.total_jobs 100 %}%
-                    {% else %}
-                        —
-                    {% endif %}
-                </div>
-            </div>
+    <!-- ── 7. Scan Job Summary ── -->
+    <div class="rpt-section">Scan Job Summary</div>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Total Jobs</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ stats.total_jobs }}</p>
         </div>
-        {% if recent_jobs %}
-        <table>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Completed</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--status-resolved);">{{ stats.completed_jobs }}</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Failed</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--status-critical);">{{ stats.failed_jobs }}</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Success Rate</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">
+                {% if stats.total_jobs > 0 %}{% widthratio stats.completed_jobs stats.total_jobs 100 %}%{% else %}—{% endif %}
+            </p>
+        </div>
+    </div>
+
+    {% if recent_jobs %}
+    <div class="gw-card">
+        <table class="report-table">
             <thead>
                 <tr>
                     <th>Job ID</th>
@@ -532,12 +367,12 @@
             <tbody>
                 {% for j in recent_jobs %}
                 <tr>
-                    <td style="font-family:monospace;font-size:11px;">{{ j.id }}</td>
-                    <td>{{ j.created_by__username|default:"—" }}</td>
+                    <td class="font-mono text-[11px]">{{ j.id }}</td>
+                    <td>{{ j.created_by__username|default:"Automated" }}</td>
                     <td>
-                        {% if j.status == 'completed' %}<span class="badge badge-green">Completed</span>
-                        {% elif j.status == 'failed' %}<span class="badge badge-red">Failed</span>
-                        {% else %}<span class="badge badge-gray">{{ j.status|capfirst }}</span>
+                        {% if j.status == 'completed' %}<span class="rpt-badge rpt-badge-green">Completed</span>
+                        {% elif j.status == 'failed' %}<span class="rpt-badge rpt-badge-red">Failed</span>
+                        {% else %}<span class="rpt-badge rpt-badge-gray">{{ j.status|capfirst }}</span>
                         {% endif %}
                     </td>
                     <td>{{ j.created_at|date:"d M Y H:i" }}</td>
@@ -547,80 +382,23 @@
                 {% endfor %}
             </tbody>
         </table>
-        {% endif %}
-
-    </div><!-- /.report-body -->
-
-    <!-- Footer -->
-    <div class="report-footer">
-        <span>SankofaWatch &mdash; Confidential &mdash; For Authorized Use Only</span>
-        <span>Generated {{ report_date|date:"N j, Y \a\t g:i A" }}</span>
     </div>
+    {% endif %}
 
-</div><!-- /.page -->
+    <!-- Footer note -->
+    <p class="text-[11px] text-right" style="color: var(--text-tertiary);">
+        Generated {{ report_date|date:"N j, Y \a\t g:i A" }} &mdash; SankofaWatch &mdash; Confidential
+    </p>
+
+</div>
 
 <script>
 (function () {
-    /* Size sparkline bars to fill the 64-px container based on max value */
-    function _sizeBars() {
-        var bars = document.querySelectorAll('#trend-sparkline .trend-bar');
-        var max = 0;
-        bars.forEach(function (b) { var v = parseInt(b.dataset.val, 10) || 0; if (v > max) max = v; });
-        if (!max) max = 1;
-        bars.forEach(function (b) { b.style.height = Math.max(2, Math.round(parseInt(b.dataset.val, 10) / max * 64)) + 'px'; });
-    }
-    _sizeBars();   /* initial page load */
-
-    /* AJAX date-range form intercept */
-    var form = document.querySelector('.print-bar form');
-    if (!form) return;
-
-    form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        var startDate = form.querySelector('[name="start_date"]').value;
-        var endDate   = form.querySelector('[name="end_date"]').value;
-        var url = '/dashboard/report/?start_date=' + encodeURIComponent(startDate) + '&end_date=' + encodeURIComponent(endDate);
-
-        var applyBtn = form.querySelector('[type="submit"]');
-        var origText = applyBtn.textContent;
-        applyBtn.textContent = '…';
-        applyBtn.disabled = true;
-
-        fetch(url, { credentials: 'include' })
-            .then(function (r) { return r.text(); })
-            .then(function (html) {
-                var doc = new DOMParser().parseFromString(html, 'text/html');
-
-                /* Replace report body */
-                var newBody = doc.querySelector('.report-body');
-                var oldBody = document.querySelector('.report-body');
-                if (newBody && oldBody) oldBody.replaceWith(newBody);
-
-                /* Replace period text in header meta-row */
-                var newMeta = doc.querySelector('.meta-row');
-                var oldMeta = document.querySelector('.meta-row');
-                if (newMeta && oldMeta) oldMeta.replaceWith(newMeta);
-
-                /* Update PDF download link */
-                var pdfLink = document.querySelector('a.btn-print[href*="report/pdf"]');
-                if (pdfLink) {
-                    pdfLink.href = '/dashboard/report/pdf/?start_date=' + encodeURIComponent(startDate) + '&end_date=' + encodeURIComponent(endDate);
-                }
-
-                /* Re-size sparkline bars (script tags in replaceWith nodes don't execute) */
-                _sizeBars();
-            })
-            .catch(function () {
-                /* Network error — fall back to a normal navigation */
-                form.submit();
-            })
-            .finally(function () {
-                applyBtn.textContent = origText;
-                applyBtn.disabled = false;
-            });
-    });
+    var bars = document.querySelectorAll('#trend-sparkline .trend-bar');
+    var max = 0;
+    bars.forEach(function (b) { var v = parseInt(b.dataset.val, 10) || 0; if (v > max) max = v; });
+    if (!max) max = 1;
+    bars.forEach(function (b) { b.style.height = Math.max(2, Math.round(parseInt(b.dataset.val, 10) / max * 56)) + 'px'; });
 })();
 </script>
-
-</body>
-</html>
+{% endblock %}

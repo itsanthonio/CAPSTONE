@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Organisations — SankofaWatch{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold" style="color: var(--text-primary);">Organisations</h1>
+            <p class="text-sm mt-0.5" style="color: var(--text-secondary);">Manage agencies and organisations registered on the platform</p>
+        </div>
+        <button onclick="document.getElementById('create-modal').classList.remove('hidden')"
+                class="btn-primary inline-flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            New Organisation
+        </button>
+    </div>
+
+    <!-- Messages -->
+    {% for msg in messages %}
+    <div class="rounded-lg px-4 py-3 text-sm flex items-center gap-2
+        {% if msg.tags == 'success' %}border{% else %}border{% endif %}"
+        style="{% if msg.tags == 'success' %}background: var(--status-resolved-bg); border-color: var(--status-resolved); color: var(--status-resolved);{% else %}background: var(--status-critical-bg); border-color: var(--status-critical); color: var(--status-critical);{% endif %}">
+        {% if msg.tags == 'success' %}
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        {% else %}
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M12 3a9 9 0 100 18A9 9 0 0012 3z"/></svg>
+        {% endif %}
+        {{ msg }}
+    </div>
+    {% endfor %}
+
+    <!-- Summary stat -->
+    <div class="flex items-center gap-2 text-sm" style="color: var(--text-secondary);">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+        </svg>
+        <span><span class="font-semibold" style="color: var(--text-primary);">{{ orgs.count }}</span> organisation{{ orgs.count|pluralize }} registered</span>
+    </div>
+
+    <!-- Organisations Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {% for org in orgs %}
+        <div class="gw-card p-5 flex flex-col gap-4">
+
+            <!-- Org header -->
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center text-base font-bold shrink-0"
+                     style="background: var(--surface-3); color: var(--accent);">
+                    {{ org.name|first|upper }}
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-semibold truncate" style="color: var(--text-primary);">{{ org.name }}</p>
+                    <p class="text-[11px] mt-0.5" style="color: var(--text-secondary);">ID: {{ org.id|truncatechars:16 }}</p>
+                </div>
+            </div>
+
+            <!-- Stats row -->
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="rounded-md py-2" style="background: var(--surface-3);">
+                    <p class="text-[18px] font-bold tabular-nums" style="color: var(--text-primary);">{{ org.member_count }}</p>
+                    <p class="text-[10px] uppercase tracking-wide mt-0.5" style="color: var(--text-secondary);">Members</p>
+                </div>
+                <div class="rounded-md py-2" style="background: var(--surface-3);">
+                    <p class="text-[18px] font-bold tabular-nums" style="color: var(--text-primary);">{{ org.job_count }}</p>
+                    <p class="text-[10px] uppercase tracking-wide mt-0.5" style="color: var(--text-secondary);">Jobs</p>
+                </div>
+                <div class="rounded-md py-2" style="background: var(--surface-3);">
+                    <p class="text-[18px] font-bold tabular-nums" style="color: {% if org.detection_count > 0 %}var(--status-critical){% else %}var(--text-primary){% endif %};">{{ org.detection_count }}</p>
+                    <p class="text-[10px] uppercase tracking-wide mt-0.5" style="color: var(--text-secondary);">Detections</p>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-2 pt-1" style="border-top: 1px solid var(--border-subtle);">
+                <button onclick="openRenameModal('{{ org.id }}', '{{ org.name|escapejs }}')"
+                        class="btn-secondary text-[12px] py-1.5 px-3 flex-1">
+                    Rename
+                </button>
+                {% if org.member_count == 0 %}
+                <form method="post" onsubmit="return confirm('Delete {{ org.name|escapejs }}? This cannot be undone.')">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="org_id" value="{{ org.id }}">
+                    <button type="submit" class="btn-ghost text-[12px] py-1.5 px-3" style="color: var(--status-critical);">Delete</button>
+                </form>
+                {% else %}
+                <span class="text-[11px] px-3 py-1.5 rounded" style="color: var(--text-secondary); background: var(--surface-3);" title="Cannot delete — has members">
+                    Has members
+                </span>
+                {% endif %}
+            </div>
+
+        </div>
+        {% empty %}
+        <div class="md:col-span-2 xl:col-span-3 gw-card px-6 py-12 text-center">
+            <svg class="w-10 h-10 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--text-secondary);" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+            </svg>
+            <p class="text-sm font-medium" style="color: var(--text-primary);">No organisations yet</p>
+            <p class="text-xs mt-1 mb-4" style="color: var(--text-secondary);">Create the first organisation to get started.</p>
+            <button onclick="document.getElementById('create-modal').classList.remove('hidden')" class="btn-primary text-sm">
+                Create Organisation
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+
+<!-- Create Modal -->
+<div id="create-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background: rgba(0,0,0,0.5);">
+    <div class="gw-card w-full max-w-md p-6 space-y-4 mx-4">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: var(--surface-3);">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--accent);" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+            </div>
+            <h3 class="text-base font-semibold" style="color: var(--text-primary);">New Organisation</h3>
+        </div>
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create">
+            <div>
+                <label class="block text-[12px] font-medium mb-1.5" style="color: var(--text-secondary);">Organisation Name</label>
+                <input type="text" name="name" required autofocus
+                       class="gw-input w-full"
+                       placeholder="e.g. Environmental Protection Agency">
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="document.getElementById('create-modal').classList.add('hidden')" class="btn-secondary">Cancel</button>
+                <button type="submit" class="btn-primary">Create Organisation</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Rename Modal -->
+<div id="rename-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background: rgba(0,0,0,0.5);">
+    <div class="gw-card w-full max-w-md p-6 space-y-4 mx-4">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: var(--surface-3);">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--accent);" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+            </div>
+            <h3 class="text-base font-semibold" style="color: var(--text-primary);">Rename Organisation</h3>
+        </div>
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="rename">
+            <input type="hidden" name="org_id" id="rename-org-id">
+            <div>
+                <label class="block text-[12px] font-medium mb-1.5" style="color: var(--text-secondary);">New Name</label>
+                <input type="text" name="name" id="rename-org-name" required class="gw-input w-full">
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="document.getElementById('rename-modal').classList.add('hidden')" class="btn-secondary">Cancel</button>
+                <button type="submit" class="btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openRenameModal(orgId, orgName) {
+    document.getElementById('rename-org-id').value = orgId;
+    document.getElementById('rename-org-name').value = orgName;
+    document.getElementById('rename-modal').classList.remove('hidden');
+}
+</script>
+{% endblock %}

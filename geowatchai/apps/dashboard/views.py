@@ -89,20 +89,35 @@ def dashboard_router(request):
         UserProfile.objects.create(user=request.user, role=UserProfile.Role.INSPECTOR)
         return redirect('/dashboard/home/')
     
-    if role == UserProfile.Role.ADMIN:
-        logger.debug(f": Redirecting admin {request.user.username} to admin dashboard")
+    if role == UserProfile.Role.SYSTEM_ADMIN:
+        logger.debug(f": Redirecting system admin {request.user.username} to system admin dashboard")
+        return redirect('/dashboard/admin/')
+    elif role == UserProfile.Role.AGENCY_ADMIN:
+        logger.debug(f": Redirecting agency admin {request.user.username} to agency admin dashboard")
         return redirect('/dashboard/home/')
     elif role == UserProfile.Role.INSPECTOR:
         logger.debug(f": Redirecting inspector {request.user.username} to inspector dashboard")
         return redirect('/dashboard/inspector/')
     else:
-        logger.debug(f": Redirecting non-inspector {request.user.username} to admin dashboard")
         return redirect('/dashboard/home/')
 
 
 def is_admin(user):
-    """Check if user has admin role"""
-    return user.is_authenticated and hasattr(user, 'profile') and user.profile.role == UserProfile.Role.ADMIN
+    """Check if user has any admin role (system or agency)."""
+    return user.is_authenticated and hasattr(user, 'profile') and user.profile.role in (
+        UserProfile.Role.SYSTEM_ADMIN, UserProfile.Role.AGENCY_ADMIN
+    )
+
+
+def is_system_admin(user):
+    return user.is_authenticated and hasattr(user, 'profile') and user.profile.role == UserProfile.Role.SYSTEM_ADMIN
+
+
+def is_agency_admin(user):
+    return user.is_authenticated and hasattr(user, 'profile') and user.profile.role == UserProfile.Role.AGENCY_ADMIN
+
+def is_any_admin(user):
+    return user.is_authenticated and hasattr(user, 'profile') and user.profile.role in (UserProfile.Role.SYSTEM_ADMIN, UserProfile.Role.AGENCY_ADMIN)
 
 
 def is_inspector(user):
@@ -111,9 +126,8 @@ def is_inspector(user):
 
 
 def is_inspector_or_admin(user):
-    """Check if user has inspector or admin role"""
     return user.is_authenticated and hasattr(user, 'profile') and user.profile.role in (
-        UserProfile.Role.ADMIN, UserProfile.Role.INSPECTOR
+        UserProfile.Role.SYSTEM_ADMIN, UserProfile.Role.AGENCY_ADMIN, UserProfile.Role.INSPECTOR
     )
 
 
@@ -163,11 +177,13 @@ class CustomLoginView(LoginView):
             try:
                 profile = self.request.user.profile
                 logger.debug(f" CustomLoginView: role={profile.role}")
-                if profile.role == UserProfile.Role.INSPECTOR:
-                    logger.debug(f" CustomLoginView: Redirecting to inspector")
+                if profile.role == UserProfile.Role.SYSTEM_ADMIN:
+                    return '/dashboard/admin/'
+                elif profile.role == UserProfile.Role.AGENCY_ADMIN:
+                    return '/dashboard/home/'
+                elif profile.role == UserProfile.Role.INSPECTOR:
                     return '/dashboard/inspector/'
                 else:
-                    logger.debug(f" dashboard_home: Role is {profile.role}, showing admin dashboard")
                     return '/dashboard/home/'
             except UserProfile.DoesNotExist:
                 # Create profile if missing — default to INSPECTOR (safest fallback)
@@ -221,16 +237,15 @@ class SignUpView(CreateView):
 
         # Self-registration always creates INSPECTOR accounts.
         # Admin accounts are created by existing admins only.
-        role = UserProfile.Role.INSPECTOR
-        organization = form.cleaned_data.get('organization', UserProfile.Organization.OTHER)
+        organisation = form.cleaned_data.get('organisation')
         phone_number = form.cleaned_data.get('phone_number', '')
 
         UserProfile.objects.update_or_create(
             user=user,
             defaults={
-                'role': role,
-                'organization': organization,
-                'phone_number': phone_number
+                'role': UserProfile.Role.INSPECTOR,
+                'organisation': organisation,
+                'phone_number': phone_number,
             }
         )
 
@@ -247,15 +262,18 @@ class CustomLogoutView(LogoutView):
     next_page = '/'
 
 
-def _get_dashboard_stats(velocity_weeks=8, trend_days=30):
+def _get_dashboard_stats(velocity_weeks=8, trend_days=30, org=None):
     """Query real stats from DetectedSite, Alert, and ModelRun. Cached for 5 minutes.
 
     velocity_weeks: lookback window for the detection velocity sparkline (2–52).
     trend_days: period for the detection trend chart (7, 30, 90, or 365).
+    org: Organisation instance — when set, all queries are scoped to that org
+         (plus automated scans with no creator, which are always visible).
     """
     velocity_weeks = max(2, min(int(velocity_weeks), 52))
     trend_days = int(trend_days) if int(trend_days) in (7, 30, 90, 365) else 30
-    cache_key = f'dashboard_stats_{velocity_weeks}_{trend_days}'
+    org_id = str(org.pk) if org else 'global'
+    cache_key = f'dashboard_stats_{velocity_weeks}_{trend_days}_{org_id}'
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -271,23 +289,35 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30):
         seven_days_ago  = now - timedelta(days=7)
         fourteen_days_ago = now - timedelta(days=14)
 
+        # Org-scoping filters (only automated scans with no creator are always included)
+        if org:
+            site_q  = Q(job__created_by__profile__organisation=org) | Q(job__created_by__isnull=True, job__source='automated')
+            alert_q = Q(detected_site__job__created_by__profile__organisation=org) | Q(detected_site__job__created_by__isnull=True, detected_site__job__source='automated')
+            job_q   = Q(created_by__profile__organisation=org) | Q(created_by__isnull=True, source='automated')
+        else:
+            site_q  = Q()
+            alert_q = Q()
+            job_q   = Q()
+
         # --- Detected sites ---
-        total_sites    = DetectedSite.objects.count()
-        illegal_sites  = DetectedSite.objects.filter(legal_status='illegal').count()
+        total_sites    = DetectedSite.objects.filter(site_q).count()
+        illegal_sites  = DetectedSite.objects.filter(site_q, legal_status='illegal').count()
         sites_this_week = DetectedSite.objects.filter(
-            detection_date__gte=seven_days_ago.date()
+            site_q, detection_date__gte=seven_days_ago.date()
         ).count()
         sites_last_week = DetectedSite.objects.filter(
+            site_q,
             detection_date__gte=fourteen_days_ago.date(),
             detection_date__lt=seven_days_ago.date()
         ).count()
 
         # --- Alerts ---
-        open_alerts    = Alert.objects.filter(status='open').count()
-        critical_alerts = Alert.objects.filter(status='open', severity='critical').count()
-        high_alerts    = Alert.objects.filter(status='open', severity='high').count()
-        alerts_this_month = Alert.objects.filter(created_at__gte=thirty_days_ago).count()
+        open_alerts    = Alert.objects.filter(alert_q, status='open').count()
+        critical_alerts = Alert.objects.filter(alert_q, status='open', severity='critical').count()
+        high_alerts    = Alert.objects.filter(alert_q, status='open', severity='high').count()
+        alerts_this_month = Alert.objects.filter(alert_q, created_at__gte=thirty_days_ago).count()
         alerts_last_month = Alert.objects.filter(
+            alert_q,
             created_at__gte=sixty_days_ago,
             created_at__lt=thirty_days_ago
         ).count()
@@ -300,26 +330,26 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30):
 
         # --- High-risk zones: sites with recurrence > 1 or critical alerts ---
         high_risk = DetectedSite.objects.filter(
-            Q(recurrence_count__gt=1) | Q(alerts__severity='critical')
+            site_q & (Q(recurrence_count__gt=1) | Q(alerts__severity='critical'))
         ).distinct().count()
 
         # --- Total area ---
         area_result = DetectedSite.objects.filter(
-            legal_status='illegal'
+            site_q, legal_status='illegal'
         ).aggregate(total=Sum('area_hectares'))
         total_area_ha = round(area_result['total'] or 0, 1)
 
         # --- Jobs ---
-        total_jobs     = Job.objects.count()
-        completed_jobs = Job.objects.filter(status='completed').count()
-        failed_jobs    = Job.objects.filter(status='failed').count()
+        total_jobs     = Job.objects.filter(job_q).count()
+        completed_jobs = Job.objects.filter(job_q, status='completed').count()
+        failed_jobs    = Job.objects.filter(job_q, status='failed').count()
 
         # --- Automated scan stats (lightweight) ---
         from apps.scanning.models import AutoScanConfig, ScanTile
         scan_config = AutoScanConfig.get()
-        auto_jobs_today = Job.objects.filter(source='automated', created_at__date=now.date()).count()
+        auto_jobs_today = Job.objects.filter(job_q, source='automated', created_at__date=now.date()).count()
         auto_detections_today = DetectedSite.objects.filter(
-            job__source='automated', job__created_at__date=now.date()
+            site_q, job__source='automated', job__created_at__date=now.date()
         ).count()
         scan_tiles_total   = ScanTile.objects.filter(is_active=True).count()
         scan_tiles_scanned = ScanTile.objects.filter(is_active=True, last_scanned_at__isnull=False).count()
@@ -332,7 +362,7 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30):
             from django.db.models.functions import TruncDate as _TruncDate
             trend_rows = (
                 DetectedSite.objects
-                .filter(created_at__gte=trend_start)
+                .filter(site_q, created_at__gte=trend_start)
                 .annotate(day=_TruncDate('created_at'))
                 .values('day', 'legal_status')
                 .annotate(cnt=Count('id'))
@@ -355,7 +385,7 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30):
             from django.db.models.functions import TruncMonth as _TruncMonth
             monthly_rows = (
                 DetectedSite.objects
-                .filter(detection_date__gte=trend_start.date())
+                .filter(site_q, detection_date__gte=trend_start.date())
                 .annotate(month=_TruncMonth('detection_date'))
                 .values('month', 'legal_status')
                 .annotate(cnt=Count('id'))
@@ -382,7 +412,7 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30):
         # --- Top regions by detection count (all-time) ---
         top_regions = list(
             DetectedSite.objects
-            .filter(region__isnull=False)
+            .filter(site_q, region__isnull=False)
             .values('region__id', 'region__name')
             .annotate(
                 total=Count('id'),
@@ -398,7 +428,7 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30):
 
         # --- Recent sites for activity feed (last 5 by scan time) ---
         recent_sites = list(
-            DetectedSite.objects.select_related('region', 'job__created_by')
+            DetectedSite.objects.filter(site_q).select_related('region', 'job__created_by')
             .order_by('-created_at')[:5]
             .values(
                 'id', 'detection_date', 'created_at', 'legal_status',
@@ -414,7 +444,7 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30):
         # --- Average confidence of illegal detections ---
         from django.db.models import Avg
         avg_conf_result = DetectedSite.objects.filter(
-            legal_status='illegal'
+            site_q, legal_status='illegal'
         ).aggregate(avg=Avg('confidence_score'))
         avg_confidence_pct = round((avg_conf_result['avg'] or 0) * 100, 1)
 
@@ -424,7 +454,7 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30):
         velocity_start = now - timedelta(weeks=velocity_week_count)
         velocity_rows = (
             DetectedSite.objects
-            .filter(legal_status='illegal', created_at__gte=velocity_start)
+            .filter(site_q, legal_status='illegal', created_at__gte=velocity_start)
             .annotate(week=_TruncWeek('created_at'))
             .values('week')
             .annotate(cnt=Count('id'))
@@ -542,8 +572,8 @@ def dashboard_home(request):
                 logger.debug(f" dashboard_home: Inspector detected, redirecting to inspector dashboard")
                 return redirect('/dashboard/inspector/')
         except UserProfile.DoesNotExist:
-            logger.debug(f" dashboard_home: No profile, creating ADMIN profile")
-            UserProfile.objects.create(user=request.user, role=UserProfile.Role.ADMIN)
+            logger.debug(f" dashboard_home: No profile, creating INSPECTOR profile")
+            UserProfile.objects.create(user=request.user, role=UserProfile.Role.INSPECTOR)
     
     # Any non-inspector gets admin dashboard
     try:
@@ -565,7 +595,8 @@ def dashboard_home(request):
                 _td = 30
         except (ValueError, TypeError):
             _td = 30
-        stats = _get_dashboard_stats(velocity_weeks=_vw, trend_days=_td)
+        _org = request.user.profile.organisation if request.user.profile.role == 'agency_admin' else None
+        stats = _get_dashboard_stats(velocity_weeks=_vw, trend_days=_td, org=_org)
     except Exception as e:
         _vw = 8
         _td = 30
@@ -608,7 +639,8 @@ def dashboard_chart_data(request):
             td = 30
     except (ValueError, TypeError):
         td = 30
-    stats = _get_dashboard_stats(velocity_weeks=vw, trend_days=td)
+    org = request.user.profile.organisation if request.user.profile.role == 'agency_admin' else None
+    stats = _get_dashboard_stats(velocity_weeks=vw, trend_days=td, org=org)
     return JsonResponse({
         'trend_labels':    stats.get('trend_labels', []),
         'trend_illegal':   stats.get('trend_illegal', []),
@@ -620,13 +652,21 @@ def dashboard_chart_data(request):
     })
 
 
-@user_passes_test(is_admin)
+@user_passes_test(is_any_admin)
 def dashboard_alerts(request):
     """Admin-only alerts view"""
     from apps.detections.models import Alert
-    from django.db.models import Count
+    from django.db.models import Count, Q
 
-    rows = Alert.objects.values('status', 'severity').annotate(cnt=Count('id'))
+    qs = Alert.objects.all()
+    if request.user.profile.role == UserProfile.Role.AGENCY_ADMIN:
+        org = request.user.profile.organisation
+        qs = qs.filter(
+            Q(detected_site__job__created_by__profile__organisation=org) |
+            Q(detected_site__job__created_by__isnull=True)
+        )
+
+    rows = qs.values('status', 'severity').annotate(cnt=Count('id'))
     by_status, by_severity = {}, {}
     for row in rows:
         by_status[row['status']] = by_status.get(row['status'], 0) + row['cnt']
@@ -645,7 +685,7 @@ def dashboard_alerts(request):
     return render(request, 'dashboard/alerts.html', {'summary': summary})
 
 
-@user_passes_test(is_admin)
+@user_passes_test(is_system_admin)
 def dashboard_audit(request):
     """Audit trail page — filterable log of all significant system actions."""
     from apps.detections.models import AuditLog
@@ -727,7 +767,8 @@ def dashboard_audit(request):
 @login_required
 def dashboard_kpis(request):
     """JSON endpoint returning headline KPI numbers — polled every 60 s for live refresh."""
-    stats = _get_dashboard_stats()
+    org = request.user.profile.organisation if request.user.profile.role == 'agency_admin' else None
+    stats = _get_dashboard_stats(org=org)
     return JsonResponse({
         'total_detected_sites':  stats.get('total_detected_sites', 0),
         'illegal_sites':         stats.get('illegal_sites', 0),
@@ -748,7 +789,7 @@ def dashboard_kpis(request):
     })
 
 
-@user_passes_test(is_admin)
+@user_passes_test(is_any_admin)
 def dashboard_report(request):
     """Printable/downloadable overview report for stakeholders.
 
@@ -775,8 +816,20 @@ def dashboard_report(request):
     if period_start > period_end:
         period_start, period_end = period_end, period_start
 
+    # ── Org scoping ──────────────────────────────────────────────────────────
+    profile = request.user.profile
+    org = profile.organisation if profile.role == 'agency_admin' else None
+    if org:
+        site_org_q  = Q(job__created_by__profile__organisation=org) | Q(job__created_by__isnull=True, job__source='automated')
+        alert_org_q = Q(detected_site__job__created_by__profile__organisation=org) | Q(detected_site__job__created_by__isnull=True, detected_site__job__source='automated')
+        job_org_q   = Q(created_by__profile__organisation=org) | Q(created_by__isnull=True, source='automated')
+        assign_org_q = Q(alert__detected_site__job__created_by__profile__organisation=org) | Q(alert__detected_site__job__created_by__isnull=True, alert__detected_site__job__source='automated')
+    else:
+        site_org_q = alert_org_q = job_org_q = assign_org_q = Q()
+
     # ── Period-scoped site stats ─────────────────────────────────────────────
     sites_qs = DetectedSite.objects.filter(
+        site_org_q,
         detection_date__gte=period_start,
         detection_date__lte=period_end,
     )
@@ -819,6 +872,7 @@ def dashboard_report(request):
 
     # ── Period-scoped alert stats ────────────────────────────────────────────
     alerts_qs = Alert.objects.filter(
+        alert_org_q,
         created_at__date__gte=period_start,
         created_at__date__lte=period_end,
     )
@@ -837,6 +891,7 @@ def dashboard_report(request):
 
     # ── Period-scoped inspector stats ───────────────────────────────────────
     assign_qs = InspectorAssignment.objects.filter(
+        assign_org_q,
         completed_at__date__gte=period_start,
         completed_at__date__lte=period_end,
     )
@@ -847,6 +902,7 @@ def dashboard_report(request):
     # Per-inspector performance breakdown
     from django.db.models import ExpressionWrapper, DurationField, Avg, F as _F
     _assign_period_qs = InspectorAssignment.objects.filter(
+        assign_org_q,
         assigned_at__date__gte=period_start,
         assigned_at__date__lte=period_end,
     )
@@ -878,6 +934,7 @@ def dashboard_report(request):
     # ── Scan jobs in period ──────────────────────────────────────────────────
     from apps.jobs.models import Job as ScanJob
     jobs_qs     = ScanJob.objects.filter(
+        job_org_q,
         created_at__date__gte=period_start,
         created_at__date__lte=period_end,
     )
@@ -952,10 +1009,11 @@ def dashboard_report(request):
         'report_date':        now,
         'period_start':       period_start,
         'period_end':         period_end,
+        'org_name':           org.name if org else None,
     })
 
 
-@user_passes_test(is_admin)
+@user_passes_test(is_any_admin)
 def dashboard_report_pdf(request):
     """Generate a server-side PDF of the report using xhtml2pdf.
     Accepts the same start_date / end_date params as dashboard_report.
@@ -984,7 +1042,7 @@ def dashboard_report_pdf(request):
         return HttpResponse('xhtml2pdf is not installed.', status=500)
 
 
-@user_passes_test(is_admin)
+@user_passes_test(is_system_admin)
 def dashboard_model_insights(request):
     """Admin-only model insights view — live metrics driven by inspector field reports."""
     import json
@@ -1413,7 +1471,7 @@ def submit_field_report(request, assignment_id):
 # ---------------------------------------------------------------------------
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(is_any_admin)
 def region_list(request):
     """List all active monitoring regions with summary stats."""
     from apps.detections.models import Region
@@ -1443,7 +1501,7 @@ def region_list(request):
 
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(is_any_admin)
 def region_detail(request, region_id):
     """Per-region summary: detection stats, alert breakdown, inspector assignments, 30-day trend, and full detection cards."""
     from apps.detections.models import Region, DetectedSite, Alert
@@ -1778,7 +1836,7 @@ def my_account(request):
         new_email      = request.POST.get('email', '').strip()
         new_first      = request.POST.get('first_name', '').strip()
         new_last       = request.POST.get('last_name', '').strip()
-        new_org        = request.POST.get('organization', '').strip()
+        new_org        = request.POST.get('organisation', '').strip()
         new_phone      = request.POST.get('phone_number', '').strip()
 
         # Validate email
@@ -1791,28 +1849,135 @@ def my_account(request):
                 if User.objects.filter(email=new_email).exclude(pk=request.user.pk).exists():
                     errors['email'] = 'That email address is already in use.'
 
-        # Validate organisation
-        valid_orgs = [c[0] for c in UserProfile.Organization.choices]
-        if new_org and new_org not in valid_orgs:
-            errors['organization'] = 'Select a valid organisation.'
-
         if not errors:
+            from apps.accounts.models import Organisation
             request.user.email      = new_email
             request.user.first_name = new_first
             request.user.last_name  = new_last
             request.user.save()
 
-            profile.organization  = new_org or profile.organization
+            # Only system admins may change their own organisation
+            if profile.role == UserProfile.Role.SYSTEM_ADMIN and new_org:
+                profile.organisation = Organisation.objects.filter(id=new_org).first()
             profile.phone_number  = new_phone
             profile.save()
 
             messages.success(request, 'Your account has been updated.')
             return redirect(reverse('dashboard:my_account'))
 
+    from apps.accounts.models import Organisation
     return render(request, 'dashboard/my_account.html', {
         'profile': profile,
-        'org_choices': UserProfile.Organization.choices,
+        'org_choices': list(Organisation.objects.values_list('id', 'name').order_by('name')),
         'errors': errors,
+    })
+
+
+# ---------------------------------------------------------------------------
+# System Admin Dashboard
+# ---------------------------------------------------------------------------
+
+@user_passes_test(is_system_admin)
+def system_admin_dashboard(request):
+    """Platform-level dashboard for System Administrators."""
+    from apps.accounts.models import Organisation, UserProfile
+    from apps.jobs.models import Job
+    from apps.detections.models import DetectedSite, Alert
+    from django.db.models import Count, Q
+    from django.utils import timezone
+    from datetime import timedelta
+
+    now   = timezone.now()
+    today = now.date()
+    week_ago  = today - timedelta(days=7)
+    month_ago = today - timedelta(days=30)
+
+    total_users      = User.objects.count()
+    total_orgs       = Organisation.objects.count()
+    total_jobs       = Job.objects.count()
+    completed_jobs   = Job.objects.filter(status='completed').count()
+    total_detections = DetectedSite.objects.count()
+    illegal_sites    = DetectedSite.objects.filter(legal_status='illegal').count()
+    total_alerts     = Alert.objects.count()
+    open_alerts      = Alert.objects.filter(status='open').count()
+    critical_alerts  = Alert.objects.filter(status='open', severity='critical').count()
+    inspectors       = UserProfile.objects.filter(role=UserProfile.Role.INSPECTOR).count()
+    agency_admins    = UserProfile.objects.filter(role=UserProfile.Role.AGENCY_ADMIN).count()
+
+    new_users_week   = User.objects.filter(date_joined__date__gte=week_ago).count()
+    jobs_this_month  = Job.objects.filter(created_at__date__gte=month_ago).count()
+    detections_week  = DetectedSite.objects.filter(detection_date__gte=week_ago).count()
+
+    # Per-org breakdown with detection counts
+    orgs = Organisation.objects.annotate(
+        member_count=Count('members', distinct=True),
+        job_count=Count('members__user__jobs', distinct=True),
+        detection_count=Count('members__user__jobs__detected_sites', distinct=True),
+    ).order_by('name')
+
+    # Recent users
+    recent_users = User.objects.select_related(
+        'profile', 'profile__organisation'
+    ).order_by('-date_joined')[:10]
+
+    return render(request, 'dashboard/system_admin.html', {
+        'total_users':      total_users,
+        'total_orgs':       total_orgs,
+        'total_jobs':       total_jobs,
+        'completed_jobs':   completed_jobs,
+        'total_detections': total_detections,
+        'illegal_sites':    illegal_sites,
+        'total_alerts':     total_alerts,
+        'open_alerts':      open_alerts,
+        'critical_alerts':  critical_alerts,
+        'inspectors':       inspectors,
+        'agency_admins':    agency_admins,
+        'new_users_week':   new_users_week,
+        'jobs_this_month':  jobs_this_month,
+        'detections_week':  detections_week,
+        'orgs':             orgs,
+        'recent_users':     recent_users,
+    })
+
+
+# ---------------------------------------------------------------------------
+# Organisation Management (system admin only)
+# ---------------------------------------------------------------------------
+
+@user_passes_test(is_system_admin)
+def organisation_management(request):
+    """System Admin page to manage organisations."""
+    from apps.accounts.models import Organisation
+    from django.db.models import Count
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'create':
+            name = request.POST.get('name', '').strip()
+            if name:
+                Organisation.objects.get_or_create(name=name)
+                messages.success(request, f'Organisation "{name}" created.')
+        elif action == 'rename':
+            org_id = request.POST.get('org_id')
+            name   = request.POST.get('name', '').strip()
+            if org_id and name:
+                Organisation.objects.filter(id=org_id).update(name=name)
+                messages.success(request, 'Organisation renamed.')
+        elif action == 'delete':
+            org_id = request.POST.get('org_id')
+            if org_id:
+                Organisation.objects.filter(id=org_id).delete()
+                messages.success(request, 'Organisation deleted.')
+        return redirect('dashboard:organisation_management')
+
+    orgs = Organisation.objects.annotate(
+        member_count=Count('members', distinct=True),
+        job_count=Count('members__user__jobs', distinct=True),
+        detection_count=Count('members__user__jobs__detected_sites', distinct=True),
+    ).order_by('name')
+
+    return render(request, 'dashboard/organisation_management.html', {
+        'orgs': orgs,
     })
 
 
@@ -1820,9 +1985,9 @@ def my_account(request):
 # User Management (admin-only)
 # ---------------------------------------------------------------------------
 
-@user_passes_test(is_admin)
+@user_passes_test(is_system_admin)
 def user_management(request):
-    """Admin user management — searchable/filterable table of all users."""
+    """System Admin user management — searchable/filterable table of all users."""
     qs = User.objects.select_related('profile').order_by('username')
 
     search     = request.GET.get('q', '').strip()
@@ -1839,15 +2004,16 @@ def user_management(request):
     if role_filter:
         qs = qs.filter(profile__role=role_filter)
     if org_filter:
-        qs = qs.filter(profile__organization=org_filter)
+        qs = qs.filter(profile__organisation=org_filter)
 
+    from apps.accounts.models import Organisation
     return render(request, 'dashboard/user_management.html', {
         'users':        qs,
         'search':       search,
         'role_filter':  role_filter,
         'org_filter':   org_filter,
         'role_choices': UserProfile.Role.choices,
-        'org_choices':  UserProfile.Organization.choices,
+        'org_choices':  list(Organisation.objects.values_list('id', 'name').order_by('name')),
         'total_count':  User.objects.count(),
     })
 
@@ -1864,15 +2030,15 @@ def _user_to_dict(user):
         'full_name':             user.get_full_name(),
         'role':                  profile.role,
         'role_display':          profile.get_role_display(),
-        'organization':          profile.organization,
-        'organization_display':  profile.get_organization_display() if profile.organization else '',
+        'organisation':          str(profile.organisation_id) if profile.organisation_id else '',
+        'organisation_display':  profile.organisation.name if profile.organisation_id else '',
         'phone_number':          profile.phone_number or '',
         'is_active':             user.is_active,
         'date_joined':           user.date_joined.strftime('%b %d, %Y'),
     }
 
 
-@user_passes_test(is_admin)
+@user_passes_test(is_system_admin)
 def user_create(request):
     """Create a new user account (admin bypass — no PIN/email verification needed)."""
     if request.method != 'POST':
@@ -1885,7 +2051,7 @@ def user_create(request):
     email      = request.POST.get('email', '').strip()
     password   = request.POST.get('password', '').strip()
     role       = request.POST.get('role', '').strip()
-    org        = request.POST.get('organization', '').strip()
+    org        = request.POST.get('organisation', '').strip()
     phone      = request.POST.get('phone_number', '').strip()
     first_name = request.POST.get('first_name', '').strip()
     last_name  = request.POST.get('last_name', '').strip()
@@ -1925,10 +2091,11 @@ def user_create(request):
         last_name=last_name,
         is_active=True,
     )
+    from apps.accounts.models import Organisation
     profile = user.profile
     profile.role = role
     if org:
-        profile.organization = org
+        profile.organisation = Organisation.objects.filter(id=org).first()
     if phone:
         profile.phone_number = phone
     profile.save()
@@ -1947,7 +2114,7 @@ def user_create(request):
     return JsonResponse({'success': True, 'message': f'User "{username}" created successfully.', 'user': _user_to_dict(user)})
 
 
-@user_passes_test(is_admin)
+@user_passes_test(is_system_admin)
 def user_edit(request, user_id):
     """Edit an existing user's details."""
     if request.method != 'POST':
@@ -1961,7 +2128,7 @@ def user_edit(request, user_id):
 
     email      = request.POST.get('email', '').strip()
     role       = request.POST.get('role', '').strip()
-    org        = request.POST.get('organization', '').strip()
+    org        = request.POST.get('organisation', '').strip()
     phone      = request.POST.get('phone_number', '').strip()
     first_name = request.POST.get('first_name', '').strip()
     last_name  = request.POST.get('last_name', '').strip()
@@ -1980,13 +2147,10 @@ def user_edit(request, user_id):
     if role and role not in valid_roles:
         errors['role'] = 'Select a valid role.'
 
-    valid_orgs = [c[0] for c in UserProfile.Organization.choices]
-    if org and org not in valid_orgs:
-        errors['organization'] = 'Select a valid organisation.'
-
     if errors:
         return JsonResponse({'success': False, 'errors': errors}, status=400)
 
+    from apps.accounts.models import Organisation
     if email:
         target_user.email = email
     target_user.first_name = first_name
@@ -1995,8 +2159,7 @@ def user_edit(request, user_id):
 
     if role:
         profile.role = role
-    if org is not None:
-        profile.organization = org
+    profile.organisation = Organisation.objects.filter(id=org).first() if org else None
     profile.phone_number = phone
     profile.save()
 
@@ -2014,7 +2177,7 @@ def user_edit(request, user_id):
     return JsonResponse({'success': True, 'message': f'User "{target_user.username}" updated.', 'user': _user_to_dict(target_user)})
 
 
-@user_passes_test(is_admin)
+@user_passes_test(is_system_admin)
 def user_toggle_active(request, user_id):
     """Toggle a user's is_active status."""
     if request.method != 'POST':
@@ -2048,7 +2211,7 @@ def user_toggle_active(request, user_id):
     })
 
 
-@user_passes_test(is_admin)
+@user_passes_test(is_system_admin)
 def user_reset_password(request, user_id):
     """Send a password-reset email to the target user."""
     if request.method != 'POST':

@@ -86,3 +86,28 @@ class AutoScanConfig(models.Model):
     def __str__(self):
         status = 'enabled' if self.is_enabled else 'paused'
         return f"AutoScanConfig ({status}, {self.window_start_hour}:00–{self.window_end_hour}:00)"
+
+
+class GhanaPlace(models.Model):
+    """
+    Local gazetteer of Ghana place names.
+    Populated by the import_ghana_places management command (GeoNames bulk data).
+    Google Geocoding API results are also cached here so future lookups are instant.
+    """
+    name        = models.CharField(max_length=200, db_index=True)
+    ascii_name  = models.CharField(max_length=200, db_index=True)
+    latitude    = models.FloatField()
+    longitude   = models.FloatField()
+    feature_code = models.CharField(max_length=10, blank=True)  # PPL, PPLA, PPLX, etc.
+    population  = models.IntegerField(default=0)
+    region      = models.CharField(max_length=100, blank=True)  # admin1 name
+    source      = models.CharField(max_length=20, default='geonames')  # 'geonames' or 'google'
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['name']),
+            models.Index(fields=['ascii_name']),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.latitude:.4f}, {self.longitude:.4f})"

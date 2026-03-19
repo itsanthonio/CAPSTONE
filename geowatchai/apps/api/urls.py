@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 
-from .views import JobViewSet, ResultViewSet, DetectedSiteViewSet, ConcessionGeoJSONView, AlertViewSet, RegionGeoJSONView, my_assignments_notifications
+from .views import JobViewSet, ResultViewSet, DetectedSiteViewSet, ConcessionGeoJSONView, AlertViewSet, RegionGeoJSONView, my_assignments_notifications, geocode_proxy
 
 router = DefaultRouter()
 router.register(r'jobs', JobViewSet, basename='job')
@@ -28,5 +28,6 @@ urlpatterns = [
     path('alerts/<pk>/update/', AlertViewSet.as_view({'put': 'update', 'patch': 'update'}), name='alert-update'),
     path('alerts/<pk>/delete/', AlertViewSet.as_view({'delete': 'delete'}), name='alert-delete'),
     path('my-assignments/', my_assignments_notifications, name='my-assignments'),
+    path('geocode/', geocode_proxy, name='geocode'),
     path('notifications/', include('apps.notifications.urls')),
 ]

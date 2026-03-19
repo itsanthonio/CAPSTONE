@@ -19,10 +19,30 @@ class MapHandler {
     initializeMap() {
         this.map = new maplibregl.Map({
             container: this.containerId,
-            style: 'https://tiles.openfreemap.org/styles/liberty',
+            style: {
+                version: 8,
+                glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+                sources: {
+                    'google-satellite': {
+                        type: 'raster',
+                        tiles: [
+                            'https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+                            'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+                            'https://mt2.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+                            'https://mt3.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'
+                        ],
+                        tileSize: 256,
+                        attribution: '© Google'
+                    }
+                },
+                layers: [{
+                    id: 'google-satellite-base',
+                    type: 'raster',
+                    source: 'google-satellite'
+                }]
+            },
             center: this.options.center || [-1.6244, 6.6885],
             zoom: this.options.zoom || 8,
-            zoomControl: true
         });
 
         this.map.on('load', () => {
@@ -119,6 +139,28 @@ class MapHandler {
     }
 
     setupMapLayers() {
+        // --- Street labels overlay (Google hybrid roads/labels, hidden by default) ---
+        this.map.addSource('google-labels', {
+            type: 'raster',
+            tiles: [
+                'https://mt0.google.com/vt/lyrs=h&x={x}&y={y}&z={z}',
+                'https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}',
+                'https://mt2.google.com/vt/lyrs=h&x={x}&y={y}&z={z}',
+                'https://mt3.google.com/vt/lyrs=h&x={x}&y={y}&z={z}'
+            ],
+            tileSize: 256,
+            attribution: '© Google'
+        });
+        // Default ON; restore persisted preference (user may have toggled it off)
+        const savedLabels = localStorage.getItem('streetLabels');
+        const labelsVis = savedLabels === 'none' ? 'none' : 'visible';
+        this.map.addLayer({
+            id: 'street-labels-layer',
+            type: 'raster',
+            source: 'google-labels',
+            layout: { visibility: labelsVis }
+        });
+
         // --- Legal concessions layer (green outline, semi-transparent fill) ---
         this.map.addSource('concessions', {
             type: 'geojson',
@@ -298,6 +340,7 @@ class MapHandler {
 
     toggleLayer(layerId) {
         const layerMap = {
+            'street-labels': ['street-labels-layer'],
             'detections': ['detections-layer', 'detections-outline'],
             'concessions': ['concessions-fill', 'concessions-outline'],
             'water-bodies': ['water-bodies-fill', 'water-bodies-outline'],
@@ -310,6 +353,10 @@ class MapHandler {
                 this.map.setLayoutProperty(id, 'visibility', vis === 'none' ? 'visible' : 'none');
             }
         });
+        if (layerId === 'street-labels') {
+            const newVis = this.map.getLayoutProperty('street-labels-layer', 'visibility');
+            localStorage.setItem('streetLabels', newVis);
+        }
     }
 
     handleAOICreated(e) {
@@ -344,9 +391,9 @@ class MapHandler {
                 scanBtn.classList.add('opacity-50', 'cursor-not-allowed');
                 scanBtn.classList.remove('hover:bg-opacity-90');
             }
-        } else if (ha > 1000) {
+        } else if (ha > 600) {
             if (warningEl) {
-                warningEl.textContent = `Area too large (${ha.toFixed(2)} ha). Maximum is 1,000 ha.`;
+                warningEl.textContent = `Area too large (${ha.toFixed(2)} ha). Maximum is 600 ha.`;
                 warningEl.classList.remove('hidden');
             }
             if (scanBtn) {
@@ -385,8 +432,8 @@ class MapHandler {
             alert(`Area too small (${ha.toFixed(2)} ha). Please draw an area of at least 100 hectares.`);
             return;
         }
-        if (ha > 1000) {
-            alert(`Area too large (${ha.toFixed(2)} ha). Please draw an area no greater than 1,000 hectares.`);
+        if (ha > 600) {
+            alert(`Area too large (${ha.toFixed(2)} ha). Please draw an area no greater than 600 hectares.`);
             return;
         }
 
@@ -422,79 +469,100 @@ class MapHandler {
                     model_version: 'v1.0'
                 })
             });
-            if (!response.ok) throw new Error('Server responded with ' + response.status);
+            if (!response.ok) {
+                let detail = '';
+                try {
+                    const errBody = await response.json();
+                    detail = errBody.detail || errBody.error || JSON.stringify(errBody);
+                } catch (_) {}
+                throw new Error(`${response.status}: ${detail || response.statusText}`);
+            }
             const job = await response.json();
             this.pollJobStatus(job.id);
         } catch (err) {
             this.isPolling = false; // Release lock on error so user can retry
             console.error("Failed to start job:", err);
-            alert("Error starting scan: Ensure you are logged in and CSRF is valid.");
+            alert(`Error starting scan: ${err.message}`);
         } finally {
             if (scanBtn) { scanBtn.textContent = 'Scan AOI'; scanBtn.disabled = false; }
         }
     }
 
     pollJobStatus(jobId) {
-        console.log("Starting job status poll at:", new Date().toISOString());
-        console.log("Polling status for job:", jobId);
+        const POLL_MS = 3000;
+        const MAX_POLLS = 200; // 10 minutes at 3s
         let pollCount = 0;
-        const maxPolls = 200; // Max 10 minutes of polling (200 * 3 seconds)
-        
+        let elapsed = 0;
+
+        const statusLabels = {
+            queued:         'Queued…',
+            validating:     'Validating…',
+            exporting:      'Fetching imagery…',
+            preprocessing:  'Processing…',
+            inferring:      'Processing…',
+            postprocessing: 'Processing…',
+            storing:        'Saving…',
+        };
+
+        const statusEl = document.getElementById('scan-status-text');
+        const scanBtn  = document.getElementById('scan-aoi-btn');
+
+        const setStatus = (label) => {
+            if (statusEl) {
+                statusEl.textContent = label;
+                statusEl.classList.remove('hidden');
+            }
+        };
+
+        const clearStatus = () => {
+            if (statusEl) {
+                statusEl.textContent = '';
+                statusEl.classList.add('hidden');
+            }
+        };
+
+        setStatus('Starting…');
+
         const interval = setInterval(async () => {
             pollCount++;
-            if (pollCount > maxPolls) {
+            elapsed = Math.round(pollCount * POLL_MS / 1000);
+
+            if (pollCount > MAX_POLLS) {
                 clearInterval(interval);
-                console.error("Job polling timed out after 10 minutes");
-                alert("Scan timed out. The job may be taking longer than expected or may have failed.");
+                clearStatus();
+                alert("Scan timed out after 10 minutes.");
                 return;
             }
-            
+
             try {
-                const res = await fetch(`/api/jobs/${jobId}/?t=${new Date().getTime()}`);
-                if (!res.ok) {
-                    throw new Error(`Server responded with ${res.status}`);
-                }
-                const status = await res.json();
-                console.log("Full API Response:", status);
-                console.log("Current Backend Status:", status.status);
-                console.log("Poll count:", pollCount, "of", maxPolls);
-                
-                // Force direct check on status.status field
-                if (status.status === 'completed') {
+                const res = await fetch(`/api/jobs/${jobId}/?t=${Date.now()}`);
+                if (!res.ok) throw new Error(`Server responded with ${res.status}`);
+                const data = await res.json();
+
+                if (data.status === 'completed') {
                     clearInterval(interval);
-                    console.log("Job completed - forcing immediate success handling");
-                    this.handleJobSuccess(status);
+                    clearStatus();
+                    this.handleJobSuccess(data);
                     return;
                 }
-                
-                if (status.status === 'failed') {
+
+                if (data.status === 'failed') {
                     clearInterval(interval);
-                    this.handleJobFailure(status);
+                    clearStatus();
+                    this.handleJobFailure(data);
                     return;
                 }
-                
-                // Handle all non-final states - continue polling
-                const processingStates = ['queued', 'validating', 'exporting', 'preprocessing', 'inferring', 'postprocessing', 'storing'];
-                if (processingStates.includes(status.status)) {
-                    console.log("Job still processing at poll count:", pollCount, "Status:", status.status);
-                    // Update scan button to show progress
-                    const scanBtn = document.getElementById('scan-aoi-btn');
-                    if (scanBtn) {
-                        scanBtn.textContent = `Scanning... (${pollCount * 3}s) - ${status.status}`;
-                        scanBtn.disabled = true;
-                    }
-                } else {
-                    console.warn("Unknown job status at poll count:", pollCount, "Status:", status.status);
-                    console.warn("Available fields:", Object.keys(status));
-                }
+
+                const label = statusLabels[data.status] || data.status;
+                setStatus(`${label} (${elapsed}s)`);
+
             } catch (e) {
                 clearInterval(interval);
-                this.isPolling = false; // Reset polling state
-                console.error("Error polling job status at poll count:", pollCount);
-                console.error("Fetch error:", e);
+                clearStatus();
+                this.isPolling = false;
                 alert("Error checking scan status: " + e.message);
             }
-        }, 3000);
+        }, POLL_MS);
     }
 
     handleJobSuccess(data) {

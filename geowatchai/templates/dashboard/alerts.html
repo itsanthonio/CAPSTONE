@@ -176,7 +176,7 @@
                         <label for="inspector-search" class="gw-label">Search Inspectors</label>
                         <div class="relative">
                             <input type="text" id="inspector-search"
-                                   placeholder="Search by name or organization..."
+                                   placeholder="Search by name..."
                                    class="gw-input w-full">
                             <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -672,7 +672,6 @@ var loadInspectors = function() {
                         <div class="flex items-center justify-between">
                             <div>
                                 <div class="font-medium" style="color: var(--text-primary);">${inspector.user}</div>
-                                <div class="text-sm" style="color: var(--text-secondary);">${inspector.organization}</div>
                                 <div class="text-xs" style="color: ${inspector.is_available ? 'var(--status-resolved)' : 'var(--status-critical)'};">${inspector.is_available ? 'Available' : 'Busy'}</div>
                             </div>
                             <input type="radio" name="inspector" value="${inspector.user}" class="inspector-radio"
@@ -1243,7 +1242,7 @@ function showConfirm(title, message) {
 
         async function loadInspectors() {
             try {
-                const response = await fetch('/api/inspectors/', {
+                const response = await fetch('/accounts/api/inspectors/', {
                     credentials: 'include',
                     headers: {
                         'Accept': 'application/json',
@@ -1259,12 +1258,11 @@ function showConfirm(title, message) {
                     <div class="p-3 cursor-pointer inspector-item"
                          style="border-bottom: 1px solid var(--border-subtle);"
                          onmouseover="this.style.background='var(--surface-3)'" onmouseout="this.style.background=''"
-                         data-inspector-id="${inspector.id}"
-                         onclick="selectInspector('${inspector.id}')">
+                         data-inspector-username="${inspector.user}"
+                         onclick="selectInspector('${inspector.user}')">
                         <div class="flex items-center justify-between">
                             <div class="flex-1">
-                                <div class="font-medium" style="color: var(--text-primary);">${inspector.user__username}</div>
-                                <div class="text-sm" style="color: var(--text-secondary);">${inspector.organization} - ${inspector.get_role_display()}</div>
+                                <div class="font-medium" style="color: var(--text-primary);">${inspector.user}</div>
                             </div>
                             <div class="text-sm" style="color: ${inspector.is_available ? 'var(--status-resolved)' : 'var(--status-critical)'};">
                                 ${inspector.is_available ? 'Available' : 'Busy'}
@@ -1279,7 +1277,7 @@ function showConfirm(title, message) {
             }
         }
 
-        function selectInspector(inspectorId) {
+        function selectInspector(username) {
             // Remove previous selection
             document.querySelectorAll('.inspector-item').forEach(item => {
                 item.style.background = '';
@@ -1287,11 +1285,11 @@ function showConfirm(title, message) {
             });
 
             // Add selection to clicked item
-            const selectedItem = document.querySelector(`[data-inspector-id="${inspectorId}"]`);
+            const selectedItem = document.querySelector(`[data-inspector-username="${username}"]`);
             if (selectedItem) {
                 selectedItem.style.background = 'var(--status-dispatched-bg)';
                 selectedItem.style.borderColor = 'var(--status-dispatched-border)';
-                selectedInspector = inspectorId;
+                selectedInspector = username;
             }
         }
 
@@ -1302,7 +1300,7 @@ function showConfirm(title, message) {
             }
 
             try {
-                const response = await fetch('/api/assignments/', {
+                const response = await fetch('/accounts/api/assignments/', {
                     method: 'POST',
                     credentials: 'include',
                     headers: {
@@ -1311,7 +1309,7 @@ function showConfirm(title, message) {
                     },
                     body: JSON.stringify({
                         alert_id: currentAlertId,
-                        inspector_id: selectedInspector,
+                        inspector: selectedInspector,
                         notes: document.getElementById('assignment-notes').value
                     })
                 });
@@ -1649,7 +1647,7 @@ function showConfirm(title, message) {
         selectInspector,
         assignInspector,
         refreshAlerts: () => loadAlerts(currentPage),
-        isAdmin: document.body.dataset.userRole === 'admin',
+        isAdmin: document.body.dataset.userRole === 'agency_admin',
         
         // Alert Creation Functions
         openAddAlertModal: function() {

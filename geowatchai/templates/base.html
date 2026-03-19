@@ -233,6 +233,8 @@
                             {% if user.is_authenticated %}
                                 {% if user.profile.role == 'inspector' %}
                                 <a href="{% url 'dashboard:inspector' %}" class="text-[12px] font-semibold text-fg-link hover:underline">My assignments →</a>
+                                {% elif user.profile.role == 'system_admin' %}
+                                <a href="{% url 'dashboard:admin_home' %}" class="text-[12px] font-semibold text-fg-link hover:underline">System dashboard →</a>
                                 {% else %}
                                 <a href="{% url 'dashboard:alerts' %}" class="text-[12px] font-semibold text-fg-link hover:underline">View all alerts →</a>
                                 {% endif %}
@@ -294,7 +296,7 @@
                                 </svg>
                                 Change Password
                             </a>
-                            {% if user.is_staff %}
+                            {% if user.profile.role == 'system_admin' %}
                             <a href="{% url 'admin:index' %}"
                                class="flex items-center gap-2.5 px-4 py-2 text-[13px] text-fg-secondary hover:bg-surface-3 hover:text-fg-primary transition-colors"
                                style="transition-duration:120ms">
@@ -335,7 +337,7 @@
         <aside class="fixed left-0 top-12 bottom-0 w-55 bg-surface-1 border-r border-edge-subtle z-40 overflow-y-auto flex flex-col">
             <nav class="flex-1 py-2">
                 {% if user.is_authenticated and user.profile.role == 'inspector' %}
-                <!-- Inspector Navigation -->
+                <!-- ── Inspector Navigation ───────────────────── -->
                 <p class="gw-nav-group">Navigation</p>
                 <ul class="list-none p-0 m-0">
                     <li>
@@ -358,8 +360,81 @@
                     </li>
                 </ul>
 
+                {% elif user.is_authenticated and user.profile.role == 'system_admin' %}
+                <!-- ── System Administrator Navigation ───────── -->
+                <p class="gw-nav-group">Platform</p>
+                <ul class="list-none p-0 m-0 mb-1">
+                    <li>
+                        <a href="{% url 'dashboard:admin_home' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'admin_home' %}active{% endif %}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                            </svg>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard:user_management' %}"
+                           class="gw-nav-item {% if 'user_management' in request.resolver_match.url_name or 'user_create' in request.resolver_match.url_name or 'user_edit' in request.resolver_match.url_name %}active{% endif %}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                            <span>Users</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard:organisation_management' %}"
+                           class="gw-nav-item {% if 'organisation' in request.resolver_match.url_name %}active{% endif %}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                            </svg>
+                            <span>Organisations</span>
+                        </a>
+                    </li>
+                </ul>
+
+                <p class="gw-nav-group">Administration</p>
+                <ul class="list-none p-0 m-0 mb-1">
+                    <li>
+                        <a href="{% url 'uploads:data_uploads' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'data_uploads' %}active{% endif %}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                <path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                            </svg>
+                            <span>Data Uploads</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard:model_insights' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'model_insights' %}active{% endif %}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            </svg>
+                            <span>Model Insights</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard:audit' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'audit' %}active{% endif %}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                            </svg>
+                            <span>Audit Trail</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard:settings' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                            <span>Settings</span>
+                        </a>
+                    </li>
+                </ul>
+
                 {% else %}
-                <!-- Admin / Analyst Navigation -->
+                <!-- ── Agency Administrator Navigation ────────── -->
                 <p class="gw-nav-group">Overview</p>
                 <ul class="list-none p-0 m-0 mb-1">
                     <li>
@@ -413,45 +488,18 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{% url 'dashboard:model_insights' %}"
-                           class="gw-nav-item {% if request.resolver_match.url_name == 'model_insights' %}active{% endif %}">
+                        <a href="{% url 'dashboard:report' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'report' %}active{% endif %}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                             </svg>
-                            <span>Model Insights</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{% url 'uploads:data_uploads' %}"
-                           class="gw-nav-item {% if request.resolver_match.url_name == 'data_uploads' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                            </svg>
-                            <span>Data Uploads</span>
+                            <span>Reports</span>
                         </a>
                     </li>
                 </ul>
 
                 <p class="gw-nav-group">System</p>
                 <ul class="list-none p-0 m-0">
-                    <li>
-                        <a href="{% url 'dashboard:user_management' %}"
-                           class="gw-nav-item {% if 'user_management' in request.resolver_match.url_name %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            </svg>
-                            <span>Users</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{% url 'dashboard:audit' %}"
-                           class="gw-nav-item {% if request.resolver_match.url_name == 'audit' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-                            </svg>
-                            <span>Audit Trail</span>
-                        </a>
-                    </li>
                     <li>
                         <a href="{% url 'dashboard:settings' %}"
                            class="gw-nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
@@ -469,7 +517,7 @@
                 <div class="mt-3 pt-3 border-t border-edge-subtle mx-3">
 
                     <!-- AOI Tools -->
-                    <p class="gw-nav-group px-1 pt-2 pb-2">AOI Tools</p>
+                    <p class="gw-nav-group px-1 pt-4 pb-2">AOI Tools</p>
                     <div class="px-1 space-y-2">
                         <button id="draw-aoi-btn" class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
@@ -502,6 +550,7 @@
                                         class="btn-primary w-full text-[12px] py-1.5">
                                     Scan AOI
                                 </button>
+                                <p id="scan-status-text" class="hidden text-[11px] text-center truncate" style="color:var(--text-secondary)"></p>
                             </div>
                         </div>
                     </div>
@@ -509,6 +558,11 @@
                     <!-- Layer toggles -->
                     <p class="gw-nav-group px-1 pt-4 pb-2">Map Layers</p>
                     <div class="px-1 space-y-1.5">
+                        <button id="toggle-satellite-layer"
+                                class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
+                            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#94a3b8"></span>
+                            Street Labels
+                        </button>
                         <button id="toggle-detection-layer"
                                 class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
                             <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:var(--viz-illegal)"></span>

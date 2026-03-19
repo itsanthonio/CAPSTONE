@@ -19,6 +19,8 @@ urlpatterns = [
     
     # Dashboard URLs
     path('home/', views.dashboard_home, name='home'),
+    path('admin/', views.system_admin_dashboard, name='admin_home'),
+    path('organisations/', views.organisation_management, name='organisation_management'),
     path('api/chart-data/', views.dashboard_chart_data, name='chart_data'),
     path('api/kpis/', views.dashboard_kpis, name='kpis'),
     path('alerts/', views.dashboard_alerts, name='alerts'),

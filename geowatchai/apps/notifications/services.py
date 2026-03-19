@@ -187,31 +187,34 @@ def push_notification(user, title, body='', link='', kind='system'):
 # Recipient helpers
 # ─────────────────────────────────────────────
 
-def _admin_recipients():
+def _job_creator_email(job):
+    """
+    Return the email of the user who created the job, if they have email alerts on.
+    Returns None for automated jobs (no creator) or if alerts are disabled.
+    """
     try:
-        from apps.accounts.models import UserProfile
-        profiles = UserProfile.objects.filter(
-            role=UserProfile.Role.ADMIN,
-            receive_email_alerts=True,
-            user__email__gt='',
-        ).select_related('user')
-        return [p.user.email for p in profiles if p.user.email]
+        creator = getattr(job, 'created_by', None)
+        if creator is None:
+            return None
+        profile = getattr(creator, 'profile', None)
+        if profile and profile.receive_email_alerts and creator.email:
+            return creator.email
     except Exception as exc:
-        logger.warning(f'[Notifications] Could not fetch admin recipients: {exc}')
-        return []
+        logger.warning(f'[Notifications] Could not get job creator email: {exc}')
+    return None
 
 
-def _admin_users():
-    """Return User objects for all admins (for in-app notification delivery)."""
+def _job_creator_user(job):
+    """
+    Return the User who created the job.
+    Returns None for automated jobs or if the user can't be resolved.
+    """
     try:
-        from apps.accounts.models import UserProfile
-        return [
-            p.user for p in
-            UserProfile.objects.filter(role=UserProfile.Role.ADMIN).select_related('user')
-        ]
+        creator = getattr(job, 'created_by', None)
+        return creator
     except Exception as exc:
-        logger.warning(f'[Notifications] Could not fetch admin users: {exc}')
-        return []
+        logger.warning(f'[Notifications] Could not get job creator user: {exc}')
+    return None
 
 
 def _inspector_recipient(inspector_profile):
@@ -228,9 +231,13 @@ def _inspector_recipient(inspector_profile):
 # ─────────────────────────────────────────────
 
 def send_scan_completed(job):
-    recipients = _admin_recipients()
-    if not recipients:
+    # Automated jobs (no creator) → no email
+    if getattr(job, 'source', None) == 'automated' or getattr(job, 'created_by', None) is None:
         return
+    recipient = _job_creator_email(job)
+    if not recipient:
+        return
+    recipients = [recipient]
 
     illegal = job.illegal_count or 0
     total   = job.total_detections or 0
@@ -281,8 +288,9 @@ def send_scan_completed(job):
     _send(subject, plain, _wrap(body, f'{total} sites detected, {illegal} illegal'), recipients, tag='scan_completed')
 
     notif_body = f'{illegal} illegal site(s) flagged.' if illegal > 0 else 'No illegal sites detected.'
-    for u in _admin_users():
-        push_notification(u, f'Scan complete — {total} site(s) detected', notif_body, '/dashboard/alerts/', 'alert')
+    creator = _job_creator_user(job)
+    if creator:
+        push_notification(creator, f'Scan complete — {total} site(s) detected', notif_body, '/dashboard/alerts/', 'alert')
 
 
 # ─────────────────────────────────────────────
@@ -290,9 +298,13 @@ def send_scan_completed(job):
 # ─────────────────────────────────────────────
 
 def send_scan_failed(job):
-    recipients = _admin_recipients()
-    if not recipients:
+    # Automated jobs (no creator) → no email
+    if getattr(job, 'source', None) == 'automated' or getattr(job, 'created_by', None) is None:
         return
+    recipient = _job_creator_email(job)
+    if not recipient:
+        return
+    recipients = [recipient]
 
     reason = getattr(job, 'failure_reason', None) or 'Unknown error — check server logs.'
 
@@ -326,8 +338,9 @@ def send_scan_failed(job):
 
     _send(subject, plain, _wrap(body, 'A scan job has failed and requires attention'), recipients, tag='scan_failed')
 
-    for u in _admin_users():
-        push_notification(u, 'Satellite scan failed', f'Job {job.id}: {str(reason)[:120]}', '/dashboard/home/', 'system')
+    creator = _job_creator_user(job)
+    if creator:
+        push_notification(creator, 'Satellite scan failed', f'Job {job.id}: {str(reason)[:120]}', '/dashboard/home/', 'system')
 
 
 # ─────────────────────────────────────────────
@@ -335,9 +348,14 @@ def send_scan_failed(job):
 # ─────────────────────────────────────────────
 
 def send_field_report_received(assignment, alert):
-    recipients = _admin_recipients()
-    if not recipients:
+    _job = getattr(getattr(alert, 'detected_site', None), 'job', None) if alert else None
+    # Automated or no-creator jobs → no email
+    if _job is None or getattr(_job, 'created_by', None) is None:
         return
+    recipient = _job_creator_email(_job)
+    if not recipient:
+        return
+    recipients = [recipient]
 
     outcome_display = dict(
         assignment.__class__.Outcome.choices
@@ -391,8 +409,9 @@ def send_field_report_received(assignment, alert):
 
     _send(subject, plain, _wrap(body, f'Field report: {outcome_display} by {inspector_name}'), recipients, tag='field_report_received')
 
-    for u in _admin_users():
-        push_notification(u, f'Field report: {outcome_display}', f'Submitted by {inspector_name}.', '/dashboard/alerts/', 'report')
+    creator = _job_creator_user(_job)
+    if creator:
+        push_notification(creator, f'Field report: {outcome_display}', f'Submitted by {inspector_name}.', '/dashboard/alerts/', 'report')
 
 
 # ─────────────────────────────────────────────
@@ -586,10 +605,14 @@ def send_sla_reminder(assignment, alert, days_overdue):
 # ─────────────────────────────────────────────
 
 def send_sla_escalation(assignment, alert, days_overdue):
-    """Notify admins that an inspector's assignment is significantly overdue."""
-    recipients = _admin_recipients()
-    if not recipients:
+    """Notify the job creator that an inspector's assignment is significantly overdue."""
+    _job = getattr(getattr(alert, 'detected_site', None), 'job', None) if alert else None
+    if _job is None or getattr(_job, 'created_by', None) is None:
         return
+    recipient = _job_creator_email(_job)
+    if not recipient:
+        return
+    recipients = [recipient]
 
     inspector_name = (
         assignment.inspector.user.get_full_name()
@@ -635,9 +658,10 @@ def send_sla_escalation(assignment, alert, days_overdue):
 
     _send(subject, plain, _wrap(body, f'SLA breach: {inspector_name} {days_overdue}d overdue'), recipients, tag='sla_escalation')
 
-    for u in _admin_users():
+    creator = _job_creator_user(_job)
+    if creator:
         push_notification(
-            u,
+            creator,
             f'SLA breach: {inspector_name} — {days_overdue}d overdue',
             f'Assignment in {region} not submitted. Please follow up or reassign.',
             '/dashboard/alerts/',

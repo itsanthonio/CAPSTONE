@@ -65,13 +65,12 @@ class RoleBasedAccessMiddleware:
             if path.startswith(api_path):
                 return self.get_response(request)
         
-        # Get user role - default to ADMIN if no profile
+        # Get user role - default to INSPECTOR if no profile (safest default)
         try:
             user_role = request.user.profile.role
         except (UserProfile.DoesNotExist, AttributeError):
-            # Create profile if missing - default to ADMIN
-            UserProfile.objects.create(user=request.user, role=UserProfile.Role.ADMIN)
-            user_role = UserProfile.Role.ADMIN
+            UserProfile.objects.create(user=request.user, role=UserProfile.Role.INSPECTOR)
+            user_role = UserProfile.Role.INSPECTOR
         
         # Check if user is trying to access admin-only area
         for admin_path in self.admin_only_paths:

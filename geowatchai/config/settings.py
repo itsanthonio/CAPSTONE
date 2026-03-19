@@ -277,7 +277,7 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_RATES': {
         'anon': '20/minute',   # unauthenticated callers (very tight)
-        'user': '60/minute',   # authenticated users (general API)
+        'user': '200/minute',  # authenticated users (general API — allows status polling)
         'job_create': '5/minute',  # job creation — burns GEE quota
     },
 }

@@ -10,7 +10,13 @@
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-bold" style="color: var(--text-primary);">Dashboard</h1>
-            <p class="text-sm mt-0.5" style="color: var(--text-secondary);">Illegal mining detection overview — Ghana</p>
+            <p class="text-sm mt-0.5" style="color: var(--text-secondary);">
+                {% if user.profile.organisation %}
+                    {{ user.profile.organisation.name }} — Illegal mining detection overview
+                {% else %}
+                    Illegal mining detection overview — Ghana
+                {% endif %}
+            </p>
         </div>
         <div class="flex items-center gap-2">
             <a href="{% url 'dashboard:report' %}" class="btn-secondary inline-flex items-center gap-2">

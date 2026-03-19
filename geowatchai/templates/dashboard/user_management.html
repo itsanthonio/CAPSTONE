@@ -54,7 +54,7 @@
             <select id="org-filter-select" name="org" class="gw-input">
                 <option value="">All organisations</option>
                 {% for val, label in org_choices %}
-                <option value="{{ val }}" {% if org_filter == val %}selected{% endif %}>{{ label }}</option>
+                <option value="{{ val }}" {% if org_filter == val|stringformat:'s' %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -102,15 +102,15 @@
                         </td>
                         <!-- Role -->
                         <td class="px-4 py-3">
-                            {% if u.profile.role == 'admin' %}
-                            <span class="role-pill-admin px-2 py-0.5 text-xs font-semibold rounded-full">Admin</span>
+                            {% if u.profile.role == 'system_admin' or u.profile.role == 'agency_admin' %}
+                            <span class="role-pill-admin px-2 py-0.5 text-xs font-semibold rounded-full">{{ u.profile.get_role_display }}</span>
                             {% else %}
-                            <span class="role-pill-inspector px-2 py-0.5 text-xs font-semibold rounded-full">Inspector</span>
+                            <span class="role-pill-inspector px-2 py-0.5 text-xs font-semibold rounded-full">{{ u.profile.get_role_display }}</span>
                             {% endif %}
                         </td>
                         <!-- Organisation -->
                         <td class="px-4 py-3" style="color: var(--text-secondary);">
-                            {{ u.profile.get_organization_display|default:"—" }}
+                            {{ u.profile.organisation.name|default:"—" }}
                         </td>
                         <!-- Phone -->
                         <td class="px-4 py-3" style="color: var(--text-secondary);">
@@ -132,7 +132,7 @@
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-1 justify-end">
                                 <!-- Edit -->
-                                <button onclick="openEditModal({{ u.id }}, '{{ u.username|escapejs }}', '{{ u.email|escapejs }}', '{{ u.first_name|escapejs }}', '{{ u.last_name|escapejs }}', '{{ u.profile.role }}', '{{ u.profile.organization }}', '{{ u.profile.phone_number|escapejs }}')"
+                                <button onclick="openEditModal({{ u.id }}, '{{ u.username|escapejs }}', '{{ u.email|escapejs }}', '{{ u.first_name|escapejs }}', '{{ u.last_name|escapejs }}', '{{ u.profile.role }}', '{{ u.profile.organisation_id|default:'' }}', '{{ u.profile.phone_number|escapejs }}')"
                                         class="btn-ghost p-1.5 rounded"
                                         aria-label="Edit {{ u.username }}"
                                         style="color: var(--text-tertiary);">
@@ -344,7 +344,7 @@ function esc(s) {
     return String(s).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 function rolePill(role, roleDisplay) {
-    return role === 'admin'
+    return (role === 'system_admin' || role === 'agency_admin')
         ? `<span class="role-pill-admin px-2 py-0.5 text-xs font-semibold rounded-full">${roleDisplay}</span>`
         : `<span class="role-pill-inspector px-2 py-0.5 text-xs font-semibold rounded-full">${roleDisplay}</span>`;
 }
@@ -377,13 +377,13 @@ function buildRowHTML(u) {
             </div>
         </td>
         <td class="px-4 py-3">${rolePill(u.role, u.role_display)}</td>
-        <td class="px-4 py-3" style="color:var(--text-secondary);">${u.organization_display || '—'}</td>
+        <td class="px-4 py-3" style="color:var(--text-secondary);">${u.organisation_display || '—'}</td>
         <td class="px-4 py-3" style="color:var(--text-secondary);">${u.phone_number || '—'}</td>
         <td class="px-4 py-3">${statusPill(u.id, u.is_active)}</td>
         <td class="px-4 py-3 text-xs" style="color:var(--text-tertiary);">${u.date_joined}</td>
         <td class="px-4 py-3">
             <div class="flex items-center gap-1 justify-end">
-                <button onclick="openEditModal(${u.id},'${esc(u.username)}','${esc(u.email)}','${esc(u.first_name)}','${esc(u.last_name)}','${u.role}','${u.organization}','${esc(u.phone_number)}')"
+                <button onclick="openEditModal(${u.id},'${esc(u.username)}','${esc(u.email)}','${esc(u.first_name)}','${esc(u.last_name)}','${u.role}','${u.organisation}','${esc(u.phone_number)}')"
                         class="btn-ghost p-1.5 rounded" title="Edit user" style="color:var(--text-tertiary);">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -481,7 +481,7 @@ function submitCreate() {
     data.append('first_name',   document.getElementById('c-first-name').value);
     data.append('last_name',    document.getElementById('c-last-name').value);
     data.append('role',         document.getElementById('c-role').value);
-    data.append('organization', document.getElementById('c-org').value);
+    data.append('organisation', document.getElementById('c-org').value);
     data.append('phone_number', document.getElementById('c-phone').value);
 
     fetch('{% url "dashboard:user_create" %}', { method: 'POST', body: data })
@@ -524,7 +524,7 @@ function submitEdit() {
     data.append('first_name',   document.getElementById('e-first-name').value);
     data.append('last_name',    document.getElementById('e-last-name').value);
     data.append('role',         document.getElementById('e-role').value);
-    data.append('organization', document.getElementById('e-org').value);
+    data.append('organisation', document.getElementById('e-org').value);
     data.append('phone_number', document.getElementById('e-phone').value);
 
     fetch(`/dashboard/users/${userId}/edit/`, { method: 'POST', body: data })

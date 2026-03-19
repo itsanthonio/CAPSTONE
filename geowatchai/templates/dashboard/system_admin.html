@@ -1,0 +1,266 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}System Dashboard — SankofaWatch{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold" style="color: var(--text-primary);">System Dashboard</h1>
+            <p class="text-sm mt-0.5" style="color: var(--text-secondary);">Platform-wide overview · System Administrator</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'dashboard:user_management' %}" class="btn-secondary inline-flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                Manage Users
+            </a>
+            <a href="{% url 'dashboard:organisation_management' %}" class="btn-primary inline-flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                </svg>
+                Manage Organisations
+            </a>
+        </div>
+    </div>
+
+    <!-- ── KPI Row 1: Users & Orgs ── -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+        <!-- Total Users -->
+        <div class="gw-card p-5">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Total Users</p>
+                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ total_users }}</p>
+                    <p class="text-xs mt-1" style="color: var(--text-secondary);">
+                        <span class="font-semibold" style="color: var(--accent);">{{ agency_admins }}</span> admins ·
+                        <span class="font-semibold" style="color: var(--status-info);">{{ inspectors }}</span> inspectors
+                    </p>
+                </div>
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background: var(--surface-3);">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--accent);" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-3 pt-3 text-xs" style="border-top: 1px solid var(--border-subtle); color: var(--text-secondary);">
+                +{{ new_users_week }} joined this week
+            </div>
+        </div>
+
+        <!-- Organisations -->
+        <div class="gw-card p-5">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Organisations</p>
+                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ total_orgs }}</p>
+                    <p class="text-xs mt-1" style="color: var(--text-secondary);">registered agencies</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background: var(--surface-3);">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--accent);" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-3 pt-3 text-xs" style="border-top: 1px solid var(--border-subtle); color: var(--text-secondary);">
+                <a href="{% url 'dashboard:organisation_management' %}" style="color: var(--accent);">Manage organisations →</a>
+            </div>
+        </div>
+
+        <!-- Total Jobs -->
+        <div class="gw-card p-5">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Scan Jobs</p>
+                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ total_jobs }}</p>
+                    <p class="text-xs mt-1" style="color: var(--text-secondary);">
+                        <span class="font-semibold" style="color: var(--status-resolved);">{{ completed_jobs }}</span> completed
+                    </p>
+                </div>
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background: var(--surface-3);">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--status-resolved);" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-3 pt-3 text-xs" style="border-top: 1px solid var(--border-subtle); color: var(--text-secondary);">
+                {{ jobs_this_month }} scans in the last 30 days
+            </div>
+        </div>
+
+        <!-- Detections -->
+        <div class="gw-card p-5">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Detected Sites</p>
+                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ total_detections }}</p>
+                    <p class="text-xs mt-1" style="color: var(--text-secondary);">
+                        <span class="font-semibold" style="color: var(--status-critical);">{{ illegal_sites }}</span> outside concessions
+                    </p>
+                </div>
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background: var(--surface-3);">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--status-critical);" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-3 pt-3 text-xs" style="border-top: 1px solid var(--border-subtle); color: var(--text-secondary);">
+                +{{ detections_week }} in the last 7 days
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── KPI Row 2: Alerts ── -->
+    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
+
+        <!-- Total Alerts -->
+        <div class="gw-card p-5">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Total Alerts</p>
+                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ total_alerts }}</p>
+                    <p class="text-xs mt-1" style="color: var(--text-secondary);">across all organisations</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background: var(--surface-3);">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--status-high);" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-3 pt-3 text-xs" style="border-top: 1px solid var(--border-subtle); color: var(--text-secondary);">
+                Platform-wide count
+            </div>
+        </div>
+
+        <!-- Open Alerts -->
+        <div class="gw-card p-5">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Open Alerts</p>
+                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: {% if open_alerts > 0 %}var(--status-critical){% else %}var(--text-primary){% endif %};">{{ open_alerts }}</p>
+                    <p class="text-xs mt-1" style="color: var(--text-secondary);">awaiting action</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background: {% if open_alerts > 0 %}var(--status-critical-bg){% else %}var(--surface-3){% endif %};">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: {% if open_alerts > 0 %}var(--status-critical){% else %}var(--text-secondary){% endif %};" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-3 pt-3 text-xs" style="border-top: 1px solid var(--border-subtle); color: var(--text-secondary);">
+                <span class="font-semibold" style="color: var(--status-critical);">{{ critical_alerts }}</span> critical priority
+            </div>
+        </div>
+
+        <!-- Inspectors -->
+        <div class="gw-card p-5">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Inspectors</p>
+                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ inspectors }}</p>
+                    <p class="text-xs mt-1" style="color: var(--text-secondary);">field verification officers</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background: var(--surface-3);">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--status-info);" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-3 pt-3 text-xs" style="border-top: 1px solid var(--border-subtle); color: var(--text-secondary);">
+                <a href="{% url 'dashboard:user_management' %}" style="color: var(--accent);">View all users →</a>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── Organisations + Recent Users ── -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Organisations Breakdown -->
+        <div class="gw-card">
+            <div class="flex items-center justify-between px-5 py-4 border-b" style="border-color: var(--border-subtle);">
+                <div>
+                    <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Organisations</h2>
+                    <p class="text-[11px] mt-0.5" style="color: var(--text-secondary);">Activity breakdown by agency</p>
+                </div>
+                <a href="{% url 'dashboard:organisation_management' %}" class="text-[12px] font-medium" style="color: var(--accent);">Manage →</a>
+            </div>
+
+            <!-- Column headers -->
+            <div class="grid px-5 py-2 text-[10px] font-medium uppercase tracking-[0.06em]" style="grid-template-columns: 1fr 70px 56px 80px; gap: 0 8px; color: var(--text-secondary); border-bottom: 1px solid var(--border-subtle);">
+                <span>Organisation</span>
+                <span class="text-right">Members</span>
+                <span class="text-right">Jobs</span>
+                <span class="text-right">Detections</span>
+            </div>
+
+            <div class="divide-y" style="divide-color: var(--border-subtle);">
+                {% for org in orgs %}
+                <div class="grid items-center px-5 py-3" style="grid-template-columns: 1fr 70px 56px 80px; gap: 0 8px;">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="w-7 h-7 rounded-md flex items-center justify-center shrink-0 text-[11px] font-bold" style="background: var(--surface-3); color: var(--accent);">
+                            {{ org.name|first|upper }}
+                        </div>
+                        <span class="text-sm font-medium truncate" style="color: var(--text-primary);">{{ org.name }}</span>
+                    </div>
+                    <span class="text-sm tabular-nums text-right" style="color: var(--text-secondary);">{{ org.member_count }}</span>
+                    <span class="text-sm tabular-nums text-right" style="color: var(--text-secondary);">{{ org.job_count }}</span>
+                    <span class="text-sm tabular-nums font-semibold text-right" style="color: {% if org.detection_count > 0 %}var(--status-critical){% else %}var(--text-secondary){% endif %};">{{ org.detection_count }}</span>
+                </div>
+                {% empty %}
+                <div class="px-5 py-8 text-center text-sm" style="color: var(--text-secondary);">No organisations yet.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Recent Users -->
+        <div class="gw-card">
+            <div class="flex items-center justify-between px-5 py-4 border-b" style="border-color: var(--border-subtle);">
+                <div>
+                    <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Recent Users</h2>
+                    <p class="text-[11px] mt-0.5" style="color: var(--text-secondary);">Latest accounts created</p>
+                </div>
+                <a href="{% url 'dashboard:user_management' %}" class="text-[12px] font-medium" style="color: var(--accent);">All users →</a>
+            </div>
+            <div class="divide-y" style="divide-color: var(--border-subtle);">
+                {% for u in recent_users %}
+                <div class="flex items-center justify-between px-5 py-3 gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0"
+                             style="background: var(--surface-3); color: var(--accent);">
+                            {{ u.username|first|upper }}
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium truncate" style="color: var(--text-primary);">{{ u.get_full_name|default:u.username }}</p>
+                            <p class="text-[11px] truncate" style="color: var(--text-secondary);">
+                                {% if u.profile.organisation %}{{ u.profile.organisation.name }}{% else %}No organisation{% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="text-right shrink-0">
+                        {% if u.profile.role == 'system_admin' %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold" style="background: var(--surface-3); color: var(--text-secondary);">System Admin</span>
+                        {% elif u.profile.role == 'agency_admin' %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold" style="background: var(--status-info-bg); color: var(--status-info);">Agency Admin</span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold" style="background: var(--status-resolved-bg); color: var(--status-resolved);">Inspector</span>
+                        {% endif %}
+                        <p class="text-[10px] mt-0.5" style="color: var(--text-secondary);">{{ u.date_joined|date:"d M Y" }}</p>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="px-5 py-8 text-center text-sm" style="color: var(--text-secondary);">No users yet.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

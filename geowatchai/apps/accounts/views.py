@@ -12,24 +12,22 @@ from apps.detections.models import Alert
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def inspector_list(request):
-    """Get list of available inspectors"""
+    """Get list of available inspectors, scoped to the requester's org for agency admins."""
     try:
-        inspectors = UserProfile.objects.filter(
+        qs = UserProfile.objects.filter(
             role=UserProfile.Role.INSPECTOR,
-            is_available=True
-        ).select_related('user').order_by('user__username')
-        
-        # Debug: Log the count of inspectors found
-        print(f"Found {inspectors.count()} inspectors")
-        
-        serializer = InspectorSerializer(inspectors, many=True)
+            is_available=True,
+        ).select_related('user', 'organisation').order_by('user__username')
+
+        # Agency admins only see inspectors from their own org
+        profile = request.user.profile
+        if profile.role == UserProfile.Role.AGENCY_ADMIN:
+            qs = qs.filter(organisation=profile.organisation)
+
+        serializer = InspectorSerializer(qs, many=True)
         return Response(serializer.data)
     except Exception as e:
-        print(f"Error in inspector_list: {e}")
-        return Response({
-            'error': str(e),
-            'inspectors': []
-        }, status=500)
+        return Response({'error': str(e), 'inspectors': []}, status=500)
 
 
 @api_view(['POST'])

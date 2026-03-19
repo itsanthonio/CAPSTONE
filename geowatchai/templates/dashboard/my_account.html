@@ -72,14 +72,19 @@
 
             <!-- Organisation -->
             <div class="px-6 py-5" style="border-bottom: 1px solid var(--border-subtle);">
-                <label for="id_organization" class="gw-label">Organisation</label>
-                <select id="id_organization" name="organization" class="gw-select">
+                <label class="gw-label">Organisation</label>
+                {% if profile.role == 'system_admin' %}
+                <select id="id_organisation" name="organisation" class="gw-select">
+                    <option value="">— None —</option>
                     {% for value, label in org_choices %}
-                    <option value="{{ value }}" {% if profile.organization == value %}selected{% endif %}>{{ label }}</option>
+                    <option value="{{ value }}" {% if profile.organisation_id|stringformat:'s' == value|stringformat:'s' %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
-                {% if errors.organization %}
-                <p class="mt-1 text-[12px]" style="color: var(--status-critical);">{{ errors.organization }}</p>
+                {% else %}
+                <p class="gw-input cursor-default select-none" style="color: var(--text-primary);">
+                    {{ profile.organisation.name|default:"No organisation assigned" }}
+                </p>
+                <p class="text-[11px] mt-1" style="color: var(--text-secondary);">Organisation is managed by your system administrator.</p>
                 {% endif %}
             </div>
 

@@ -11,8 +11,10 @@ from apps.accounts.models import UserProfile
 
 
 def is_admin(user):
-    """Check if user has admin role"""
-    return user.is_authenticated and hasattr(user, 'profile') and user.profile.role == UserProfile.Role.ADMIN
+    """Check if user has any admin role (system or agency)."""
+    return user.is_authenticated and hasattr(user, 'profile') and user.profile.role in (
+        UserProfile.Role.SYSTEM_ADMIN, UserProfile.Role.AGENCY_ADMIN
+    )
 
 @method_decorator(user_passes_test(is_admin), name='dispatch')
 class AnalysisView(LoginRequiredMixin, TemplateView):

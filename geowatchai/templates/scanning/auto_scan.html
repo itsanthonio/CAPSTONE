@@ -281,7 +281,7 @@
                 <span aria-hidden="true">⤢</span>
                 <span class="sr-only">Cinematic mode</span>
             </button>
-            {% if request.user.is_staff %}
+            {% if is_system_admin %}
             <button id="toggle-btn" class="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5" aria-label="Pause auto scan">
                 <span id="toggle-icon" aria-hidden="true">⏸</span>
                 <span id="toggle-label">Pause</span>
@@ -445,7 +445,7 @@
 </div><!-- end auto-scan-root -->
 
 <!-- Context menu (body-level to avoid z-index clip) -->
-{% if request.user.is_staff %}
+{% if is_system_admin %}
 <ul id="map-context-menu" class="hidden fixed" style="z-index:9999;">
     <li id="ctx-force-scan">Force scan this tile</li>
 </ul>
@@ -487,7 +487,7 @@
 (function () {
     'use strict';
 
-    const IS_STAFF = {% if request.user.is_staff %}true{% else %}false{% endif %};
+    const IS_STAFF = {% if is_system_admin %}true{% else %}false{% endif %};
 
     // ── Map init ───────────────────────────────────────────────────────────
     const GHANA_BOUNDS = L.latLngBounds([4.5, -3.5], [11.3, 1.4]);
@@ -1529,7 +1529,7 @@
     document.getElementById('history-live-btn2').addEventListener('click', exitHistoricalMode);
 
     // ── Right-click → force scan ────────────────────────────────────────────
-    {% if request.user.is_staff %}
+    {% if is_system_admin %}
     map.on('contextmenu', async e => {
         e.originalEvent.preventDefault();
         const { lat, lng } = e.latlng;

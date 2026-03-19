@@ -34,7 +34,7 @@ def auto_scan(request):
     config = AutoScanConfig.get()
     return render(request, 'scanning/auto_scan.html', {
         'config': config,
-        'is_staff': request.user.is_staff,
+        'is_system_admin': getattr(getattr(request.user, 'profile', None), 'role', None) == 'system_admin',
         'title': 'Auto Scan',
     })
 
@@ -223,8 +223,8 @@ class ScanningToggleAPI(View):
     """POST /scanning/api/toggle/ — pause or resume the scanner."""
 
     def post(self, request):
-        if not request.user.is_staff:
-            return JsonResponse({'error': 'Admin only'}, status=403)
+        if not (request.user.is_authenticated and hasattr(request.user, 'profile') and request.user.profile.role == 'system_admin'):
+            return JsonResponse({'error': 'System Administrator access required.'}, status=403)
         try:
             body = json.loads(request.body)
         except (json.JSONDecodeError, ValueError):
@@ -441,8 +441,8 @@ class ScanningForceScanAPI(View):
     """
 
     def post(self, request):
-        if not request.user.is_staff:
-            return JsonResponse({'error': 'Admin only'}, status=403)
+        if not (request.user.is_authenticated and hasattr(request.user, 'profile') and request.user.profile.role in ('system_admin', 'agency_admin')):
+            return JsonResponse({'error': 'Administrator access required.'}, status=403)
 
         try:
             body    = json.loads(request.body)

@@ -16,17 +16,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission
 
 
-class IsAdminRole(BasePermission):
-    """Grants access only to users whose UserProfile.role == 'admin'."""
-    message = 'Admin access required.'
-
-    def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
-            return False
-        try:
-            return request.user.profile.role == 'admin'
-        except Exception:
-            return False
+from apps.accounts.permissions import IsAdminRole, IsSystemAdmin, IsAgencyAdmin, OrgScopedMixin
 
 from apps.jobs.models import Job
 from apps.results.models import Result
@@ -55,9 +45,9 @@ def _audit(user, action, obj_id, **detail):
 
 
 def _is_admin(user):
-    """Return True if the user has the admin role."""
+    """Return True if the user has any admin role."""
     try:
-        return user.is_authenticated and user.profile.role == 'admin'
+        return user.is_authenticated and user.profile.role in ('system_admin', 'agency_admin')
     except Exception:
         return False
 
@@ -70,7 +60,8 @@ class JobCreateThrottle(UserRateThrottle):
     scope = 'job_create'
 
 
-class JobViewSet(viewsets.ModelViewSet):
+class JobViewSet(OrgScopedMixin, viewsets.ModelViewSet):
+    org_field = 'created_by__profile__organisation'
     """
     ViewSet for Job model with creation and status tracking.
 
@@ -83,6 +74,15 @@ class JobViewSet(viewsets.ModelViewSet):
     queryset = Job.objects.all()
     serializer_class = JobSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        # Job UUIDs are unguessable and only returned to the creator at scan
+        # time, so bypassing org-scoped filtering for direct pk lookups is safe.
+        # This ensures status polling never 404s regardless of org scoping.
+        from django.shortcuts import get_object_or_404
+        obj = get_object_or_404(Job, pk=self.kwargs['pk'])
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def get_throttles(self):
         if self.action == 'create':
@@ -220,7 +220,8 @@ class JobViewSet(viewsets.ModelViewSet):
             )
 
 
-class ResultViewSet(viewsets.ModelViewSet):
+class ResultViewSet(OrgScopedMixin, viewsets.ModelViewSet):
+    org_field = 'job__created_by__profile__organisation'
     """
     ViewSet for Result model with GeoJSON output.
 
@@ -337,7 +338,8 @@ class ResultViewSet(viewsets.ModelViewSet):
             )
 
 
-class DetectedSiteViewSet(viewsets.ReadOnlyModelViewSet):
+class DetectedSiteViewSet(OrgScopedMixin, viewsets.ReadOnlyModelViewSet):
+    org_field = 'job__created_by__profile__organisation'
     """
     Read-only ViewSet for DetectedSite.
     Provides site detail and timelapse frames for the map panel.
@@ -346,9 +348,10 @@ class DetectedSiteViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         from apps.detections.models import DetectedSite
-        return DetectedSite.objects.select_related(
+        self.queryset = DetectedSite.objects.select_related(
             'intersecting_concession', 'region', 'model_run', 'satellite_imagery', 'job'
         ).all()
+        return super().get_queryset()
 
     def list(self, request, *args, **kwargs):
         """Return detected sites as a GeoJSON FeatureCollection.
@@ -571,6 +574,7 @@ class AlertViewSet(viewsets.ViewSet):
 
     def get_queryset(self):
         from apps.detections.models import Alert
+        from django.db.models import Q
         qs = Alert.objects.select_related(
             'detected_site', 'detected_site__region', 'detected_site__job', 'assigned_to'
         )
@@ -583,6 +587,19 @@ class AlertViewSet(viewsets.ViewSet):
         if atype:    qs = qs.filter(alert_type=atype)
         if source in ('manual', 'automated'):
             qs = qs.filter(detected_site__job__source=source)
+        # Org scoping for agency admins
+        try:
+            role = self.request.user.profile.role
+            if role == 'agency_admin':
+                org = self.request.user.profile.organisation
+                if org is None:
+                    return qs.none()
+                qs = qs.filter(
+                    Q(detected_site__job__created_by__profile__organisation=org) |
+                    Q(detected_site__job__created_by__isnull=True)
+                )
+        except Exception:
+            pass
         return qs
 
     def list(self, request, *args, **kwargs):
@@ -803,7 +820,16 @@ class AlertViewSet(viewsets.ViewSet):
         
         try:
             inspector_profile = UserProfile.objects.get(id=inspector_id, role=UserProfile.Role.INSPECTOR)
-            
+
+            # Agency admins can only assign inspectors from their own org
+            try:
+                if request.user.profile.role == 'agency_admin':
+                    requester_org = request.user.profile.organisation
+                    if inspector_profile.organisation != requester_org:
+                        return Response({'error': 'You can only assign inspectors from your organisation.'}, status=403)
+            except Exception:
+                pass
+
             # Update alert
             alert.assigned_to = inspector_profile.user
             alert.status = 'dispatched'
@@ -953,8 +979,22 @@ class AlertViewSet(viewsets.ViewSet):
     def summary(self, request):
         """Return alert counts by status and severity."""
         from apps.detections.models import Alert
-        from django.db.models import Count
-        rows = Alert.objects.values('status', 'severity').annotate(cnt=Count('id'))
+        from django.db.models import Count, Q
+        qs = Alert.objects.all()
+        try:
+            role = request.user.profile.role
+            if role == 'agency_admin':
+                org = request.user.profile.organisation
+                if org is None:
+                    qs = Alert.objects.none()
+                else:
+                    qs = qs.filter(
+                        Q(detected_site__job__created_by__profile__organisation=org) |
+                        Q(detected_site__job__created_by__isnull=True)
+                    )
+        except Exception:
+            pass
+        rows = qs.values('status', 'severity').annotate(cnt=Count('id'))
         by_status, by_severity = {}, {}
         for row in rows:
             by_status[row['status']] = by_status.get(row['status'], 0) + row['cnt']
@@ -1148,6 +1188,15 @@ class AlertViewSet(viewsets.ViewSet):
         except UserProfile.DoesNotExist:
             return Response({'error': 'Inspector not found.'}, status=404)
 
+        # Agency admins can only assign inspectors from their own org
+        try:
+            if request.user.profile.role == 'agency_admin':
+                requester_org = request.user.profile.organisation
+                if inspector.organisation != requester_org:
+                    return Response({'error': 'You can only assign inspectors from your organisation.'}, status=403)
+        except Exception:
+            pass
+
         # Availability check
         if not inspector.is_available:
             return Response({'error': 'Inspector is not currently available for assignments.'}, status=400)
@@ -1258,3 +1307,102 @@ def my_assignments_notifications(request):
         return JsonResponse({'count': total, 'items': items})
     except Exception as exc:
         return JsonResponse({'count': 0, 'items': [], 'error': str(exc)})
+
+
+from django.views.decorators.http import require_GET
+
+@require_GET
+def geocode_proxy(request):
+    """
+    Geocoding with a three-tier lookup:
+      1. Local GhanaPlace table (GeoNames bulk import + cached Google results) — instant
+      2. Google Geocoding API (if GOOGLE_MAPS_API_KEY set) — best coverage, result cached
+      3. Nominatim fallback — no key required
+    """
+    import requests as _requests
+    from decouple import config as _config
+    from apps.scanning.models import GhanaPlace
+    from django.db.models import Q, Case, When, IntegerField
+
+    q = request.GET.get('q', '').strip()
+    if not q or len(q) < 2:
+        return JsonResponse({'results': []})
+
+    # ── 1. Local database ────────────────────────────────────────────────────
+    local_qs = GhanaPlace.objects.filter(
+        Q(name__icontains=q) | Q(ascii_name__icontains=q)
+    ).annotate(
+        # Exact / starts-with matches first, then contains
+        rank=Case(
+            When(name__iexact=q,        then=0),
+            When(name__istartswith=q,   then=1),
+            When(ascii_name__istartswith=q, then=2),
+            default=3,
+            output_field=IntegerField(),
+        )
+    ).order_by('rank', '-population')[:8]
+
+    if local_qs.exists():
+        results = []
+        for p in local_qs:
+            label = p.name
+            if p.region:
+                label += f', {p.region}'
+            label += ', Ghana'
+            results.append({'display_name': label, 'lat': p.latitude, 'lon': p.longitude})
+        return JsonResponse({'results': results})
+
+    # ── 2. Google Geocoding API ──────────────────────────────────────────────
+    api_key = _config('GOOGLE_MAPS_API_KEY', default='')
+    if api_key:
+        try:
+            url = (
+                'https://maps.googleapis.com/maps/api/geocode/json'
+                f'?address={q},+Ghana&key={api_key}&region=gh&language=en'
+            )
+            resp = _requests.get(url, timeout=5)
+            data = resp.json()
+            results = []
+            to_cache = []
+            for item in data.get('results', []):
+                loc = item['geometry']['location']
+                results.append({
+                    'display_name': item['formatted_address'],
+                    'lat': loc['lat'],
+                    'lon': loc['lng'],
+                })
+                # Cache for future local lookups
+                short_name = item['formatted_address'].split(',')[0].strip()
+                to_cache.append(GhanaPlace(
+                    name=short_name,
+                    ascii_name=short_name,
+                    latitude=loc['lat'],
+                    longitude=loc['lng'],
+                    source='google',
+                ))
+            if to_cache:
+                GhanaPlace.objects.bulk_create(to_cache, ignore_conflicts=True)
+            if results:
+                return JsonResponse({'results': results})
+        except Exception:
+            pass
+
+    # ── 3. Nominatim fallback ────────────────────────────────────────────────
+    try:
+        gh_url = (
+            f'https://nominatim.openstreetmap.org/search'
+            f'?q={q}&format=json&limit=6&countrycodes=gh&accept-language=en'
+        )
+        resp = _requests.get(gh_url, timeout=5, headers={'User-Agent': 'SankofaWatch/1.0'})
+        data = resp.json()
+        if not data:
+            global_url = (
+                f'https://nominatim.openstreetmap.org/search'
+                f'?q={q}&format=json&limit=6&accept-language=en'
+            )
+            resp = _requests.get(global_url, timeout=5, headers={'User-Agent': 'SankofaWatch/1.0'})
+            data = resp.json()
+        results = [{'display_name': p['display_name'], 'lat': p['lat'], 'lon': p['lon']} for p in data]
+        return JsonResponse({'results': results})
+    except Exception as exc:
+        return JsonResponse({'results': [], 'error': str(exc)})

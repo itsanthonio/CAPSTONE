@@ -3,6 +3,21 @@ from django.contrib.auth.models import User
 from django.contrib.gis.db import models
 
 
+class Organisation(models.Model):
+    """An agency or body that uses the platform."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Organisation'
+        verbose_name_plural = 'Organisations'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
 class UserPreferences(models.Model):
     """
     User-specific preferences for theme, notifications, and display settings.
@@ -116,15 +131,9 @@ class UserProfile(models.Model):
     """
 
     class Role(models.TextChoices):
-        ADMIN = 'admin', 'Admin'
+        SYSTEM_ADMIN = 'system_admin', 'System Administrator'
+        AGENCY_ADMIN = 'agency_admin', 'Agency Administrator'
         INSPECTOR = 'inspector', 'Inspector'
-
-    class Organization(models.TextChoices):
-        EPA = 'epa', 'Environmental Protection Agency'
-        MINERALS_COMMISSION = 'minerals_commission', 'Minerals Commission'
-        CERSGIS = 'cersgis', 'CERSGIS'
-        FORESTRY_COMMISSION = 'forestry_commission', 'Forestry Commission'
-        OTHER = 'other', 'Other'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(
@@ -135,12 +144,14 @@ class UserProfile(models.Model):
     role = models.CharField(
         max_length=20,
         choices=Role.choices,
-        default=Role.ADMIN
+        default=Role.INSPECTOR
     )
-    organization = models.CharField(
-        max_length=30,
-        choices=Organization.choices,
-        default=Organization.OTHER
+    organisation = models.ForeignKey(
+        Organisation,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='members'
     )
     phone_number = models.CharField(max_length=20, blank=True)
     receive_email_alerts = models.BooleanField(default=True)
