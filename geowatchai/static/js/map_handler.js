@@ -179,61 +179,100 @@ class MapHandler {
             paint: { 'line-color': '#16a34a', 'line-width': 1.2, 'line-dasharray': [3, 2] }
         });
 
-        // --- Water bodies layer (blue) ---
-        this.map.addSource('water-bodies', {
+        // --- Administrative regions layer (amber outline, off by default) ---
+        this.map.addSource('admin-regions', {
             type: 'geojson',
             data: { type: 'FeatureCollection', features: [] }
         });
         this.map.addLayer({
-            id: 'water-bodies-fill',
+            id: 'admin-regions-fill',
             type: 'fill',
-            source: 'water-bodies',
-            paint: { 'fill-color': '#3b82f6', 'fill-opacity': 0.15 }
+            source: 'admin-regions',
+            paint: { 'fill-color': '#f59e0b', 'fill-opacity': 0.04 },
+            layout: { visibility: 'none' }
         });
         this.map.addLayer({
-            id: 'water-bodies-outline',
+            id: 'admin-regions-outline',
             type: 'line',
-            source: 'water-bodies',
-            paint: { 'line-color': '#1d4ed8', 'line-width': 1.5 }
+            source: 'admin-regions',
+            paint: { 'line-color': '#f59e0b', 'line-width': 1.8, 'line-dasharray': [4, 2] },
+            layout: { visibility: 'none' }
+        });
+        this.map.addLayer({
+            id: 'admin-regions-labels',
+            type: 'symbol',
+            source: 'admin-regions',
+            layout: {
+                visibility: 'none',
+                'text-field': ['get', 'name'],
+                'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+                'text-size': 13,
+                'text-anchor': 'center',
+                'symbol-placement': 'point',
+                'text-max-width': 10,
+            },
+            paint: {
+                'text-color': '#f59e0b',
+                'text-halo-color': '#0d1117',
+                'text-halo-width': 2,
+            }
         });
 
-        fetch('/api/regions/?type=water_body', { credentials: 'include' })
+        fetch('/api/regions/?type=district', { credentials: 'include' })
             .then(r => r.ok ? r.json() : null)
             .then(data => {
-                if (data && data.features) {
-                    this.map.getSource('water-bodies').setData(data);
-                    console.log('[Map] Loaded', data.features.length, 'water body regions');
-                }
+                if (data && data.features)
+                    this.map.getSource('admin-regions').setData(data);
             })
-            .catch(e => console.warn('[Map] Could not load water bodies:', e));
+            .catch(e => console.warn('[Map] Could not load admin regions:', e));
 
-        // --- Protected forests layer (dark green) ---
-        this.map.addSource('protected-forests', {
+        // --- Administrative districts layer (white outline, off by default) ---
+        this.map.addSource('admin-districts', {
             type: 'geojson',
             data: { type: 'FeatureCollection', features: [] }
         });
         this.map.addLayer({
-            id: 'protected-forests-fill',
+            id: 'admin-districts-fill',
             type: 'fill',
-            source: 'protected-forests',
-            paint: { 'fill-color': '#15803d', 'fill-opacity': 0.12 }
+            source: 'admin-districts',
+            paint: { 'fill-color': '#e2e8f0', 'fill-opacity': 0.03 },
+            layout: { visibility: 'none' }
         });
         this.map.addLayer({
-            id: 'protected-forests-outline',
+            id: 'admin-districts-outline',
             type: 'line',
-            source: 'protected-forests',
-            paint: { 'line-color': '#14532d', 'line-width': 1.5, 'line-dasharray': [4, 2] }
+            source: 'admin-districts',
+            paint: { 'line-color': '#cbd5e1', 'line-width': 0.8 },
+            layout: { visibility: 'none' }
+        });
+        this.map.addLayer({
+            id: 'admin-districts-labels',
+            type: 'symbol',
+            source: 'admin-districts',
+            minzoom: 8,
+            layout: {
+                visibility: 'none',
+                'text-field': ['get', 'name'],
+                'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+                'text-size': 11,
+                'text-anchor': 'center',
+                'symbol-placement': 'point',
+                'text-max-width': 8,
+            },
+            paint: {
+                'text-color': '#e2e8f0',
+                'text-halo-color': '#0d1117',
+                'text-halo-width': 1.5,
+            }
         });
 
-        fetch('/api/regions/?type=protected_forest', { credentials: 'include' })
+        fetch('/api/regions/?type=admin_district', { credentials: 'include' })
             .then(r => r.ok ? r.json() : null)
             .then(data => {
-                if (data && data.features) {
-                    this.map.getSource('protected-forests').setData(data);
-                    console.log('[Map] Loaded', data.features.length, 'protected forest regions');
-                }
+                if (data && data.features)
+                    this.map.getSource('admin-districts').setData(data);
             })
-            .catch(e => console.warn('[Map] Could not load protected forests:', e));
+            .catch(e => console.warn('[Map] Could not load admin districts:', e));
 
         // Fetch and populate concessions
         fetch('/api/concessions/', { credentials: 'include' })
@@ -343,8 +382,8 @@ class MapHandler {
             'street-labels': ['street-labels-layer'],
             'detections': ['detections-layer', 'detections-outline'],
             'concessions': ['concessions-fill', 'concessions-outline'],
-            'water-bodies': ['water-bodies-fill', 'water-bodies-outline'],
-            'protected-forests': ['protected-forests-fill', 'protected-forests-outline'],
+            'admin-regions': ['admin-regions-fill', 'admin-regions-outline', 'admin-regions-labels'],
+            'admin-districts': ['admin-districts-fill', 'admin-districts-outline', 'admin-districts-labels'],
         };
         const layers = layerMap[layerId] || [layerId];
         layers.forEach(id => {

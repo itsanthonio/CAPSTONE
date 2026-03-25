@@ -1,4 +1,5 @@
 import json
+import string
 from django.shortcuts import render
 from django.views.generic import TemplateView
 from django.views import View
@@ -6,6 +7,10 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.conf import settings
 from django.contrib.gis.geos import GEOSGeometry, MultiPolygon, Polygon, LineString, MultiLineString
+
+
+def _title(s):
+    return string.capwords(s.strip().lower())
 
 
 class DataUploadsView(LoginRequiredMixin, TemplateView):
@@ -21,12 +26,18 @@ class DataUploadsView(LoginRequiredMixin, TemplateView):
         except Exception:
             concession_count = water_count = forest_count = 0
 
+        try:
+            district_count = Region.objects.filter(region_type='admin_district').count()
+        except Exception:
+            district_count = 0
+
         context.update({
             'settings': settings,
             'page_title': 'Data Uploads',
             'concession_count': concession_count,
             'water_count': water_count,
             'forest_count': forest_count,
+            'district_count': district_count,
         })
         return context
 
@@ -269,3 +280,81 @@ class UploadWaterBodiesView(UploadRegionView):
 
 class UploadProtectedForestView(UploadRegionView):
     region_type = 'protected_forest'
+
+
+class UploadDistrictsView(LoginRequiredMixin, View):
+    """
+    Import Ghana administrative district boundaries from a GeoJSON file.
+    Expects properties: DISTRICT (name), Region_19 or REGION (parent region).
+    Replaces all existing admin_district records on each upload.
+    """
+
+    def post(self, request):
+        upload = request.FILES.get('file')
+        if not upload:
+            return JsonResponse({'error': 'No file uploaded.'}, status=400)
+
+        try:
+            geojson = _parse_geojson(upload)
+        except Exception as e:
+            return JsonResponse({'error': f'Could not parse file: {e}'}, status=400)
+
+        features = geojson.get('features', [])
+        if not features:
+            return JsonResponse({'error': 'GeoJSON has no features.'}, status=400)
+
+        from apps.detections.models import Region
+
+        Region.objects.filter(region_type='admin_district').delete()
+
+        imported = skipped = 0
+        for i, feat in enumerate(features):
+            props = feat.get('properties') or {}
+            raw_geom = feat.get('geometry')
+            if not raw_geom:
+                skipped += 1
+                continue
+
+            raw_name   = props.get('DISTRICT') or props.get('name') or props.get('NAME') or ''
+            raw_region = props.get('Region_19') or props.get('REGION') or props.get('region') or ''
+
+            if not raw_name.strip():
+                skipped += 1
+                continue
+
+            name   = _title(raw_name)
+            parent = _title(raw_region)
+
+            try:
+                geom = _to_multipolygon(GEOSGeometry(json.dumps(raw_geom), srid=4326))
+            except Exception:
+                skipped += 1
+                continue
+            if geom is None:
+                skipped += 1
+                continue
+
+            # Ensure unique name
+            base_name, counter = name, 1
+            while Region.objects.filter(name=name).exists():
+                name = f'{base_name} ({counter})'
+                counter += 1
+
+            try:
+                Region.objects.create(
+                    name=name,
+                    region_type='admin_district',
+                    district=parent,
+                    geometry=geom,
+                    is_active=True,
+                )
+                imported += 1
+            except Exception:
+                skipped += 1
+
+        return JsonResponse({
+            'success': True,
+            'imported': imported,
+            'skipped': skipped,
+            'message': f'Imported {imported} districts ({skipped} skipped).',
+        })

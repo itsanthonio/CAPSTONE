@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 
-from .views import JobViewSet, ResultViewSet, DetectedSiteViewSet, ConcessionGeoJSONView, AlertViewSet, RegionGeoJSONView, my_assignments_notifications, geocode_proxy
+from .views import JobViewSet, ResultViewSet, DetectedSiteViewSet, ConcessionGeoJSONView, AlertViewSet, RegionGeoJSONView, my_assignments_notifications, geocode_proxy, session_ping, parse_aoi_file
 
 router = DefaultRouter()
 router.register(r'jobs', JobViewSet, basename='job')
@@ -30,4 +30,6 @@ urlpatterns = [
     path('my-assignments/', my_assignments_notifications, name='my-assignments'),
     path('geocode/', geocode_proxy, name='geocode'),
     path('notifications/', include('apps.notifications.urls')),
+    path('session/ping/', session_ping, name='session-ping'),
+    path('parse-aoi/', parse_aoi_file, name='parse-aoi'),
 ]

@@ -195,6 +195,17 @@ CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False
 
+# ── Session Timeout ──────────────────────────────────────────
+# Sessions die when the browser is closed (no "remember me" cookie).
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+# Absolute ceiling: even an active session expires after 8 hours.
+SESSION_COOKIE_AGE = 8 * 60 * 60          # 8 hours in seconds
+# Sliding expiry: any request resets the 8-hour clock.
+SESSION_SAVE_EVERY_REQUEST = True
+# Frontend idle timeout fed to the JS timer (seconds).
+# JS shows a 5-minute warning, then logs out.
+SESSION_IDLE_TIMEOUT = 30 * 60            # 30 minutes
+
 # Content Security Policy (enforced by csp.middleware.CSPMiddleware).
 # unsafe-inline is retained while inline scripts/styles are still present;
 # migrate to per-request nonces (django-csp nonce support) to remove it.
@@ -229,6 +240,7 @@ CSP_CONNECT_SRC = (
     "https://api.mapbox.com",
     "https://events.mapbox.com",
     "https://earthengine.googleapis.com",
+    "https://demotiles.maplibre.org",
 )
 CSP_WORKER_SRC  = ("'self'", "blob:")
 CSP_CHILD_SRC   = ("'self'", "blob:")

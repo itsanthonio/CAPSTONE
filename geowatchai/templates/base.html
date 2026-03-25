@@ -8,7 +8,8 @@
     <title>{% block title %}{{ settings.APP_NAME }}{% endblock %}</title>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}">
+    <link rel="icon" type="image/svg+xml" href="{% static 'images/favicon.svg' %}">
+    <link rel="alternate icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -161,8 +162,17 @@
     <header class="fixed top-0 left-0 right-0 h-12 bg-surface-1 border-b border-edge-subtle z-50">
         <div class="flex items-center justify-between h-full px-4">
 
-            <!-- Logo -->
+            <!-- Logo (hamburger toggle visible only on ≤768px) -->
             <div class="flex items-center gap-3">
+                <button id="sidebar-toggle"
+                        aria-label="Toggle navigation menu"
+                        aria-controls="main-sidebar"
+                        aria-expanded="false"
+                        onclick="toggleSidebar()">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
                 <a href="{% url 'analysis:live_map' %}" class="flex items-center gap-2.5 group" aria-label="{{ settings.APP_NAME }} home">
                     <!-- Sankofa bird mark (Akan/Ghanaian Adinkra: "go back and fetch it") -->
                     <div class="w-7 h-7 flex items-center justify-center flex-shrink-0">
@@ -333,8 +343,11 @@
 
     <div class="flex pt-12">
 
+        <!-- Mobile sidebar overlay (tap to close) -->
+        <div id="sidebar-overlay" onclick="closeSidebar()" aria-hidden="true"></div>
+
         <!-- ── Sidebar ──────────────────────────────────────── -->
-        <aside class="fixed left-0 top-12 bottom-0 w-55 bg-surface-1 border-r border-edge-subtle z-40 overflow-y-auto flex flex-col">
+        <aside id="main-sidebar" class="fixed left-0 top-12 bottom-0 w-55 bg-surface-1 border-r border-edge-subtle z-40 overflow-y-auto flex flex-col">
             <nav class="flex-1 py-2">
                 {% if user.is_authenticated and user.profile.role == 'inspector' %}
                 <!-- ── Inspector Navigation ───────────────────── -->
@@ -525,6 +538,14 @@
                             </svg>
                             Draw Area
                         </button>
+                        <button id="upload-aoi-btn" class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2"
+                                onclick="document.getElementById('aoi-file-input').click()">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                            </svg>
+                            Upload File
+                        </button>
+                        <input type="file" id="aoi-file-input" class="hidden" accept=".geojson,.json,.zip">
 
                         <!-- Drawing mode hint -->
                         <div id="aoi-draw-instructions"
@@ -563,6 +584,16 @@
                             <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#94a3b8"></span>
                             Street Labels
                         </button>
+                        <button id="toggle-regions-layer"
+                                class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
+                            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#f59e0b"></span>
+                            Regions
+                        </button>
+                        <button id="toggle-districts-layer"
+                                class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
+                            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#cbd5e1"></span>
+                            Districts
+                        </button>
                         <button id="toggle-detection-layer"
                                 class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
                             <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:var(--viz-illegal)"></span>
@@ -572,16 +603,6 @@
                                 class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
                             <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:var(--viz-legal)"></span>
                             Concessions
-                        </button>
-                        <button id="toggle-water-layer"
-                                class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
-                            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:var(--viz-water)"></span>
-                            Water Bodies
-                        </button>
-                        <button id="toggle-forest-layer"
-                                class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
-                            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:var(--viz-forest)"></span>
-                            Protected Forests
                         </button>
                     </div>
 
@@ -628,6 +649,32 @@
 
     <!-- JavaScript -->
     <script src="{% static 'js/main.js' %}"></script>
+
+    <!-- Sidebar toggle (mobile / small screens) -->
+    <script>
+        function toggleSidebar() {
+            const sidebar  = document.getElementById('main-sidebar');
+            const overlay  = document.getElementById('sidebar-overlay');
+            const toggle   = document.getElementById('sidebar-toggle');
+            const isOpen   = sidebar.classList.toggle('open');
+            overlay.classList.toggle('open', isOpen);
+            toggle.setAttribute('aria-expanded', String(isOpen));
+        }
+
+        function closeSidebar() {
+            const sidebar  = document.getElementById('main-sidebar');
+            const overlay  = document.getElementById('sidebar-overlay');
+            const toggle   = document.getElementById('sidebar-toggle');
+            sidebar.classList.remove('open');
+            overlay.classList.remove('open');
+            toggle.setAttribute('aria-expanded', 'false');
+        }
+
+        // Close sidebar on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeSidebar();
+        });
+    </script>
 
     <!-- User menu toggle -->
     <script>
@@ -893,5 +940,182 @@
     </script>
 
     {% block extra_js %}{% endblock %}
+
+    <!-- ── Session Idle-Timeout ───────────────────────────────────────────
+         Watches for inactivity.  At IDLE_TIMEOUT - WARNING_LEAD the warning
+         modal appears with a live countdown.  If the user clicks
+         "Stay logged in" a ping is sent and the timer resets.  If the
+         countdown hits zero (or the user clicks "Log out now") the logout
+         form is submitted immediately.
+    ──────────────────────────────────────────────────────────────────────── -->
+    {% if user.is_authenticated %}
+
+    <!-- Warning modal (hidden until the idle timer fires) -->
+    <div id="idle-modal"
+         class="hidden fixed inset-0 z-[9000] flex items-center justify-center"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="idle-modal-title"
+         aria-describedby="idle-modal-desc">
+
+        <!-- Backdrop -->
+        <div class="absolute inset-0" style="background:rgba(0,0,0,0.65);backdrop-filter:blur(3px);"></div>
+
+        <!-- Card -->
+        <div class="relative rounded-2xl p-8 w-full max-w-sm text-center shadow-2xl"
+             style="background:var(--surface-2);border:1px solid var(--border-default);">
+
+            <!-- Icon -->
+            <div class="mx-auto mb-4 w-14 h-14 rounded-full flex items-center justify-center"
+                 style="background:var(--status-moderate-bg);border:1px solid var(--status-moderate-border);">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                     style="color:var(--status-moderate);" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+
+            <h2 id="idle-modal-title"
+                class="text-[16px] font-semibold mb-2"
+                style="color:var(--text-primary);">
+                Still there?
+            </h2>
+            <p id="idle-modal-desc"
+               class="text-[13px] mb-1"
+               style="color:var(--text-secondary);">
+                You've been inactive. For security, you'll be logged out in
+            </p>
+            <p class="text-[32px] font-bold tabular-nums mb-5"
+               id="idle-countdown"
+               style="color:var(--status-moderate);"
+               aria-live="polite"
+               aria-atomic="true">
+                5:00
+            </p>
+
+            <div class="flex gap-3 justify-center">
+                <button id="idle-stay-btn"
+                        class="btn-primary px-5 py-2 text-[13px]"
+                        onclick="idleKeepAlive()">
+                    Stay logged in
+                </button>
+                <button class="btn-secondary px-5 py-2 text-[13px]"
+                        onclick="idleLogout()">
+                    Log out now
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden logout form — submitted programmatically on timeout -->
+    <form id="idle-logout-form" method="post" action="{% url 'logout' %}" style="display:none;">
+        {% csrf_token %}
+    </form>
+
+    <script>
+    (function () {
+        'use strict';
+
+        // ── Config (seconds) ────────────────────────────────────────────
+        var IDLE_TIMEOUT  = {{ settings.SESSION_IDLE_TIMEOUT }};  // from Django settings
+        var WARNING_LEAD  = 5 * 60;   // show modal this many seconds before logout
+        var PING_URL      = '/api/session/ping/';
+
+        // ── State ────────────────────────────────────────────────────────
+        var idleTimer       = null;
+        var countdownTimer  = null;
+        var warningActive   = false;
+        var countdownSecs   = WARNING_LEAD;
+
+        // ── DOM refs ─────────────────────────────────────────────────────
+        var modal      = document.getElementById('idle-modal');
+        var countdownEl= document.getElementById('idle-countdown');
+        var stayBtn    = document.getElementById('idle-stay-btn');
+
+        // ── Helpers ──────────────────────────────────────────────────────
+        function fmt(s) {
+            var m = Math.floor(s / 60);
+            var sec = s % 60;
+            return m + ':' + (sec < 10 ? '0' : '') + sec;
+        }
+
+        function getCsrf() {
+            var m = document.cookie.match(/csrftoken=([^;]+)/);
+            return m ? m[1] : '';
+        }
+
+        // ── Show the warning modal ───────────────────────────────────────
+        function showWarning() {
+            warningActive   = true;
+            countdownSecs   = WARNING_LEAD;
+            countdownEl.textContent = fmt(countdownSecs);
+            modal.classList.remove('hidden');
+            if (stayBtn) stayBtn.focus();
+            if (window.trapFocus) window.trapFocus(modal);
+
+            countdownTimer = setInterval(function () {
+                countdownSecs--;
+                countdownEl.textContent = fmt(countdownSecs);
+                if (countdownSecs <= 0) {
+                    clearInterval(countdownTimer);
+                    idleLogout();
+                }
+            }, 1000);
+        }
+
+        // ── Reset the idle clock ─────────────────────────────────────────
+        function resetIdle() {
+            if (warningActive) return;   // don't interfere once warning is up
+            clearTimeout(idleTimer);
+            idleTimer = setTimeout(showWarning, (IDLE_TIMEOUT - WARNING_LEAD) * 1000);
+        }
+
+        // ── Keep-alive (Stay logged in button) ───────────────────────────
+        window.idleKeepAlive = function () {
+            // Dismiss modal
+            clearInterval(countdownTimer);
+            warningActive = false;
+            modal.classList.add('hidden');
+            if (window.releaseFocus) window.releaseFocus(modal);
+
+            // Ping the server (extends the Django session)
+            fetch(PING_URL, {
+                method: 'GET',
+                headers: { 'X-CSRFToken': getCsrf(), 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            }).catch(function () {});
+
+            // Restart the idle clock
+            resetIdle();
+        };
+
+        // ── Logout ───────────────────────────────────────────────────────
+        window.idleLogout = function () {
+            clearInterval(countdownTimer);
+            clearTimeout(idleTimer);
+            document.getElementById('idle-logout-form').submit();
+        };
+
+        // ── Activity events that reset the clock ─────────────────────────
+        var EVENTS = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+        EVENTS.forEach(function (ev) {
+            document.addEventListener(ev, resetIdle, { passive: true });
+        });
+
+        // Page-visibility: if the user returns to the tab after being away,
+        // check whether the warning should be active; otherwise keep ticking.
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden && !warningActive) {
+                resetIdle();
+            }
+        });
+
+        // ── Kick off ─────────────────────────────────────────────────────
+        resetIdle();
+
+    })();
+    </script>
+
+    {% endif %}
 </body>
 </html>

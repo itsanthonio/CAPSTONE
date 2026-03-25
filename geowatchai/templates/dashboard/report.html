@@ -79,7 +79,7 @@
 <div class="p-6 space-y-6">
 
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="gw-page-header">
         <div>
             <h1 class="text-2xl font-bold" style="color: var(--text-primary);">Detection Report</h1>
             <p class="text-sm mt-0.5" style="color: var(--text-secondary);">
@@ -87,9 +87,9 @@
                 {{ period_start|date:"N j, Y" }} — {{ period_end|date:"N j, Y" }}
             </p>
         </div>
-        <div class="flex items-center gap-2 print-hide">
+        <div class="flex flex-wrap items-center gap-2 print-hide">
             <!-- Date range form -->
-            <form method="get" class="flex items-center gap-2">
+            <form method="get" class="flex flex-wrap items-center gap-2">
                 <input type="date" name="start_date" value="{{ period_start|date:'Y-m-d' }}"
                        class="gw-input text-sm px-3 py-1.5">
                 <span class="text-sm" style="color: var(--text-tertiary);">to</span>
@@ -147,7 +147,7 @@
             <div class="px-5 py-3 border-b" style="border-color: var(--border-subtle);">
                 <h3 class="text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">By Status</h3>
             </div>
-            <table class="report-table">
+            <div class="overflow-x-auto"><table class="report-table">
                 <thead><tr><th>Status</th><th>Count</th></tr></thead>
                 <tbody>
                     {% for status, cnt in alerts_by_status.items %}
@@ -167,13 +167,13 @@
                     <tr><td colspan="2" style="color: var(--text-tertiary);">No alert data</td></tr>
                     {% endfor %}
                 </tbody>
-            </table>
+            </table></div>
         </div>
         <div class="gw-card">
             <div class="px-5 py-3 border-b" style="border-color: var(--border-subtle);">
                 <h3 class="text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">By Severity</h3>
             </div>
-            <table class="report-table">
+            <div class="overflow-x-auto"><table class="report-table">
                 <thead><tr><th>Severity</th><th>Count</th></tr></thead>
                 <tbody>
                     {% for sev, cnt in alerts_by_severity.items %}
@@ -191,7 +191,7 @@
                     <tr><td colspan="2" style="color: var(--text-tertiary);">No alert data</td></tr>
                     {% endfor %}
                 </tbody>
-            </table>
+            </table></div>
         </div>
     </div>
 
@@ -224,7 +224,7 @@
         <div class="px-5 py-3 border-b" style="border-color: var(--border-subtle);">
             <h3 class="text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">Inspector Performance Breakdown</h3>
         </div>
-        <table class="report-table">
+        <div class="overflow-x-auto"><table class="report-table">
             <thead>
                 <tr>
                     <th>Inspector</th>
@@ -249,7 +249,7 @@
                 </tr>
                 {% endfor %}
             </tbody>
-        </table>
+        </table></div>
     </div>
     {% endif %}
 
@@ -295,7 +295,7 @@
     {% if stats.recent_sites %}
     <div class="rpt-section">Recent Detected Sites</div>
     <div class="gw-card">
-        <table class="report-table">
+        <div class="overflow-x-auto"><table class="report-table">
             <thead>
                 <tr>
                     <th>Date</th>
@@ -324,7 +324,7 @@
                 </tr>
                 {% endfor %}
             </tbody>
-        </table>
+        </table></div>
     </div>
     {% endif %}
 
@@ -353,7 +353,7 @@
 
     {% if recent_jobs %}
     <div class="gw-card">
-        <table class="report-table">
+        <div class="overflow-x-auto"><table class="report-table">
             <thead>
                 <tr>
                     <th>Job ID</th>
@@ -381,7 +381,7 @@
                 </tr>
                 {% endfor %}
             </tbody>
-        </table>
+        </table></div>
     </div>
     {% endif %}
 

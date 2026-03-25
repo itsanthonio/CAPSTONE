@@ -360,7 +360,20 @@ class DetectedSiteViewSet(OrgScopedMixin, viewsets.ReadOnlyModelViewSet):
         Without those params returns up to 2 000 sites (suitable for the map).
         """
         import json as _json
+        from django.db.models import Subquery, OuterRef
+        from apps.detections.models import Region as _Region
         qs = self.get_queryset().filter(geometry__isnull=False).order_by('-created_at')
+
+        # Annotate each site with the name of the most specific sub-region whose
+        # polygon contains the site centroid (excludes broad district-type regions
+        # so we surface the most granular label available).
+        sub_region_name = Subquery(
+            _Region.objects.filter(
+                geometry__contains=OuterRef('centroid'),
+                is_active=True,
+            ).exclude(region_type__in=['district']).values('name')[:1]
+        )
+        qs = qs.annotate(sub_region_name=sub_region_name)
 
         page     = request.query_params.get('page')
         per_page = min(int(request.query_params.get('per_page', 200)), 500)
@@ -385,6 +398,7 @@ class DetectedSiteViewSet(OrgScopedMixin, viewsets.ReadOnlyModelViewSet):
                     'legal_status': site.legal_status,
                     'detection_date': str(site.detection_date),
                     'region': site.region.name if site.region else None,
+                    'district': site.sub_region_name or None,
                     'lat': round(centroid.y, 4) if centroid else None,
                     'lng': round(centroid.x, 4) if centroid else None,
                 }
@@ -1406,3 +1420,112 @@ def geocode_proxy(request):
         return JsonResponse({'results': results})
     except Exception as exc:
         return JsonResponse({'results': [], 'error': str(exc)})
+
+
+@login_required
+def parse_aoi_file(request):
+    """
+    Parse an uploaded zipped shapefile and return its features as GeoJSON.
+    GeoJSON files are handled client-side; this endpoint only handles .zip shapefiles.
+    Returns up to 20 features with name, area_ha, geometry, valid flag, and reason.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required.'}, status=405)
+
+    upload = request.FILES.get('file')
+    if not upload:
+        return JsonResponse({'error': 'No file uploaded.'}, status=400)
+
+    import tempfile, os, json as _json
+    import geopandas as _gpd
+    from django.contrib.gis.geos import GEOSGeometry
+
+    MAX_FEATURES = 20
+    MIN_HA = 10
+    MAX_HA = 60
+
+    try:
+        suffix = '.zip' if upload.name.endswith('.zip') else '.geojson'
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            for chunk in upload.chunks():
+                tmp.write(chunk)
+            tmp_path = tmp.name
+
+        try:
+            gdf = _gpd.read_file(tmp_path)
+        finally:
+            os.unlink(tmp_path)
+
+        if gdf.empty:
+            return JsonResponse({'error': 'File contains no features.'}, status=400)
+
+        # Reproject to WGS-84 if needed
+        if gdf.crs and gdf.crs.to_epsg() != 4326:
+            gdf = gdf.to_crs(epsg=4326)
+
+        # Identify name column
+        name_col = next(
+            (c for c in ['name', 'Name', 'NAME', 'DISTRICT', 'label', 'LABEL', 'id', 'ID']
+             if c in gdf.columns),
+            None
+        )
+
+        features = []
+        for i, row in gdf.iterrows():
+            if len(features) >= MAX_FEATURES:
+                break
+            geom = row.geometry
+            if geom is None or geom.is_empty:
+                continue
+
+            # Area in hectares (reproject to equal-area for accuracy)
+            try:
+                import pyproj
+                from shapely.ops import transform as _transform
+                project = pyproj.Transformer.from_crs(
+                    'EPSG:4326', 'EPSG:3857', always_xy=True
+                ).transform
+                area_m2 = _transform(project, geom).area
+                area_ha = round(area_m2 / 10000, 2)
+            except Exception:
+                area_ha = 0
+
+            valid = MIN_HA <= area_ha <= MAX_HA
+            reason = None
+            if area_ha < MIN_HA:
+                reason = f'Too small ({area_ha} ha, min {MIN_HA} ha)'
+            elif area_ha > MAX_HA:
+                reason = f'Too large ({area_ha} ha, max {MAX_HA} ha)'
+
+            label = str(row[name_col]).strip() if name_col else f'Area {i + 1}'
+            if not label or label == 'None':
+                label = f'Area {i + 1}'
+
+            geojson_geom = _json.loads(row.geometry.to_json())
+
+            features.append({
+                'name': label,
+                'area_ha': area_ha,
+                'geometry': geojson_geom,
+                'valid': valid,
+                'reason': reason,
+            })
+
+        return JsonResponse({'features': features, 'total': len(gdf)})
+
+    except Exception as e:
+        return JsonResponse({'error': f'Could not parse file: {e}'}, status=400)
+
+
+@login_required
+def session_ping(request):
+    """
+    Lightweight keep-alive endpoint called by the idle-timeout JS when the
+    user clicks "Stay logged in".  Because SESSION_SAVE_EVERY_REQUEST is True,
+    any authenticated request automatically extends the session; this one just
+    makes the intent explicit and returns the remaining TTL so the frontend can
+    confirm the session was refreshed.
+    """
+    from django.conf import settings as _settings
+    age = getattr(_settings, 'SESSION_COOKIE_AGE', 28800)
+    return JsonResponse({'ok': True, 'session_age': age})

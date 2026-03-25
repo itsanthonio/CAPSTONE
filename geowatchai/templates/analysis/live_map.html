@@ -3,6 +3,15 @@
 
 {% block title %}Live Map - SankofaWatch{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Lock the page — no scrolling outside the designated scroll areas */
+    html, body { overflow: hidden !important; }
+    /* Left sidebar: fixed height, no scroll — content must fit */
+    #main-sidebar { overflow: hidden !important; }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1 class="sr-only">Live Map — SankofaWatch</h1>
 <div class="flex" style="height:calc(100vh - 3rem)">
@@ -62,7 +71,7 @@
     </div>
 
     <!-- Detection Sidebar -->
-    <aside class="w-80 flex flex-col shrink-0 overflow-hidden"
+    <aside class="w-80 gw-detection-panel flex flex-col shrink-0 overflow-hidden"
            aria-label="Detection results"
            style="background: var(--surface-1); border-left: 1px solid var(--border-default);">
 
@@ -270,6 +279,38 @@
                     class="btn-secondary px-4 py-2 text-sm rounded-lg">
                 Close
             </button>
+        </div>
+    </div>
+</div>
+<!-- ── AOI Upload Confirmation Modal ───────────────────────────────────────── -->
+<div id="aoi-upload-modal" class="hidden fixed inset-0 z-[8000] flex items-center justify-center"
+     role="dialog" aria-modal="true" aria-labelledby="aoi-upload-modal-title">
+    <!-- backdrop -->
+    <div class="absolute inset-0" style="background:rgba(0,0,0,0.6);" onclick="closeAOIUploadModal()"></div>
+    <!-- card -->
+    <div class="relative w-full max-w-md mx-4 rounded-xl shadow-2xl overflow-hidden"
+         style="background:var(--surface-1);border:1px solid var(--border-default);">
+        <div class="px-6 py-4" style="border-bottom:1px solid var(--border-subtle);">
+            <h2 id="aoi-upload-modal-title" class="text-[15px] font-semibold" style="color:var(--text-primary);">
+                Confirm Batch Scan
+            </h2>
+            <p id="aoi-upload-summary" class="text-[13px] mt-0.5" style="color:var(--text-secondary);"></p>
+        </div>
+        <div id="aoi-upload-list" class="px-6 py-3 space-y-2 max-h-64 overflow-y-auto"></div>
+        <div id="aoi-upload-progress" class="hidden px-6 pb-3">
+            <div class="rounded-lg p-3 text-[13px]" style="background:var(--surface-3);border:1px solid var(--border-default);">
+                <p id="aoi-upload-progress-text" style="color:var(--text-secondary);"></p>
+                <div class="mt-2 rounded-full h-1.5 overflow-hidden" style="background:var(--surface-4);">
+                    <div id="aoi-upload-progress-bar" class="h-1.5 rounded-full transition-all"
+                         style="width:0%;background:var(--accent);"></div>
+                </div>
+            </div>
+        </div>
+        <div class="px-6 py-4 flex justify-end gap-3" style="border-top:1px solid var(--border-subtle);">
+            <button id="aoi-upload-cancel-btn" onclick="closeAOIUploadModal()"
+                    class="btn-secondary px-4 py-2 text-[13px]">Cancel</button>
+            <button id="aoi-upload-confirm-btn" onclick="submitAOIBatch()"
+                    class="btn-primary px-4 py-2 text-[13px]">Scan All Valid Areas</button>
         </div>
     </div>
 </div>
@@ -528,6 +569,7 @@ function applyDetectionFilter() {
         const area = p.area_hectares != null ? Number(p.area_hectares).toFixed(1) : '—';
         const legal = p.legal_status || 'unknown';
         const region = p.region || null;
+        const district = p.district || null;
 
         let lat = p.lat, lng = p.lng;
         if ((lat == null || lng == null) && f.geometry) {
@@ -574,8 +616,11 @@ function applyDetectionFilter() {
      onclick="openSiteModal('${id}')">
     <div class="flex items-start justify-between mb-2">
         <div class="flex-1 min-w-0 pr-2">
-            <p class="text-xs font-semibold" style="color:var(--text-primary);">Mining Site #${idx + 1}</p>
-            ${region ? `<p class="text-xs truncate" style="color:var(--text-tertiary);">${region}</p>` : ''}
+            ${district
+                ? `<p class="text-xs font-semibold truncate" style="color:var(--text-primary);">${district}</p>
+                   <p class="text-xs truncate" style="color:var(--text-tertiary);">${region || ''} · ${id.slice(0,6).toUpperCase()}</p>`
+                : `<p class="text-xs font-semibold truncate" style="color:var(--text-primary);">${region || 'Unknown Area'} · ${id.slice(0,6).toUpperCase()}</p>`
+            }
         </div>
         <span class="px-1.5 py-0.5 rounded text-xs font-bold shrink-0" style="${legalStyle}">${legalLabel}</span>
     </div>
@@ -640,10 +685,10 @@ document.addEventListener('DOMContentLoaded', function () {
     if (detBtn) detBtn.addEventListener('click', () => window.mapHandler.toggleLayer('detections'));
     const conBtn = document.getElementById('toggle-concession-layer');
     if (conBtn) conBtn.addEventListener('click', () => window.mapHandler.toggleLayer('concessions'));
-    const waterBtn = document.getElementById('toggle-water-layer');
-    if (waterBtn) waterBtn.addEventListener('click', () => window.mapHandler.toggleLayer('water-bodies'));
-    const forestBtn = document.getElementById('toggle-forest-layer');
-    if (forestBtn) forestBtn.addEventListener('click', () => window.mapHandler.toggleLayer('protected-forests'));
+    const regionsBtn = document.getElementById('toggle-regions-layer');
+    if (regionsBtn) regionsBtn.addEventListener('click', () => window.mapHandler.toggleLayer('admin-regions'));
+    const districtsBtn = document.getElementById('toggle-districts-layer');
+    if (districtsBtn) districtsBtn.addEventListener('click', () => window.mapHandler.toggleLayer('admin-districts'));
 
     const slider = document.getElementById('confidence-slider');
     if (slider) {
@@ -669,5 +714,159 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('site-modal-close').addEventListener('click', closeSiteModal);
 
 });
+</script>
+
+<!-- ── AOI File Upload ──────────────────────────────────────────────────────── -->
+<script>
+const AOI_MIN_HA = 10;
+const AOI_MAX_HA = 60;
+const AOI_MAX_FEATURES = 20;
+
+let _aoiBatchFeatures = [];
+
+document.getElementById('aoi-file-input').addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file) return;
+    this.value = '';  // reset so same file can be re-selected
+
+    if (file.name.endsWith('.zip')) {
+        // Shapefile — send to server for parsing
+        const formData = new FormData();
+        formData.append('file', file);
+        fetch('/api/parse-aoi/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrfToken() },
+            credentials: 'include',
+            body: formData,
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { alert('Could not read file: ' + data.error); return; }
+            openAOIUploadModal(data.features, data.total);
+        })
+        .catch(() => alert('Network error while parsing file.'));
+    } else {
+        // GeoJSON — parse client-side
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            try {
+                const geojson = JSON.parse(e.target.result);
+                const rawFeatures = geojson.features || (geojson.type === 'Feature' ? [geojson] : []);
+                if (!rawFeatures.length) { alert('No features found in file.'); return; }
+                const features = rawFeatures.slice(0, AOI_MAX_FEATURES).map((f, i) => {
+                    const props = f.properties || {};
+                    const name = props.name || props.Name || props.NAME ||
+                                 props.DISTRICT || props.label || `Area ${i + 1}`;
+                    let area_ha = 0;
+                    try { area_ha = Math.round(turf.area(f) / 100) / 100; } catch (_) {}
+                    const valid = area_ha >= AOI_MIN_HA && area_ha <= AOI_MAX_HA;
+                    const reason = area_ha < AOI_MIN_HA
+                        ? `Too small (${area_ha} ha, min ${AOI_MIN_HA} ha)`
+                        : area_ha > AOI_MAX_HA
+                            ? `Too large (${area_ha} ha, max ${AOI_MAX_HA} ha)`
+                            : null;
+                    return { name: String(name).trim() || `Area ${i + 1}`, area_ha, geometry: f.geometry, valid, reason };
+                });
+                openAOIUploadModal(features, rawFeatures.length);
+            } catch (err) {
+                alert('Could not parse GeoJSON: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+    }
+});
+
+function openAOIUploadModal(features, total) {
+    _aoiBatchFeatures = features;
+    const valid = features.filter(f => f.valid);
+    const invalid = features.filter(f => !f.valid);
+    const skipped = total > AOI_MAX_FEATURES ? total - AOI_MAX_FEATURES : 0;
+
+    let summary = `Found ${total} area${total !== 1 ? 's' : ''}.`;
+    if (skipped) summary += ` Showing first ${AOI_MAX_FEATURES}.`;
+    summary += ` <strong style="color:var(--text-primary)">${valid.length} valid</strong>`;
+    if (invalid.length) summary += `, ${invalid.length} will be skipped.`;
+    document.getElementById('aoi-upload-summary').innerHTML = summary;
+
+    const listEl = document.getElementById('aoi-upload-list');
+    listEl.innerHTML = features.map(f => `
+        <div class="flex items-center justify-between gap-3 py-2 text-[13px]"
+             style="border-bottom:1px solid var(--border-subtle);">
+            <div class="flex items-center gap-2 min-w-0">
+                <span class="w-2 h-2 rounded-full flex-shrink-0"
+                      style="background:${f.valid ? 'var(--status-resolved)' : 'var(--status-critical)'}"></span>
+                <span class="truncate" style="color:var(--text-primary);">${f.name}</span>
+            </div>
+            <span class="shrink-0 text-[12px]" style="color:${f.valid ? 'var(--text-secondary)' : 'var(--status-critical)'};">
+                ${f.valid ? f.area_ha + ' ha' : f.reason}
+            </span>
+        </div>`).join('');
+
+    document.getElementById('aoi-upload-progress').classList.add('hidden');
+    document.getElementById('aoi-upload-confirm-btn').disabled = valid.length === 0;
+    document.getElementById('aoi-upload-confirm-btn').textContent =
+        valid.length === 1 ? 'Scan 1 Valid Area' : `Scan All ${valid.length} Valid Areas`;
+    document.getElementById('aoi-upload-cancel-btn').disabled = false;
+    document.getElementById('aoi-upload-modal').classList.remove('hidden');
+}
+
+function closeAOIUploadModal() {
+    document.getElementById('aoi-upload-modal').classList.add('hidden');
+    _aoiBatchFeatures = [];
+}
+
+async function submitAOIBatch() {
+    const valid = _aoiBatchFeatures.filter(f => f.valid);
+    if (!valid.length) return;
+
+    document.getElementById('aoi-upload-confirm-btn').disabled = true;
+    document.getElementById('aoi-upload-cancel-btn').disabled = true;
+    document.getElementById('aoi-upload-progress').classList.remove('hidden');
+
+    const endDate = new Date().toISOString().split('T')[0];
+    const startDateObj = new Date(endDate + 'T00:00:00Z');
+    startDateObj.setDate(startDateObj.getDate() - 30);
+    const startDate = startDateObj.toISOString().split('T')[0];
+
+    let submitted = 0, failed = 0;
+
+    for (let i = 0; i < valid.length; i++) {
+        const feat = valid[i];
+        document.getElementById('aoi-upload-progress-text').textContent =
+            `Submitting "${feat.name}" (${i + 1} of ${valid.length})…`;
+        document.getElementById('aoi-upload-progress-bar').style.width =
+            `${Math.round((i / valid.length) * 100)}%`;
+
+        try {
+            const resp = await fetch('/api/jobs/', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken(),
+                },
+                body: JSON.stringify({
+                    aoi_geometry: feat.geometry,
+                    start_date: startDate,
+                    end_date: endDate,
+                    model_version: 'v1.0',
+                }),
+            });
+            if (resp.ok) { submitted++; } else { failed++; }
+        } catch (_) { failed++; }
+    }
+
+    document.getElementById('aoi-upload-progress-bar').style.width = '100%';
+    document.getElementById('aoi-upload-progress-text').textContent =
+        `Done — ${submitted} job${submitted !== 1 ? 's' : ''} submitted` +
+        (failed ? `, ${failed} failed.` : '.');
+
+    setTimeout(() => closeAOIUploadModal(), 2500);
+}
+
+function getCsrfToken() {
+    const v = document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)');
+    return v ? decodeURIComponent(v.pop()) : '';
+}
 </script>
 {% endblock %}

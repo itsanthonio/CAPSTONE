@@ -24,6 +24,7 @@ class Region(models.Model):
         WATER_BODY = 'water_body', 'Water Body'
         BUFFER_ZONE = 'buffer_zone', 'Buffer Zone'
         DISTRICT = 'district', 'District'
+        ADMIN_DISTRICT = 'admin_district', 'Administrative District'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, unique=True)
