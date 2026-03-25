@@ -451,6 +451,18 @@ class DetectedSiteViewSet(OrgScopedMixin, viewsets.ReadOnlyModelViewSet):
                     'overlay':             _media_url(job.img_overlay),
                 }
 
+        # Spatial district lookup (same logic as list())
+        district = None
+        if site.centroid:
+            from apps.detections.models import Region as _Region
+            dist_obj = _Region.objects.filter(
+                geometry__contains=site.centroid,
+                is_active=True,
+                region_type='admin_district',
+            ).values('name').first()
+            if dist_obj:
+                district = dist_obj['name']
+
         return Response({
             'id': str(site.id),
             'scan_date': site.created_at.date().isoformat(),
@@ -466,6 +478,7 @@ class DetectedSiteViewSet(OrgScopedMixin, viewsets.ReadOnlyModelViewSet):
             'first_detected_at': site.first_detected_at.isoformat() if site.first_detected_at else None,
             'concession': concession,
             'region': site.region.name if site.region else None,
+            'district': district,
             'lat': round(site.centroid.y, 4) if site.centroid else None,
             'lng': round(site.centroid.x, 4) if site.centroid else None,
             'patch_images': patch_images,
@@ -486,6 +499,53 @@ class DetectedSiteViewSet(OrgScopedMixin, viewsets.ReadOnlyModelViewSet):
             'site_id': str(site.id),
             'frames': list(frames),
             'frame_count': len(frames),
+        })
+
+    @action(detail=True, methods=['get'], url_path='history')
+    def history(self, request, pk=None):
+        """Return all detection snapshots for a site, oldest first."""
+        from apps.detections.models import DetectedSite, DetectionSnapshot
+        from django.conf import settings
+        site = get_object_or_404(DetectedSite, pk=pk)
+
+        def _media_url(rel_path):
+            if not rel_path:
+                return None
+            return request.build_absolute_uri(settings.MEDIA_URL + rel_path)
+
+        snapshots = DetectionSnapshot.objects.filter(site=site).order_by('occurrence_number')
+        data = []
+        for snap in snapshots:
+            images = None
+            if snap.img_false_color or snap.img_prediction_mask or snap.img_probability_heatmap or snap.img_overlay:
+                images = {
+                    'false_color':         _media_url(snap.img_false_color),
+                    'prediction_mask':     _media_url(snap.img_prediction_mask),
+                    'probability_heatmap': _media_url(snap.img_probability_heatmap),
+                    'overlay':             _media_url(snap.img_overlay),
+                }
+            elif snap.job:
+                job = snap.job
+                if job.img_false_color:
+                    images = {
+                        'false_color':         _media_url(job.img_false_color),
+                        'prediction_mask':     _media_url(job.img_prediction_mask),
+                        'probability_heatmap': _media_url(job.img_probability_heatmap),
+                        'overlay':             _media_url(job.img_overlay),
+                    }
+            data.append({
+                'occurrence_number': snap.occurrence_number,
+                'detection_date': snap.detection_date.isoformat(),
+                'confidence_score': round(snap.confidence_score, 4),
+                'confidence_pct': round(snap.confidence_score * 100, 1),
+                'area_hectares': round(snap.area_hectares, 2),
+                'job_id': str(snap.job_id) if snap.job_id else None,
+                'images': images,
+            })
+        return Response({
+            'site_id': str(site.id),
+            'total_detections': len(data),
+            'snapshots': data,
         })
 
 
@@ -1215,7 +1275,10 @@ class AlertViewSet(viewsets.ViewSet):
         if not inspector.is_available:
             return Response({'error': 'Inspector is not currently available for assignments.'}, status=400)
 
-        max_pending = getattr(_settings, 'INSPECTOR_MAX_PENDING_ASSIGNMENTS', 3)
+        # Resolve config: org override → system config → fallback
+        from apps.accounts.views import _resolve_assignment_config
+        sla_days, max_pending = _resolve_assignment_config(inspector)
+
         current_pending = InspectorAssignment.objects.filter(
             inspector=inspector,
             status=InspectorAssignment.Status.PENDING,
@@ -1225,7 +1288,6 @@ class AlertViewSet(viewsets.ViewSet):
                 'error': f'Inspector already has {current_pending} pending assignment(s) (maximum {max_pending}).'
             }, status=400)
 
-        sla_days = getattr(_settings, 'INSPECTOR_SLA_DAYS', 5)
         due_date = (timezone.now() + timedelta(days=sla_days)).date()
 
         # Fetch and route-optimise alerts using nearest-neighbour sort

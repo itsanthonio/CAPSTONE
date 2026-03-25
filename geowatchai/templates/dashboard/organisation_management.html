@@ -76,6 +76,34 @@
                 </div>
             </div>
 
+            <!-- SLA / max-pending overrides -->
+            <div class="pt-1" style="border-top: 1px solid var(--border-subtle);">
+                <p class="text-[10px] uppercase tracking-[0.06em] font-semibold mb-2" style="color: var(--text-tertiary);">Assignment Overrides</p>
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <div>
+                        <label class="text-[11px]" style="color: var(--text-secondary);">SLA Days</label>
+                        <input type="number" min="1" max="90"
+                               id="sla-{{ org.id }}"
+                               value="{{ org.sla_days_override|default:'' }}"
+                               placeholder="System default"
+                               class="gw-input w-full mt-0.5 text-[12px] py-1">
+                    </div>
+                    <div>
+                        <label class="text-[11px]" style="color: var(--text-secondary);">Max Pending</label>
+                        <input type="number" min="1" max="100"
+                               id="max-{{ org.id }}"
+                               value="{{ org.max_pending_override|default:'' }}"
+                               placeholder="System default"
+                               class="gw-input w-full mt-0.5 text-[12px] py-1">
+                    </div>
+                </div>
+                <button onclick="saveOrgConfig('{{ org.id }}')"
+                        class="btn-secondary text-[11px] py-1 px-3 w-full">
+                    Save Overrides
+                </button>
+                <p id="cfg-status-{{ org.id }}" class="text-[11px] text-center mt-1" style="min-height:1rem;"></p>
+            </div>
+
             <!-- Actions -->
             <div class="flex items-center gap-2 pt-1" style="border-top: 1px solid var(--border-subtle);">
                 <button onclick="openRenameModal('{{ org.id }}', '{{ org.name|escapejs }}')"
@@ -173,6 +201,34 @@ function openRenameModal(orgId, orgName) {
     document.getElementById('rename-org-id').value = orgId;
     document.getElementById('rename-org-name').value = orgName;
     document.getElementById('rename-modal').classList.remove('hidden');
+}
+
+function getCookie(name) {
+    const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return m ? m.pop() : null;
+}
+
+async function saveOrgConfig(orgId) {
+    const statusEl = document.getElementById('cfg-status-' + orgId);
+    const slaVal   = document.getElementById('sla-' + orgId).value.trim();
+    const maxVal   = document.getElementById('max-' + orgId).value.trim();
+    statusEl.textContent = 'Saving…';
+    statusEl.style.color = 'var(--text-tertiary)';
+    try {
+        const res = await fetch(`/accounts/api/orgs/${orgId}/config/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            credentials: 'include',
+            body: JSON.stringify({ sla_days_override: slaVal, max_pending_override: maxVal }),
+        });
+        const data = await res.json();
+        statusEl.textContent = data.success ? 'Saved.' : (data.error || 'Failed.');
+        statusEl.style.color = data.success ? 'var(--status-resolved)' : 'var(--status-critical)';
+    } catch {
+        statusEl.textContent = 'Network error.';
+        statusEl.style.color = 'var(--status-critical)';
+    }
+    setTimeout(() => { statusEl.textContent = ''; }, 4000);
 }
 </script>
 {% endblock %}

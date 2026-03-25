@@ -170,6 +170,10 @@
                         <p id="site-recurrence" class="text-sm" style="color: var(--text-primary);"></p>
                     </div>
                     <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">District</p>
+                        <p id="site-district" class="text-sm" style="color: var(--text-primary);"></p>
+                    </div>
+                    <div>
                         <p class="text-xs mb-1" style="color: var(--text-tertiary);">Region</p>
                         <p id="site-region" class="text-sm" style="color: var(--text-primary);"></p>
                     </div>
@@ -221,6 +225,17 @@
                     </div>
                 </div>
                 <p class="text-xs mt-2" style="color: var(--text-tertiary);">Click any image to open full-size.</p>
+            </div>
+
+            <!-- Detection History (only shown for recurring sites) -->
+            <div id="site-history-section" class="hidden px-6 py-5" style="border-top: 1px solid var(--border-subtle);">
+                <h4 class="text-sm font-semibold mb-3" style="color: var(--text-primary);">Detection History</h4>
+                <div id="site-history-loading" class="py-4 text-center">
+                    <div class="inline-block w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
+                         style="border-color: var(--accent); border-top-color: transparent;"></div>
+                    <p class="text-xs mt-1" style="color: var(--text-tertiary);">Loading history…</p>
+                </div>
+                <div id="site-history-list" class="hidden space-y-0"></div>
             </div>
 
             <!-- Timelapse -->
@@ -374,6 +389,60 @@ async function loadSiteTimelapse(siteId) {
     }
 }
 
+// ── Detection History ──────────────────────────────────────────────────────
+async function loadSiteHistory(siteId) {
+    const section = document.getElementById('site-history-section');
+    const loading = document.getElementById('site-history-loading');
+    const list    = document.getElementById('site-history-list');
+    section.classList.remove('hidden');
+    loading.classList.remove('hidden');
+    list.classList.add('hidden');
+    list.innerHTML = '';
+    try {
+        const res = await fetch(`/api/sites/${siteId}/history/`, { credentials: 'include' });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        loading.classList.add('hidden');
+        if (!data.snapshots || !data.snapshots.length) return;
+        const total = data.snapshots.length;
+        const ordinals = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th'];
+        list.innerHTML = data.snapshots.map((snap, i) => {
+            const label = ordinals[snap.occurrence_number - 1] || `${snap.occurrence_number}th`;
+            const isLast = i === total - 1;
+            const dotColor = snap.occurrence_number === 1 ? 'var(--accent)' : 'var(--status-critical)';
+            const imgHtml = snap.images
+                ? ['false_color','prediction_mask','probability_heatmap','overlay']
+                    .filter(k => snap.images[k])
+                    .map(k => `<a href="${snap.images[k]}" target="_blank" rel="noopener">
+                        <img src="${snap.images[k]}" loading="lazy" class="w-full rounded"
+                             style="height:44px;object-fit:cover;background:var(--surface-4);"/></a>`)
+                    .join('')
+                : '';
+            return `<div class="flex gap-3">
+                <div class="flex flex-col items-center shrink-0">
+                    <div class="w-5 h-5 rounded-full flex items-center justify-center shrink-0 font-bold"
+                         style="background:${dotColor};color:#000;font-size:9px;">${snap.occurrence_number}</div>
+                    ${!isLast ? `<div class="w-px flex-1 mt-1" style="background:var(--border-subtle);min-height:1rem;"></div>` : ''}
+                </div>
+                <div class="flex-1 pb-4">
+                    <div class="flex items-baseline justify-between">
+                        <span class="text-xs font-semibold" style="color:var(--text-primary);">${label} Detection</span>
+                        <span class="text-xs" style="color:var(--text-tertiary);">${snap.detection_date}</span>
+                    </div>
+                    <div class="flex gap-4 mt-0.5">
+                        <span class="text-xs" style="color:var(--text-secondary);">Confidence: <strong style="color:var(--text-primary);">${snap.confidence_pct}%</strong></span>
+                        <span class="text-xs" style="color:var(--text-secondary);">Area: <strong style="color:var(--text-primary);">${snap.area_hectares} ha</strong></span>
+                    </div>
+                    ${imgHtml ? `<div class="grid grid-cols-4 gap-1 mt-2">${imgHtml}</div>` : ''}
+                </div>
+            </div>`;
+        }).join('');
+        list.classList.remove('hidden');
+    } catch {
+        loading.classList.add('hidden');
+    }
+}
+
 // ── Site modal ─────────────────────────────────────────────────────────────
 async function openSiteModal(siteId) {
     _siteTlFrames = [];
@@ -383,6 +452,7 @@ async function openSiteModal(siteId) {
     document.getElementById('site-tl-loading').classList.remove('hidden');
     document.getElementById('site-tl-empty').classList.add('hidden');
     document.getElementById('site-tl-viewer').classList.add('hidden');
+    document.getElementById('site-history-section').classList.add('hidden');
 
     try {
         const res  = await fetch(`/api/sites/${siteId}/`, { credentials: 'include' });
@@ -413,7 +483,8 @@ async function openSiteModal(siteId) {
         document.getElementById('site-area').textContent           = site.area_hectares + ' ha';
         document.getElementById('site-date').textContent           = site.detection_date || '—';
         document.getElementById('site-recurrence').textContent     = site.recurrence_count + 'x';
-        document.getElementById('site-region').textContent         = site.region || 'Unknown';
+        document.getElementById('site-district').textContent        = site.district || '—';
+        document.getElementById('site-region').textContent          = site.region || 'Unknown';
 
         const lat = site.lat, lng = site.lng;
         const coordEl = document.getElementById('site-coords');
@@ -471,6 +542,11 @@ async function openSiteModal(siteId) {
             });
         } else {
             mlPanel.classList.add('hidden');
+        }
+
+        // Show detection history only for recurring sites
+        if (site.recurrence_count > 1) {
+            loadSiteHistory(siteId);
         }
 
         loadSiteTimelapse(siteId);
@@ -617,9 +693,9 @@ function applyDetectionFilter() {
     <div class="flex items-start justify-between mb-2">
         <div class="flex-1 min-w-0 pr-2">
             ${district
-                ? `<p class="text-xs font-semibold truncate" style="color:var(--text-primary);">${district}</p>
-                   <p class="text-xs truncate" style="color:var(--text-tertiary);">${region || ''} · ${id.slice(0,6).toUpperCase()}</p>`
-                : `<p class="text-xs font-semibold truncate" style="color:var(--text-primary);">${region || 'Unknown Area'} · ${id.slice(0,6).toUpperCase()}</p>`
+                ? `<p class="text-xs font-semibold leading-snug" style="color:var(--text-primary);">${district}</p>
+                   <p class="text-xs leading-snug" style="color:var(--text-tertiary);">${region || ''} · ${id.slice(0,6).toUpperCase()}</p>`
+                : `<p class="text-xs font-semibold leading-snug" style="color:var(--text-primary);">${region || 'Unknown Area'} · ${id.slice(0,6).toUpperCase()}</p>`
             }
         </div>
         <span class="px-1.5 py-0.5 rounded text-xs font-bold shrink-0" style="${legalStyle}">${legalLabel}</span>

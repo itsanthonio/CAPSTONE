@@ -440,6 +440,58 @@ class DetectedSite(models.Model):
 
 
 # ---------------------------------------------------------------------------
+# 5b. DetectionSnapshot — one record per individual detection event
+# ---------------------------------------------------------------------------
+
+class DetectionSnapshot(models.Model):
+    """
+    Immutable record of a single detection event at a DetectedSite.
+    Created for every detection — both the first and all recurrences.
+    Allows inspectors to compare how a site has evolved over time.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    site = models.ForeignKey(
+        DetectedSite,
+        on_delete=models.CASCADE,
+        related_name='snapshots',
+    )
+    job = models.ForeignKey(
+        'jobs.Job',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='detection_snapshots',
+    )
+
+    occurrence_number = models.PositiveIntegerField(
+        help_text='1 = first detection, 2 = first recurrence, etc.'
+    )
+    detection_date = models.DateField()
+    confidence_score = models.FloatField(
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)]
+    )
+    area_hectares = models.FloatField(validators=[MinValueValidator(0.0)])
+
+    # Per-snapshot ML visualization images (relative to MEDIA_ROOT)
+    img_false_color         = models.CharField(max_length=500, blank=True, default='')
+    img_prediction_mask     = models.CharField(max_length=500, blank=True, default='')
+    img_probability_heatmap = models.CharField(max_length=500, blank=True, default='')
+    img_overlay             = models.CharField(max_length=500, blank=True, default='')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Detection Snapshot'
+        verbose_name_plural = 'Detection Snapshots'
+        ordering = ['occurrence_number']
+        unique_together = [('site', 'occurrence_number')]
+
+    def __str__(self):
+        return f"Snapshot #{self.occurrence_number} — Site {self.site_id} ({self.detection_date})"
+
+
+# ---------------------------------------------------------------------------
 # 6. Alert
 # ---------------------------------------------------------------------------
 

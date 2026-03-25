@@ -3,10 +3,45 @@ from django.contrib.auth.models import User
 from django.contrib.gis.db import models
 
 
+class SystemConfig(models.Model):
+    """
+    Singleton table (always pk=1) holding platform-wide operational defaults.
+    Use SystemConfig.get() rather than constructing directly.
+    """
+    sla_days = models.IntegerField(
+        default=5,
+        help_text='Default days from assignment creation to SLA deadline',
+    )
+    max_pending_assignments = models.IntegerField(
+        default=10,
+        help_text='Default maximum pending assignments per inspector before they are blocked',
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'System Configuration'
+
+    def __str__(self):
+        return 'System Configuration'
+
+    @classmethod
+    def get(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
 class Organisation(models.Model):
     """An agency or body that uses the platform."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100, unique=True)
+    sla_days_override = models.IntegerField(
+        null=True, blank=True,
+        help_text='Override the system-wide SLA days for inspectors in this organisation. Leave blank to use the system default.',
+    )
+    max_pending_override = models.IntegerField(
+        null=True, blank=True,
+        help_text='Override the system-wide max pending assignments for inspectors in this organisation. Leave blank to use the system default.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -99,7 +134,23 @@ class UserPreferences(models.Model):
         default=Language.ENGLISH
     )
     critical_alerts_override = models.BooleanField(default=True)
-    
+    alert_min_severity = models.CharField(
+        max_length=10,
+        choices=[
+            ('critical', 'Critical only'),
+            ('high', 'High & Critical'),
+            ('medium', 'Medium, High & Critical'),
+            ('all', 'All alerts'),
+        ],
+        default='all',
+        help_text='Minimum severity level that triggers an email notification',
+    )
+    report_default_days = models.IntegerField(
+        choices=[(7, 'Last 7 days'), (30, 'Last 30 days'), (90, 'Last 90 days')],
+        default=30,
+        help_text='Default date range pre-selected on the report page',
+    )
+
     # Privacy Settings
     activity_visibility = models.BooleanField(default=True)
     location_sharing = models.BooleanField(default=False)

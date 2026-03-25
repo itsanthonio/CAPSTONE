@@ -4,9 +4,29 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
-from .models import UserProfile, InspectorAssignment
+from .models import UserProfile, InspectorAssignment, SystemConfig
 from .serializers import UserProfileSerializer, InspectorSerializer, InspectorAssignmentSerializer
 from apps.detections.models import Alert
+
+
+def _resolve_assignment_config(inspector_profile):
+    """
+    Returns (sla_days, max_pending) using:
+      org override  →  system config  →  hardcoded fallback
+    """
+    cfg = SystemConfig.get()
+    org = inspector_profile.organisation
+    sla_days = (
+        org.sla_days_override
+        if org and org.sla_days_override is not None
+        else cfg.sla_days
+    )
+    max_pending = (
+        org.max_pending_override
+        if org and org.max_pending_override is not None
+        else cfg.max_pending_assignments
+    )
+    return sla_days, max_pending
 
 
 @api_view(['GET'])
@@ -58,9 +78,9 @@ def create_assignment(request):
                 'error': 'Inspector is not available for assignment'
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check max pending assignments
-        from django.conf import settings as _django_settings
-        max_pending = getattr(_django_settings, 'INSPECTOR_MAX_PENDING_ASSIGNMENTS', 3)
+        # Resolve config: org override → system config → fallback
+        sla_days, max_pending = _resolve_assignment_config(inspector)
+
         current_pending = InspectorAssignment.objects.filter(
             inspector=inspector,
             status=InspectorAssignment.Status.PENDING,
@@ -74,7 +94,6 @@ def create_assignment(request):
         # Compute SLA due date
         from datetime import timedelta
         from django.utils import timezone as _tz
-        sla_days = getattr(_django_settings, 'INSPECTOR_SLA_DAYS', 5)
         due_date = (_tz.now() + timedelta(days=sla_days)).date()
 
         # Create assignment
@@ -245,7 +264,11 @@ def update_user_preferences(request):
             preferences.language = request.data['language']
         if 'critical_alerts_override' in request.data:
             preferences.critical_alerts_override = request.data['critical_alerts_override']
-        
+        if 'alert_min_severity' in request.data:
+            preferences.alert_min_severity = request.data['alert_min_severity']
+        if 'report_default_days' in request.data:
+            preferences.report_default_days = int(request.data['report_default_days'])
+
         # Update dashboard settings
         if 'show_alerts_widget' in request.data:
             preferences.show_alerts_widget = request.data['show_alerts_widget']
@@ -305,8 +328,74 @@ def update_availability(request):
             'success': True,
             'is_available': is_available
         })
-    
+
     except UserProfile.DoesNotExist:
         return Response({
             'error': 'Inspector profile not found'
         }, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def system_config(request):
+    """Get or update system-wide operational defaults. System admin only."""
+    profile = request.user.profile
+    if profile.role != UserProfile.Role.SYSTEM_ADMIN:
+        return Response({'error': 'System admin access required.'}, status=status.HTTP_403_FORBIDDEN)
+
+    cfg = SystemConfig.get()
+
+    if request.method == 'GET':
+        return Response({
+            'sla_days': cfg.sla_days,
+            'max_pending_assignments': cfg.max_pending_assignments,
+        })
+
+    try:
+        if 'sla_days' in request.data:
+            val = int(request.data['sla_days'])
+            if val < 1:
+                return Response({'success': False, 'error': 'SLA days must be at least 1.'}, status=400)
+            cfg.sla_days = val
+        if 'max_pending_assignments' in request.data:
+            val = int(request.data['max_pending_assignments'])
+            if val < 1:
+                return Response({'success': False, 'error': 'Max pending must be at least 1.'}, status=400)
+            cfg.max_pending_assignments = val
+        cfg.save()
+        return Response({'success': True, 'sla_days': cfg.sla_days, 'max_pending_assignments': cfg.max_pending_assignments})
+    except (ValueError, TypeError) as e:
+        return Response({'success': False, 'error': str(e)}, status=400)
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_org_config(request, org_id):
+    """Update SLA/max-pending overrides for a specific organisation. System admin only."""
+    profile = request.user.profile
+    if profile.role != UserProfile.Role.SYSTEM_ADMIN:
+        return Response({'error': 'System admin access required.'}, status=status.HTTP_403_FORBIDDEN)
+
+    from .models import Organisation
+    try:
+        org = Organisation.objects.get(pk=org_id)
+    except Organisation.DoesNotExist:
+        return Response({'error': 'Organisation not found.'}, status=404)
+
+    try:
+        sla_raw = request.data.get('sla_days_override', '')
+        max_raw = request.data.get('max_pending_override', '')
+        org.sla_days_override = int(sla_raw) if str(sla_raw).strip() != '' else None
+        org.max_pending_override = int(max_raw) if str(max_raw).strip() != '' else None
+        org.save(update_fields=['sla_days_override', 'max_pending_override'])
+        return Response({
+            'success': True,
+            'sla_days_override': org.sla_days_override,
+            'max_pending_override': org.max_pending_override,
+        })
+    except (ValueError, TypeError) as e:
+        return Response({'success': False, 'error': str(e)}, status=400)
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)

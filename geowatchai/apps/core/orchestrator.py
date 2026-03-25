@@ -425,6 +425,16 @@ class MiningDetectionPipeline:
                 existing.detection_date = job.end_date
                 existing.save(update_fields=['recurrence_count', 'detection_date', 'updated_at'])
                 logger.info(f"[Pipeline] Dedup: merged new detection into existing site {existing.id}")
+                # Save a snapshot for this recurrence
+                from apps.detections.models import DetectionSnapshot
+                DetectionSnapshot.objects.create(
+                    site=existing,
+                    job=job,
+                    occurrence_number=existing.recurrence_count,
+                    detection_date=job.end_date,
+                    confidence_score=props.get('confidence_score', 0.0),
+                    area_hectares=area_ha,
+                )
                 sites.append(existing)
                 continue
 
@@ -445,6 +455,16 @@ class MiningDetectionPipeline:
                 model_run=model_run,
                 satellite_imagery=satellite_imagery,
                 first_detected_at=job.end_date,
+            )
+            # Save snapshot #1 for the initial detection
+            from apps.detections.models import DetectionSnapshot
+            DetectionSnapshot.objects.create(
+                site=site,
+                job=job,
+                occurrence_number=1,
+                detection_date=job.end_date,
+                confidence_score=props.get('confidence_score', 0.0),
+                area_hectares=area_ha,
             )
             sites.append(site)
 

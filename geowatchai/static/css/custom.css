@@ -20,8 +20,8 @@
 
   /* Text scale */
   --text-primary:    #e6edf3;
-  --text-secondary:  #8b949e;
-  --text-tertiary:   #757e88;
+  --text-secondary:  #9ca4ae;
+  --text-tertiary:   #8b949e;
   --text-inverse:    #0d1117;
   --text-link:       #388bfd;
 
@@ -84,7 +84,174 @@
   --radius-2xl: 16px;
 }
 
-/* ── 2. BASE RESET ─────────────────────────────────────────── */
+/* ── 2. LIGHT THEME TOKEN OVERRIDES ────────────────────────── */
+html:has(body[data-theme="light"]) { color-scheme: light; }
+
+body[data-theme="light"] {
+  color-scheme: light;
+
+  /* Surfaces — warm cream base, white cards */
+  --surface-base:    #f7f4ec;
+  --surface-1:       #ffffff;
+  --surface-2:       #ffffff;
+  --surface-3:       #faf7f0;
+  --surface-4:       #ede9de;
+  --surface-overlay: rgba(0, 0, 0, 0.35);
+
+  /* Borders */
+  --border-subtle:   rgba(0, 0, 0, 0.07);
+  --border-default:  rgba(0, 0, 0, 0.13);
+  --border-strong:   rgba(0, 0, 0, 0.24);
+  --border-focus:    #15803d;
+
+  /* Text */
+  --text-primary:    #111827;
+  --text-secondary:  #374151;
+  --text-tertiary:   #6b7280;
+  --text-inverse:    #ffffff;
+  --text-link:       #15803d;
+
+  /* Brand accent — slightly brighter gold for light backgrounds */
+  --accent:          #c8900e;
+  --accent-hover:    #a87208;
+  --accent-muted:    rgba(200, 144, 14, 0.12);
+  --accent-border:   rgba(200, 144, 14, 0.40);
+
+  /* Status: Critical */
+  --status-critical:         #dc2626;
+  --status-critical-bg:      rgba(220, 38, 38, 0.08);
+  --status-critical-border:  rgba(220, 38, 38, 0.25);
+
+  /* Status: High */
+  --status-high:             #d97706;
+  --status-high-bg:          rgba(217, 119, 6, 0.08);
+  --status-high-border:      rgba(217, 119, 6, 0.25);
+
+  /* Status: Moderate */
+  --status-moderate:         #92400e;
+  --status-moderate-bg:      rgba(146, 64, 14, 0.08);
+  --status-moderate-border:  rgba(146, 64, 14, 0.25);
+
+  /* Status: Resolved / OK */
+  --status-resolved:         #15803d;
+  --status-resolved-bg:      rgba(21, 128, 61, 0.08);
+  --status-resolved-border:  rgba(21, 128, 61, 0.25);
+
+  /* Status: Info */
+  --status-info:             #1d4ed8;
+  --status-info-bg:          rgba(29, 78, 216, 0.08);
+  --status-info-border:      rgba(29, 78, 216, 0.25);
+
+  /* Status: Dispatched */
+  --status-dispatched:        #6d28d9;
+  --status-dispatched-bg:     rgba(109, 40, 217, 0.08);
+  --status-dispatched-border: rgba(109, 40, 217, 0.25);
+}
+
+/* Component fixes for light mode */
+body[data-theme="light"] header {
+  background: #1a3d2b !important;   /* keep topbar dark green in light mode */
+  border-bottom-color: rgba(255,255,255,0.08) !important;
+}
+/* Header toolbar — light text on dark green */
+body[data-theme="light"] header { color: #e2f5e9 !important; }
+body[data-theme="light"] header > div > div span,
+body[data-theme="light"] header > div > div a,
+body[data-theme="light"] header > div > div > div > button { color: #e2f5e9 !important; }
+body[data-theme="light"] header > div > div svg { stroke: #e2f5e9 !important; }
+body[data-theme="light"] header > div > div > button:hover,
+body[data-theme="light"] header > div > div > a:hover { background: rgba(255,255,255,0.08) !important; }
+
+/* "Development" environment badge — dark overlay so text stays readable */
+body[data-theme="light"] header .bg-surface-3 {
+  background: rgba(0, 0, 0, 0.28) !important;
+  border-color: rgba(255,255,255,0.15) !important;
+  color: #e2f5e9 !important;
+}
+
+/* User avatar circle */
+body[data-theme="light"] #user-menu-btn > div:first-child {
+  background: rgba(255,255,255,0.15) !important;
+  border-color: rgba(255,255,255,0.25) !important;
+}
+body[data-theme="light"] #user-menu-btn > div:first-child span {
+  color: #ffffff !important;
+}
+
+/* User menu + notification dropdowns — white surface, dark text */
+body[data-theme="light"] #userMenu,
+body[data-theme="light"] #notif-dropdown {
+  background: #ffffff !important;
+  border-color: rgba(0,0,0,0.12) !important;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.18) !important;
+}
+body[data-theme="light"] #userMenu *,
+body[data-theme="light"] #notif-dropdown * { color: #111827 !important; }
+body[data-theme="light"] #userMenu svg,
+body[data-theme="light"] #notif-dropdown svg { stroke: #6b7280 !important; }
+body[data-theme="light"] #userMenu a:hover,
+body[data-theme="light"] #notif-dropdown a:hover { background: #f3f4f6 !important; }
+body[data-theme="light"] #userMenu .border-b,
+body[data-theme="light"] #userMenu .border-t,
+body[data-theme="light"] #notif-dropdown .border-b,
+body[data-theme="light"] #notif-dropdown .border-t { border-color: rgba(0,0,0,0.08) !important; }
+
+body[data-theme="light"] #main-sidebar {
+  background: #1a3d2b !important;
+  border-right-color: rgba(255,255,255,0.08) !important;
+}
+body[data-theme="light"] #main-sidebar .gw-nav-item {
+  color: #a7d9b8 !important;
+}
+body[data-theme="light"] #main-sidebar .gw-nav-item:hover {
+  background: rgba(255,255,255,0.07) !important;
+  color: #e2f5e9 !important;
+}
+body[data-theme="light"] #main-sidebar .gw-nav-item.active {
+  background: rgba(212,160,23,0.18) !important;
+  color: #ffffff !important;
+  border-left-color: var(--accent) !important;
+}
+body[data-theme="light"] #main-sidebar .gw-nav-item svg {
+  color: #a7d9b8 !important;
+  stroke: currentColor !important;
+}
+body[data-theme="light"] #main-sidebar .gw-nav-item:hover svg,
+body[data-theme="light"] #main-sidebar .gw-nav-item.active svg {
+  color: #e2f5e9 !important;
+}
+body[data-theme="light"] #main-sidebar .gw-nav-group {
+  color: #6db88a !important;
+}
+/* Cards get a subtle gold top accent line */
+body[data-theme="light"] .gw-card {
+  border-top: 2px solid rgba(200, 144, 14, 0.35) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+/* Page header gets a gold bottom rule */
+body[data-theme="light"] .gw-page-header {
+  border-bottom: 2px solid rgba(200, 144, 14, 0.30);
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+}
+body[data-theme="light"] .gw-toast { box-shadow: 0 8px 24px rgba(0,0,0,0.14); }
+body[data-theme="light"] .mapboxgl-ctrl-attrib { background: rgba(255,255,255,0.9) !important; color: #374151 !important; }
+body[data-theme="light"] .mapboxgl-ctrl-attrib a { color: #374151 !important; }
+body[data-theme="light"] input,
+body[data-theme="light"] select,
+body[data-theme="light"] textarea {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-color: rgba(0,0,0,0.15) !important;
+}
+body[data-theme="light"] .gw-select,
+body[data-theme="light"] .gw-input {
+  background-color: #ffffff;
+  color: #111827;
+  border-color: rgba(0,0,0,0.15);
+}
+
+/* ── 3. BASE RESET ─────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
 }

@@ -789,13 +789,8 @@ def dashboard_kpis(request):
     })
 
 
-@user_passes_test(is_any_admin)
-def dashboard_report(request):
-    """Printable/downloadable overview report for stakeholders.
-
-    Accepts optional ?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD.
-    Defaults to the last 30 days.
-    """
+def _build_report_context(request):
+    """Return the context dict for the report views (shared between HTML and PDF)."""
     from apps.detections.models import DetectedSite, Alert
     from apps.accounts.models import InspectorAssignment
     from django.db.models import Count, Sum, Q
@@ -997,7 +992,7 @@ def dashboard_report(request):
         'trend_legal':          trend_legal,
     }
 
-    return render(request, 'dashboard/report.html', {
+    return {
         'stats':              stats,
         'alerts_by_severity': alerts_by_severity,
         'alerts_by_status':   alerts_by_status,
@@ -1010,22 +1005,25 @@ def dashboard_report(request):
         'period_start':       period_start,
         'period_end':         period_end,
         'org_name':           org.name if org else None,
-    })
+    }
+
+
+@user_passes_test(is_any_admin)
+def dashboard_report(request):
+    """Printable overview report for stakeholders."""
+    ctx = _build_report_context(request)
+    return render(request, 'dashboard/report.html', ctx)
 
 
 @user_passes_test(is_any_admin)
 def dashboard_report_pdf(request):
-    """Generate a server-side PDF of the report using xhtml2pdf.
-    Accepts the same start_date / end_date params as dashboard_report.
-    """
+    """Generate a server-side PDF of the report using xhtml2pdf."""
     import io
     from django.http import HttpResponse
     from django.template.loader import render_to_string
 
-    # Reuse the same context-building logic — forward request to dashboard_report
-    # then re-render as PDF
-    report_response = dashboard_report(request)
-    html_string = report_response.content.decode('utf-8')
+    ctx = _build_report_context(request)
+    html_string = render_to_string('dashboard/report_pdf.html', ctx, request=request)
 
     try:
         from xhtml2pdf import pisa
@@ -1160,17 +1158,22 @@ def dashboard_model_insights(request):
 @user_passes_test(is_inspector_or_admin)
 def dashboard_settings(request):
     """Settings view for all authenticated users"""
-    # Get or create user preferences
-    from apps.accounts.models import UserPreferences
-    preferences, created = UserPreferences.objects.get_or_create(user=request.user)
-    
+    from apps.accounts.models import UserPreferences, SystemConfig
+    preferences, _ = UserPreferences.objects.get_or_create(user=request.user)
+    profile = request.user.profile
+    org = profile.organisation if profile.role == 'agency_admin' else None
+
+    inspector_count = None
+    if org:
+        inspector_count = org.members.filter(role='inspector').count()
+
+    system_cfg = SystemConfig.get() if profile.role == 'system_admin' else None
+
     context = {
         'preferences': preferences,
-        'settings': {
-            'APP_NAME': 'SankofaWatch',
-            'APP_VERSION': '2.1.0',
-            'ENVIRONMENT': 'Development'
-        }
+        'org': org,
+        'inspector_count': inspector_count,
+        'system_cfg': system_cfg,
     }
     return render(request, 'dashboard/settings.html', context)
 

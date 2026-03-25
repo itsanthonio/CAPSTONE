@@ -67,10 +67,51 @@
 .rpt-section:first-child { margin-top: 0; }
 
 @media print {
+    @page { margin: 14mm; }
+
+    /* Strip chrome */
+    header,
+    #main-sidebar,
+    #sidebar-overlay,
+    .print-hide { display: none !important; }
+
+    /* Remove sidebar offset */
+    body > div.flex { padding-top: 0 !important; }
+    #main-content   { margin-left: 0 !important; }
+
+    /* Clean card appearance */
     body { background: #fff !important; color: #111 !important; }
-    .gw-sidebar, .print-hide { display: none !important; }
-    .gw-card { box-shadow: none !important; border: 1px solid #e5e7eb !important; background: #fff !important; }
-    @page { margin: 12mm; }
+    .gw-card {
+        box-shadow: none !important;
+        border: 1px solid #d1d5db !important;
+        background: #fff !important;
+        break-inside: avoid;
+    }
+
+    /* Fix CSS-var colours so they print visibly */
+    [style*="var(--text-primary)"]    { color: #111 !important; }
+    [style*="var(--text-secondary)"]  { color: #374151 !important; }
+    [style*="var(--text-tertiary)"]   { color: #6b7280 !important; }
+    [style*="var(--status-critical)"] { color: #b91c1c !important; }
+    [style*="var(--status-resolved)"] { color: #15803d !important; }
+    [style*="var(--status-high)"]     { color: #b45309 !important; }
+    [style*="var(--accent)"]          { color: #d97706 !important; }
+
+    .rpt-badge-red    { background: #fef2f2 !important; color: #b91c1c !important; border-color: #fca5a5 !important; }
+    .rpt-badge-green  { background: #f0fdf4 !important; color: #15803d !important; border-color: #86efac !important; }
+    .rpt-badge-amber  { background: #fffbeb !important; color: #b45309 !important; border-color: #fcd34d !important; }
+    .rpt-badge-blue   { background: #eff6ff !important; color: #1d4ed8 !important; border-color: #93c5fd !important; }
+    .rpt-badge-gray   { background: #f9fafb !important; color: #374151 !important; border-color: #d1d5db !important; }
+    .rpt-badge-purple { background: #f5f3ff !important; color: #6d28d9 !important; border-color: #c4b5fd !important; }
+
+    .bar-fill  { background: #d97706 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    .trend-bar { background: #b91c1c !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+
+    .report-table thead th { color: #6b7280 !important; border-color: #d1d5db !important; }
+    .report-table tbody td { border-color: #e5e7eb !important; color: #374151 !important; }
+    .report-table tbody tr:hover td { background: transparent !important; }
+
+    .rpt-section { color: #6b7280 !important; border-color: #e5e7eb !important; }
 }
 </style>
 {% endblock %}
