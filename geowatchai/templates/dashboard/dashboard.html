@@ -3,6 +3,45 @@
 
 {% block title %}Dashboard - SankofaWatch{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* ── Card entrance ───────────────────────────────────── */
+    @keyframes dashCardIn {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .dash-card-animate { animation: dashCardIn 0.45s ease both; }
+
+    /* ── KPI card hover lift ─────────────────────────────── */
+    .kpi-card { transition: transform 0.2s ease, box-shadow 0.2s ease; cursor: default; }
+    .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,0.28); }
+
+    /* ── KPI icon circle ─────────────────────────────────── */
+    .kpi-icon-circle {
+        width: 40px; height: 40px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+
+    /* ── Auto scan running dot pulse ─────────────────────── */
+    @keyframes scanDotPulse {
+        0%,100% { box-shadow: 0 0 0 0 rgba(60,200,120,0.55); }
+        60%      { box-shadow: 0 0 0 7px rgba(60,200,120,0); }
+    }
+    .scan-dot-running { animation: scanDotPulse 1.8s ease infinite; }
+
+    /* ── Region & sparkline bar animations ───────────────── */
+    @keyframes barGrowH { from { width: 0 !important; } }
+    @keyframes barGrowV { from { height: 2px !important; } }
+    .bar-animate-h { animation: barGrowH 0.65s ease both; }
+    .bar-animate-v { animation: barGrowV 0.5s ease both; }
+
+    /* ── Recent detections left accent ───────────────────── */
+    .recent-site-illegal { border-left: 3px solid #ef4444; padding-left: 10px; margin-left: -1px; }
+    .recent-site-legal   { border-left: 3px solid #3b82f6; padding-left: 10px; margin-left: -1px; }
+    .recent-site-unknown { border-left: 3px solid var(--border-default); padding-left: 10px; margin-left: -1px; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="p-6 space-y-6">
 
@@ -56,7 +95,7 @@
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
 
         <!-- Detected Sites -->
-        <div class="gw-card p-5">
+        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-critical);">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Detected Sites</p>
@@ -65,7 +104,7 @@
                         <span id="kpi-illegal" class="font-semibold" style="color: var(--status-critical);">{{ stats.illegal_sites }}</span> outside legal concessions
                     </p>
                 </div>
-                <div class="w-10 h-10 flex items-center justify-center shrink-0" aria-hidden="true">
+                <div class="kpi-icon-circle" style="background: rgba(239,68,68,0.12);" aria-hidden="true">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
                          style="color: var(--status-critical);" aria-hidden="true" focusable="false">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -80,7 +119,7 @@
         </div>
 
         <!-- Open Alerts -->
-        <div class="gw-card p-5">
+        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-high);">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Open Alerts</p>
@@ -90,7 +129,7 @@
                         · <span id="kpi-high" class="font-semibold" style="color: var(--status-high);">{{ stats.high_alerts }}</span> high
                     </p>
                 </div>
-                <div class="w-10 h-10 flex items-center justify-center shrink-0" aria-hidden="true">
+                <div class="kpi-icon-circle" style="background: rgba(245,158,11,0.12);" aria-hidden="true">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
                          style="color: var(--status-high);" aria-hidden="true" focusable="false">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -107,14 +146,14 @@
         </div>
 
         <!-- High-Risk Zones -->
-        <div class="gw-card p-5">
+        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-moderate);">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">High-Risk Zones</p>
                     <p id="kpi-high-risk" class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ stats.high_risk_zones }}</p>
                     <p class="text-xs mt-1" style="color: var(--text-secondary);">sites with repeat detections or critical confidence</p>
                 </div>
-                <div class="w-10 h-10 flex items-center justify-center shrink-0" aria-hidden="true">
+                <div class="kpi-icon-circle" style="background: rgba(249,115,22,0.12);" aria-hidden="true">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
                          style="color: var(--status-moderate);" aria-hidden="true" focusable="false">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -128,7 +167,7 @@
         </div>
 
         <!-- Completed Scans -->
-        <div class="gw-card p-5">
+        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-info);">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Scans Run</p>
@@ -143,7 +182,7 @@
                         {% endif %}
                     </p>
                 </div>
-                <div class="w-10 h-10 flex items-center justify-center shrink-0" aria-hidden="true">
+                <div class="kpi-icon-circle" style="background: rgba(59,130,246,0.12);" aria-hidden="true">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
                          style="color: var(--status-info);" aria-hidden="true" focusable="false">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -164,7 +203,7 @@
         <!-- Status dot -->
         <div class="flex items-center gap-2 shrink-0">
             {% if stats.scan_enabled and stats.scan_within_window %}
-            <div class="w-2 h-2 rounded-full" style="background:#3cc878; box-shadow: 0 0 6px rgba(50,200,100,0.6);"></div>
+            <div class="w-2 h-2 rounded-full scan-dot-running" style="background:#3cc878;"></div>
             <span class="text-xs font-semibold" style="color:#3cc878;">Auto Scanner Running</span>
             {% elif stats.scan_enabled %}
             <div class="w-2 h-2 rounded-full" style="background:var(--accent);"></div>
@@ -381,7 +420,8 @@
                         </div>
                         <!-- Bar: width proportional to region's share; fill shows illegal % -->
                         <div class="w-full rounded-full h-1.5" style="background: var(--border-subtle);">
-                            <div class="h-1.5 rounded-full relative overflow-hidden" style="width:{{ r.bar_pct }}%">
+                            <div class="h-1.5 rounded-full relative overflow-hidden bar-animate-h"
+                                 style="width:{{ r.bar_pct }}%; animation-delay: {{ forloop.counter0 }}00ms;">
                                 <div class="absolute inset-0" style="background: var(--viz-legal);"></div>
                                 <div class="absolute inset-y-0 left-0" style="background: var(--viz-illegal); width:{{ r.illegal_pct }}%"></div>
                             </div>
@@ -410,7 +450,9 @@
                 {% if stats.recent_sites %}
                 <div class="space-y-2">
                     {% for site in stats.recent_sites %}
-                    <div class="flex items-center justify-between py-2 last:border-0" style="border-bottom: 1px solid var(--border-subtle);">
+                    <div class="flex items-center justify-between py-2 last:border-0
+                             {% if site.legal_status == 'illegal' %}recent-site-illegal{% elif site.legal_status == 'legal' %}recent-site-legal{% else %}recent-site-unknown{% endif %}"
+                         style="border-bottom: 1px solid var(--border-subtle);">
                         <div class="min-w-0">
                             <p class="text-xs font-medium truncate" style="color: var(--text-primary);">
                                 {% if site.region__name %}{{ site.region__name }}{% else %}Outside monitored zones{% endif %}
@@ -849,17 +891,19 @@ document.addEventListener('DOMContentLoaded', function () {
                     {
                         label: 'Illegal',
                         data: trendIllegal,
-                        backgroundColor: 'rgba(224, 82, 82, 0.75)',
+                        backgroundColor: 'rgba(224, 82, 82, 0.80)',
+                        hoverBackgroundColor: 'rgba(239, 68, 68, 1)',
                         borderWidth: 0,
-                        borderRadius: 3,
+                        borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
                         stack: 'detections',
                     },
                     {
                         label: 'Legal',
                         data: trendLegal,
-                        backgroundColor: 'rgba(56, 139, 253, 0.65)',
+                        backgroundColor: 'rgba(56, 139, 253, 0.70)',
+                        hoverBackgroundColor: 'rgba(59, 130, 246, 1)',
                         borderWidth: 0,
-                        borderRadius: 3,
+                        borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
                         stack: 'detections',
                     }
                 ]
@@ -867,20 +911,33 @@ document.addEventListener('DOMContentLoaded', function () {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: { duration: 600, easing: 'easeOutQuart' },
                 plugins: {
                     legend: { display: false },
-                    tooltip: { mode: 'index', intersect: false }
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(22,27,34,0.95)',
+                        borderColor: 'rgba(240,246,252,0.12)',
+                        borderWidth: 1,
+                        titleColor: '#e6edf3',
+                        bodyColor: '#8b949e',
+                        padding: 10,
+                        cornerRadius: 6
+                    }
                 },
                 scales: {
                     x: {
                         stacked: true,
                         grid: { display: false },
+                        border: { display: false },
                         ticks: { font: { size: 10 }, color: '#8b949e', maxTicksLimit: 10 }
                     },
                     y: {
                         stacked: true,
                         beginAtZero: true,
-                        grid: { color: 'rgba(240,246,252,0.06)' },
+                        grid: { color: 'rgba(240,246,252,0.05)', drawBorder: false },
+                        border: { display: false },
                         ticks: { font: { size: 10 }, color: '#8b949e', stepSize: 1 }
                     }
                 }
@@ -910,7 +967,7 @@ document.addEventListener('DOMContentLoaded', function () {
             var vals = data.velocity_data;
             var max  = Math.max.apply(null, vals.concat([1]));
             sparkline.innerHTML = vals.map(function (v, i) {
-                return '<div class="velocity-bar flex-1 rounded-t" data-val="' + v + '" style="min-height:2px;background:var(--status-critical);height:' + Math.max(2, Math.round(v / max * 44)) + 'px;" title="Week ' + (i + 1) + ': ' + v + ' sites"></div>';
+                return '<div class="velocity-bar bar-animate-v flex-1 rounded-t" data-val="' + v + '" style="min-height:2px;background:var(--status-critical);height:' + Math.max(2, Math.round(v / max * 44)) + 'px;animation-delay:' + (i * 40) + 'ms;" title="Week ' + (i + 1) + ': ' + v + ' sites"></div>';
             }).join('');
             if (labelsDiv) labelsDiv.innerHTML = data.velocity_labels.map(function (l) { return '<span>' + l + '</span>'; }).join('');
         }
@@ -955,16 +1012,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 data: {
                     labels: labels,
                     datasets: [
-                        { label: 'Illegal', data: illegal, backgroundColor: 'rgba(224, 82, 82, 0.75)', borderWidth: 0, borderRadius: 3, stack: 'detections' },
-                        { label: 'Legal',   data: legal,   backgroundColor: 'rgba(56, 139, 253, 0.65)', borderWidth: 0, borderRadius: 3, stack: 'detections' }
+                        { label: 'Illegal', data: illegal, backgroundColor: 'rgba(224,82,82,0.80)', hoverBackgroundColor: 'rgba(239,68,68,1)', borderWidth: 0, borderRadius: { topLeft:3, topRight:3, bottomLeft:0, bottomRight:0 }, stack: 'detections' },
+                        { label: 'Legal',   data: legal,   backgroundColor: 'rgba(56,139,253,0.70)', hoverBackgroundColor: 'rgba(59,130,246,1)',  borderWidth: 0, borderRadius: { topLeft:3, topRight:3, bottomLeft:0, bottomRight:0 }, stack: 'detections' }
                     ]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+                    animation: { duration: 600, easing: 'easeOutQuart' },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { mode: 'index', intersect: false, backgroundColor: 'rgba(22,27,34,0.95)', borderColor: 'rgba(240,246,252,0.12)', borderWidth: 1, titleColor: '#e6edf3', bodyColor: '#8b949e', padding: 10, cornerRadius: 6 }
+                    },
                     scales: {
-                        x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 }, color: '#8b949e', maxTicksLimit: 10 } },
-                        y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(240,246,252,0.06)' }, ticks: { font: { size: 10 }, color: '#8b949e', stepSize: 1 } }
+                        x: { stacked: true, grid: { display: false }, border: { display: false }, ticks: { font: { size: 10 }, color: '#8b949e', maxTicksLimit: 10 } },
+                        y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(240,246,252,0.05)', drawBorder: false }, border: { display: false }, ticks: { font: { size: 10 }, color: '#8b949e', stepSize: 1 } }
                     }
                 }
             });
@@ -1005,6 +1066,47 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(function () {});
     }
     setInterval(_refreshKPIs, 15000);
+
+    // ── Count-up animation for KPI numbers ──
+    (function () {
+        const kpiIds = ['kpi-detected-sites', 'kpi-open-alerts', 'kpi-high-risk', 'kpi-completed-jobs'];
+        function countUp(el, target, duration) {
+            if (isNaN(target) || target === 0) return;
+            const start = performance.now();
+            function tick(now) {
+                const pct = Math.min((now - start) / duration, 1);
+                const ease = 1 - Math.pow(1 - pct, 3); // cubic ease-out
+                el.textContent = Math.round(ease * target);
+                if (pct < 1) requestAnimationFrame(tick);
+                else el.textContent = target;
+            }
+            requestAnimationFrame(tick);
+        }
+        kpiIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const val = parseInt(el.textContent.replace(/\D/g, ''), 10);
+            if (val > 0) { el.textContent = '0'; countUp(el, val, 900); }
+        });
+    })();
+
+    // ── Card entrance stagger ──
+    (function () {
+        const cards = document.querySelectorAll('.gw-card');
+        cards.forEach(function (card, i) {
+            card.classList.add('dash-card-animate');
+            card.style.animationDelay = (i * 55) + 'ms';
+        });
+    })();
+
+    // ── Sparkline bar entrance animation ──
+    (function () {
+        const bars = document.querySelectorAll('#velocity-sparkline .velocity-bar');
+        bars.forEach(function (bar, i) {
+            bar.classList.add('bar-animate-v');
+            bar.style.animationDelay = (i * 40) + 'ms';
+        });
+    })();
 
     // ── Velocity window selector (AJAX — no page reload) ──
     var velocitySelect = document.getElementById('velocity-window-select');

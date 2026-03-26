@@ -3,8 +3,16 @@
 
 {% block title %}System Dashboard — SankofaWatch{% endblock %}
 
+{% block extra_css %}
+<style>
+.kpi-card { transition: transform 0.2s ease, box-shadow 0.2s ease; cursor: default; }
+.kpi-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,0.28); }
+.kpi-icon-circle { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="p-6 space-y-6">
+<div class="p-6 space-y-6" data-animate-cards>
 
     <!-- Header -->
     <div class="gw-page-header">
@@ -32,17 +40,17 @@
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
 
         <!-- Total Users -->
-        <div class="gw-card p-5">
+        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--accent);">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Total Users</p>
-                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ total_users }}</p>
+                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);" data-countup="{{ total_users }}">{{ total_users }}</p>
                     <p class="text-xs mt-1" style="color: var(--text-secondary);">
                         <span class="font-semibold" style="color: var(--accent);">{{ agency_admins }}</span> admins ·
                         <span class="font-semibold" style="color: var(--status-info);">{{ inspectors }}</span> inspectors
                     </p>
                 </div>
-                <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background: var(--surface-3);">
+                <div class="kpi-icon-circle" style="background: rgba(212,160,23,0.12);" aria-hidden="true">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--accent);" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
                     </svg>
@@ -54,15 +62,15 @@
         </div>
 
         <!-- Organisations -->
-        <div class="gw-card p-5">
+        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-info);">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Organisations</p>
-                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ total_orgs }}</p>
+                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);" data-countup="{{ total_orgs }}">{{ total_orgs }}</p>
                     <p class="text-xs mt-1" style="color: var(--text-secondary);">registered agencies</p>
                 </div>
-                <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background: var(--surface-3);">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--accent);" aria-hidden="true">
+                <div class="kpi-icon-circle" style="background: rgba(59,130,246,0.12);" aria-hidden="true">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--status-info);" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
                     </svg>
                 </div>
@@ -73,16 +81,16 @@
         </div>
 
         <!-- Total Jobs -->
-        <div class="gw-card p-5">
+        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-resolved);">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Scan Jobs</p>
-                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ total_jobs }}</p>
+                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);" data-countup="{{ total_jobs }}">{{ total_jobs }}</p>
                     <p class="text-xs mt-1" style="color: var(--text-secondary);">
                         <span class="font-semibold" style="color: var(--status-resolved);">{{ completed_jobs }}</span> completed
                     </p>
                 </div>
-                <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background: var(--surface-3);">
+                <div class="kpi-icon-circle" style="background: rgba(35,134,54,0.12);" aria-hidden="true">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--status-resolved);" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
                     </svg>
@@ -94,16 +102,16 @@
         </div>
 
         <!-- Detections -->
-        <div class="gw-card p-5">
+        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-critical);">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Detected Sites</p>
-                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ total_detections }}</p>
+                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);" data-countup="{{ total_detections }}">{{ total_detections }}</p>
                     <p class="text-xs mt-1" style="color: var(--text-secondary);">
                         <span class="font-semibold" style="color: var(--status-critical);">{{ illegal_sites }}</span> outside concessions
                     </p>
                 </div>
-                <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background: var(--surface-3);">
+                <div class="kpi-icon-circle" style="background: rgba(239,68,68,0.12);" aria-hidden="true">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--status-critical);" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -121,14 +129,14 @@
     <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
 
         <!-- Total Alerts -->
-        <div class="gw-card p-5">
+        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-high);">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Total Alerts</p>
-                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ total_alerts }}</p>
+                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);" data-countup="{{ total_alerts }}">{{ total_alerts }}</p>
                     <p class="text-xs mt-1" style="color: var(--text-secondary);">across all organisations</p>
                 </div>
-                <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background: var(--surface-3);">
+                <div class="kpi-icon-circle" style="background: rgba(245,158,11,0.12);" aria-hidden="true">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--status-high);" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                     </svg>
@@ -140,15 +148,15 @@
         </div>
 
         <!-- Open Alerts -->
-        <div class="gw-card p-5">
+        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-critical);">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Open Alerts</p>
-                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: {% if open_alerts > 0 %}var(--status-critical){% else %}var(--text-primary){% endif %};">{{ open_alerts }}</p>
+                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: {% if open_alerts > 0 %}var(--status-critical){% else %}var(--text-primary){% endif %};" data-countup="{{ open_alerts }}">{{ open_alerts }}</p>
                     <p class="text-xs mt-1" style="color: var(--text-secondary);">awaiting action</p>
                 </div>
-                <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background: {% if open_alerts > 0 %}var(--status-critical-bg){% else %}var(--surface-3){% endif %};">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: {% if open_alerts > 0 %}var(--status-critical){% else %}var(--text-secondary){% endif %};" aria-hidden="true">
+                <div class="kpi-icon-circle" style="background: rgba(239,68,68,0.12);" aria-hidden="true">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--status-critical);" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                     </svg>
                 </div>
@@ -159,15 +167,15 @@
         </div>
 
         <!-- Inspectors -->
-        <div class="gw-card p-5">
+        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-dispatched);">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Inspectors</p>
-                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ inspectors }}</p>
+                    <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);" data-countup="{{ inspectors }}">{{ inspectors }}</p>
                     <p class="text-xs mt-1" style="color: var(--text-secondary);">field verification officers</p>
                 </div>
-                <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background: var(--surface-3);">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--status-info);" aria-hidden="true">
+                <div class="kpi-icon-circle" style="background: rgba(100,180,240,0.12);" aria-hidden="true">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--status-dispatched);" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                     </svg>
                 </div>
@@ -183,7 +191,8 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         <!-- Organisations Breakdown -->
-        <div class="gw-card">
+        <div class="gw-card overflow-hidden">
+            <div class="kente-bar"></div>
             <div class="flex items-center justify-between px-5 py-4 border-b" style="border-color: var(--border-subtle);">
                 <div>
                     <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Organisations</h2>
@@ -220,7 +229,8 @@
         </div>
 
         <!-- Recent Users -->
-        <div class="gw-card">
+        <div class="gw-card overflow-hidden">
+            <div class="kente-bar"></div>
             <div class="flex items-center justify-between px-5 py-4 border-b" style="border-color: var(--border-subtle);">
                 <div>
                     <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Recent Users</h2>

@@ -33,6 +33,12 @@
         background: none;
     }
     .assignment-card button[onclick="toggleSection(this)"]:hover { background: var(--surface-3); border-radius: 0.25rem; }
+    /* Availability dot pulse */
+    @keyframes availPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(63,185,80,0.55); } 60% { box-shadow: 0 0 0 5px rgba(63,185,80,0); } }
+    .avail-dot-pulse { animation: availPulse 2s ease infinite; }
+    /* Summary bar card entrance */
+    @keyframes sumCardIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    .sum-card-in { animation: sumCardIn 0.4s ease both; }
     /* Print isolation — only the dynamically appended overlay is rendered */
     #print-overlay { display: none; }
     @media print {
@@ -44,7 +50,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="p-6 space-y-6">
+<div class="p-6 space-y-6" data-animate-cards>
 
     <!-- New-assignment banner (shown by polling JS) -->
     <div id="new-assignment-banner"
@@ -68,7 +74,7 @@
         <div class="flex items-center gap-3">
             <div id="availability-status" class="flex items-center gap-2 text-sm font-medium"
                  style="color: {% if is_available %}#3fb950{% else %}var(--text-secondary){% endif %};">
-                <span id="availability-dot" class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                <span id="availability-dot" class="w-2.5 h-2.5 rounded-full flex-shrink-0{% if is_available %} avail-dot-pulse{% endif %}"
                       style="background: {% if is_available %}#3fb950{% else %}#484f58{% endif %};"></span>
                 <span id="availability-label">
                     {% if is_available %}Available{% else %}Unavailable{% endif %}
@@ -92,19 +98,16 @@
 
     <!-- Summary bar -->
     <div id="inspector-summary-bar" class="grid grid-cols-3 gap-4">
-        <div class="rounded-lg p-4 text-center"
-             style="background: var(--status-moderate-bg); border: 1px solid var(--status-moderate-border);">
-            <div class="text-3xl font-bold" style="color: var(--status-moderate);">{{ pending_count }}</div>
+        <div class="rounded-lg p-4 text-center sum-card-in" style="animation-delay:0ms; background: var(--status-moderate-bg); border: 1px solid var(--status-moderate-border); border-top: 3px solid var(--status-moderate);">
+            <div class="text-3xl font-bold" data-countup="{{ pending_count }}" style="color: var(--status-moderate);">{{ pending_count }}</div>
             <div class="text-sm mt-1" style="color: var(--status-moderate);">Pending</div>
         </div>
-        <div class="rounded-lg p-4 text-center"
-             style="background: var(--status-resolved-bg); border: 1px solid var(--status-resolved-border);">
-            <div class="text-3xl font-bold" style="color: var(--status-resolved);">{{ verified_count }}</div>
+        <div class="rounded-lg p-4 text-center sum-card-in" style="animation-delay:80ms; background: var(--status-resolved-bg); border: 1px solid var(--status-resolved-border); border-top: 3px solid var(--status-resolved);">
+            <div class="text-3xl font-bold" data-countup="{{ verified_count }}" style="color: var(--status-resolved);">{{ verified_count }}</div>
             <div class="text-sm mt-1" style="color: var(--status-resolved);">Verified</div>
         </div>
-        <div class="rounded-lg p-4 text-center"
-             style="background: var(--surface-3); border: 1px solid var(--border-default);">
-            <div class="text-3xl font-bold" style="color: var(--text-secondary);">{{ inconclusive_count }}</div>
+        <div class="rounded-lg p-4 text-center sum-card-in" style="animation-delay:160ms; background: var(--surface-3); border: 1px solid var(--border-default); border-top: 3px solid var(--border-default);">
+            <div class="text-3xl font-bold" data-countup="{{ inconclusive_count }}" style="color: var(--text-secondary);">{{ inconclusive_count }}</div>
             <div class="text-sm mt-1" style="color: var(--text-tertiary);">Inconclusive</div>
         </div>
     </div>
@@ -216,8 +219,9 @@ function toggleAvailability() {
     .then(data => {
         if (data.success !== false) {
             const available = data.is_available ?? goingAvailable;
-            // Update dot colour
+            // Update dot colour + pulse
             dot.style.background = available ? '#3fb950' : '#484f58';
+            dot.classList.toggle('avail-dot-pulse', available);
             // Update label colour + text
             status.style.color = available ? '#3fb950' : 'var(--text-secondary)';
             label.textContent = available ? 'Available' : 'Unavailable';

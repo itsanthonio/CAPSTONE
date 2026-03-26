@@ -18,7 +18,14 @@
             class="text-xs ml-1" style="color: var(--text-tertiary);">✕</button>
 </div>
 
-<div class="p-6 space-y-5">
+{% block extra_css %}
+<style>
+.kpi-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.kpi-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,0.28); }
+</style>
+{% endblock %}
+
+<div class="p-6 space-y-5" data-animate-cards>
 
     <!-- Header -->
     <div class="gw-page-header">
@@ -47,9 +54,9 @@
     <!-- Summary strip -->
     <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3" role="group" aria-label="Alert status summary">
 
-        <div class="gw-card px-4 py-3">
+        <div class="gw-card px-4 py-3 kpi-card">
             <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--text-tertiary);">Total</p>
-            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--text-primary);" id="s-total">{{ summary.total }}</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--text-primary);" id="s-total" data-countup="{{ summary.total }}">{{ summary.total }}</p>
         </div>
 
         <button class="gw-card px-4 py-3 text-left border-l-[3px] hover:bg-surface-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-critical"
@@ -57,7 +64,7 @@
              aria-label="Filter by Open status"
              onclick="document.getElementById('filter-status').value='open'; document.getElementById('apply-filters').click();">
             <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--status-critical);">Open</p>
-            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-critical);" id="s-open">{{ summary.open }}</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-critical);" id="s-open" data-countup="{{ summary.open }}">{{ summary.open }}</p>
             <p class="text-xs mt-0.5" style="color: var(--text-tertiary);"><span id="s-critical">{{ summary.critical }}</span> critical</p>
         </button>
 
@@ -217,6 +224,7 @@
 
     <!-- Table card -->
     <div class="gw-card overflow-hidden">
+        <div class="kente-bar"></div>
         <div class="flex items-center justify-between px-5 py-4" style="border-bottom: 1px solid var(--border-subtle);">
             <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Detection Alerts</h2>
             <span id="result-count" class="text-xs" style="color: var(--text-secondary);" aria-live="polite" aria-atomic="true">Loading…</span>

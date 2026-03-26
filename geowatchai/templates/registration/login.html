@@ -33,10 +33,48 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/custom.css' %}">
+    <style>
+        /* ── Login page ambient background ── */
+        @keyframes orb1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px,-30px) scale(1.12); } }
+        @keyframes orb2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-30px,40px) scale(1.08); } }
+        @keyframes scanLine { 0% { transform: translateY(-100%); } 100% { transform: translateY(100vh); } }
+        .login-orb { position:fixed; border-radius:50%; filter:blur(80px); pointer-events:none; z-index:0; }
+        .login-orb-1 {
+            width: 420px; height: 420px;
+            background: radial-gradient(circle, rgba(212,160,23,0.10) 0%, transparent 70%);
+            top: -100px; right: -100px;
+            animation: orb1 12s ease-in-out infinite;
+        }
+        .login-orb-2 {
+            width: 360px; height: 360px;
+            background: radial-gradient(circle, rgba(60,200,120,0.07) 0%, transparent 70%);
+            bottom: -80px; left: -80px;
+            animation: orb2 15s ease-in-out infinite;
+        }
+        .login-orb-3 {
+            width: 240px; height: 240px;
+            background: radial-gradient(circle, rgba(56,139,253,0.06) 0%, transparent 70%);
+            top: 40%; left: 30%;
+            animation: orb1 18s ease-in-out infinite reverse;
+        }
+        .scan-sweep {
+            position:fixed; top:0; left:0; width:100%; height:3px; pointer-events:none; z-index:0;
+            background: linear-gradient(90deg, transparent 0%, rgba(212,160,23,0.18) 40%, rgba(212,160,23,0.35) 50%, rgba(212,160,23,0.18) 60%, transparent 100%);
+            animation: scanLine 8s linear infinite;
+            opacity: 0.7;
+        }
+        .login-content { position:relative; z-index:1; }
+    </style>
 </head>
 <body class="bg-surface-base font-sans antialiased">
 
-<div class="min-h-screen flex items-center justify-center px-4 py-12">
+<!-- Ambient background effects -->
+<div class="login-orb login-orb-1" aria-hidden="true"></div>
+<div class="login-orb login-orb-2" aria-hidden="true"></div>
+<div class="login-orb login-orb-3" aria-hidden="true"></div>
+<div class="scan-sweep" aria-hidden="true"></div>
+
+<div class="min-h-screen flex items-center justify-center px-4 py-12 login-content">
     <div class="w-full max-w-sm space-y-6">
 
         <!-- Sankofa bird mark -->

@@ -52,7 +52,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="p-6 space-y-6">
+<div class="p-6 space-y-6" data-animate-cards>
 
     <!-- Header -->
     <div class="flex items-center gap-3">
@@ -72,32 +72,33 @@
 
     <!-- ── Stat cards ── -->
     <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <div class="gw-card p-4">
+        <div class="gw-card p-4" style="border-top: 2px solid var(--status-info);">
             <p class="text-xs mb-1" style="color: var(--text-tertiary);">Total Detections</p>
-            <p class="text-2xl font-bold" style="color: var(--text-primary);">{{ total_sites }}</p>
+            <p class="text-2xl font-bold" style="color: var(--text-primary);" data-countup="{{ total_sites }}">{{ total_sites }}</p>
         </div>
-        <div class="gw-card p-4">
+        <div class="gw-card p-4" style="border-top: 2px solid var(--status-critical);">
             <p class="text-xs mb-1" style="color: var(--text-tertiary);">Illegal Sites</p>
-            <p class="text-2xl font-bold" style="color: var(--status-critical);">{{ illegal_sites }}</p>
+            <p class="text-2xl font-bold" style="color: var(--status-critical);" data-countup="{{ illegal_sites }}">{{ illegal_sites }}</p>
         </div>
-        <div class="gw-card p-4">
+        <div class="gw-card p-4" style="border-top: 2px solid var(--status-moderate);">
             <p class="text-xs mb-1" style="color: var(--text-tertiary);">Total Illegal Area</p>
             <p class="text-2xl font-bold" style="color: var(--text-primary);">{{ total_area_ha }}<span class="text-sm font-normal"> ha</span></p>
         </div>
-        <div class="gw-card p-4">
+        <div class="gw-card p-4" style="border-top: 2px solid var(--accent);">
             <p class="text-xs mb-1" style="color: var(--text-tertiary);">Avg Confidence</p>
             <p class="text-2xl font-bold" style="color: var(--accent);">{{ avg_conf }}%</p>
         </div>
-        <div class="gw-card p-4">
+        <div class="gw-card p-4" style="border-top: 2px solid var(--status-high);">
             <p class="text-xs mb-1" style="color: var(--text-tertiary);">Recurring Sites</p>
-            <p class="text-2xl font-bold" style="color: var(--text-primary);">{{ recurrent }}</p>
+            <p class="text-2xl font-bold" style="color: var(--text-primary);" data-countup="{{ recurrent }}">{{ recurrent }}</p>
         </div>
     </div>
 
     <!-- ── Trend + sidebar ── -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- 30-day trend chart -->
-        <div class="gw-card lg:col-span-2">
+        <div class="gw-card overflow-hidden lg:col-span-2">
+            <div class="kente-bar"></div>
             <div class="px-5 pt-4 pb-2 flex items-center justify-between" style="border-bottom: 1px solid var(--border-subtle);">
                 <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Detection Trend — Last 30 Days</h2>
                 <div class="flex items-center gap-3 text-[10px]" style="color: var(--text-tertiary);">

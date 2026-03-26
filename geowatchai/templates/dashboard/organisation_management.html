@@ -4,7 +4,7 @@
 {% block title %}Organisations — SankofaWatch{% endblock %}
 
 {% block content %}
-<div class="p-6 space-y-6">
+<div class="p-6 space-y-6" data-animate-cards>
 
     <!-- Header -->
     <div class="gw-page-header">
@@ -46,7 +46,8 @@
     <!-- Organisations Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {% for org in orgs %}
-        <div class="gw-card p-5 flex flex-col gap-4">
+        <div class="gw-card p-5 flex flex-col gap-4" style="overflow:hidden; border-top: 3px solid var(--accent);">
+            <div class="kente-bar" style="margin: -1.25rem -1.25rem 0 -1.25rem; margin-top: -1.375rem;"></div>
 
             <!-- Org header -->
             <div class="flex items-start gap-3">
@@ -63,15 +64,15 @@
             <!-- Stats row -->
             <div class="grid grid-cols-3 gap-2 text-center">
                 <div class="rounded-md py-2" style="background: var(--surface-3);">
-                    <p class="text-[18px] font-bold tabular-nums" style="color: var(--text-primary);">{{ org.member_count }}</p>
+                    <p class="text-[18px] font-bold tabular-nums" data-countup="{{ org.member_count }}" style="color: var(--text-primary);">{{ org.member_count }}</p>
                     <p class="text-[10px] uppercase tracking-wide mt-0.5" style="color: var(--text-secondary);">Members</p>
                 </div>
                 <div class="rounded-md py-2" style="background: var(--surface-3);">
-                    <p class="text-[18px] font-bold tabular-nums" style="color: var(--text-primary);">{{ org.job_count }}</p>
+                    <p class="text-[18px] font-bold tabular-nums" data-countup="{{ org.job_count }}" style="color: var(--text-primary);">{{ org.job_count }}</p>
                     <p class="text-[10px] uppercase tracking-wide mt-0.5" style="color: var(--text-secondary);">Jobs</p>
                 </div>
                 <div class="rounded-md py-2" style="background: var(--surface-3);">
-                    <p class="text-[18px] font-bold tabular-nums" style="color: {% if org.detection_count > 0 %}var(--status-critical){% else %}var(--text-primary){% endif %};">{{ org.detection_count }}</p>
+                    <p class="text-[18px] font-bold tabular-nums" data-countup="{{ org.detection_count }}" style="color: {% if org.detection_count > 0 %}var(--status-critical){% else %}var(--text-primary){% endif %};">{{ org.detection_count }}</p>
                     <p class="text-[10px] uppercase tracking-wide mt-0.5" style="color: var(--text-secondary);">Detections</p>
                 </div>
             </div>

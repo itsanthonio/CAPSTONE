@@ -13,7 +13,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="p-6 space-y-5">
+<div class="p-6 space-y-5" data-animate-cards>
 
     <!-- Header -->
     <div class="gw-page-header">
@@ -67,6 +67,7 @@
 
     <!-- Table -->
     <div class="gw-card overflow-hidden">
+        <div class="kente-bar"></div>
         {% if users %}
         <div class="overflow-x-auto">
             <table id="users-table" class="w-full text-sm">

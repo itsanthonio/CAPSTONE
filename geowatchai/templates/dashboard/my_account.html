@@ -4,7 +4,7 @@
 {% block title %}My Account — SankofaWatch{% endblock %}
 
 {% block content %}
-<div class="p-6 max-w-2xl mx-auto space-y-6">
+<div class="p-6 max-w-2xl mx-auto space-y-6" data-animate-cards>
 
     <!-- Header -->
     <div>
@@ -26,7 +26,8 @@
         {% csrf_token %}
 
         <!-- Account card -->
-        <div class="gw-card divide-y" style="--tw-divide-opacity: 1;">
+        <div class="gw-card divide-y overflow-hidden" style="--tw-divide-opacity: 1; border-top: 3px solid var(--accent);">
+            <div class="kente-bar"></div>
 
             <!-- Avatar + username -->
             <div class="px-6 py-5 flex items-center gap-4" style="border-bottom: 1px solid var(--border-subtle);">

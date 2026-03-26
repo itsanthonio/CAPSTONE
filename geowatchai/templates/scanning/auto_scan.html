@@ -169,6 +169,32 @@
 .panel-tab.tab-active { color:var(--text-primary); border-bottom-color:var(--accent); }
 .panel-tab:not(.tab-active) { color:var(--text-tertiary); }
 
+/* ── Stat bar count-up flash ──────────────────────────────────────────── */
+@keyframes statFlash {
+    0%   { color: rgba(212,160,23,1); }
+    100% { color: inherit; }
+}
+.stat-flash { animation: statFlash 0.7s ease forwards; }
+
+/* ── Running status pulse dot ────────────────────────────────────────── */
+@keyframes statusRunDot {
+    0%,100% { box-shadow: 0 0 0 0 rgba(60,200,120,0.6); }
+    60%     { box-shadow: 0 0 0 5px rgba(60,200,120,0); }
+}
+.status-run-dot {
+    display:inline-block; width:6px; height:6px; border-radius:50%;
+    background:#3cc878; margin-right:5px; vertical-align:middle;
+    animation: statusRunDot 1.6s ease infinite;
+}
+
+/* ── Activity item detection badge ───────────────────────────────────── */
+.det-badge {
+    display:inline-flex; align-items:center;
+    padding:1px 5px; border-radius:4px; font-size:9px; font-weight:700;
+    background:rgba(248,81,73,0.15); color:#f85149;
+    border:1px solid rgba(248,81,73,0.3);
+}
+
 /* ── Scrollbars ─────────────────────────────────────────────────────────── */
 #activity-feed, #regions-panel {
     scrollbar-width:thin; scrollbar-color:var(--border-default) transparent;
@@ -343,7 +369,8 @@
 
             <!-- Map legend -->
             <div class="absolute bottom-6 left-4 rounded-lg px-3 py-2 text-[11px] space-y-1.5"
-                 style="z-index:1000; background:rgba(13,17,23,0.85); border:1px solid var(--border-subtle); backdrop-filter:blur(4px);">
+                 style="z-index:1000; background:rgba(13,17,23,0.75); border:1px solid rgba(212,160,23,0.18); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); box-shadow:0 4px 24px rgba(0,0,0,0.4);">
+                <div class="text-[9px] uppercase tracking-[0.1em] font-semibold mb-2" style="color:rgba(212,160,23,0.6);">Legend</div>
                 <div class="flex items-center gap-2">
                     <div class="w-3 h-3 rounded-sm" style="border:1px solid rgba(212,160,23,0.3);"></div>
                     <span style="color:var(--text-secondary);">Scan grid tile</span>
@@ -370,6 +397,8 @@
         <!-- Right Panel -->
         <div id="right-panel" class="flex flex-col shrink-0"
              style="width:280px; background:var(--surface-1); border-left:1px solid var(--border-subtle);">
+
+            <div class="kente-bar"></div>
 
             <!-- Tabs -->
             <div class="flex shrink-0" style="border-bottom:1px solid var(--border-subtle);">
@@ -1085,14 +1114,18 @@
             const dot = p.priority === 'hotspot'
                 ? 'background:rgba(212,160,23,0.9)'
                 : 'background:rgba(240,246,252,0.25)';
+            const detBadge = (p.detection_count > 0)
+                ? `<span class="det-badge">${p.detection_count} det${p.detection_count > 1 ? 's' : ''}</span>`
+                : '';
             return `<li class="activity-item px-4 py-2.5 flex items-start gap-2.5"
                         data-lat="${lat}" data-lng="${lng}"
                         style="opacity:0;max-height:0;">
                 <div class="w-2 h-2 rounded-full mt-1 shrink-0" style="${dot};"></div>
                 <div class="flex-1 min-w-0">
                     <p class="text-xs font-medium truncate" style="color:var(--text-primary);">${p.name}</p>
-                    <p class="text-[10px] mt-0.5" style="color:var(--text-tertiary);">
-                        ${p.priority === 'hotspot' ? 'Hotspot · ' : ''}${time}
+                    <p class="text-[10px] mt-0.5 flex items-center gap-1.5 flex-wrap" style="color:var(--text-tertiary);">
+                        ${p.priority === 'hotspot' ? '<span style="color:rgba(212,160,23,0.8);">Hotspot</span> ·' : ''}${time}
+                        ${detBadge}
                     </p>
                 </div>
                 <span class="text-[10px] shrink-0 tabular-nums" style="color:var(--text-tertiary);">${p.scan_count}×</span>
@@ -1119,16 +1152,53 @@
 
     let _firstStatusUpdate = true;
 
+    // ── Count-up helper ───────────────────────────────────────────────────
+    function _countUp(el, target, duration) {
+        if (isNaN(target) || target <= 0) { el.textContent = target; return; }
+        const start = performance.now();
+        function tick(now) {
+            const pct  = Math.min((now - start) / duration, 1);
+            const ease = 1 - Math.pow(1 - pct, 3);
+            el.textContent = Math.round(ease * target);
+            if (pct < 1) requestAnimationFrame(tick);
+            else el.textContent = target;
+        }
+        requestAnimationFrame(tick);
+    }
+
+    function _setStatAnimated(id, val, isFirst) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const num = parseInt(val, 10);
+        if (isFirst && !isNaN(num) && num > 0) {
+            el.textContent = '0';
+            _countUp(el, num, 800);
+        } else {
+            if (el.textContent !== String(val)) {
+                el.textContent = val;
+                el.classList.remove('stat-flash');
+                void el.offsetWidth; // reflow
+                el.classList.add('stat-flash');
+            }
+        }
+    }
+
     function updateStatusBar(data) {
         const badge = document.getElementById('status-badge');
+        const isRunning = data.system_status === 'running';
         badge.className   = `px-2.5 py-1 text-[11px] font-semibold rounded-full status-${data.system_status}`;
-        badge.textContent = STATUS_LABEL[data.system_status] || data.system_status;
+        badge.innerHTML   = (isRunning ? '<span class="status-run-dot"></span>' : '') +
+                            (STATUS_LABEL[data.system_status] || data.system_status);
         document.getElementById('window-label').textContent =
             `${String(data.window_start).padStart(2,'0')}:00 – ${String(data.window_end).padStart(2,'0')}:00`;
-        document.getElementById('stat-tiles').textContent      = data.tiles_scanned_today ?? '—';
-        document.getElementById('stat-detections').textContent = data.detections_today ?? '—';
-        document.getElementById('stat-jobs').textContent       = data.total_auto_today ?? '—';
-        document.getElementById('stat-running').textContent    = data.running_auto_today ?? '—';
+        _setStatAnimated('stat-tiles',      data.tiles_scanned_today ?? '—', _firstStatusUpdate);
+        _setStatAnimated('stat-detections', data.detections_today    ?? '—', _firstStatusUpdate);
+        _setStatAnimated('stat-jobs',       data.total_auto_today    ?? '—', _firstStatusUpdate);
+        _setStatAnimated('stat-running',    data.running_auto_today  ?? '—', _firstStatusUpdate);
+
+        // Colour the detections number red when > 0
+        const detEl = document.getElementById('stat-detections');
+        if (detEl) detEl.style.color = (data.detections_today > 0) ? '#f85149' : '';
         const failedEl = document.getElementById('stat-failed');
         if (data.failed_auto_today > 0) {
             failedEl.textContent = `(${data.failed_auto_today} failed)`;
@@ -1267,18 +1337,25 @@
             return;
         }
         const maxCount = Math.max(...regions.map(r => r.count));
-        list.innerHTML = regions.map(r => {
-            const barW = Math.round((r.count / maxCount) * 80);
-            return `<li class="flex items-center gap-2 text-[11px]">
+        list.innerHTML = regions.map((r, i) => {
+            const barPct = Math.round((r.count / maxCount) * 100);
+            return `<li class="flex items-center gap-2 text-[11px]" style="opacity:0;transform:translateX(-6px);transition:opacity 0.3s ease ${i*60}ms,transform 0.3s ease ${i*60}ms;">
                 <div class="flex-1 min-w-0">
-                    <div class="truncate" style="color:var(--text-primary);">${r.region}</div>
-                    <div class="mt-1 h-1 rounded-full overflow-hidden" style="background:var(--border-subtle);">
-                        <div style="width:${barW}px;max-width:100%;height:100%;background:linear-gradient(to right,rgba(212,160,23,0.75),rgba(212,160,23,0.3));border-radius:9999px;"></div>
+                    <div class="flex items-center justify-between mb-1">
+                        <div class="truncate" style="color:var(--text-primary);">${r.region}</div>
+                        <span class="tabular-nums font-semibold shrink-0 ml-2" style="color:var(--accent);">${r.count}</span>
+                    </div>
+                    <div class="h-1 rounded-full overflow-hidden" style="background:var(--border-subtle);">
+                        <div class="h-full rounded-full" style="width:0%;background:linear-gradient(to right,rgba(212,160,23,0.85),rgba(212,160,23,0.35));transition:width 0.7s cubic-bezier(0.4,0,0.2,1) ${i*80}ms;" data-target="${barPct}"></div>
                     </div>
                 </div>
-                <span class="tabular-nums font-semibold shrink-0" style="color:var(--accent);">${r.count}</span>
             </li>`;
         }).join('');
+        // Trigger entrance + bar grow
+        requestAnimationFrame(() => {
+            list.querySelectorAll('li').forEach(li => { li.style.opacity='1'; li.style.transform='translateX(0)'; });
+            list.querySelectorAll('[data-target]').forEach(bar => { bar.style.width = bar.dataset.target + '%'; });
+        });
     }
 
     // ── Running tiles (now scanning badges) ───────────────────────────────

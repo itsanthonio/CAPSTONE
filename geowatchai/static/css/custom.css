@@ -320,6 +320,16 @@ aside::-webkit-scrollbar-thumb:hover,
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   padding: 16px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.gw-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+}
+/* Entrance animation — applied globally via JS */
+@keyframes gwCardIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .gw-card--interactive {

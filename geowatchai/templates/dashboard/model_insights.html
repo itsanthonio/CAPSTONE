@@ -2,8 +2,15 @@
 
 {% block title %}Model Insights — {{ settings.APP_NAME }}{% endblock %}
 
+{% block extra_css %}
+<style>
+@keyframes barGrowW { from { width: 0 !important; } }
+.metric-bar { animation: barGrowW 0.8s cubic-bezier(0.4,0,0.2,1) both; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="p-6 space-y-6">
+<div class="p-6 space-y-6" data-animate-cards>
 
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -33,9 +40,9 @@
             </span>
             {% endif %}
             <p class="text-[10px] font-medium uppercase tracking-[0.07em] mb-2" style="color: var(--text-tertiary);">Accuracy</p>
-            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);">{{ live_accuracy }}<span class="text-[14px] font-semibold" style="color: var(--text-tertiary);">%</span></p>
+            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);" data-countup="{{ live_accuracy }}">{{ live_accuracy }}</p>
             <div class="mt-2 w-full rounded-full h-1" style="background: var(--border-subtle);">
-                <div class="h-1 rounded-full" style="width:{{ live_accuracy }}%; background: var(--status-resolved);"></div>
+                <div class="h-1 rounded-full metric-bar" style="width:{{ live_accuracy }}%; background: var(--status-resolved); animation-delay: 0ms;"></div>
             </div>
             <p class="text-[11px] font-medium mt-1.5" style="color: var(--status-resolved);">{% if has_field_data %}Field-adjusted{% else %}Test set{% endif %}</p>
         </div>
@@ -48,36 +55,36 @@
             </span>
             {% endif %}
             <p class="text-[10px] font-medium uppercase tracking-[0.07em] mb-2" style="color: var(--text-tertiary);">Precision</p>
-            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);">{{ live_precision }}<span class="text-[14px] font-semibold" style="color: var(--text-tertiary);">%</span></p>
+            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);" data-countup="{{ live_precision }}">{{ live_precision }}</p>
             <div class="mt-2 w-full rounded-full h-1" style="background: var(--border-subtle);">
-                <div class="h-1 rounded-full" style="width:{{ live_precision }}%; background: var(--status-info);"></div>
+                <div class="h-1 rounded-full metric-bar" style="width:{{ live_precision }}%; background: var(--status-info); animation-delay: 100ms;"></div>
             </div>
             <p class="text-[11px] font-medium mt-1.5" style="color: var(--status-info);">{% if has_field_data %}Last {{ total_verified|default:50 }} verified{% else %}Test set{% endif %}</p>
         </div>
 
         <div class="gw-card p-4 text-center">
             <p class="text-[10px] font-medium uppercase tracking-[0.07em] mb-2" style="color: var(--text-tertiary);">Recall</p>
-            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);">{{ model_metrics.recall }}<span class="text-[14px] font-semibold" style="color: var(--text-tertiary);">%</span></p>
+            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);" data-countup="{{ model_metrics.recall }}">{{ model_metrics.recall }}</p>
             <div class="mt-2 w-full rounded-full h-1" style="background: var(--border-subtle);">
-                <div class="h-1 rounded-full" style="width:{{ model_metrics.recall }}%; background: var(--status-info);"></div>
+                <div class="h-1 rounded-full metric-bar" style="width:{{ model_metrics.recall }}%; background: var(--status-info); animation-delay: 200ms;"></div>
             </div>
             <p class="text-[11px] font-medium mt-1.5" style="color: var(--status-info);">Coverage</p>
         </div>
 
         <div class="gw-card p-4 text-center">
             <p class="text-[10px] font-medium uppercase tracking-[0.07em] mb-2" style="color: var(--text-tertiary);">F1 / Dice</p>
-            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);">{{ model_metrics.f1 }}<span class="text-[14px] font-semibold" style="color: var(--text-tertiary);">%</span></p>
+            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);" data-countup="{{ model_metrics.f1 }}">{{ model_metrics.f1 }}</p>
             <div class="mt-2 w-full rounded-full h-1" style="background: var(--border-subtle);">
-                <div class="h-1 rounded-full" style="width:{{ model_metrics.f1 }}%; background: var(--status-dispatched);"></div>
+                <div class="h-1 rounded-full metric-bar" style="width:{{ model_metrics.f1 }}%; background: var(--status-dispatched); animation-delay: 300ms;"></div>
             </div>
             <p class="text-[11px] font-medium mt-1.5" style="color: var(--status-dispatched);">Balance</p>
         </div>
 
         <div class="gw-card p-4 text-center">
             <p class="text-[10px] font-medium uppercase tracking-[0.07em] mb-2" style="color: var(--text-tertiary);">IoU</p>
-            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);">{{ model_metrics.iou }}<span class="text-[14px] font-semibold" style="color: var(--text-tertiary);">%</span></p>
+            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);" data-countup="{{ model_metrics.iou }}">{{ model_metrics.iou }}</p>
             <div class="mt-2 w-full rounded-full h-1" style="background: var(--border-subtle);">
-                <div class="h-1 rounded-full" style="width:{{ model_metrics.iou }}%; background: var(--status-high);"></div>
+                <div class="h-1 rounded-full metric-bar" style="width:{{ model_metrics.iou }}%; background: var(--status-high); animation-delay: 400ms;"></div>
             </div>
             <p class="text-[11px] font-medium mt-1.5" style="color: var(--status-high);">Overlap</p>
         </div>
@@ -86,7 +93,7 @@
             <p class="text-[10px] font-medium uppercase tracking-[0.07em] mb-2" style="color: var(--text-tertiary);">Test Loss</p>
             <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);">{{ model_metrics.loss }}</p>
             <div class="mt-2 w-full rounded-full h-1" style="background: var(--border-subtle);">
-                <div class="h-1 rounded-full" style="width:12.46%;max-width:25%; background: var(--status-resolved);"></div>
+                <div class="h-1 rounded-full metric-bar" style="width:12.46%;max-width:25%; background: var(--status-resolved); animation-delay: 500ms;"></div>
             </div>
             <p class="text-[11px] font-medium mt-1.5" style="color: var(--status-resolved);">Low &darr;</p>
         </div>
