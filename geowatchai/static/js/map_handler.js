@@ -50,6 +50,7 @@ class MapHandler {
             this.setupMapLayers();
             this.setupClickHandlers();
             this.setupKeyboardControls();
+            this.startPulseAnimation();
             console.log("Map fully loaded and layers initialized.");
         });
 
@@ -303,6 +304,18 @@ class MapHandler {
                 'fill-opacity': 0.45
             }
         });
+        // Animated glow layer (behind the crisp outline, pulsed via startPulseAnimation)
+        this.map.addLayer({
+            id: 'detections-glow',
+            type: 'line',
+            source: 'detections',
+            paint: {
+                'line-color': ['match', ['get', 'legal_status'], 'legal', '#3b82f6', '#ef4444'],
+                'line-width': 9,
+                'line-opacity': 0.2,
+                'line-blur': 4
+            }
+        });
         this.map.addLayer({
             id: 'detections-outline',
             type: 'line',
@@ -455,7 +468,8 @@ class MapHandler {
         // Strong debounce protection - prevent multiple simultaneous scans
         if (this.isPolling) {
             console.log("⚠️ Scan already in progress, ignoring duplicate request");
-            alert("Scan already in progress. Please wait for current scan to complete.");
+            if (window.showToast) window.showToast('Scan already in progress — please wait', 'info');
+            else alert("Scan already in progress. Please wait for current scan to complete.");
             return;
         }
 
@@ -517,11 +531,18 @@ class MapHandler {
                 throw new Error(`${response.status}: ${detail || response.statusText}`);
             }
             const job = await response.json();
+            this.startScanSweep();
+            const hud = document.getElementById('scan-hud');
+            if (hud) hud.classList.remove('hidden');
             this.pollJobStatus(job.id);
         } catch (err) {
-            this.isPolling = false; // Release lock on error so user can retry
+            this.isPolling = false;
+            this.stopScanSweep();
+            const hud = document.getElementById('scan-hud');
+            if (hud) hud.classList.add('hidden');
             console.error("Failed to start job:", err);
-            alert(`Error starting scan: ${err.message}`);
+            if (window.showToast) window.showToast('Error starting scan: ' + err.message, 'error');
+            else alert(`Error starting scan: ${err.message}`);
         } finally {
             if (scanBtn) { scanBtn.textContent = 'Scan AOI'; scanBtn.disabled = false; }
         }
@@ -546,21 +567,24 @@ class MapHandler {
         const statusEl = document.getElementById('scan-status-text');
         const scanBtn  = document.getElementById('scan-aoi-btn');
 
-        const setStatus = (label) => {
-            if (statusEl) {
-                statusEl.textContent = label;
-                statusEl.classList.remove('hidden');
-            }
+        const setStatus = (label, elapsedSec) => {
+            if (statusEl) { statusEl.textContent = label; statusEl.classList.remove('hidden'); }
+            const hudText    = document.getElementById('scan-hud-text');
+            const hudElapsed = document.getElementById('scan-hud-elapsed');
+            const hudEl      = document.getElementById('scan-hud');
+            if (hudText)    hudText.textContent    = label;
+            if (hudElapsed) hudElapsed.textContent = elapsedSec != null ? elapsedSec + 's' : '';
+            if (hudEl)      hudEl.classList.remove('hidden');
         };
 
         const clearStatus = () => {
-            if (statusEl) {
-                statusEl.textContent = '';
-                statusEl.classList.add('hidden');
-            }
+            if (statusEl) { statusEl.textContent = ''; statusEl.classList.add('hidden'); }
+            const hudEl = document.getElementById('scan-hud');
+            if (hudEl) hudEl.classList.add('hidden');
+            this.stopScanSweep();
         };
 
-        setStatus('Starting…');
+        setStatus('Starting…', 0);
 
         const interval = setInterval(async () => {
             pollCount++;
@@ -593,7 +617,7 @@ class MapHandler {
                 }
 
                 const label = statusLabels[data.status] || data.status;
-                setStatus(`${label} (${elapsed}s)`);
+                setStatus(label, elapsed);
 
             } catch (e) {
                 clearInterval(interval);
@@ -620,15 +644,24 @@ class MapHandler {
             scanBtn.style.cursor = 'pointer';
         }
         
-        // Show alert based on job result
+        // Notify user of scan result
         const fc = data.detection_data;
         const newCount = (fc && fc.features) ? fc.features.length : 0;
         const illegal = data.illegal_count || 0;
-        const byLine = data.created_by ? `\nTriggered by: ${data.created_by}` : '';
-        if (newCount > 0) {
-            alert(`Scan complete: ${newCount} site(s) detected (${illegal} illegal).${byLine}`);
+        if (window.showToast) {
+            if (newCount > 0) {
+                window.showToast(
+                    `Scan complete — ${newCount} site${newCount !== 1 ? 's' : ''} detected (${illegal} illegal)`,
+                    illegal > 0 ? 'error' : 'info'
+                );
+            } else {
+                window.showToast('Scan complete — No mining sites detected in this area', 'success');
+            }
         } else {
-            alert(`Scan complete: No mining sites detected in this area.${byLine}`);
+            const byLine = data.created_by ? `\nTriggered by: ${data.created_by}` : '';
+            alert(newCount > 0
+                ? `Scan complete: ${newCount} site(s) detected (${illegal} illegal).${byLine}`
+                : `Scan complete: No mining sites detected in this area.${byLine}`);
         }
 
         // Re-fetch all sites so the sidebar shows everything (not just the new scan)
@@ -665,7 +698,99 @@ class MapHandler {
             scanBtn.style.cursor = 'pointer';
         }
         
-        alert("Scan failed: " + (data.error || data.failure_reason || 'Unknown error occurred'));
+        if (window.showToast) {
+            window.showToast('Scan failed: ' + (data.error || data.failure_reason || 'Unknown error'), 'error');
+        } else {
+            alert("Scan failed: " + (data.error || data.failure_reason || 'Unknown error occurred'));
+        }
+    }
+
+    // ── Pulse animation for detection glow layer ─────────────────────────
+    startPulseAnimation() {
+        if (this._pulseAnimFrame) cancelAnimationFrame(this._pulseAnimFrame);
+        let phase = 0;
+        const animate = () => {
+            phase += 0.02;
+            const t = 0.5 + 0.5 * Math.sin(phase);
+            if (this.map.getLayer('detections-glow')) {
+                this.map.setPaintProperty('detections-glow', 'line-opacity', 0.1 + 0.3 * t);
+            }
+            this._pulseAnimFrame = requestAnimationFrame(animate);
+        };
+        this._pulseAnimFrame = requestAnimationFrame(animate);
+    }
+
+    // ── Radar sweep canvas animation ──────────────────────────────────────
+    startScanSweep() {
+        const canvas = document.getElementById('scan-sweep-canvas');
+        if (!canvas) return;
+        canvas.style.display = 'block';
+        const ctx = canvas.getContext('2d');
+        const drawData = this.draw ? this.draw.getAll() : null;
+        if (!drawData || !drawData.features.length) { this.stopScanSweep(); return; }
+
+        const feature = drawData.features[0];
+        const bbox = turf.bbox(feature); // [minLng, minLat, maxLng, maxLat]
+        let progress = 0;
+        let lastTime = null;
+        const SWEEP_MS = 2400;
+        this._sweeping = true;
+
+        const sweep = (ts) => {
+            if (!this._sweeping) return;
+            if (!lastTime) lastTime = ts;
+            const dt = ts - lastTime; lastTime = ts;
+            progress = (progress + dt / SWEEP_MS) % 1;
+
+            const mapEl = document.getElementById('live-map');
+            if (!mapEl) return;
+            canvas.width  = mapEl.offsetWidth;
+            canvas.height = mapEl.offsetHeight;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const tl = this.map.project([bbox[0], bbox[3]]);
+            const br = this.map.project([bbox[2], bbox[1]]);
+            const x1 = Math.max(0, tl.x);
+            const x2 = Math.min(canvas.width, br.x);
+            const y1 = Math.max(0, tl.y);
+            const y2 = Math.min(canvas.height, br.y);
+            if (x2 <= x1 || y2 <= y1) { this._sweepAnimFrame = requestAnimationFrame(sweep); return; }
+
+            const sweepY = y1 + (y2 - y1) * progress;
+
+            // Trailing gradient above the line
+            const grad = ctx.createLinearGradient(0, sweepY - 32, 0, sweepY);
+            grad.addColorStop(0, 'rgba(74,222,128,0)');
+            grad.addColorStop(1, 'rgba(74,222,128,0.16)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(x1, sweepY - 32, x2 - x1, 32);
+
+            // Scan line
+            ctx.save();
+            ctx.shadowColor = 'rgba(74,222,128,0.9)';
+            ctx.shadowBlur  = 8;
+            ctx.strokeStyle = 'rgba(74,222,128,0.85)';
+            ctx.lineWidth   = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(x1, sweepY);
+            ctx.lineTo(x2, sweepY);
+            ctx.stroke();
+            ctx.restore();
+
+            this._sweepAnimFrame = requestAnimationFrame(sweep);
+        };
+        this._sweepAnimFrame = requestAnimationFrame(sweep);
+    }
+
+    stopScanSweep() {
+        this._sweeping = false;
+        if (this._sweepAnimFrame) { cancelAnimationFrame(this._sweepAnimFrame); this._sweepAnimFrame = null; }
+        const canvas = document.getElementById('scan-sweep-canvas');
+        if (canvas) {
+            canvas.style.display = 'none';
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
     }
 
     updateConfidenceFilter(val) {

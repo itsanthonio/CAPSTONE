@@ -70,10 +70,20 @@
         }
     </script>
 
-    <!-- Inter Font -->
+    <!-- Inter + JetBrains Mono fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- NProgress top loading bar -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.min.js"></script>
+    <style>
+    /* NProgress — gold accent, no spinner */
+    #nprogress .bar { background: var(--accent, #d4a017) !important; height: 2px !important; }
+    #nprogress .peg { box-shadow: 0 0 8px var(--accent, #d4a017), 0 0 3px var(--accent, #d4a017) !important; }
+    #nprogress .spinner { display: none !important; }
+    </style>
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'css/custom.css' %}">
@@ -150,7 +160,38 @@
 
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js global dark-theme defaults -->
+    <script>
+    (function () {
+        function _applyChartDefaults() {
+            if (typeof Chart === 'undefined') return;
+            Chart.defaults.animation.duration = 600;
+            Chart.defaults.animation.easing   = 'easeOutQuart';
+            Chart.defaults.color              = '#8b949e';
+            Chart.defaults.borderColor        = 'rgba(240,246,252,0.07)';
+            var tp = Chart.defaults.plugins.tooltip;
+            tp.backgroundColor  = 'rgba(13,17,23,0.96)';
+            tp.borderColor      = 'rgba(240,246,252,0.12)';
+            tp.borderWidth      = 1;
+            tp.titleColor       = '#e6edf3';
+            tp.bodyColor        = '#8b949e';
+            tp.padding          = 10;
+            tp.cornerRadius     = 6;
+            tp.displayColors    = false;
+        }
+        _applyChartDefaults();
+    })();
+    </script>
 
+    <!-- AOS — Animate on Scroll -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css"/>
+
+    <!-- Phosphor Icons (regular, bold, fill weights) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/bold/style.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css"/>
+    <!-- Notyf toast notifications -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css"/>
     {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-surface-base text-fg-primary font-sans antialiased" data-user-role="{{ request.user.profile.role|default:'none' }}" data-theme="{% if request.user.preferences %}{{ request.user.preferences.theme }}{% else %}light{% endif %}" data-layout="{% if request.user.preferences %}{{ request.user.preferences.layout }}{% else %}comfortable{% endif %}" data-font-size="{% if request.user.preferences %}{{ request.user.preferences.font_size }}{% else %}medium{% endif %}">
@@ -169,9 +210,7 @@
                         aria-controls="main-sidebar"
                         aria-expanded="false"
                         onclick="toggleSidebar()">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                    </svg>
+                    <i class="ph ph-list" style="font-size:18px;" aria-hidden="true"></i>
                 </button>
                 <a href="{% url 'analysis:live_map' %}" class="flex items-center gap-2.5 group" aria-label="{{ settings.APP_NAME }} home">
                     <!-- Sankofa bird mark (Akan/Ghanaian Adinkra: "go back and fetch it") -->
@@ -216,10 +255,7 @@
                             aria-label="Notifications"
                             aria-expanded="false"
                             aria-haspopup="true">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-                        </svg>
+                        <i class="ph ph-bell" style="font-size:17px;" aria-hidden="true"></i>
                         <span id="notif-badge"
                               class="hidden absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-status-critical rounded-full text-fg-inverse text-[9px] font-bold flex items-center justify-center px-1 leading-none"
                               aria-live="polite"
@@ -273,9 +309,7 @@
                         <span class="text-[13px] text-fg-secondary hidden sm:block max-w-[100px] truncate">
                             {% if user.is_authenticated %}{{ user.username }}{% endif %}
                         </span>
-                        <svg class="w-3 h-3 text-fg-muted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                        </svg>
+                        <i class="ph ph-caret-down" style="font-size:12px;" aria-hidden="true"></i>
                     </button>
 
                     <!-- User dropdown -->
@@ -293,26 +327,20 @@
                             <a href="{% url 'dashboard:my_account' %}"
                                class="flex items-center gap-2.5 px-4 py-2 text-[13px] text-fg-secondary hover:bg-surface-3 hover:text-fg-primary transition-colors"
                                style="transition-duration:120ms">
-                                <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                                </svg>
+                                <i class="ph ph-user" style="font-size:14px; opacity:0.7;" aria-hidden="true"></i>
                                 My Account
                             </a>
                             <a href="{% url 'password_change' %}"
                                class="flex items-center gap-2.5 px-4 py-2 text-[13px] text-fg-secondary hover:bg-surface-3 hover:text-fg-primary transition-colors"
                                style="transition-duration:120ms">
-                                <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
-                                </svg>
+                                <i class="ph ph-key" style="font-size:14px; opacity:0.7;" aria-hidden="true"></i>
                                 Change Password
                             </a>
                             {% if user.profile.role == 'system_admin' %}
                             <a href="{% url 'admin:index' %}"
                                class="flex items-center gap-2.5 px-4 py-2 text-[13px] text-fg-secondary hover:bg-surface-3 hover:text-fg-primary transition-colors"
                                style="transition-duration:120ms">
-                                <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                </svg>
+                                <i class="ph ph-sliders" style="font-size:14px; opacity:0.7;" aria-hidden="true"></i>
                                 Admin Panel
                             </a>
                             {% endif %}
@@ -322,9 +350,7 @@
                                 <button type="submit"
                                         class="w-full flex items-center gap-2.5 px-4 py-2 text-[13px] text-status-critical hover:bg-status-critical-bg transition-colors"
                                         style="transition-duration:120ms">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                                    </svg>
+                                    <i class="ph ph-sign-out" style="font-size:14px;" aria-hidden="true"></i>
                                     Sign out
                                 </button>
                             </form>
@@ -356,18 +382,14 @@
                     <li>
                         <a href="{% url 'dashboard:inspector' %}"
                            class="gw-nav-item {% if request.resolver_match.url_name == 'inspector' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-                            </svg>
+                            <i class="ph ph-clipboard-text" aria-hidden="true"></i>
                             <span>My Assignments</span>
                         </a>
                     </li>
                     <li>
                         <a href="{% url 'dashboard:settings' %}"
                            class="gw-nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            </svg>
+                            <i class="ph ph-gear" aria-hidden="true"></i>
                             <span>Settings</span>
                         </a>
                     </li>
@@ -380,27 +402,21 @@
                     <li>
                         <a href="{% url 'dashboard:admin_home' %}"
                            class="gw-nav-item {% if request.resolver_match.url_name == 'admin_home' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-                            </svg>
+                            <i class="ph ph-house" aria-hidden="true"></i>
                             <span>Dashboard</span>
                         </a>
                     </li>
                     <li>
                         <a href="{% url 'dashboard:user_management' %}"
                            class="gw-nav-item {% if 'user_management' in request.resolver_match.url_name or 'user_create' in request.resolver_match.url_name or 'user_edit' in request.resolver_match.url_name %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            </svg>
+                            <i class="ph ph-users-three" aria-hidden="true"></i>
                             <span>Users</span>
                         </a>
                     </li>
                     <li>
                         <a href="{% url 'dashboard:organisation_management' %}"
                            class="gw-nav-item {% if 'organisation' in request.resolver_match.url_name %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                            </svg>
+                            <i class="ph ph-buildings" aria-hidden="true"></i>
                             <span>Organisations</span>
                         </a>
                     </li>
@@ -411,36 +427,28 @@
                     <li>
                         <a href="{% url 'uploads:data_uploads' %}"
                            class="gw-nav-item {% if request.resolver_match.url_name == 'data_uploads' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                            </svg>
+                            <i class="ph ph-cloud-arrow-up" aria-hidden="true"></i>
                             <span>Data Uploads</span>
                         </a>
                     </li>
                     <li>
                         <a href="{% url 'dashboard:model_insights' %}"
                            class="gw-nav-item {% if request.resolver_match.url_name == 'model_insights' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                            </svg>
+                            <i class="ph ph-chart-bar" aria-hidden="true"></i>
                             <span>Model Insights</span>
                         </a>
                     </li>
                     <li>
                         <a href="{% url 'dashboard:audit' %}"
                            class="gw-nav-item {% if request.resolver_match.url_name == 'audit' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-                            </svg>
+                            <i class="ph ph-scroll" aria-hidden="true"></i>
                             <span>Audit Trail</span>
                         </a>
                     </li>
                     <li>
                         <a href="{% url 'dashboard:settings' %}"
                            class="gw-nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            </svg>
+                            <i class="ph ph-gear" aria-hidden="true"></i>
                             <span>Settings</span>
                         </a>
                     </li>
@@ -453,27 +461,21 @@
                     <li>
                         <a href="{% url 'dashboard:home' %}"
                            class="gw-nav-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-                            </svg>
+                            <i class="ph ph-house" aria-hidden="true"></i>
                             <span>Dashboard</span>
                         </a>
                     </li>
                     <li>
                         <a href="{% url 'analysis:live_map' %}"
                            class="gw-nav-item {% if request.resolver_match.url_name == 'live_map' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-                            </svg>
+                            <i class="ph ph-map-trifold" aria-hidden="true"></i>
                             <span>Live Map</span>
                         </a>
                     </li>
                     <li>
                         <a href="{% url 'dashboard:alerts' %}"
                            class="gw-nav-item {% if 'alerts' in request.resolver_match.url_name %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                            </svg>
+                            <i class="ph ph-warning" aria-hidden="true"></i>
                             <span>Alerts</span>
                         </a>
                     </li>
@@ -484,28 +486,21 @@
                     <li>
                         <a href="{% url 'scanning:auto_scan' %}"
                            class="gw-nav-item {% if request.resolver_match.url_name == 'auto_scan' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
+                            <i class="ph ph-radar" aria-hidden="true"></i>
                             <span>Auto Scan</span>
                         </a>
                     </li>
                     <li>
                         <a href="{% url 'dashboard:region_list' %}"
                            class="gw-nav-item {% if 'region' in request.resolver_match.url_name %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/>
-                                <circle cx="12" cy="12" r="9"/>
-                            </svg>
+                            <i class="ph ph-globe-hemisphere-west" aria-hidden="true"></i>
                             <span>Regions</span>
                         </a>
                     </li>
                     <li>
                         <a href="{% url 'dashboard:report' %}"
                            class="gw-nav-item {% if request.resolver_match.url_name == 'report' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                            </svg>
+                            <i class="ph ph-file-text" aria-hidden="true"></i>
                             <span>Reports</span>
                         </a>
                     </li>
@@ -516,9 +511,7 @@
                     <li>
                         <a href="{% url 'dashboard:settings' %}"
                            class="gw-nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            </svg>
+                            <i class="ph ph-gear" aria-hidden="true"></i>
                             <span>Settings</span>
                         </a>
                     </li>
@@ -533,16 +526,12 @@
                     <p class="gw-nav-group px-1 pt-4 pb-2">AOI Tools</p>
                     <div class="px-1 space-y-2">
                         <button id="draw-aoi-btn" class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                            </svg>
+                            <i class="ph ph-pencil-simple" style="font-size:14px;" aria-hidden="true"></i>
                             Draw Area
                         </button>
                         <button id="upload-aoi-btn" class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2"
                                 onclick="document.getElementById('aoi-file-input').click()">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-                            </svg>
+                            <i class="ph ph-upload-simple" style="font-size:14px;" aria-hidden="true"></i>
                             Upload File
                         </button>
                         <input type="file" id="aoi-file-input" class="hidden" accept=".geojson,.json,.zip">
@@ -611,10 +600,19 @@
 
             <!-- Adinkra Sankofa mark at sidebar bottom -->
             <div class="px-4 py-3" style="border-top: 1px solid var(--border-subtle); margin-top: auto;">
+                <!-- Collapse toggle -->
+                <button id="sidebar-collapse-btn"
+                        onclick="toggleSidebarCollapse()"
+                        title="Collapse sidebar"
+                        class="btn-ghost w-full justify-center mb-2 text-[12px] gap-1.5"
+                        style="opacity:0.55; height:28px;">
+                    <i class="ph ph-sidebar-simple" style="font-size:16px;" aria-hidden="true"></i>
+                    <span class="sidebar-bottom-text">Collapse</span>
+                </button>
                 <div class="adinkra-divider" title="Gye Nyame — Adinkra symbol">
                     <span class="adinkra-divider__glyph"></span>
                 </div>
-                <p class="text-center mt-2" style="font-size:9px; color:var(--text-tertiary); opacity:0.45;
+                <p class="text-center mt-2 sidebar-bottom-text" style="font-size:9px; color:var(--text-tertiary); opacity:0.45;
                           letter-spacing:0.04em; font-style:italic; line-height:1.5;">
                     Sankofa &middot; Gye Nyame
                 </p>
@@ -628,6 +626,71 @@
         </main>
     </div>
 
+    <!-- ── Mobile Bottom Navigation ────────────────────────── -->
+    {% if user.is_authenticated %}
+    <nav id="mobile-bottom-nav" aria-label="Mobile navigation">
+        {% if user.profile.role == 'inspector' %}
+        <a href="{% url 'dashboard:inspector' %}"
+           class="{% if request.resolver_match.url_name == 'inspector' %}active{% endif %}">
+            <i class="ph ph-clipboard-text" aria-hidden="true"></i>
+            <span>Tasks</span>
+        </a>
+        <a href="{% url 'analysis:live_map' %}"
+           class="{% if request.resolver_match.url_name == 'live_map' %}active{% endif %}">
+            <i class="ph ph-map-trifold" aria-hidden="true"></i>
+            <span>Map</span>
+        </a>
+        <a href="{% url 'dashboard:settings' %}"
+           class="{% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+            <i class="ph ph-gear" aria-hidden="true"></i>
+            <span>Settings</span>
+        </a>
+        {% elif user.profile.role == 'system_admin' %}
+        <a href="{% url 'dashboard:admin_home' %}"
+           class="{% if request.resolver_match.url_name == 'admin_home' %}active{% endif %}">
+            <i class="ph ph-house" aria-hidden="true"></i>
+            <span>Dashboard</span>
+        </a>
+        <a href="{% url 'dashboard:alerts' %}"
+           class="{% if 'alerts' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="ph ph-warning" aria-hidden="true"></i>
+            <span>Alerts</span>
+        </a>
+        <a href="{% url 'dashboard:user_management' %}"
+           class="{% if 'user_management' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="ph ph-users-three" aria-hidden="true"></i>
+            <span>Users</span>
+        </a>
+        <a href="{% url 'dashboard:settings' %}"
+           class="{% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+            <i class="ph ph-gear" aria-hidden="true"></i>
+            <span>Settings</span>
+        </a>
+        {% else %}
+        <a href="{% url 'dashboard:home' %}"
+           class="{% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+            <i class="ph ph-house" aria-hidden="true"></i>
+            <span>Dashboard</span>
+        </a>
+        <a href="{% url 'analysis:live_map' %}"
+           class="{% if request.resolver_match.url_name == 'live_map' %}active{% endif %}">
+            <i class="ph ph-map-trifold" aria-hidden="true"></i>
+            <span>Map</span>
+        </a>
+        <a href="{% url 'dashboard:alerts' %}"
+           class="{% if 'alerts' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="ph ph-warning" aria-hidden="true"></i>
+            <span>Alerts</span>
+        </a>
+        <a href="{% url 'dashboard:report' %}"
+           class="{% if request.resolver_match.url_name == 'report' %}active{% endif %}">
+            <i class="ph ph-file-text" aria-hidden="true"></i>
+            <span>Reports</span>
+        </a>
+        {% endif %}
+    </nav>
+    {% endif %}
+
     <!-- ── Footer ───────────────────────────────────────────── -->
     <footer class="fixed bottom-0 left-55 right-0 bg-surface-1 border-t border-edge-subtle py-2 px-5">
         <div class="flex justify-between items-center">
@@ -636,8 +699,194 @@
         </div>
     </footer>
 
+    <!-- ── Command Palette (Ctrl+K / ⌘K) ─────────────────── -->
+    <div id="cmd-palette" class="hidden fixed inset-0 z-[200] flex items-start justify-center"
+         style="padding-top: 18vh; background: rgba(0,0,0,0.55);"
+         role="dialog" aria-modal="true" aria-label="Command palette">
+        <div class="cmd-card w-full max-w-md mx-4 gw-card rounded-xl overflow-hidden"
+             style="border: 1px solid var(--border-default); box-shadow: 0 24px 64px rgba(0,0,0,0.55);">
+            <!-- Search input -->
+            <div class="flex items-center gap-3 px-4 py-3"
+                 style="border-bottom: 1px solid var(--border-subtle);">
+                <i class="ph ph-magnifying-glass" style="font-size:17px; color: var(--text-tertiary);" aria-hidden="true"></i>
+                <input id="cmd-input" type="text" placeholder="Search commands…"
+                       class="flex-1 bg-transparent text-[14px] outline-none"
+                       style="color: var(--text-primary);"
+                       autocomplete="off" spellcheck="false">
+                <kbd class="text-[10px] px-1.5 py-0.5 rounded font-mono"
+                     style="background: var(--surface-3); color: var(--text-tertiary); border: 1px solid var(--border-subtle);">Esc</kbd>
+            </div>
+            <!-- Results list -->
+            <div id="cmd-list" class="overflow-y-auto" style="max-height: 320px;"></div>
+            <!-- Footer hint -->
+            <div class="px-4 py-2 text-[10px] flex gap-4"
+                 style="border-top: 1px solid var(--border-subtle); color: var(--text-tertiary);">
+                <span><kbd class="font-mono">↑↓</kbd> navigate</span>
+                <span><kbd class="font-mono">↵</kbd> select</span>
+                <span><kbd class="font-mono">Esc</kbd> close</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Right-Click Context Menu ────────────────────────── -->
+    <div id="ctx-menu" role="menu" aria-label="Context menu"></div>
+
     <!-- JavaScript -->
     <script src="{% static 'js/main.js' %}"></script>
+
+    <!-- Sidebar collapse (desktop icon-only mode) -->
+    <script>
+    (function () {
+        'use strict';
+        var STORAGE_KEY = 'gw_sidebar_collapsed';
+
+        function applyCollapsedState(collapsed) {
+            document.body.classList.toggle('sidebar-collapsed', collapsed);
+            // Set data-label on nav items so CSS tooltip can read it
+            document.querySelectorAll('.gw-nav-item').forEach(function (el) {
+                var span = el.querySelector('span');
+                if (span) el.setAttribute('data-label', span.textContent.trim());
+            });
+        }
+
+        window.toggleSidebarCollapse = function () {
+            var isCollapsed = document.body.classList.toggle('sidebar-collapsed');
+            localStorage.setItem(STORAGE_KEY, isCollapsed ? '1' : '0');
+            // Re-apply data-labels
+            document.querySelectorAll('.gw-nav-item').forEach(function (el) {
+                var span = el.querySelector('span');
+                if (span) el.setAttribute('data-label', span.textContent.trim());
+            });
+        };
+
+        // Restore on load
+        document.addEventListener('DOMContentLoaded', function () {
+            if (localStorage.getItem(STORAGE_KEY) === '1') {
+                applyCollapsedState(true);
+            }
+        });
+    })();
+    </script>
+
+    <!-- Command palette (Ctrl+K / ⌘K) -->
+    <script>
+    (function () {
+        'use strict';
+        var palette  = document.getElementById('cmd-palette');
+        var input    = document.getElementById('cmd-input');
+        var list     = document.getElementById('cmd-list');
+        if (!palette || !input || !list) return;
+
+        var role = document.body.dataset.userRole || '';
+
+        // ── Command registry ──────────────────────────────────────────────
+        var COMMANDS = [
+            { icon: 'ph-house',              label: 'Dashboard',          hint: 'Go to dashboard',          group: 'Navigate', href: null },
+            { icon: 'ph-map-trifold',        label: 'Live Map',           hint: 'Open live map',            group: 'Navigate', href: '/analysis/map/' },
+            { icon: 'ph-warning',            label: 'Alerts',             hint: 'View alerts',              group: 'Navigate', href: '/dashboard/alerts/' },
+            { icon: 'ph-file-text',          label: 'Reports',            hint: 'Open reports',             group: 'Navigate', href: '/dashboard/report/' },
+            { icon: 'ph-radar',              label: 'Auto Scan',          hint: 'View automated scanning',  group: 'Navigate', href: '/scanning/auto-scan/' },
+            { icon: 'ph-globe-hemisphere-west', label: 'Regions',         hint: 'Browse regions',           group: 'Navigate', href: '/dashboard/regions/' },
+            { icon: 'ph-gear',               label: 'Settings',           hint: 'Account settings',         group: 'Navigate', href: '/dashboard/settings/' },
+            { icon: 'ph-user',               label: 'My Account',         hint: 'Edit profile',             group: 'Navigate', href: '/accounts/me/' },
+            { icon: 'ph-users-three',        label: 'Manage Users',       hint: 'User management',          group: 'Admin',    href: '/dashboard/users/', roles: ['system_admin'] },
+            { icon: 'ph-buildings',          label: 'Organisations',      hint: 'Manage organisations',     group: 'Admin',    href: '/dashboard/organisations/', roles: ['system_admin'] },
+            { icon: 'ph-scroll',             label: 'Audit Trail',        hint: 'View audit log',           group: 'Admin',    href: '/dashboard/audit/', roles: ['system_admin'] },
+            { icon: 'ph-chart-bar',          label: 'Model Insights',     hint: 'ML model performance',     group: 'Admin',    href: '/dashboard/model-insights/', roles: ['system_admin', 'agency_admin'] },
+            { icon: 'ph-sun',                label: 'Switch to Light Mode', hint: 'Toggle theme',           group: 'UI',       action: 'theme-light' },
+            { icon: 'ph-moon',               label: 'Switch to Dark Mode',  hint: 'Toggle theme',           group: 'UI',       action: 'theme-dark' },
+        ];
+
+        // Resolve dashboard href based on role
+        COMMANDS[0].href = role === 'system_admin' ? '/dashboard/admin/'
+                         : role === 'inspector'    ? '/dashboard/inspector/'
+                         : '/dashboard/home/';
+
+        var filtered = [];
+        var activeIdx = 0;
+
+        function visibleCommands(q) {
+            q = (q || '').toLowerCase();
+            return COMMANDS.filter(function (cmd) {
+                if (cmd.roles && !cmd.roles.includes(role)) return false;
+                return !q || cmd.label.toLowerCase().includes(q) || (cmd.hint || '').toLowerCase().includes(q);
+            });
+        }
+
+        function renderList(cmds) {
+            if (!cmds.length) {
+                list.innerHTML = '<p style="padding:20px 14px;font-size:13px;color:var(--text-tertiary);">No commands found</p>';
+                return;
+            }
+            var lastGroup = null;
+            list.innerHTML = cmds.map(function (cmd, i) {
+                var groupHeader = '';
+                if (cmd.group !== lastGroup) {
+                    groupHeader = '<p class="cmd-section-label">' + cmd.group + '</p>';
+                    lastGroup = cmd.group;
+                }
+                var cls = 'cmd-item' + (i === activeIdx ? ' cmd-active' : '');
+                var tag = cmd.href ? 'a' : 'button';
+                var href = cmd.href ? ' href="' + cmd.href + '"' : '';
+                return groupHeader + '<' + tag + cls + '"' + href + ' data-cmd-idx="' + i + '" role="menuitem">'
+                    + '<i class="ph ' + cmd.icon + '" aria-hidden="true"></i>'
+                    + '<span class="cmd-label">' + cmd.label + '</span>'
+                    + (cmd.hint ? '<span class="cmd-hint">' + cmd.hint + '</span>' : '')
+                    + '</' + tag + '>';
+            }).join('');
+        }
+
+        function open() {
+            palette.classList.remove('hidden');
+            input.value = '';
+            activeIdx = 0;
+            filtered = visibleCommands('');
+            renderList(filtered);
+            setTimeout(function () { input.focus(); }, 30);
+        }
+
+        function close() {
+            palette.classList.add('hidden');
+        }
+
+        function executeCmd(cmd) {
+            close();
+            if (cmd.href) { window.location.href = cmd.href; return; }
+            if (cmd.action === 'theme-light') { document.body.setAttribute('data-theme', 'light'); }
+            if (cmd.action === 'theme-dark')  { document.body.setAttribute('data-theme', 'dark'); }
+        }
+
+        // ── Events ────────────────────────────────────────────────────────
+        input.addEventListener('input', function () {
+            activeIdx = 0;
+            filtered = visibleCommands(input.value);
+            renderList(filtered);
+        });
+
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowDown') { activeIdx = Math.min(activeIdx + 1, filtered.length - 1); renderList(filtered); e.preventDefault(); }
+            if (e.key === 'ArrowUp')   { activeIdx = Math.max(activeIdx - 1, 0);                   renderList(filtered); e.preventDefault(); }
+            if (e.key === 'Enter' && filtered[activeIdx]) { executeCmd(filtered[activeIdx]); }
+            if (e.key === 'Escape') { close(); }
+        });
+
+        list.addEventListener('click', function (e) {
+            var el = e.target.closest('[data-cmd-idx]');
+            if (el) executeCmd(filtered[parseInt(el.dataset.cmdIdx, 10)]);
+        });
+
+        palette.addEventListener('click', function (e) {
+            if (e.target === palette) close();
+        });
+
+        // Global Ctrl+K / ⌘K
+        document.addEventListener('keydown', function (e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); open(); }
+        });
+
+        window._cmdPalette = { open: open, close: close };
+    })();
+    </script>
 
     <!-- Sidebar toggle (mobile / small screens) -->
     <script>
@@ -931,11 +1180,14 @@
     <!-- ── Global page animations ───────────────────────────────────────── -->
     <script>
     (function () {
+        var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
         document.addEventListener('DOMContentLoaded', function () {
             // Count-up for any element with data-countup="NUMBER"
             document.querySelectorAll('[data-countup]').forEach(function (el) {
                 var target = parseInt(el.dataset.countup, 10);
                 if (!target || target <= 0) { el.textContent = target || el.dataset.countup; return; }
+                if (reducedMotion) { el.textContent = target; return; }
                 el.textContent = '0';
                 var start = performance.now(), dur = 900;
                 function tick(now) {
@@ -947,15 +1199,62 @@
             });
 
             // Card entrance stagger — only on pages that opt in with data-animate-cards
-            if (document.querySelector('[data-animate-cards]')) {
+            // Skip cards that use AOS (data-aos attribute) to avoid double-animation
+            if (!reducedMotion && document.querySelector('[data-animate-cards]')) {
                 document.querySelectorAll('[data-animate-cards] .gw-card').forEach(function (card, i) {
-                    card.style.animation = 'gwCardIn 0.4s ease ' + (i * 55) + 'ms both';
+                    if (!card.hasAttribute('data-aos')) {
+                        card.style.animation = 'gwCardIn 0.4s ease ' + (i * 55) + 'ms both';
+                    }
                 });
             }
         });
     })();
     </script>
 
+    <!-- NProgress — trigger on internal link navigation -->
+    <script>
+    (function () {
+        if (typeof NProgress === 'undefined') return;
+        NProgress.configure({ showSpinner: false, speed: 300, minimum: 0.12 });
+        document.addEventListener('click', function (e) {
+            var link = e.target.closest('a[href]');
+            if (!link) return;
+            var href = link.getAttribute('href');
+            if (!href || href.startsWith('#') || href.startsWith('javascript:') ||
+                href.startsWith('mailto:') || href.startsWith('tel:') ||
+                link.target === '_blank' || link.dataset.noProgress !== undefined) return;
+            NProgress.start();
+        });
+        window.addEventListener('pageshow', function () { NProgress.done(); });
+    })();
+    </script>
+
+    <!-- AOS init -->
+    <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (typeof AOS !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            AOS.init({ duration: 420, easing: 'ease-out-quart', once: true, offset: 20 });
+        }
+    });
+    </script>
+
+    <!-- Notyf init (global window.notyf) -->
+    <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+    <script>
+    window.notyf = new Notyf({
+        duration: 3500,
+        position: { x: 'right', y: 'top' },
+        ripple: false,
+        dismissible: true,
+        types: [
+            { type: 'success', background: '#3fb950', className: 'notyf-gw' },
+            { type: 'error',   background: '#e05252', className: 'notyf-gw' },
+            { type: 'info',    background: '#388bfd', className: 'notyf-gw' },
+            { type: 'warning', background: '#d4a017', className: 'notyf-gw' }
+        ]
+    });
+    </script>
     {% block extra_js %}{% endblock %}
 
     <!-- ── Session Idle-Timeout ───────────────────────────────────────────

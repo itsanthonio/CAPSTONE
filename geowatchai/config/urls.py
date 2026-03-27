@@ -71,6 +71,7 @@ urlpatterns = [
     path('results/', include('apps.results.urls')),
     # API endpoints
     path('api/', include('apps.api.urls')),
+    path('api/notifications/', include('apps.notifications.urls')),
     path('accounts/api/', include('apps.accounts.urls')),
     path('scanning/', include('apps.scanning.urls')),
     # Authenticated media serving (replaces unauthenticated static() in DEBUG too)

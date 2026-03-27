@@ -1,0 +1,36 @@
+{# Reusable empty-state component.
+   Usage:
+     {% include "dashboard/_empty_state.html" with
+        icon="ph-warning"
+        title="No alerts found"
+        body="Try adjusting your filters or run a new scan."
+        action_url="/analysis/map/"
+        action_label="Open Live Map"
+     %}
+   All parameters optional except `title`.
+#}
+<div class="gw-empty-state flex flex-col items-center justify-center text-center py-16 px-6">
+    {% if icon %}
+    <div class="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+         style="background: var(--surface-3); border: 1px solid var(--border-subtle);">
+        <i class="ph {{ icon }}" style="font-size: 28px; color: var(--text-tertiary);" aria-hidden="true"></i>
+    </div>
+    {% else %}
+    <div class="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+         style="background: var(--surface-3); border: 1px solid var(--border-subtle);">
+        <i class="ph ph-tray" style="font-size: 28px; color: var(--text-tertiary);" aria-hidden="true"></i>
+    </div>
+    {% endif %}
+
+    <p class="text-[15px] font-semibold" style="color: var(--text-primary);">{{ title }}</p>
+
+    {% if body %}
+    <p class="text-[13px] mt-1.5 max-w-xs" style="color: var(--text-secondary);">{{ body }}</p>
+    {% endif %}
+
+    {% if action_url and action_label %}
+    <a href="{{ action_url }}" class="btn-primary mt-5 text-sm">
+        {{ action_label }}
+    </a>
+    {% endif %}
+</div>

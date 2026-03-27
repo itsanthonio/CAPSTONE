@@ -14,9 +14,7 @@
         </div>
         <button onclick="document.getElementById('create-modal').classList.remove('hidden')"
                 class="btn-primary inline-flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
+            <i class="ph ph-plus" style="font-size:16px;" aria-hidden="true"></i>
             New Organisation
         </button>
     </div>
@@ -46,7 +44,8 @@
     <!-- Organisations Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {% for org in orgs %}
-        <div class="gw-card p-5 flex flex-col gap-4" style="overflow:hidden; border-top: 3px solid var(--accent);">
+        <div class="gw-card p-5 flex flex-col gap-4" style="overflow:hidden; border-top: 3px solid var(--accent);"
+             data-aos="fade-up" data-aos-delay="{% widthratio forloop.counter0 1 80 %}">
             <div class="kente-bar" style="margin: -1.25rem -1.25rem 0 -1.25rem; margin-top: -1.375rem;"></div>
 
             <!-- Org header -->
@@ -57,7 +56,7 @@
                 </div>
                 <div class="min-w-0 flex-1">
                     <p class="text-sm font-semibold truncate" style="color: var(--text-primary);">{{ org.name }}</p>
-                    <p class="text-[11px] mt-0.5" style="color: var(--text-secondary);">ID: {{ org.id|truncatechars:16 }}</p>
+                    <p class="text-[11px] mt-0.5 gw-mono" style="color: var(--text-secondary);">{{ org.id|truncatechars:16 }}</p>
                 </div>
             </div>
 
@@ -147,9 +146,7 @@
     <div class="gw-card w-full max-w-md p-6 space-y-4 mx-4">
         <div class="flex items-center gap-3">
             <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: var(--surface-3);">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--accent);" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
+                <i class="ph ph-plus" style="font-size:20px; color: var(--accent);" aria-hidden="true"></i>
             </div>
             <h3 class="text-base font-semibold" style="color: var(--text-primary);">New Organisation</h3>
         </div>
@@ -175,9 +172,7 @@
     <div class="gw-card w-full max-w-md p-6 space-y-4 mx-4">
         <div class="flex items-center gap-3">
             <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: var(--surface-3);">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--accent);" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                </svg>
+                <i class="ph ph-pencil-simple" style="font-size:20px; color: var(--accent);" aria-hidden="true"></i>
             </div>
             <h3 class="text-base font-semibold" style="color: var(--text-primary);">Rename Organisation</h3>
         </div>

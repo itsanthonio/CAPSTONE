@@ -5,10 +5,111 @@
 
 {% block extra_css %}
 <style>
-    /* Lock the page — no scrolling outside the designated scroll areas */
     html, body { overflow: hidden !important; }
-    /* Left sidebar: fixed height, no scroll — content must fit */
     #main-sidebar { overflow: hidden !important; }
+
+    /* ── Scan sweep canvas ────────────────────────────────── */
+    #scan-sweep-canvas {
+        position: absolute; inset: 0;
+        width: 100%; height: 100%;
+        pointer-events: none;
+        z-index: 10;
+        display: none;
+    }
+
+    /* ── Scan HUD ─────────────────────────────────────────── */
+    #scan-hud {
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        background: rgba(0,0,0,0.72);
+        border: 1px solid rgba(74,222,128,0.35);
+        border-radius: 999px;
+        box-shadow: 0 0 28px rgba(74,222,128,0.12), 0 4px 20px rgba(0,0,0,0.45);
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    @keyframes pulseGreenDot {
+        0%,100% { box-shadow: 0 0 0 0 rgba(74,222,128,0.6); }
+        60%      { box-shadow: 0 0 0 5px rgba(74,222,128,0); }
+    }
+    #scan-hud-dot { animation: pulseGreenDot 1.6s ease infinite; }
+
+    /* ── Coordinate HUD ───────────────────────────────────── */
+    #map-coords-hud {
+        font-family: 'SF Mono','Fira Code','Fira Mono',ui-monospace,monospace;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        color: rgba(255,255,255,0.6);
+        background: rgba(0,0,0,0.52);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 6px;
+        padding: 3px 10px;
+        line-height: 1.8;
+    }
+
+    /* ── Legend glassmorphism ─────────────────────────────── */
+    #map-legend-inner {
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        background: rgba(9,13,20,0.8);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+
+    /* ── Detection card animation ─────────────────────────── */
+    @keyframes cardFadeSlide {
+        from { opacity: 0; transform: translateY(-6px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Detection count badge pulse ──────────────────────── */
+    @keyframes badgeBounce {
+        0%   { transform: scale(1); }
+        40%  { transform: scale(1.3); }
+        70%  { transform: scale(0.92); }
+        100% { transform: scale(1); }
+    }
+    .badge-pulse { animation: badgeBounce 0.4s ease; }
+
+    /* ── Site modal fade-in ───────────────────────────────── */
+    @keyframes modalIn {
+        from { opacity: 0; transform: scale(0.97) translateY(8px); }
+        to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .modal-card-animate { animation: modalIn 0.22s ease forwards; }
+
+    /* ── Confidence bar animate ───────────────────────────── */
+    @keyframes barReveal { from { width: 0 !important; } }
+    .conf-bar-animate { animation: barReveal 0.55s ease forwards; }
+
+    /* ── Toast notifications ──────────────────────────────── */
+    #toast-container {
+        position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+        display: flex; flex-direction: column-reverse; gap: 10px;
+        pointer-events: none;
+    }
+    .toast {
+        display: flex; align-items: flex-start; gap: 10px;
+        padding: 12px 16px; border-radius: 10px;
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        font-size: 13px; font-weight: 500;
+        pointer-events: all; max-width: 340px; line-height: 1.45;
+        animation: toastSlideIn 0.3s ease forwards;
+    }
+    @keyframes toastSlideIn {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes toastSlideOut {
+        to { opacity: 0; transform: translateY(14px); }
+    }
+    .toast-success { background: rgba(4,40,20,0.93); border: 1px solid rgba(74,222,128,0.3); color: #86efac; }
+    .toast-error   { background: rgba(60,8,8,0.93);  border: 1px solid rgba(248,113,113,0.3); color: #fca5a5; }
+    .toast-info    { background: rgba(6,22,55,0.93); border: 1px solid rgba(96,165,250,0.3); color: #93c5fd; }
+    .toast-icon    { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
 </style>
 {% endblock %}
 
@@ -19,6 +120,23 @@
     <!-- Map -->
     <div class="flex-1 relative">
         <div id="live-map" class="w-full h-full"></div>
+
+        <!-- Radar sweep canvas (shown during scans) -->
+        <canvas id="scan-sweep-canvas"></canvas>
+
+        <!-- Scan status HUD (top center of map) -->
+        <div id="scan-hud" class="hidden absolute top-4 z-20 flex items-center gap-2.5 px-4 py-2"
+             style="left:50%;transform:translateX(-50%);">
+            <div id="scan-hud-dot" class="w-2 h-2 rounded-full shrink-0" style="background:#4ade80;"></div>
+            <span id="scan-hud-text" class="text-sm font-medium" style="color:#4ade80;">Scanning…</span>
+            <span id="scan-hud-elapsed" class="text-xs" style="color:rgba(74,222,128,0.5);">0s</span>
+        </div>
+
+        <!-- Coordinate HUD (bottom center of map) -->
+        <div id="map-coords-hud" class="absolute bottom-4 z-20 pointer-events-none"
+             style="left:50%;transform:translateX(-50%);">
+            <span id="lat-display">0.0000</span>° N &nbsp;·&nbsp; <span id="lng-display">0.0000</span>° W
+        </div>
 
         <!-- Zoom Controls -->
         <div class="absolute top-4 right-4 z-20 flex flex-col gap-2" role="group" aria-label="Map zoom controls">
@@ -52,18 +170,18 @@
         </div>
 
         <!-- Legend -->
-        <div class="absolute bottom-4 left-4 z-20 pointer-events-none">
-            <div class="rounded-lg px-3 py-2"
-                 style="background: var(--surface-2); border: 1px solid var(--border-default);">
+        <div class="absolute bottom-14 left-4 z-20 pointer-events-none">
+            <div id="map-legend-inner" class="px-3 py-2.5">
+                <p class="text-xs font-semibold mb-2" style="color:rgba(255,255,255,0.35);letter-spacing:0.07em;">LEGEND</p>
                 <div class="space-y-1.5">
-                    <div class="flex items-center gap-2 text-xs" style="color: var(--text-secondary);">
-                        <div class="w-3 h-3 rounded shrink-0" style="background:#ef4444"></div>Illegal
+                    <div class="flex items-center gap-2 text-xs" style="color:rgba(255,255,255,0.65);">
+                        <div class="w-3 h-3 rounded-sm shrink-0" style="background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,0.55);"></div>Illegal Mining
                     </div>
-                    <div class="flex items-center gap-2 text-xs" style="color: var(--text-secondary);">
-                        <div class="w-3 h-3 rounded shrink-0" style="background:#3b82f6"></div>Legal
+                    <div class="flex items-center gap-2 text-xs" style="color:rgba(255,255,255,0.65);">
+                        <div class="w-3 h-3 rounded-sm shrink-0" style="background:#3b82f6;box-shadow:0 0 6px rgba(59,130,246,0.55);"></div>Legal Mining
                     </div>
-                    <div class="flex items-center gap-2 text-xs" style="color: var(--text-secondary);">
-                        <div class="w-3 h-3 rounded shrink-0" style="background:#22c55e;opacity:0.5;border:1px dashed #16a34a"></div>Concession
+                    <div class="flex items-center gap-2 text-xs" style="color:rgba(255,255,255,0.65);">
+                        <div class="w-3 h-3 rounded-sm shrink-0" style="background:#22c55e;opacity:0.55;border:1px dashed #16a34a;"></div>Concession
                     </div>
                 </div>
             </div>
@@ -329,6 +447,9 @@
         </div>
     </div>
 </div>
+
+<!-- Toast notification container -->
+<div id="toast-container"></div>
 {% endblock %}
 
 
@@ -341,6 +462,21 @@
 <script src="{% static 'js/map_handler.js' %}"></script>
 
 <script>
+// ── Toast notifications ────────────────────────────────────────────────────
+window.showToast = function(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const icons = { success: '✓', error: '✕', info: 'ℹ' };
+    const el = document.createElement('div');
+    el.className = `toast toast-${type}`;
+    el.innerHTML = `<span class="toast-icon">${icons[type] || icons.info}</span><span>${message}</span>`;
+    container.appendChild(el);
+    setTimeout(() => {
+        el.style.animation = 'toastSlideOut 0.3s ease forwards';
+        setTimeout(() => el.remove(), 300);
+    }, 4500);
+};
+
 // ── Timelapse helpers ──────────────────────────────────────────────────────
 let _siteTlFrames = [];
 
@@ -448,6 +584,13 @@ async function openSiteModal(siteId) {
     _siteTlFrames = [];
     const siteModal = document.getElementById('site-modal');
     siteModal.classList.remove('hidden');
+    // Animate the modal card in
+    const card = siteModal.querySelector('.gw-card');
+    if (card) {
+        card.classList.remove('modal-card-animate');
+        void card.offsetWidth;
+        card.classList.add('modal-card-animate');
+    }
     window.trapFocus && window.trapFocus(siteModal, document.activeElement);
     document.getElementById('site-tl-loading').classList.remove('hidden');
     document.getElementById('site-tl-empty').classList.add('hidden');
@@ -478,8 +621,12 @@ async function openSiteModal(siteId) {
         document.getElementById('site-status-badge').textContent = site.status_display || site.status || '—';
 
         const pct = Math.round((site.confidence_score || 0) * 100);
-        document.getElementById('site-confidence').textContent     = pct + '%';
-        document.getElementById('site-confidence-bar').style.width = pct + '%';
+        document.getElementById('site-confidence').textContent = pct + '%';
+        const confBar = document.getElementById('site-confidence-bar');
+        confBar.style.width = pct + '%';
+        confBar.classList.remove('conf-bar-animate');
+        void confBar.offsetWidth;
+        confBar.classList.add('conf-bar-animate');
         document.getElementById('site-area').textContent           = site.area_hectares + ' ha';
         document.getElementById('site-date').textContent           = site.detection_date || '—';
         document.getElementById('site-recurrence').textContent     = site.recurrence_count + 'x';
@@ -624,7 +771,15 @@ function applyDetectionFilter() {
         return db - da;
     });
 
-    document.getElementById('detection-count').textContent = filtered.length;
+    const countEl = document.getElementById('detection-count');
+    const prevCount = parseInt(countEl.textContent) || 0;
+    countEl.textContent = filtered.length;
+    if (filtered.length !== prevCount) {
+        countEl.classList.remove('badge-pulse');
+        void countEl.offsetWidth;
+        countEl.classList.add('badge-pulse');
+        countEl.addEventListener('animationend', () => countEl.classList.remove('badge-pulse'), { once: true });
+    }
     const emptyEl = document.getElementById('detection-empty');
     const listEl  = document.getElementById('detection-list');
 
@@ -684,11 +839,13 @@ function applyDetectionFilter() {
         const legalLabel = legal.charAt(0).toUpperCase() + legal.slice(1);
 
         const barColor = conf >= 80 ? '#3fb950' : conf >= 60 ? '#f59e0b' : '#ef4444';
+        const accentColor = legal === 'illegal' ? '#ef4444' : legal === 'legal' ? '#3b82f6' : 'var(--border-subtle)';
+        const accentHover = legal === 'illegal' ? '#f87171' : legal === 'legal' ? '#60a5fa' : 'var(--border-default)';
 
         return `
-<div style="background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:6px;padding:12px;cursor:pointer;transition:border-color 0.15s;"
-     onmouseover="this.style.borderColor='var(--border-default)'"
-     onmouseout="this.style.borderColor='var(--border-subtle)'"
+<div style="background:var(--surface-2);border:1px solid var(--border-subtle);border-left:3px solid ${accentColor};border-radius:6px;padding:12px;cursor:pointer;transition:background 0.15s,border-color 0.15s;animation:cardFadeSlide 0.25s ease ${idx * 0.04}s both;"
+     onmouseover="this.style.background='var(--surface-3)';this.style.borderLeftColor='${accentHover}'"
+     onmouseout="this.style.background='var(--surface-2)';this.style.borderLeftColor='${accentColor}'"
      onclick="openSiteModal('${id}')">
     <div class="flex items-start justify-between mb-2">
         <div class="flex-1 min-w-0 pr-2">

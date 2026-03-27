@@ -9,11 +9,8 @@
          style="border-bottom: 1px solid var(--border-subtle);">
         <div class="flex items-center space-x-3">
             <!-- Severity dot -->
-            <div class="w-2.5 h-2.5 rounded-full flex-shrink-0
-                {% if alert and alert.severity == 'critical' %}bg-red-500
-                {% elif alert and alert.severity == 'high' %}bg-orange-500
-                {% elif alert and alert.severity == 'medium' %}bg-yellow-400
-                {% else %}bg-gray-400{% endif %}"></div>
+            <div class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                 style="background: {% if alert and alert.severity == 'critical' %}var(--status-critical){% elif alert and alert.severity == 'high' %}var(--status-high){% elif alert and alert.severity == 'medium' %}var(--status-moderate){% else %}var(--text-tertiary){% endif %};"></div>
             <div>
                 <h3 class="text-base font-semibold" style="color: var(--text-primary);">
                     {% if alert %}{{ alert.title }}{% else %}Assignment {{ assignment.id|truncatechars:8 }}{% endif %}
@@ -36,7 +33,10 @@
         <div class="flex items-center space-x-2">
             <!-- Delete assignment button -->
             <button onclick="deleteAssignment('{{ assignment.id }}')"
-                    class="text-gray-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50 transition-colors"
+                    class="btn-ghost p-1.5 rounded transition-colors"
+                    style="color: var(--text-tertiary);"
+                    onmouseover="this.style.color='var(--status-critical)';this.style.background='var(--status-critical-bg)';"
+                    onmouseout="this.style.color='var(--text-tertiary)';this.style.background='';"
                     aria-label="Delete assignment">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"/>
@@ -96,28 +96,25 @@
             <div class="rounded-lg p-4 space-y-2"
                  style="background: var(--surface-3); border: 1px solid var(--border-subtle);">
                 <h4 class="text-sm font-medium mb-2" style="color: var(--text-primary);">Site Details</h4>
-                <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-                    <div style="color: var(--text-secondary);">Confidence</div>
-                    <div class="font-medium" style="color: var(--text-primary);">
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                    <div class="text-xs" style="color: var(--text-secondary);">Confidence</div>
+                    <div class="text-sm font-medium" style="color: var(--text-primary);">
                         {% widthratio site.confidence_score 1 100 %}%
                     </div>
-                    <div style="color: var(--text-secondary);">Area</div>
-                    <div class="font-medium" style="color: var(--text-primary);">{{ site.area_hectares|floatformat:2 }} ha</div>
-                    <div style="color: var(--text-secondary);">Detection Date</div>
-                    <div class="font-medium" style="color: var(--text-primary);">{{ site.detection_date|date:"M d, Y" }}</div>
-                    <div style="color: var(--text-secondary);">Region</div>
-                    <div class="font-medium" style="color: var(--text-primary);">{{ site.region.name|default:"Unknown" }}</div>
-                    <div style="color: var(--text-secondary);">Legal Status</div>
-                    <div class="font-medium
-                        {% if site.legal_status == 'illegal' %}text-red-500
-                        {% elif site.legal_status == 'legal' %}text-green-500
-                        {% else %}{% endif %}"
-                         {% if site.legal_status != 'illegal' and site.legal_status != 'legal' %}style="color: var(--text-secondary);"{% endif %}>
+                    <div class="text-xs" style="color: var(--text-secondary);">Area</div>
+                    <div class="text-sm font-medium" style="color: var(--text-primary);">{{ site.area_hectares|floatformat:2 }} ha</div>
+                    <div class="text-xs" style="color: var(--text-secondary);">Detection Date</div>
+                    <div class="text-sm font-medium" style="color: var(--text-primary);">{{ site.detection_date|date:"M d, Y" }}</div>
+                    <div class="text-xs" style="color: var(--text-secondary);">Region</div>
+                    <div class="text-sm font-medium" style="color: var(--text-primary);">{{ site.region.name|default:"Unknown" }}</div>
+                    <div class="text-xs" style="color: var(--text-secondary);">Legal Status</div>
+                    <div class="text-sm font-medium"
+                         style="color: {% if site.legal_status == 'illegal' %}var(--status-critical){% elif site.legal_status == 'legal' %}var(--status-resolved){% else %}var(--text-secondary){% endif %};">
                         {{ site.get_legal_status_display }}
                     </div>
                     {% if site.recurrence_count > 1 %}
-                    <div style="color: var(--text-secondary);">Recurrences</div>
-                    <div class="font-medium text-orange-500">{{ site.recurrence_count }}×</div>
+                    <div class="text-xs" style="color: var(--text-secondary);">Recurrences</div>
+                    <div class="text-sm font-medium" style="color: var(--status-high);">{{ site.recurrence_count }}×</div>
                     {% endif %}
                 </div>
                 {% if alert and alert.description %}
@@ -270,7 +267,7 @@
                     <div class="flex-1 min-h-0 flex flex-col">
                         {% if frame.thumbnail_url %}
                         <div class="flex-1 min-h-0 overflow-hidden rounded-lg"
-                             style="border: 1px solid var(--border-subtle); {% if forloop.first %}outline: 2px solid #f59e0b; outline-offset: 1px;{% endif %}">
+                             style="border: 1px solid var(--border-subtle); {% if forloop.first %}outline: 2px solid var(--accent); outline-offset: 1px;{% endif %}">
                             <img src="{{ frame.thumbnail_url }}"
                                  data-src="{{ frame.thumbnail_url }}"
                                  data-year="{{ frame.year }}"
@@ -334,7 +331,7 @@
                             data-outcome="mining_confirmed"
                             onclick="selectOutcome('{{ assignment.id }}', 'mining_confirmed')"
                             class="outcome-btn btn-secondary flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                            style="border-color: var(--status-critical-border); background: var(--status-critical-bg); color: var(--status-critical); opacity: 0.7;">
+                            style="border-color: var(--status-critical-border); background: var(--status-critical-bg); color: var(--status-critical);">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
@@ -345,7 +342,7 @@
                             data-outcome="false_positive"
                             onclick="selectOutcome('{{ assignment.id }}', 'false_positive')"
                             class="outcome-btn btn-secondary flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                            style="border-color: var(--status-resolved-border); background: var(--status-resolved-bg); color: var(--status-resolved); opacity: 0.7;">
+                            style="border-color: var(--status-resolved-border); background: var(--status-resolved-bg); color: var(--status-resolved);">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M5 13l4 4L19 7"/>
@@ -355,8 +352,7 @@
                     <button type="button"
                             data-outcome="inconclusive"
                             onclick="selectOutcome('{{ assignment.id }}', 'inconclusive')"
-                            class="outcome-btn btn-secondary flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                            style="opacity: 0.7;">
+                            class="outcome-btn btn-secondary flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>

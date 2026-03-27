@@ -26,7 +26,9 @@
         {% for region in regions %}
         <a href="{% url 'dashboard:region_detail' region.id %}"
            class="gw-card p-5 block hover:ring-1 transition-all"
-           style="--tw-ring-color: var(--accent); text-decoration: none;">
+           style="--tw-ring-color: var(--accent); text-decoration: none; border-top: 2px solid {% if region.illegal_detections > 0 %}var(--status-critical){% elif region.open_alerts > 0 %}var(--status-moderate){% else %}var(--status-resolved){% endif %};"
+           data-aos="fade-up"
+           data-aos-delay="{% widthratio forloop.counter0 1 80 %}">
 
             <!-- Region name + type badge -->
             <div class="flex items-start justify-between gap-2 mb-3">

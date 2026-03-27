@@ -22,6 +22,35 @@
 <style>
 .kpi-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
 .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,0.28); }
+
+/* ── Modal entrance animations ─────────────────────────────── */
+@keyframes gwModalBackdropIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes gwModalCardIn {
+    from { opacity: 0; transform: translateY(-10px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+#inspector-modal:not(.hidden),
+#alert-modal:not(.hidden),
+#add-alert-modal:not(.hidden) {
+    animation: gwModalBackdropIn 180ms ease both;
+}
+#inspector-modal:not(.hidden) > div > div,
+#alert-modal:not(.hidden) > div,
+#add-alert-modal:not(.hidden) > div {
+    animation: gwModalCardIn 220ms cubic-bezier(0.0, 0, 0.2, 1) both;
+}
+
+/* ── Bulk action bar entrance animation ─────────────────────── */
+@keyframes gwBulkBarIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+#bulk-bar:not(.hidden) {
+    animation: gwBulkBarIn 200ms cubic-bezier(0.0, 0, 0.2, 1) both;
+}
 </style>
 {% endblock %}
 
@@ -36,16 +65,11 @@
         <div class="gw-page-actions">
             <button id="add-alert-btn"
                     class="btn-primary inline-flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
+                <i class="ph ph-plus" style="font-size:16px;" aria-hidden="true"></i>
                 Add Alert
             </button>
             <button id="export-csv-btn" class="btn-secondary inline-flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                </svg>
+                <i class="ph ph-download-simple" style="font-size:16px;" aria-hidden="true"></i>
                 Export CSV
             </button>
         </div>
@@ -197,7 +221,11 @@
                     <!-- Inspector List -->
                     <div id="inspector-list" class="max-h-60 overflow-y-auto rounded-lg mb-4"
                          style="border: 1px solid var(--border-default);">
-                        <div class="p-2 text-sm" style="color: var(--text-secondary);">Loading inspectors...</div>
+                        <div class="p-2 space-y-1.5" aria-label="Loading inspectors">
+                            <div class="gw-skeleton h-10 rounded-lg"></div>
+                            <div class="gw-skeleton h-10 rounded-lg"></div>
+                            <div class="gw-skeleton h-10 rounded-lg"></div>
+                        </div>
                     </div>
 
                     <!-- Assignment Notes -->
@@ -492,32 +520,36 @@
 </div>
 
 <!-- Add Alert Modal -->
-<div id="add-alert-modal" class="fixed inset-0 bg-black bg-opacity-40 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
-            <h3 class="text-lg font-semibold text-gray-900">Add New Alert</h3>
-            <button onclick="window._alertsPage.closeAddAlertModal()" class="text-gray-400 hover:text-gray-600">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<div id="add-alert-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4"
+     style="background: rgba(0,0,0,0.6);"
+     role="dialog" aria-modal="true" aria-labelledby="add-alert-modal-title">
+    <div class="rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+         style="background: var(--surface-1); border: 1px solid var(--border-default); box-shadow: 0 24px 64px rgba(0,0,0,0.55);">
+        <div class="flex items-center justify-between px-6 py-4 shrink-0" style="border-bottom: 1px solid var(--border-subtle);">
+            <h3 id="add-alert-modal-title" class="text-base font-semibold" style="color: var(--text-primary);">Add New Alert</h3>
+            <button onclick="window._alertsPage.closeAddAlertModal()"
+                    aria-label="Close Add Alert dialog"
+                    style="color: var(--text-tertiary);">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
         </div>
-        
-        <form id="add-alert-form" class="p-6 space-y-4 overflow-y-auto flex-1">
+
+        <form id="add-alert-form" class="p-6 space-y-5 overflow-y-auto flex-1">
             <!-- Basic Information -->
             <div class="space-y-4">
-                <h4 class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">Basic Information</h4>
-                
+                <h4 class="text-xs font-semibold uppercase tracking-[0.06em] pb-2"
+                    style="color: var(--text-tertiary); border-bottom: 1px solid var(--border-subtle);">Basic Information</h4>
+
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Title *</label>
-                        <input type="text" name="title" required
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <label class="gw-label">Title *</label>
+                        <input type="text" name="title" required class="gw-input w-full mt-1">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Alert Type *</label>
-                        <select name="alert_type" required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <label class="gw-label">Alert Type *</label>
+                        <select name="alert_type" required class="gw-select w-full mt-1">
                             <option value="">Select Type</option>
                             <option value="new_detection">New Detection</option>
                             <option value="expansion_detected">Site Expansion Detected</option>
@@ -526,18 +558,16 @@
                         </select>
                     </div>
                 </div>
-                
+
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea name="description" rows="3"
-                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                    <label class="gw-label">Description</label>
+                    <textarea name="description" rows="3" class="gw-input w-full mt-1"></textarea>
                 </div>
-                
+
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Severity *</label>
-                        <select name="severity" required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <label class="gw-label">Severity *</label>
+                        <select name="severity" required class="gw-select w-full mt-1">
                             <option value="">Select Severity</option>
                             <option value="low">Low</option>
                             <option value="medium">Medium</option>
@@ -546,9 +576,8 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                        <select name="status"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <label class="gw-label">Status</label>
+                        <select name="status" class="gw-select w-full mt-1">
                             <option value="open">Open</option>
                             <option value="acknowledged">Acknowledged</option>
                             <option value="dispatched">Dispatched</option>
@@ -558,71 +587,67 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Location Information -->
             <div class="space-y-4">
-                <h4 class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">Location Information</h4>
-                
+                <h4 class="text-xs font-semibold uppercase tracking-[0.06em] pb-2"
+                    style="color: var(--text-tertiary); border-bottom: 1px solid var(--border-subtle);">Location Information</h4>
+
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Latitude *</label>
+                        <label class="gw-label">Latitude *</label>
                         <input type="number" step="any" name="latitude" required
-                               placeholder="e.g., 5.5913"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                               placeholder="e.g., 5.5913" class="gw-input w-full mt-1">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Longitude *</label>
+                        <label class="gw-label">Longitude *</label>
                         <input type="number" step="any" name="longitude" required
-                               placeholder="e.g., -0.1793"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                               placeholder="e.g., -0.1793" class="gw-input w-full mt-1">
                     </div>
                 </div>
-                
+
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Confidence Score</label>
-                        <input type="number" step="0.01" min="0" max="1" name="confidence_score" value="0.8"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <label class="gw-label">Confidence Score</label>
+                        <input type="number" step="0.01" min="0" max="1" name="confidence_score"
+                               value="0.8" class="gw-input w-full mt-1">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Area (hectares)</label>
-                        <input type="number" step="0.01" min="0" name="area_hectares" value="0.01"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <label class="gw-label">Area (hectares)</label>
+                        <input type="number" step="0.01" min="0" name="area_hectares"
+                               value="0.01" class="gw-input w-full mt-1">
                     </div>
                 </div>
-                
+
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Legal Status</label>
-                    <select name="legal_status"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <label class="gw-label">Legal Status</label>
+                    <select name="legal_status" class="gw-select w-full mt-1">
                         <option value="unknown">Unknown</option>
                         <option value="legal">Legal</option>
                         <option value="illegal">Illegal</option>
                     </select>
                 </div>
             </div>
-            
+
             <!-- Assignment -->
             <div class="space-y-4">
-                <h4 class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">Assignment</h4>
-                
+                <h4 class="text-xs font-semibold uppercase tracking-[0.06em] pb-2"
+                    style="color: var(--text-tertiary); border-bottom: 1px solid var(--border-subtle);">Assignment</h4>
+
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Assign to Inspector</label>
-                    <select name="assigned_to_id"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <label class="gw-label">Assign to Inspector</label>
+                    <select name="assigned_to_id" class="gw-select w-full mt-1">
                         <option value="">Unassigned</option>
                     </select>
                 </div>
             </div>
         </form>
-        
-        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 shrink-0">
-            <button type="button" onclick="window._alertsPage.closeAddAlertModal()"
-                    class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+
+        <div class="px-6 py-4 flex justify-end gap-3 shrink-0" style="border-top: 1px solid var(--border-subtle);">
+            <button type="button" onclick="window._alertsPage.closeAddAlertModal()" class="btn-secondary">
                 Cancel
             </button>
-            <button type="submit" form="add-alert-form"
-                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <button type="submit" form="add-alert-form" class="btn-primary">
                 Create Alert
             </button>
         </div>
@@ -818,6 +843,7 @@ function showConfirm(title, message) {
     let _alerts       = [];
     let _currentId    = null;
     let selectedIds   = new Set();
+    let _knownAlertIds = new Set();
     let selectedStatuses = {};   // id → status
 
     // ── Severity / status styling ──
@@ -865,8 +891,19 @@ function showConfirm(title, message) {
             const res  = await fetch(`/api/alerts/?${params}`, { credentials: 'include' });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
+            const prevKnown = new Set(_knownAlertIds);
             _alerts    = data.results || [];
+            _alerts.forEach(a => _knownAlertIds.add(a.id));
             renderTable(_alerts);
+            // Flash rows that are newly arrived
+            if (prevKnown.size > 0) {
+                const tbody = document.getElementById('alerts-tbody');
+                tbody.querySelectorAll('tr[data-id]').forEach(function(row) {
+                    if (!prevKnown.has(row.dataset.id)) {
+                        row.classList.add('row-flash-gold');
+                    }
+                });
+            }
             renderPagination(data);
             document.getElementById('result-count').textContent =
                 `${data.total} alert${data.total !== 1 ? 's' : ''}`;
@@ -897,8 +934,12 @@ function showConfirm(title, message) {
                 ? `<span class="px-1.5 py-0.5 text-[10px] font-semibold rounded" style="background:rgba(212,160,23,0.12);color:var(--accent);border:1px solid rgba(212,160,23,0.3);">Auto</span>`
                 : `<span class="px-1.5 py-0.5 text-[10px] font-semibold rounded" style="background:var(--surface-3);color:var(--text-tertiary);border:1px solid var(--border-subtle);">Manual</span>`;
 
-            return `<tr class="cursor-pointer" style="border-bottom: 1px solid var(--border-subtle);"
+            const sevDotCls = { critical:'sev-dot--critical', high:'sev-dot--high', medium:'sev-dot--medium', low:'sev-dot--low' }[a.severity] || '';
+            const rowBorderCls = { critical:'alert-row-critical', high:'alert-row-high', medium:'alert-row-medium', low:'alert-row-low' }[a.severity] || '';
+
+            return `<tr class="cursor-pointer ${rowBorderCls}" style="border-bottom: 1px solid var(--border-subtle);"
                         onmouseover="this.style.background='var(--surface-3)'" onmouseout="this.style.background=''"
+                        oncontextmenu="window._showCtxMenu(event, '${a.id}', '${a.status}', '${a.short_id}')"
                         data-id="${a.id}" data-status="${a.status}" onclick="window._alertsPage.openModal('${a.id}')">
                 <td class="px-3 py-3 w-8" onclick="event.stopPropagation()">
                     ${isSelectable ? `<input type="checkbox" class="row-cb rounded cursor-pointer"
@@ -907,7 +948,9 @@ function showConfirm(title, message) {
                         aria-label="Select alert ${a.short_id}"
                         onchange="window._alertsPage.onRowCheck(this)">` : ''}
                 </td>
-                <td class="px-3 py-3 text-xs font-mono" style="color: var(--text-secondary);">${a.short_id}</td>
+                <td class="px-3 py-3 text-xs font-mono" style="color: var(--text-secondary);">
+                    <span class="sev-dot ${sevDotCls}" title="${a.severity} severity"></span>${a.short_id}
+                </td>
                 <td class="px-3 py-3 text-sm font-medium max-w-[160px] truncate" style="color: var(--text-primary);">${a.title}</td>
                 <td class="px-3 py-3">
                     <span class="${sevCls}">${a.severity_display}</span>
@@ -966,6 +1009,12 @@ function showConfirm(title, message) {
                 </td>
             </tr>`;
         }).join('');
+
+        // Stagger row entrance
+        tbody.querySelectorAll('tr').forEach(function(row, i) {
+            row.classList.add('table-row-enter');
+            row.style.animationDelay = (i * 30) + 'ms';
+        });
 
         document.getElementById('table-loading').classList.add('hidden');
         document.getElementById('table-empty').classList.add('hidden');
@@ -1988,6 +2037,43 @@ function showConfirm(title, message) {
             }
         },
     };
+
+    // ── Right-click context menu ──────────────────────────────────────
+    window._showCtxMenu = function (e, alertId, status, shortId) {
+        e.preventDefault();
+        var menu = document.getElementById('ctx-menu');
+        if (!menu) return;
+
+        var items = [];
+        items.push('<button class="ctx-item" onclick="window._alertsPage.openModal(\'' + alertId + '\'); window._hideCtxMenu();"><i class="ph ph-arrow-square-out"></i> Open Detail</button>');
+        if (status === 'open') {
+            items.push('<button class="ctx-item" onclick="window._alertsPage.action(\'' + alertId + '\',\'acknowledge\'); window._hideCtxMenu();"><i class="ph ph-check-circle"></i> Acknowledge</button>');
+            items.push('<button class="ctx-item ctx-item--danger" onclick="window._alertsPage.action(\'' + alertId + '\',\'dismiss\'); window._hideCtxMenu();"><i class="ph ph-x-circle"></i> Dismiss</button>');
+        }
+        if (status === 'acknowledged') {
+            items.push('<button class="ctx-item" onclick="window.openInspectorModal(\'' + alertId + '\'); window._hideCtxMenu();"><i class="ph ph-user-circle-plus"></i> Dispatch Inspector</button>');
+        }
+        items.push('<div class="ctx-divider"></div>');
+        items.push('<button class="ctx-item" onclick="navigator.clipboard.writeText(\'' + shortId + '\'); window._hideCtxMenu();"><i class="ph ph-copy"></i> Copy ID (' + shortId + ')</button>');
+
+        menu.innerHTML = items.join('');
+        menu.style.display = 'block';
+
+        var x = e.clientX, y = e.clientY;
+        var w = menu.offsetWidth  || 190;
+        var h = menu.offsetHeight || 120;
+        if (x + w > window.innerWidth)  x = window.innerWidth  - w - 8;
+        if (y + h > window.innerHeight) y = window.innerHeight - h - 8;
+        menu.style.left = x + 'px';
+        menu.style.top  = y + 'px';
+    };
+    window._hideCtxMenu = function () {
+        var menu = document.getElementById('ctx-menu');
+        if (menu) menu.style.display = 'none';
+    };
+    document.addEventListener('click',       window._hideCtxMenu);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') window._hideCtxMenu(); });
+    document.addEventListener('scroll',      window._hideCtxMenu, true);
 
     // ── Real-time polling: show banner when open alert count changes ──
     let _lastOpenCount = null;

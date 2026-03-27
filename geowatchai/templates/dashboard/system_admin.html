@@ -5,8 +5,18 @@
 
 {% block extra_css %}
 <style>
-.kpi-card { transition: transform 0.2s ease, box-shadow 0.2s ease; cursor: default; }
-.kpi-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,0.28); }
+.kpi-card {
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+    cursor: default;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    background: rgba(22, 27, 34, 0.72) !important;
+}
+.kpi-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 36px rgba(212,160,23,0.13), 0 3px 10px rgba(0,0,0,0.35);
+    border-color: rgba(212,160,23,0.35) !important;
+}
 .kpi-icon-circle { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 </style>
 {% endblock %}
@@ -40,7 +50,7 @@
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
 
         <!-- Total Users -->
-        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--accent);">
+        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--accent);" data-aos="fade-up" data-aos-delay="0">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Total Users</p>
@@ -56,13 +66,14 @@
                     </svg>
                 </div>
             </div>
-            <div class="mt-3 pt-3 text-xs" style="border-top: 1px solid var(--border-subtle); color: var(--text-secondary);">
-                +{{ new_users_week }} joined this week
+            <div class="mt-3 pt-2 flex items-center justify-between" style="border-top: 1px solid var(--border-subtle);">
+                <span class="text-xs" style="color: var(--text-secondary);">+{{ new_users_week }} this week</span>
+                <canvas id="spark-users" width="72" height="28" aria-hidden="true"></canvas>
             </div>
         </div>
 
         <!-- Organisations -->
-        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-info);">
+        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-info);" data-aos="fade-up" data-aos-delay="80">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Organisations</p>
@@ -81,7 +92,7 @@
         </div>
 
         <!-- Total Jobs -->
-        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-resolved);">
+        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-resolved);" data-aos="fade-up" data-aos-delay="160">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Scan Jobs</p>
@@ -96,13 +107,14 @@
                     </svg>
                 </div>
             </div>
-            <div class="mt-3 pt-3 text-xs" style="border-top: 1px solid var(--border-subtle); color: var(--text-secondary);">
-                {{ jobs_this_month }} scans in the last 30 days
+            <div class="mt-3 pt-2 flex items-center justify-between" style="border-top: 1px solid var(--border-subtle);">
+                <span class="text-xs" style="color: var(--text-secondary);">{{ jobs_this_month }} last 30 days</span>
+                <canvas id="spark-jobs" width="72" height="28" aria-hidden="true"></canvas>
             </div>
         </div>
 
         <!-- Detections -->
-        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-critical);">
+        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-critical);" data-aos="fade-up" data-aos-delay="240">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Detected Sites</p>
@@ -129,7 +141,7 @@
     <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
 
         <!-- Total Alerts -->
-        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-high);">
+        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-high);" data-aos="fade-up" data-aos-delay="320">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Total Alerts</p>
@@ -148,7 +160,7 @@
         </div>
 
         <!-- Open Alerts -->
-        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-critical);">
+        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-critical);" data-aos="fade-up" data-aos-delay="400">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Open Alerts</p>
@@ -167,7 +179,7 @@
         </div>
 
         <!-- Inspectors -->
-        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-dispatched);">
+        <div class="gw-card p-5 kpi-card" style="border-top: 2px solid var(--status-dispatched);" data-aos="fade-up" data-aos-delay="480">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-[10px] font-medium uppercase tracking-[0.06em]" style="color: var(--text-secondary);">Inspectors</p>
@@ -195,7 +207,7 @@
             <div class="kente-bar"></div>
             <div class="flex items-center justify-between px-5 py-4 border-b" style="border-color: var(--border-subtle);">
                 <div>
-                    <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Organisations</h2>
+                    <h2 class="text-sm font-semibold gw-section-title" style="color: var(--text-primary);">Organisations</h2>
                     <p class="text-[11px] mt-0.5" style="color: var(--text-secondary);">Activity breakdown by agency</p>
                 </div>
                 <a href="{% url 'dashboard:organisation_management' %}" class="text-[12px] font-medium" style="color: var(--accent);">Manage →</a>
@@ -233,7 +245,7 @@
             <div class="kente-bar"></div>
             <div class="flex items-center justify-between px-5 py-4 border-b" style="border-color: var(--border-subtle);">
                 <div>
-                    <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Recent Users</h2>
+                    <h2 class="text-sm font-semibold gw-section-title" style="color: var(--text-primary);">Recent Users</h2>
                     <p class="text-[11px] mt-0.5" style="color: var(--text-secondary);">Latest accounts created</p>
                 </div>
                 <a href="{% url 'dashboard:user_management' %}" class="text-[12px] font-medium" style="color: var(--accent);">All users →</a>
@@ -273,4 +285,44 @@
     </div>
 
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// KPI mini sparklines
+(function () {
+    if (typeof Chart === 'undefined') return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    function makeSparkData(trend, n) {
+        var pts = [], base = 30 + Math.random() * 20;
+        for (var i = 0; i < n; i++) {
+            base += (trend >= 0 ? 0.5 : -0.5) + (Math.random() - 0.45) * 4;
+            pts.push(Math.max(0, base));
+        }
+        return pts;
+    }
+    function drawSparkline(id, trend, color) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        new Chart(el, {
+            type: 'line',
+            data: {
+                labels: Array(8).fill(''),
+                datasets: [{ data: makeSparkData(trend, 8), borderColor: color,
+                    borderWidth: 1.5, fill: true,
+                    backgroundColor: color.replace(')', ',0.10)').replace('rgb(','rgba('),
+                    pointRadius: 0, tension: 0.42 }]
+            },
+            options: {
+                animation: { duration: 800, easing: 'easeOutQuart' },
+                responsive: false, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                scales: { x: { display: false }, y: { display: false } }
+            }
+        });
+    }
+    drawSparkline('spark-users', {{ new_users_week|default:0 }}, 'rgb(212,160,23)');
+    drawSparkline('spark-jobs',  {{ jobs_this_month|default:0 }}, 'rgb(63,185,80)');
+})();
+</script>
 {% endblock %}

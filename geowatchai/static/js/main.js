@@ -19,39 +19,12 @@ if (typeof Chart !== 'undefined') {
 // ─────────────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize navigation
-    initializeNavigation();
-
     // Initialize mobile menu toggle
     initializeMobileMenu();
-
-    // Initialize notification system
-    initializeNotifications();
 
     // Initialize form validation
     initializeFormValidation();
 });
-
-/**
- * Navigation functionality
- */
-function initializeNavigation() {
-    const navItems = document.querySelectorAll('.nav-item');
-    
-    navItems.forEach(item => {
-        item.addEventListener('click', function(e) {
-            // Remove active state from all items
-            navItems.forEach(navItem => {
-                navItem.classList.remove('bg-active-gold', 'text-white');
-                navItem.classList.add('text-gray-300');
-            });
-            
-            // Add active state to clicked item
-            this.classList.add('bg-active-gold', 'text-white');
-            this.classList.remove('text-gray-300');
-        });
-    });
-}
 
 /**
  * Mobile menu functionality
@@ -70,21 +43,6 @@ function initializeMobileMenu() {
             if (!sidebar.contains(e.target) && !mobileMenuButton.contains(e.target)) {
                 sidebar.classList.remove('open');
             }
-        });
-    }
-}
-
-/**
- * Notification system
- */
-function initializeNotifications() {
-    const notificationButton = document.querySelector('[aria-label="Notifications"]');
-    const notificationBadge = document.querySelector('.notification-badge');
-    
-    if (notificationButton) {
-        notificationButton.addEventListener('click', function() {
-            // Placeholder for notification panel
-            showNotificationPanel();
         });
     }
 }
@@ -151,14 +109,6 @@ function clearFieldError(field) {
     if (errorElement) {
         errorElement.remove();
     }
-}
-
-/**
- * Show notification panel (placeholder)
- */
-function showNotificationPanel() {
-    // This would be implemented to show a notification panel
-    console.log('Notification panel clicked');
 }
 
 /**

@@ -408,10 +408,10 @@
 
             <!-- Activity feed -->
             <div id="activity-feed" class="flex-1 overflow-y-auto">
-                <div id="activity-loading" class="py-8 text-center">
-                    <div class="inline-block w-4 h-4 border-2 border-t-transparent rounded-full animate-spin mb-2"
-                         style="border-color:var(--accent);border-top-color:transparent;"></div>
-                    <p class="text-xs" style="color:var(--text-tertiary);">Loading…</p>
+                <div id="activity-loading" class="space-y-2 p-3">
+                    <div class="skeleton skeleton-row"></div>
+                    <div class="skeleton skeleton-row" style="opacity:0.7"></div>
+                    <div class="skeleton skeleton-row" style="opacity:0.5"></div>
                 </div>
                 <div id="activity-empty" class="hidden py-8 text-center">
                     <p class="text-xs" style="color:var(--text-tertiary);">No tiles scanned yet today.</p>

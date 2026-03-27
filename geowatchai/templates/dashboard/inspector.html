@@ -172,8 +172,7 @@
 
 </div>
 
-<!-- Toast container -->
-<div id="toast-container" class="fixed top-4 right-4 space-y-2 z-50"></div>
+<!-- Toast handled by Notyf -->
 
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -476,22 +475,12 @@ document.addEventListener('DOMContentLoaded', () => {
     initTimelapse();
 });
 
-/* ---------- Toast ---------- */
+/* ---------- Toast (delegates to global window.notyf) ---------- */
 function showToast(msg, type) {
-    const t = document.createElement('div');
-    t.className = 'border px-4 py-3 rounded text-sm';
-    if (type === 'success') {
-        t.style.background = 'var(--status-resolved-bg)';
-        t.style.borderColor = 'var(--status-resolved-border)';
-        t.style.color = 'var(--status-resolved)';
-    } else {
-        t.style.background = 'var(--status-critical-bg)';
-        t.style.borderColor = 'var(--status-critical-border)';
-        t.style.color = 'var(--status-critical)';
-    }
-    t.textContent = msg;
-    document.getElementById('toast-container').appendChild(t);
-    setTimeout(() => t.remove(), 4000);
+    if (!window.notyf) return;
+    if (type === 'success') window.notyf.success(msg);
+    else if (type === 'info') window.notyf.open({ type: 'info', message: msg });
+    else window.notyf.error(msg);
 }
 
 /* ---------- Print detection card ---------- */

@@ -9,6 +9,9 @@
     .status-pill-inactive { background: var(--status-critical-bg);  color: var(--status-critical);  border: 1px solid var(--status-critical-border); }
     .role-pill-admin      { background: rgba(212,160,23,0.12);       color: var(--accent);           border: 1px solid rgba(212,160,23,0.3); }
     .role-pill-inspector  { background: var(--status-info-bg);       color: var(--status-info);      border: 1px solid var(--status-info-border); }
+    /* Row entrance */
+    @keyframes rowSlideIn { from { opacity:0; transform:translateX(-5px); } to { opacity:1; transform:translateX(0); } }
+    .trow-enter { animation: rowSlideIn 0.22s ease-out both; }
 </style>
 {% endblock %}
 
@@ -25,9 +28,7 @@
         </div>
         <button onclick="openCreateModal()"
                 class="btn-primary flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
+            <i class="ph ph-user-plus" style="font-size:16px;" aria-hidden="true"></i>
             Create User
         </button>
     </div>
@@ -84,7 +85,7 @@
                 </thead>
                 <tbody class="divide-y" style="divide-color: var(--border-subtle);">
                     {% for u in users %}
-                    <tr id="user-row-{{ u.id }}" class="hover:bg-surface-3 transition-colors" style="transition-duration:100ms;">
+                    <tr id="user-row-{{ u.id }}" class="hover:bg-surface-3 transition-colors trow-enter" style="transition-duration:100ms; animation-delay: {{ forloop.counter0 }}0ms;">
                         <!-- User -->
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-3">
