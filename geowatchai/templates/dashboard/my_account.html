@@ -12,17 +12,9 @@
         <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">Update your profile information</p>
     </div>
 
-    {% if messages %}
-    {% for msg in messages %}
-    <div class="{% if 'success' in msg.tags %}gw-alert-success{% else %}gw-alert-error{% endif %} flex gap-2.5"
-         role="{% if 'success' in msg.tags %}status{% else %}alert{% endif %}"
-         aria-live="{% if 'success' in msg.tags %}polite{% else %}assertive{% endif %}">
-        <p class="text-[13px]">{{ msg }}</p>
-    </div>
-    {% endfor %}
-    {% endif %}
+    <div id="account-status" class="hidden" role="status" aria-live="polite"></div>
 
-    <form method="post" class="space-y-5">
+    <form id="account-form" method="post" class="space-y-5">
         {% csrf_token %}
 
         <!-- Account card -->
@@ -103,7 +95,7 @@
         </div>
 
         <div class="flex items-center justify-between">
-            <button type="submit" class="btn-primary px-5 py-2">Save changes</button>
+            <button id="account-save-btn" type="submit" class="btn-primary px-5 py-2">Save changes</button>
             <a href="{% url 'password_change' %}" class="text-[13px] font-medium hover:underline"
                style="color: var(--text-link);">Change password →</a>
         </div>
@@ -111,4 +103,88 @@
     </form>
 
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    function getCookie(name) {
+        var m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+        return m ? m.pop() : null;
+    }
+
+    function showStatus(msg, isSuccess) {
+        var el = document.getElementById('account-status');
+        el.className = (isSuccess ? 'gw-alert-success' : 'gw-alert-error') + ' flex gap-2.5';
+        el.textContent = msg;
+        el.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setTimeout(function () { el.classList.add('hidden'); }, 6000);
+    }
+
+    function showFieldError(field, msg) {
+        // Remove old error if any
+        var old = document.getElementById('err-' + field);
+        if (old) old.remove();
+        var input = document.getElementById('id_' + field);
+        if (!input) return;
+        var p = document.createElement('p');
+        p.id = 'err-' + field;
+        p.style.color = 'var(--status-critical)';
+        p.className = 'mt-1 text-[12px]';
+        p.textContent = msg;
+        input.insertAdjacentElement('afterend', p);
+        input.style.borderColor = 'var(--status-critical)';
+    }
+
+    function clearFieldErrors() {
+        document.querySelectorAll('[id^="err-"]').forEach(function (el) { el.remove(); });
+        document.querySelectorAll('.gw-input').forEach(function (el) { el.style.borderColor = ''; });
+    }
+
+    document.getElementById('account-form').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        clearFieldErrors();
+        var btn = document.getElementById('account-save-btn');
+        btn.disabled = true;
+        btn.textContent = 'Saving…';
+
+        var orgEl = document.getElementById('id_organisation');
+        var payload = {
+            first_name:    document.getElementById('id_first_name').value.trim(),
+            last_name:     document.getElementById('id_last_name').value.trim(),
+            email:         document.getElementById('id_email').value.trim(),
+            phone_number:  document.getElementById('id_phone_number').value.trim(),
+            organisation:  orgEl ? orgEl.value : '',
+        };
+
+        try {
+            var res = await fetch(window.location.pathname, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'include',
+                body: JSON.stringify(payload),
+            });
+            var data = await res.json();
+            if (data.success) {
+                showStatus('Your account has been updated.', true);
+            } else if (data.errors) {
+                Object.entries(data.errors).forEach(function (kv) { showFieldError(kv[0], kv[1]); });
+                showStatus('Please fix the errors below.', false);
+            } else {
+                showStatus(data.error || 'Save failed — please try again.', false);
+            }
+        } catch {
+            showStatus('Network error — please check your connection.', false);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Save changes';
+        }
+    });
+})();
+</script>
 {% endblock %}

@@ -12,7 +12,7 @@
             <h1 class="text-2xl font-bold" style="color: var(--text-primary);">Organisations</h1>
             <p class="text-sm mt-0.5" style="color: var(--text-secondary);">Manage agencies and organisations registered on the platform</p>
         </div>
-        <button onclick="document.getElementById('create-modal').classList.remove('hidden')"
+        <button onclick="openCreateModal()"
                 class="btn-primary inline-flex items-center gap-2">
             <i class="ph ph-plus" style="font-size:16px;" aria-hidden="true"></i>
             New Organisation
@@ -45,6 +45,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {% for org in orgs %}
         <div class="gw-card p-5 flex flex-col gap-4" style="overflow:hidden; border-top: 3px solid var(--accent);"
+             data-org-id="{{ org.id }}"
              data-aos="fade-up" data-aos-delay="{% widthratio forloop.counter0 1 80 %}">
             <div class="kente-bar" style="margin: -1.25rem -1.25rem 0 -1.25rem; margin-top: -1.375rem;"></div>
 
@@ -55,7 +56,7 @@
                     {{ org.name|first|upper }}
                 </div>
                 <div class="min-w-0 flex-1">
-                    <p class="text-sm font-semibold truncate" style="color: var(--text-primary);">{{ org.name }}</p>
+                    <p class="text-sm font-semibold truncate" id="org-name-{{ org.id }}" style="color: var(--text-primary);">{{ org.name }}</p>
                     <p class="text-[11px] mt-0.5 gw-mono" style="color: var(--text-secondary);">{{ org.id|truncatechars:16 }}</p>
                 </div>
             </div>
@@ -111,12 +112,8 @@
                     Rename
                 </button>
                 {% if org.member_count == 0 %}
-                <form method="post" onsubmit="return confirm('Delete {{ org.name|escapejs }}? This cannot be undone.')">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="delete">
-                    <input type="hidden" name="org_id" value="{{ org.id }}">
-                    <button type="submit" class="btn-ghost text-[12px] py-1.5 px-3" style="color: var(--status-critical);">Delete</button>
-                </form>
+                <button onclick="deleteOrg('{{ org.id }}', '{{ org.name|escapejs }}')"
+                        class="btn-ghost text-[12px] py-1.5 px-3" style="color: var(--status-critical);">Delete</button>
                 {% else %}
                 <span class="text-[11px] px-3 py-1.5 rounded" style="color: var(--text-secondary); background: var(--surface-3);" title="Cannot delete — has members">
                     Has members
@@ -132,7 +129,7 @@
             </svg>
             <p class="text-sm font-medium" style="color: var(--text-primary);">No organisations yet</p>
             <p class="text-xs mt-1 mb-4" style="color: var(--text-secondary);">Create the first organisation to get started.</p>
-            <button onclick="document.getElementById('create-modal').classList.remove('hidden')" class="btn-primary text-sm">
+            <button onclick="openCreateModal()" class="btn-primary text-sm">
                 Create Organisation
             </button>
         </div>
@@ -150,20 +147,19 @@
             </div>
             <h3 class="text-base font-semibold" style="color: var(--text-primary);">New Organisation</h3>
         </div>
-        <form method="post" class="space-y-4">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="create">
+        <div class="space-y-4">
             <div>
                 <label class="block text-[12px] font-medium mb-1.5" style="color: var(--text-secondary);">Organisation Name</label>
-                <input type="text" name="name" required autofocus
+                <input type="text" id="create-org-name" required autofocus
                        class="gw-input w-full"
                        placeholder="e.g. Environmental Protection Agency">
             </div>
+            <p id="create-modal-error" class="text-[12px] hidden" style="color: var(--status-critical);"></p>
             <div class="flex justify-end gap-2 pt-2">
-                <button type="button" onclick="document.getElementById('create-modal').classList.add('hidden')" class="btn-secondary">Cancel</button>
-                <button type="submit" class="btn-primary">Create Organisation</button>
+                <button type="button" onclick="closeCreateModal()" class="btn-secondary">Cancel</button>
+                <button id="create-modal-btn" type="button" onclick="submitCreateOrg()" class="btn-primary">Create Organisation</button>
             </div>
-        </form>
+        </div>
     </div>
 </div>
 
@@ -176,34 +172,154 @@
             </div>
             <h3 class="text-base font-semibold" style="color: var(--text-primary);">Rename Organisation</h3>
         </div>
-        <form method="post" class="space-y-4">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="rename">
-            <input type="hidden" name="org_id" id="rename-org-id">
+        <div class="space-y-4">
+            <input type="hidden" id="rename-org-id">
             <div>
                 <label class="block text-[12px] font-medium mb-1.5" style="color: var(--text-secondary);">New Name</label>
-                <input type="text" name="name" id="rename-org-name" required class="gw-input w-full">
+                <input type="text" id="rename-org-name" required class="gw-input w-full">
             </div>
+            <p id="rename-modal-error" class="text-[12px] hidden" style="color: var(--status-critical);"></p>
             <div class="flex justify-end gap-2 pt-2">
                 <button type="button" onclick="document.getElementById('rename-modal').classList.add('hidden')" class="btn-secondary">Cancel</button>
-                <button type="submit" class="btn-primary">Save Changes</button>
+                <button id="rename-modal-btn" type="button" onclick="submitRenameOrg()" class="btn-primary">Save Changes</button>
             </div>
-        </form>
+        </div>
     </div>
 </div>
 
 <script>
-function openRenameModal(orgId, orgName) {
-    document.getElementById('rename-org-id').value = orgId;
-    document.getElementById('rename-org-name').value = orgName;
-    document.getElementById('rename-modal').classList.remove('hidden');
-}
-
 function getCookie(name) {
     const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
     return m ? m.pop() : null;
 }
 
+async function _orgPost(payload) {
+    const res = await fetch(window.location.pathname, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+    });
+    return res.json();
+}
+
+// ── Create ──
+function openCreateModal() {
+    document.getElementById('create-org-name').value = '';
+    document.getElementById('create-modal-error').classList.add('hidden');
+    document.getElementById('create-modal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('create-org-name').focus(), 50);
+}
+function closeCreateModal() {
+    document.getElementById('create-modal').classList.add('hidden');
+}
+async function submitCreateOrg() {
+    const nameEl  = document.getElementById('create-org-name');
+    const errorEl = document.getElementById('create-modal-error');
+    const btn     = document.getElementById('create-modal-btn');
+    const name    = nameEl.value.trim();
+    if (!name) { errorEl.textContent = 'Name is required.'; errorEl.classList.remove('hidden'); return; }
+    btn.disabled = true; btn.textContent = 'Creating…';
+    errorEl.classList.add('hidden');
+    try {
+        const data = await _orgPost({ action: 'create', name });
+        if (data.success) {
+            closeCreateModal();
+            window.location.reload();
+        } else {
+            errorEl.textContent = data.error || 'Failed to create organisation.';
+            errorEl.classList.remove('hidden');
+        }
+    } catch {
+        errorEl.textContent = 'Network error — please try again.';
+        errorEl.classList.remove('hidden');
+    } finally {
+        btn.disabled = false; btn.textContent = 'Create Organisation';
+    }
+}
+// Allow Enter key in create modal
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('create-org-name').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); submitCreateOrg(); }
+    });
+    document.getElementById('rename-org-name').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); submitRenameOrg(); }
+    });
+});
+
+// ── Rename ──
+function openRenameModal(orgId, orgName) {
+    document.getElementById('rename-org-id').value = orgId;
+    document.getElementById('rename-org-name').value = orgName;
+    document.getElementById('rename-modal-error').classList.add('hidden');
+    document.getElementById('rename-modal').classList.remove('hidden');
+    setTimeout(() => { const el = document.getElementById('rename-org-name'); el.focus(); el.select(); }, 50);
+}
+async function submitRenameOrg() {
+    const orgId   = document.getElementById('rename-org-id').value;
+    const nameEl  = document.getElementById('rename-org-name');
+    const errorEl = document.getElementById('rename-modal-error');
+    const btn     = document.getElementById('rename-modal-btn');
+    const name    = nameEl.value.trim();
+    if (!name) { errorEl.textContent = 'Name is required.'; errorEl.classList.remove('hidden'); return; }
+    btn.disabled = true; btn.textContent = 'Saving…';
+    errorEl.classList.add('hidden');
+    try {
+        const data = await _orgPost({ action: 'rename', org_id: orgId, name });
+        if (data.success) {
+            document.getElementById('rename-modal').classList.add('hidden');
+            // Update the card header name in-place
+            const nameEl = document.getElementById('org-name-' + orgId);
+            if (nameEl) nameEl.textContent = name;
+            // Update avatar letter
+            const card = document.querySelector('[data-org-id="' + orgId + '"]');
+            if (card) {
+                const avatar = card.querySelector('.w-10.h-10 span, .w-10.h-10');
+                // avatar is a div with text content = first letter
+                const avatarDiv = card.querySelector('.w-10.h-10.rounded-lg');
+                if (avatarDiv) avatarDiv.textContent = name[0].toUpperCase();
+            }
+        } else {
+            errorEl.textContent = data.error || 'Failed to rename organisation.';
+            errorEl.classList.remove('hidden');
+        }
+    } catch {
+        errorEl.textContent = 'Network error — please try again.';
+        errorEl.classList.remove('hidden');
+    } finally {
+        btn.disabled = false; btn.textContent = 'Save Changes';
+    }
+}
+
+// ── Delete ──
+async function deleteOrg(orgId, orgName) {
+    if (!confirm('Delete "' + orgName + '"? This cannot be undone.')) return;
+    try {
+        const data = await _orgPost({ action: 'delete', org_id: orgId });
+        if (data.success) {
+            const card = document.querySelector('[data-org-id="' + orgId + '"]');
+            if (card) {
+                card.style.transition = 'opacity 0.25s, transform 0.25s';
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.95)';
+                setTimeout(() => card.remove(), 260);
+            }
+            // Update the count badge
+            const countEl = document.querySelector('[data-animate-cards] .flex.items-center.gap-2 span .font-semibold');
+            if (countEl) {
+                const n = parseInt(countEl.textContent, 10) - 1;
+                countEl.textContent = n;
+                countEl.nextSibling.textContent = ' organisation' + (n !== 1 ? 's' : '') + ' registered';
+            }
+        }
+    } catch { /* silent — card stays if network fails */ }
+}
+
+// ── Org config (SLA / max-pending) ──
 async function saveOrgConfig(orgId) {
     const statusEl = document.getElementById('cfg-status-' + orgId);
     const slaVal   = document.getElementById('sla-' + orgId).value.trim();
