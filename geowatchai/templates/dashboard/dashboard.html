@@ -306,35 +306,12 @@
                     </div>
                 </div>
             </div>
-            <div id="velocity-sparkline" class="flex items-end gap-1" style="height:44px;{% if not stats.velocity_data %} display:none;{% endif %}">
-                {% for v in stats.velocity_data %}
-                <div class="velocity-bar flex-1 rounded-t"
-                     data-val="{{ v }}"
-                     style="min-height:2px; background: var(--status-critical);"
-                     title="Week {{ forloop.counter }}: {{ v }} sites"></div>
-                {% endfor %}
+            <div style="position:relative; height:80px;">
+                <canvas id="velocity-chart"></canvas>
+                <div id="velocity-empty" class="absolute inset-0 flex items-center justify-center{% if stats.velocity_data %} hidden{% endif %}">
+                    <p class="text-xs italic" style="color: var(--text-tertiary);">No detections in the last {{ velocity_weeks }} weeks.</p>
+                </div>
             </div>
-            <div id="velocity-labels" class="flex justify-between text-xs mt-1" style="color: var(--text-tertiary);{% if not stats.velocity_data %} display:none;{% endif %}">
-                {% for label in stats.velocity_labels %}
-                <span>{{ label }}</span>
-                {% endfor %}
-            </div>
-            <p id="velocity-empty" class="text-sm italic{% if stats.velocity_data %} hidden{% endif %}" style="color: var(--text-tertiary);">No detections in the last {{ velocity_weeks }} weeks.</p>
-            {% if stats.velocity_data %}
-            <script>
-            (function(){
-                var bars = document.querySelectorAll('#velocity-sparkline .velocity-bar');
-                var max = 0;
-                bars.forEach(function(b){ var v = parseInt(b.dataset.val,10)||0; if(v>max) max=v; });
-                if (max === 0) max = 1;
-                bars.forEach(function(b, i){
-                    b.style.height = Math.max(2, Math.round(parseInt(b.dataset.val,10)/max*44)) + 'px';
-                    b.classList.add('bar-animate-v');
-                    b.style.animationDelay = (i * 25) + 'ms';
-                });
-            })();
-            </script>
-            {% endif %}
         </div>
 
     </div>
@@ -530,13 +507,12 @@
         <div class="p-5">
             <div style="height:200px; position:relative;">
                 <canvas id="trend-chart"></canvas>
-                <div id="trend-empty" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center">
-                    <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                         style="color: var(--text-tertiary);">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                    </svg>
-                    <p class="text-sm font-medium" style="color: var(--text-secondary);">No detections in this period</p>
-                    <p class="text-xs mt-1" style="color: var(--text-tertiary);">Run a scan on the Live Map to populate this chart</p>
+                <div id="trend-empty" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center gap-2">
+                    <i class="ph ph-chart-line" style="font-size:32px; color: var(--text-tertiary); opacity:0.5;"></i>
+                    <div>
+                        <p class="text-sm font-medium" style="color: var(--text-secondary);">No detections in this period</p>
+                        <p class="text-xs mt-0.5" style="color: var(--text-tertiary);">Run a scan on the Live Map to populate this chart</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -874,7 +850,58 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ── Detection Trend Chart ──
+    // ── Detection Velocity Chart (Chart.js line) ──
+    var velocityChart = null;
+    function _makeVelocityChart(ctx, labels, data) {
+        return new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Illegal sites / week',
+                    data: data,
+                    borderColor: 'rgba(224,82,82,0.9)',
+                    backgroundColor: 'rgba(224,82,82,0.10)',
+                    borderWidth: 2, fill: true, tension: 0.35,
+                    pointRadius: data.some(function (v) { return v > 0; }) ? 3 : 0,
+                    pointBackgroundColor: 'rgba(224,82,82,1)',
+                    pointHoverRadius: 5,
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                animation: { duration: 600, easing: 'easeOutQuart' },
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(22,27,34,0.95)',
+                        borderColor: 'rgba(240,246,252,0.12)', borderWidth: 1,
+                        titleColor: '#e6edf3', bodyColor: '#8b949e',
+                        padding: 8, cornerRadius: 6
+                    }
+                },
+                scales: {
+                    x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 9 }, color: '#8b949e', maxTicksLimit: 12 } },
+                    y: { beginAtZero: true, grid: { color: 'rgba(240,246,252,0.05)' }, border: { display: false }, ticks: { font: { size: 9 }, color: '#8b949e', stepSize: 1 } }
+                }
+            }
+        });
+    }
+    (function () {
+        var ctx = document.getElementById('velocity-chart');
+        if (!ctx || typeof Chart === 'undefined') return;
+        var velLabels = [{% for l in stats.velocity_labels %}"{{ l }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+        var velData   = [{% for v in stats.velocity_data %}{{ v }}{% if not forloop.last %},{% endif %}{% endfor %}];
+        // Hide the empty overlay — the chart renders regardless (flat line at 0 is still informative)
+        var emptyEl = document.getElementById('velocity-empty');
+        if (emptyEl) emptyEl.classList.add('hidden');
+        if (velLabels.length > 0) {
+            velocityChart = _makeVelocityChart(ctx, velLabels, velData);
+        }
+    })();
+
+    // ── Detection Trend Chart (area line) ──
     (function () {
         const ctx = document.getElementById('trend-chart');
         if (!ctx) return;
@@ -888,41 +915,40 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // Trim leading zero days so bars don't bunch up on the right
+        // Trim leading zero days so the chart doesn't open with a long flat line
         let firstNonZero = 0;
         while (firstNonZero < trendLabels.length - 1
                && trendIllegal[firstNonZero] === 0
                && trendLegal[firstNonZero] === 0) {
             firstNonZero++;
         }
-        // Keep at least 7 days for context
-        firstNonZero = Math.max(0, firstNonZero - 2);
+        firstNonZero = Math.max(0, firstNonZero - 1);
         trendLabels  = trendLabels.slice(firstNonZero);
         trendIllegal = trendIllegal.slice(firstNonZero);
         trendLegal   = trendLegal.slice(firstNonZero);
 
         trendChart = new Chart(ctx, {
-            type: 'bar',
+            type: 'line',
             data: {
                 labels: trendLabels,
                 datasets: [
                     {
                         label: 'Illegal',
                         data: trendIllegal,
-                        backgroundColor: 'rgba(224, 82, 82, 0.80)',
-                        hoverBackgroundColor: 'rgba(239, 68, 68, 1)',
-                        borderWidth: 0,
-                        borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
-                        stack: 'detections',
+                        borderColor: 'rgba(224,82,82,0.9)',
+                        backgroundColor: 'rgba(224,82,82,0.12)',
+                        borderWidth: 2, fill: true, tension: 0.35,
+                        pointRadius: 0, pointHoverRadius: 4,
+                        pointHoverBackgroundColor: 'rgba(224,82,82,1)',
                     },
                     {
                         label: 'Legal',
                         data: trendLegal,
-                        backgroundColor: 'rgba(56, 139, 253, 0.70)',
-                        hoverBackgroundColor: 'rgba(59, 130, 246, 1)',
-                        borderWidth: 0,
-                        borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
-                        stack: 'detections',
+                        borderColor: 'rgba(56,139,253,0.8)',
+                        backgroundColor: 'rgba(56,139,253,0.08)',
+                        borderWidth: 2, fill: true, tension: 0.35,
+                        pointRadius: 0, pointHoverRadius: 4,
+                        pointHoverBackgroundColor: 'rgba(56,139,253,1)',
                     }
                 ]
             },
@@ -930,11 +956,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: { duration: 600, easing: 'easeOutQuart' },
+                interaction: { mode: 'index', intersect: false },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        mode: 'index',
-                        intersect: false,
                         backgroundColor: 'rgba(22,27,34,0.95)',
                         borderColor: 'rgba(240,246,252,0.12)',
                         borderWidth: 1,
@@ -946,15 +971,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 scales: {
                     x: {
-                        stacked: true,
                         grid: { display: false },
                         border: { display: false },
                         ticks: { font: { size: 10 }, color: '#8b949e', maxTicksLimit: 10 }
                     },
                     y: {
-                        stacked: true,
                         beginAtZero: true,
-                        grid: { color: 'rgba(240,246,252,0.05)', drawBorder: false },
+                        grid: { color: 'rgba(240,246,252,0.05)' },
                         border: { display: false },
                         ticks: { font: { size: 10 }, color: '#8b949e', stepSize: 1 }
                     }
@@ -972,22 +995,18 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function _updateVelocityChart(data) {
-        var subtitle  = document.getElementById('velocity-subtitle');
-        var sparkline = document.getElementById('velocity-sparkline');
-        var labelsDiv = document.getElementById('velocity-labels');
-        var emptyEl   = document.getElementById('velocity-empty');
+        var subtitle = document.getElementById('velocity-subtitle');
         if (subtitle) subtitle.textContent = 'Illegal sites per week \u2014 last ' + data.velocity_weeks + ' weeks';
-        var hasData = data.velocity_data && data.velocity_data.some(function (v) { return v > 0; });
-        if (sparkline) sparkline.style.display = hasData ? 'flex' : 'none';
-        if (labelsDiv) labelsDiv.style.display = hasData ? 'flex' : 'none';
-        if (emptyEl)   emptyEl.classList.toggle('hidden', hasData);
-        if (hasData && sparkline) {
-            var vals = data.velocity_data;
-            var max  = Math.max.apply(null, vals.concat([1]));
-            sparkline.innerHTML = vals.map(function (v, i) {
-                return '<div class="velocity-bar bar-animate-v flex-1 rounded-t" data-val="' + v + '" style="min-height:2px;background:var(--status-critical);height:' + Math.max(2, Math.round(v / max * 44)) + 'px;animation-delay:' + (i * 40) + 'ms;" title="Week ' + (i + 1) + ': ' + v + ' sites"></div>';
-            }).join('');
-            if (labelsDiv) labelsDiv.innerHTML = data.velocity_labels.map(function (l) { return '<span>' + l + '</span>'; }).join('');
+        var labels = data.velocity_labels || [];
+        var vals   = data.velocity_data   || [];
+        if (velocityChart) {
+            velocityChart.data.labels = labels;
+            velocityChart.data.datasets[0].data = vals;
+            velocityChart.data.datasets[0].pointRadius = vals.some(function (v) { return v > 0; }) ? 3 : 0;
+            velocityChart.update();
+        } else {
+            var ctx = document.getElementById('velocity-chart');
+            if (ctx && labels.length > 0) velocityChart = _makeVelocityChart(ctx, labels, vals);
         }
     }
 
@@ -1026,24 +1045,25 @@ document.addEventListener('DOMContentLoaded', function () {
             trendChart.update();
         } else if (canvas) {
             trendChart = new Chart(canvas, {
-                type: 'bar',
+                type: 'line',
                 data: {
                     labels: labels,
                     datasets: [
-                        { label: 'Illegal', data: illegal, backgroundColor: 'rgba(224,82,82,0.80)', hoverBackgroundColor: 'rgba(239,68,68,1)', borderWidth: 0, borderRadius: { topLeft:3, topRight:3, bottomLeft:0, bottomRight:0 }, stack: 'detections' },
-                        { label: 'Legal',   data: legal,   backgroundColor: 'rgba(56,139,253,0.70)', hoverBackgroundColor: 'rgba(59,130,246,1)',  borderWidth: 0, borderRadius: { topLeft:3, topRight:3, bottomLeft:0, bottomRight:0 }, stack: 'detections' }
+                        { label: 'Illegal', data: illegal, borderColor: 'rgba(224,82,82,0.9)', backgroundColor: 'rgba(224,82,82,0.12)', borderWidth: 2, fill: true, tension: 0.35, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: 'rgba(224,82,82,1)' },
+                        { label: 'Legal',   data: legal,   borderColor: 'rgba(56,139,253,0.8)',  backgroundColor: 'rgba(56,139,253,0.08)',  borderWidth: 2, fill: true, tension: 0.35, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: 'rgba(56,139,253,1)' }
                     ]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     animation: { duration: 600, easing: 'easeOutQuart' },
+                    interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: { display: false },
-                        tooltip: { mode: 'index', intersect: false, backgroundColor: 'rgba(22,27,34,0.95)', borderColor: 'rgba(240,246,252,0.12)', borderWidth: 1, titleColor: '#e6edf3', bodyColor: '#8b949e', padding: 10, cornerRadius: 6 }
+                        tooltip: { backgroundColor: 'rgba(22,27,34,0.95)', borderColor: 'rgba(240,246,252,0.12)', borderWidth: 1, titleColor: '#e6edf3', bodyColor: '#8b949e', padding: 10, cornerRadius: 6 }
                     },
                     scales: {
-                        x: { stacked: true, grid: { display: false }, border: { display: false }, ticks: { font: { size: 10 }, color: '#8b949e', maxTicksLimit: 10 } },
-                        y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(240,246,252,0.05)', drawBorder: false }, border: { display: false }, ticks: { font: { size: 10 }, color: '#8b949e', stepSize: 1 } }
+                        x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 10 }, color: '#8b949e', maxTicksLimit: 10 } },
+                        y: { beginAtZero: true, grid: { color: 'rgba(240,246,252,0.05)' }, border: { display: false }, ticks: { font: { size: 10 }, color: '#8b949e', stepSize: 1 } }
                     }
                 }
             });
@@ -1126,39 +1146,19 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     })();
 
-    // ── Sparkline bar entrance animation ──
-    (function () {
-        const bars = document.querySelectorAll('#velocity-sparkline .velocity-bar');
-        bars.forEach(function (bar, i) {
-            bar.classList.add('bar-animate-v');
-            bar.style.animationDelay = (i * 40) + 'ms';
-        });
-    })();
-
     // ── KPI mini sparklines ──────────────────────────────────────────────
     (function () {
         if (typeof Chart === 'undefined') return;
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-        function makeSparkData(trend, n) {
-            // Generate n synthetic points trending in the direction of `trend`
-            var pts = [];
-            var base = 30 + Math.random() * 20;
-            for (var i = 0; i < n; i++) {
-                base += (trend >= 0 ? 0.6 : -0.6) + (Math.random() - 0.45) * 4;
-                pts.push(Math.max(0, base));
-            }
-            return pts;
-        }
-
-        function drawSparkline(canvasId, trend, color) {
+        function drawSparkline(canvasId, data, color) {
             var el = document.getElementById(canvasId);
             if (!el) return;
             new Chart(el, {
                 type: 'line',
                 data: {
-                    labels: Array(8).fill(''),
-                    datasets: [{ data: makeSparkData(trend, 8), borderColor: color,
+                    labels: Array(data.length).fill(''),
+                    datasets: [{ data: data, borderColor: color,
                         borderWidth: 1.5, fill: true,
                         backgroundColor: color.replace(')', ',0.10)').replace('rgb(','rgba('),
                         pointRadius: 0, tension: 0.42 }]
@@ -1167,15 +1167,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     animation: { duration: 800, easing: 'easeOutQuart' },
                     responsive: false, maintainAspectRatio: false,
                     plugins: { legend: { display: false }, tooltip: { enabled: false } },
-                    scales: { x: { display: false }, y: { display: false } }
+                    scales: { x: { display: false }, y: { display: false, min: 0 } }
                 }
             });
         }
 
-        var sitesChange  = {{ stats.trends.sites_change|default:0 }};
-        var alertsChange = {{ stats.trends.alerts_change|default:0 }};
-        drawSparkline('spark-sites',  sitesChange,  'rgb(224,82,82)');
-        drawSparkline('spark-alerts', alertsChange, 'rgb(232,131,58)');
+        drawSparkline('spark-sites',  [{% for v in stats.spark_sites %}{{ v }}{% if not forloop.last %},{% endif %}{% endfor %}],  'rgb(224,82,82)');
+        drawSparkline('spark-alerts', [{% for v in stats.spark_alerts_data %}{{ v }}{% if not forloop.last %},{% endif %}{% endfor %}], 'rgb(232,131,58)');
     })();
 
     // ── Velocity window selector (AJAX — no page reload) ──

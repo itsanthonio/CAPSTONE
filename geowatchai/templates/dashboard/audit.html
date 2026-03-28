@@ -23,8 +23,8 @@
                 <label for="audit-filter-action" class="gw-label">Action</label>
                 <select id="audit-filter-action" name="action" class="gw-select">
                     <option value="">All actions</option>
-                    {% for ac in action_choices %}
-                    <option value="{{ ac }}" {% if filters.action == ac %}selected{% endif %}>{{ ac }}</option>
+                    {% for ac_val, ac_label in action_choices %}
+                    <option value="{{ ac_val }}" {% if filters.action == ac_val %}selected{% endif %}>{{ ac_label }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -99,34 +99,45 @@
                         <td class="px-5 py-3 whitespace-nowrap">
                             {% with action=entry.action %}
                             {% if action == 'alert.acknowledged' %}
-                                <span class="gw-badge--info">Alert Acknowledged</span>
+                                <span class="gw-badge gw-badge--info"><i class="ph ph-check-circle" style="font-size:10px;"></i> Acknowledged</span>
                             {% elif action == 'alert.dispatched' %}
-                                <span class="gw-badge--dispatched">Alert Dispatched</span>
+                                <span class="gw-badge gw-badge--dispatched"><i class="ph ph-broadcast" style="font-size:10px;"></i> Dispatched</span>
                             {% elif action == 'alert.resolved' %}
-                                <span class="gw-badge--resolved">Alert Resolved</span>
+                                <span class="gw-badge gw-badge--resolved"><i class="ph ph-check-circle" style="font-size:10px;"></i> Resolved</span>
                             {% elif action == 'alert.dismissed' %}
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium"
-                                      style="background: var(--surface-3); color: var(--text-secondary);">Alert Dismissed</span>
-                            {% elif action == 'alert.assigned' %}
-                                <span class="gw-badge--info">Inspector Assigned</span>
+                                <span class="gw-badge gw-badge--neutral"><i class="ph ph-x-circle" style="font-size:10px;"></i> Dismissed</span>
+                            {% elif action == 'alert.assigned' or action == 'alert.assign_inspector' %}
+                                <span class="gw-badge gw-badge--info"><i class="ph ph-user-plus" style="font-size:10px;"></i> Inspector Assigned</span>
                             {% elif action == 'alert.escalated' %}
-                                <span class="gw-badge--critical">Auto-Escalated</span>
+                                <span class="gw-badge gw-badge--critical"><i class="ph ph-warning" style="font-size:10px;"></i> Escalated</span>
+                            {% elif action == 'alert.create' %}
+                                <span class="gw-badge gw-badge--resolved"><i class="ph ph-bell" style="font-size:10px;"></i> Alert Created</span>
+                            {% elif action == 'alert.update' %}
+                                <span class="gw-badge gw-badge--neutral"><i class="ph ph-pencil-simple" style="font-size:10px;"></i> Alert Updated</span>
+                            {% elif action == 'alert.delete' %}
+                                <span class="gw-badge gw-badge--critical"><i class="ph ph-x-circle" style="font-size:10px;"></i> Alert Deleted</span>
                             {% elif action == 'alert.bulk_acknowledged' %}
-                                <span class="gw-badge--info">Bulk Acknowledge</span>
+                                <span class="gw-badge gw-badge--info"><i class="ph ph-check-circle" style="font-size:10px;"></i> Bulk Acknowledged</span>
                             {% elif action == 'alert.bulk_dispatched' %}
-                                <span class="gw-badge--dispatched">Bulk Dispatch</span>
+                                <span class="gw-badge gw-badge--dispatched"><i class="ph ph-broadcast" style="font-size:10px;"></i> Bulk Dispatched</span>
                             {% elif action == 'alert.bulk_dismissed' %}
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium"
-                                      style="background: var(--surface-3); color: var(--text-secondary);">Bulk Dismiss</span>
-                            {% elif action == 'assignment.field_report' %}
-                                <span class="gw-badge--moderate">Field Report</span>
-                            {% elif action == 'assignment.sla_escalated' %}
-                                <span class="gw-badge--critical">SLA Escalated</span>
+                                <span class="gw-badge gw-badge--neutral"><i class="ph ph-x-circle" style="font-size:10px;"></i> Bulk Dismissed</span>
                             {% elif action == 'job.created' %}
-                                <span class="gw-badge--resolved">Scan Initiated</span>
+                                <span class="gw-badge gw-badge--accent"><i class="ph ph-broadcast" style="font-size:10px;"></i> Scan Initiated</span>
+                            {% elif action == 'job.completed' %}
+                                <span class="gw-badge gw-badge--resolved"><i class="ph ph-check-circle" style="font-size:10px;"></i> Scan Completed</span>
+                            {% elif action == 'job.failed' %}
+                                <span class="gw-badge gw-badge--critical"><i class="ph ph-x-circle" style="font-size:10px;"></i> Scan Failed</span>
+                            {% elif action == 'user.created' %}
+                                <span class="gw-badge gw-badge--info"><i class="ph ph-user-plus" style="font-size:10px;"></i> User Created</span>
+                            {% elif action == 'user.edited' %}
+                                <span class="gw-badge gw-badge--neutral"><i class="ph ph-pencil-simple" style="font-size:10px;"></i> User Updated</span>
+                            {% elif action == 'assignment.field_report' %}
+                                <span class="gw-badge gw-badge--moderate"><i class="ph ph-clipboard-text" style="font-size:10px;"></i> Field Report</span>
+                            {% elif action == 'assignment.sla_escalated' %}
+                                <span class="gw-badge gw-badge--critical"><i class="ph ph-warning" style="font-size:10px;"></i> SLA Escalated</span>
                             {% else %}
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono"
-                                      style="background: var(--surface-3); color: var(--text-secondary);">{{ action }}</span>
+                                <span class="gw-badge gw-badge--neutral">{{ action }}</span>
                             {% endif %}
                             {% endwith %}
                         </td>
@@ -203,18 +214,30 @@
 (function () {
     // ── Action badge map ──
     var ACTION_MAP = {
-        'alert.acknowledged':      { label: 'Alert Acknowledged', cls: 'gw-badge--info' },
-        'alert.dispatched':        { label: 'Alert Dispatched',   cls: 'gw-badge--dispatched' },
-        'alert.resolved':          { label: 'Alert Resolved',     cls: 'gw-badge--resolved' },
-        'alert.dismissed':         { label: 'Alert Dismissed',    cls: 'gw-badge--muted' },
-        'alert.assigned':          { label: 'Inspector Assigned', cls: 'gw-badge--info' },
-        'alert.escalated':         { label: 'Auto-Escalated',     cls: 'gw-badge--critical' },
-        'alert.bulk_acknowledged': { label: 'Bulk Acknowledge',   cls: 'gw-badge--info' },
-        'alert.bulk_dispatched':   { label: 'Bulk Dispatch',      cls: 'gw-badge--dispatched' },
-        'alert.bulk_dismissed':    { label: 'Bulk Dismiss',       cls: 'gw-badge--muted' },
-        'assignment.field_report': { label: 'Field Report',       cls: 'gw-badge--moderate' },
-        'assignment.sla_escalated':{ label: 'SLA Escalated',      cls: 'gw-badge--critical' },
-        'job.created':             { label: 'Scan Initiated',     cls: 'gw-badge--resolved' },
+        // Alert actions
+        'alert.acknowledged':      { label: 'Acknowledged',       cls: 'gw-badge gw-badge--info',       icon: 'ph-check-circle' },
+        'alert.dispatched':        { label: 'Dispatched',         cls: 'gw-badge gw-badge--dispatched', icon: 'ph-broadcast' },
+        'alert.resolved':          { label: 'Resolved',           cls: 'gw-badge gw-badge--resolved',   icon: 'ph-check-circle' },
+        'alert.dismissed':         { label: 'Dismissed',          cls: 'gw-badge gw-badge--neutral',    icon: 'ph-x-circle' },
+        'alert.assigned':          { label: 'Inspector Assigned', cls: 'gw-badge gw-badge--info',       icon: 'ph-user-plus' },
+        'alert.assign_inspector':  { label: 'Inspector Assigned', cls: 'gw-badge gw-badge--info',       icon: 'ph-user-plus' },
+        'alert.escalated':         { label: 'Escalated',          cls: 'gw-badge gw-badge--critical',   icon: 'ph-warning' },
+        'alert.create':            { label: 'Alert Created',      cls: 'gw-badge gw-badge--resolved',   icon: 'ph-bell' },
+        'alert.update':            { label: 'Alert Updated',      cls: 'gw-badge gw-badge--neutral',    icon: 'ph-pencil-simple' },
+        'alert.delete':            { label: 'Alert Deleted',      cls: 'gw-badge gw-badge--critical',   icon: 'ph-x-circle' },
+        'alert.bulk_acknowledged': { label: 'Bulk Acknowledged',  cls: 'gw-badge gw-badge--info',       icon: 'ph-check-circle' },
+        'alert.bulk_dispatched':   { label: 'Bulk Dispatched',    cls: 'gw-badge gw-badge--dispatched', icon: 'ph-broadcast' },
+        'alert.bulk_dismissed':    { label: 'Bulk Dismissed',     cls: 'gw-badge gw-badge--neutral',    icon: 'ph-x-circle' },
+        // Scan / job actions
+        'job.created':             { label: 'Scan Initiated',     cls: 'gw-badge gw-badge--accent',     icon: 'ph-broadcast' },
+        'job.completed':           { label: 'Scan Completed',     cls: 'gw-badge gw-badge--resolved',   icon: 'ph-check-circle' },
+        'job.failed':              { label: 'Scan Failed',        cls: 'gw-badge gw-badge--critical',   icon: 'ph-x-circle' },
+        // User actions
+        'user.created':            { label: 'User Created',       cls: 'gw-badge gw-badge--info',       icon: 'ph-user-plus' },
+        'user.edited':             { label: 'User Updated',       cls: 'gw-badge gw-badge--neutral',    icon: 'ph-pencil-simple' },
+        // Assignment actions
+        'assignment.field_report': { label: 'Field Report',       cls: 'gw-badge gw-badge--moderate',   icon: 'ph-clipboard-text' },
+        'assignment.sla_escalated':{ label: 'SLA Escalated',      cls: 'gw-badge gw-badge--critical',   icon: 'ph-warning' },
     };
 
     function _esc(str) {
@@ -223,8 +246,15 @@
 
     function _actionBadge(action) {
         var m = ACTION_MAP[action];
-        if (m) return '<span class="' + m.cls + '">' + m.label + '</span>';
-        return '<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono" style="background:var(--surface-3);color:var(--text-secondary);">' + _esc(action) + '</span>';
+        if (m) {
+            return '<span class="' + m.cls + '"><i class="ph ' + m.icon + '" style="font-size:10px;"></i> ' + m.label + '</span>';
+        }
+        // Fallback: format 'job.some_thing' → 'Job · Some Thing'
+        var parts = action.split('.');
+        var formatted = parts.map(function(p) {
+            return p.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+        }).join(' · ');
+        return '<span class="gw-badge gw-badge--neutral">' + _esc(formatted) + '</span>';
     }
 
     function _renderRow(e) {

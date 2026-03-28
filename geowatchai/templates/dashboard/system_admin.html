@@ -203,81 +203,125 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         <!-- Organisations Breakdown -->
-        <div class="gw-card overflow-hidden">
+        <div class="gw-card overflow-hidden flex flex-col">
             <div class="kente-bar"></div>
-            <div class="flex items-center justify-between px-5 py-4 border-b" style="border-color: var(--border-subtle);">
+
+            <!-- Header -->
+            <div class="flex items-center justify-between px-5 py-4" style="border-bottom:1px solid var(--border-subtle);">
                 <div>
-                    <h2 class="text-sm font-semibold gw-section-title" style="color: var(--text-primary);">Organisations</h2>
-                    <p class="text-[11px] mt-0.5" style="color: var(--text-secondary);">Activity breakdown by agency</p>
+                    <h2 class="text-sm font-semibold" style="color:var(--text-primary);">Organisations</h2>
+                    <p class="text-[11px] mt-0.5" style="color:var(--text-secondary);">
+                        {{ total_orgs }} registered agenc{{ total_orgs|pluralize:"y,ies" }}
+                    </p>
                 </div>
-                <a href="{% url 'dashboard:organisation_management' %}" class="text-[12px] font-medium" style="color: var(--accent);">Manage →</a>
+                <a href="{% url 'dashboard:organisation_management' %}" class="text-[12px] font-medium" style="color:var(--accent);">Manage →</a>
             </div>
 
             <!-- Column headers -->
-            <div class="grid px-5 py-2 text-[10px] font-medium uppercase tracking-[0.06em]" style="grid-template-columns: 1fr 70px 56px 80px; gap: 0 8px; color: var(--text-secondary); border-bottom: 1px solid var(--border-subtle);">
-                <span>Organisation</span>
-                <span class="text-right">Members</span>
+            <div class="grid px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.06em]"
+                 style="grid-template-columns:1fr 52px 72px;color:var(--text-tertiary);background:var(--surface-2);border-bottom:1px solid var(--border-subtle);">
+                <span>Agency</span>
                 <span class="text-right">Jobs</span>
-                <span class="text-right">Detections</span>
+                <span class="text-right">Sites</span>
             </div>
 
-            <div class="divide-y" style="divide-color: var(--border-subtle);">
+            <!-- Rows — scrollable if many orgs -->
+            <div class="overflow-y-auto flex-1" style="max-height:300px;">
                 {% for org in orgs %}
-                <div class="grid items-center px-5 py-3" style="grid-template-columns: 1fr 70px 56px 80px; gap: 0 8px;">
-                    <div class="flex items-center gap-2.5 min-w-0">
-                        <div class="w-7 h-7 rounded-md flex items-center justify-center shrink-0 text-[11px] font-bold" style="background: var(--surface-3); color: var(--accent);">
+                <div class="grid items-center px-5 py-2.5"
+                     style="grid-template-columns:1fr 52px 72px;border-bottom:1px solid var(--border-subtle);">
+
+                    <!-- Name + member count -->
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-[12px] font-bold"
+                             style="background:var(--accent-muted);color:var(--accent);border:1px solid var(--accent-border);">
                             {{ org.name|first|upper }}
                         </div>
-                        <span class="text-sm font-medium truncate" style="color: var(--text-primary);">{{ org.name }}</span>
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium truncate" style="color:var(--text-primary);">{{ org.name }}</p>
+                            <p class="text-[10px]" style="color:var(--text-tertiary);">
+                                {{ org.member_count }} member{{ org.member_count|pluralize }}
+                            </p>
+                        </div>
                     </div>
-                    <span class="text-sm tabular-nums text-right" style="color: var(--text-secondary);">{{ org.member_count }}</span>
-                    <span class="text-sm tabular-nums text-right" style="color: var(--text-secondary);">{{ org.job_count }}</span>
-                    <span class="text-sm tabular-nums font-semibold text-right" style="color: {% if org.detection_count > 0 %}var(--status-critical){% else %}var(--text-secondary){% endif %};">{{ org.detection_count }}</span>
+
+                    <!-- Jobs -->
+                    <span class="text-sm tabular-nums text-right font-medium" style="color:var(--text-secondary);">
+                        {{ org.job_count }}
+                    </span>
+
+                    <!-- Detections -->
+                    <div class="text-right">
+                        <span class="text-sm tabular-nums font-semibold"
+                              style="color:{% if org.detection_count > 0 %}var(--status-critical){% else %}var(--text-tertiary){% endif %};">
+                            {{ org.detection_count }}
+                        </span>
+                        {% if org.detection_count > 0 %}
+                        <span class="block text-[9px] mt-0.5" style="color:var(--status-critical);opacity:0.7;">detected</span>
+                        {% endif %}
+                    </div>
+
                 </div>
                 {% empty %}
-                <div class="px-5 py-8 text-center text-sm" style="color: var(--text-secondary);">No organisations yet.</div>
+                <div class="px-5 py-10 text-center text-sm" style="color:var(--text-secondary);">No organisations yet.</div>
                 {% endfor %}
             </div>
         </div>
 
         <!-- Recent Users -->
-        <div class="gw-card overflow-hidden">
+        <div class="gw-card overflow-hidden flex flex-col">
             <div class="kente-bar"></div>
-            <div class="flex items-center justify-between px-5 py-4 border-b" style="border-color: var(--border-subtle);">
+
+            <!-- Header -->
+            <div class="flex items-center justify-between px-5 py-4" style="border-bottom:1px solid var(--border-subtle);">
                 <div>
-                    <h2 class="text-sm font-semibold gw-section-title" style="color: var(--text-primary);">Recent Users</h2>
-                    <p class="text-[11px] mt-0.5" style="color: var(--text-secondary);">Latest accounts created</p>
+                    <h2 class="text-sm font-semibold" style="color:var(--text-primary);">Recent Users</h2>
+                    <p class="text-[11px] mt-0.5" style="color:var(--text-secondary);">Latest accounts created</p>
                 </div>
-                <a href="{% url 'dashboard:user_management' %}" class="text-[12px] font-medium" style="color: var(--accent);">All users →</a>
+                <a href="{% url 'dashboard:user_management' %}" class="text-[12px] font-medium" style="color:var(--accent);">All users →</a>
             </div>
-            <div class="divide-y" style="divide-color: var(--border-subtle);">
+
+            <!-- Rows — scrollable if many users -->
+            <div class="overflow-y-auto flex-1" style="max-height:300px;">
                 {% for u in recent_users %}
-                <div class="flex items-center justify-between px-5 py-3 gap-3">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0"
-                             style="background: var(--surface-3); color: var(--accent);">
-                            {{ u.username|first|upper }}
-                        </div>
-                        <div class="min-w-0">
-                            <p class="text-sm font-medium truncate" style="color: var(--text-primary);">{{ u.get_full_name|default:u.username }}</p>
-                            <p class="text-[11px] truncate" style="color: var(--text-secondary);">
-                                {% if u.profile.organisation %}{{ u.profile.organisation.name }}{% else %}No organisation{% endif %}
-                            </p>
-                        </div>
+                <div class="flex items-center gap-3 px-5 py-3" style="border-bottom:1px solid var(--border-subtle);">
+
+                    <!-- Role-tinted avatar -->
+                    <div class="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0
+                                {% if u.profile.role == 'system_admin' %}
+                                {% elif u.profile.role == 'agency_admin' %}
+                                {% else %}
+                                {% endif %}"
+                         style="{% if u.profile.role == 'system_admin' %}background:var(--accent-muted);color:var(--accent);border:1px solid var(--accent-border);{% elif u.profile.role == 'agency_admin' %}background:var(--status-info-bg);color:var(--status-info);border:1px solid rgba(59,130,246,0.25);{% else %}background:var(--status-resolved-bg);color:var(--status-resolved);border:1px solid rgba(35,134,54,0.25);{% endif %}">
+                        {{ u.username|first|upper }}
                     </div>
-                    <div class="text-right shrink-0">
+
+                    <!-- Name + org -->
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium truncate" style="color:var(--text-primary);">
+                            {{ u.get_full_name|default:u.username }}
+                        </p>
+                        <p class="text-[11px] truncate" style="color:var(--text-tertiary);">
+                            {% if u.profile.organisation %}{{ u.profile.organisation.name }}{% else %}No organisation{% endif %}
+                            <span class="mx-1">·</span>
+                            {{ u.date_joined|date:"d M Y" }}
+                        </p>
+                    </div>
+
+                    <!-- Role badge -->
+                    <div class="shrink-0">
                         {% if u.profile.role == 'system_admin' %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold" style="background: var(--surface-3); color: var(--text-secondary);">System Admin</span>
+                        <span class="gw-badge gw-badge--accent">Sys Admin</span>
                         {% elif u.profile.role == 'agency_admin' %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold" style="background: var(--status-info-bg); color: var(--status-info);">Agency Admin</span>
+                        <span class="gw-badge gw-badge--info">Agency Admin</span>
                         {% else %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold" style="background: var(--status-resolved-bg); color: var(--status-resolved);">Inspector</span>
+                        <span class="gw-badge gw-badge--resolved">Inspector</span>
                         {% endif %}
-                        <p class="text-[10px] mt-0.5" style="color: var(--text-secondary);">{{ u.date_joined|date:"d M Y" }}</p>
                     </div>
+
                 </div>
                 {% empty %}
-                <div class="px-5 py-8 text-center text-sm" style="color: var(--text-secondary);">No users yet.</div>
+                <div class="px-5 py-10 text-center text-sm" style="color:var(--text-secondary);">No users yet.</div>
                 {% endfor %}
             </div>
         </div>
@@ -289,40 +333,39 @@
 
 {% block extra_js %}
 <script>
-// KPI mini sparklines
+// KPI mini sparklines — real 8-day data
 (function () {
     if (typeof Chart === 'undefined') return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    function makeSparkData(trend, n) {
-        var pts = [], base = 30 + Math.random() * 20;
-        for (var i = 0; i < n; i++) {
-            base += (trend >= 0 ? 0.5 : -0.5) + (Math.random() - 0.45) * 4;
-            pts.push(Math.max(0, base));
-        }
-        return pts;
-    }
-    function drawSparkline(id, trend, color) {
+
+    function drawSparkline(id, data, color) {
         var el = document.getElementById(id);
         if (!el) return;
         new Chart(el, {
             type: 'line',
             data: {
-                labels: Array(8).fill(''),
-                datasets: [{ data: makeSparkData(trend, 8), borderColor: color,
-                    borderWidth: 1.5, fill: true,
-                    backgroundColor: color.replace(')', ',0.10)').replace('rgb(','rgba('),
-                    pointRadius: 0, tension: 0.42 }]
+                labels: Array(data.length).fill(''),
+                datasets: [{
+                    data: data,
+                    borderColor: color,
+                    borderWidth: 1.5,
+                    fill: true,
+                    backgroundColor: color.replace('rgb(', 'rgba(').replace(')', ', 0.10)'),
+                    pointRadius: 0,
+                    tension: 0.42,
+                }]
             },
             options: {
                 animation: { duration: 800, easing: 'easeOutQuart' },
                 responsive: false, maintainAspectRatio: false,
                 plugins: { legend: { display: false }, tooltip: { enabled: false } },
-                scales: { x: { display: false }, y: { display: false } }
+                scales: { x: { display: false }, y: { display: false, min: 0 } }
             }
         });
     }
-    drawSparkline('spark-users', {{ new_users_week|default:0 }}, 'rgb(212,160,23)');
-    drawSparkline('spark-jobs',  {{ jobs_this_month|default:0 }}, 'rgb(63,185,80)');
+
+    drawSparkline('spark-users', {{ spark_users|safe }}, 'rgb(212,160,23)');
+    drawSparkline('spark-jobs',  {{ spark_jobs|safe }},  'rgb(63,185,80)');
 })();
 </script>
 {% endblock %}

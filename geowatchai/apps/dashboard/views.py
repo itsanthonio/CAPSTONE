@@ -1,3 +1,4 @@
+import json
 import logging
 from django.shortcuts import render, redirect, get_object_or_404
 
@@ -468,6 +469,26 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30, org=None):
             velocity_labels.append('W' + week_start.strftime('%W'))
             velocity_data.append(velocity_by_week.get(key, 0))
 
+        # --- 8-day sparklines for KPI cards ---
+        spark_start_date = now.date() - timedelta(days=7)
+        site_day_qs = (
+            DetectedSite.objects
+            .filter(site_q, detection_date__gte=spark_start_date)
+            .values('detection_date')
+            .annotate(n=Count('id'))
+        )
+        site_day_map = {row['detection_date']: row['n'] for row in site_day_qs}
+        spark_sites = [site_day_map.get(now.date() - timedelta(days=7 - i), 0) for i in range(8)]
+
+        alert_day_qs = (
+            Alert.objects
+            .filter(alert_q, created_at__date__gte=spark_start_date)
+            .values('created_at__date')
+            .annotate(n=Count('id'))
+        )
+        alert_day_map = {row['created_at__date']: row['n'] for row in alert_day_qs}
+        spark_alerts_data = [alert_day_map.get(now.date() - timedelta(days=7 - i), 0) for i in range(8)]
+
         # ── Concession expiry (live — feeds dashboard warning banner) ─────────
         from apps.detections.models import LegalConcession
         _today        = now.date()
@@ -505,6 +526,8 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30, org=None):
                 'sites_change': sites_this_week,
                 'alerts_change': alerts_change_pct,
             },
+            'spark_sites': spark_sites,
+            'spark_alerts_data': spark_alerts_data,
             'has_data': total_sites > 0,
             # Auto scan
             'scan_enabled':          scan_config.is_enabled,
@@ -545,6 +568,8 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30, org=None):
             'velocity_labels': [],
             'velocity_data': [],
             'trends': {'sites_change': 0, 'alerts_change': 0},
+            'spark_sites': [0] * 8,
+            'spark_alerts_data': [0] * 8,
             'has_data': False,
             'scan_enabled': False,
             'scan_within_window': False,
@@ -715,11 +740,39 @@ def dashboard_audit(request):
     page_num  = request.GET.get('page', 1)
     page_obj  = paginator.get_page(page_num)
 
+    # Human-readable labels for the action filter dropdown.
+    _ACTION_LABELS = {
+        'alert.acknowledged':      'Alert — Acknowledged',
+        'alert.dispatched':        'Alert — Dispatched',
+        'alert.resolved':          'Alert — Resolved',
+        'alert.dismissed':         'Alert — Dismissed',
+        'alert.assigned':          'Alert — Inspector Assigned',
+        'alert.assign_inspector':  'Alert — Inspector Assigned',
+        'alert.escalated':         'Alert — Escalated',
+        'alert.create':            'Alert — Created',
+        'alert.update':            'Alert — Updated',
+        'alert.delete':            'Alert — Deleted',
+        'alert.bulk_acknowledged': 'Alert — Bulk Acknowledged',
+        'alert.bulk_dispatched':   'Alert — Bulk Dispatched',
+        'alert.bulk_dismissed':    'Alert — Bulk Dismissed',
+        'job.created':             'Scan — Initiated',
+        'job.completed':           'Scan — Completed',
+        'job.failed':              'Scan — Failed',
+        'user.created':            'User — Created',
+        'user.edited':             'User — Updated',
+        'assignment.field_report': 'Assignment — Field Report',
+        'assignment.sla_escalated':'Assignment — SLA Escalated',
+    }
+
     # Distinct action types for the filter dropdown
-    action_choices = (
+    raw_action_choices = (
         AuditLog.objects.values_list('action', flat=True)
         .distinct().order_by('action')
     )
+    action_choices = [
+        (ac, _ACTION_LABELS.get(ac, ac.replace('.', ' · ').replace('_', ' ').title()))
+        for ac in raw_action_choices
+    ]
     # Source users from UserProfile so new admins/inspectors appear even before
     # they've performed any auditable actions
     user_choices = (
@@ -1834,13 +1887,25 @@ def my_account(request):
 
     profile = request.user.profile
     errors = {}
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     if request.method == 'POST':
-        new_email      = request.POST.get('email', '').strip()
-        new_first      = request.POST.get('first_name', '').strip()
-        new_last       = request.POST.get('last_name', '').strip()
-        new_org        = request.POST.get('organisation', '').strip()
-        new_phone      = request.POST.get('phone_number', '').strip()
+        if is_ajax:
+            try:
+                body = json.loads(request.body)
+            except Exception:
+                return JsonResponse({'success': False, 'error': 'Invalid request.'}, status=400)
+            new_email = body.get('email', '').strip()
+            new_first = body.get('first_name', '').strip()
+            new_last  = body.get('last_name', '').strip()
+            new_org   = body.get('organisation', '').strip()
+            new_phone = body.get('phone_number', '').strip()
+        else:
+            new_email = request.POST.get('email', '').strip()
+            new_first = request.POST.get('first_name', '').strip()
+            new_last  = request.POST.get('last_name', '').strip()
+            new_org   = request.POST.get('organisation', '').strip()
+            new_phone = request.POST.get('phone_number', '').strip()
 
         # Validate email
         if new_email:
@@ -1852,19 +1917,23 @@ def my_account(request):
                 if User.objects.filter(email=new_email).exclude(pk=request.user.pk).exists():
                     errors['email'] = 'That email address is already in use.'
 
-        if not errors:
+        if errors:
+            if is_ajax:
+                return JsonResponse({'success': False, 'errors': errors}, status=400)
+        else:
             from apps.accounts.models import Organisation
             request.user.email      = new_email
             request.user.first_name = new_first
             request.user.last_name  = new_last
             request.user.save()
 
-            # Only system admins may change their own organisation
             if profile.role == UserProfile.Role.SYSTEM_ADMIN and new_org:
                 profile.organisation = Organisation.objects.filter(id=new_org).first()
-            profile.phone_number  = new_phone
+            profile.phone_number = new_phone
             profile.save()
 
+            if is_ajax:
+                return JsonResponse({'success': True})
             messages.success(request, 'Your account has been updated.')
             return redirect(reverse('dashboard:my_account'))
 
@@ -1911,6 +1980,25 @@ def system_admin_dashboard(request):
     jobs_this_month  = Job.objects.filter(created_at__date__gte=month_ago).count()
     detections_week  = DetectedSite.objects.filter(detection_date__gte=week_ago).count()
 
+    # ── Sparkline data (last 8 days, oldest → newest) ─────────────────
+    spark_start = today - timedelta(days=7)
+
+    user_day_qs = (
+        User.objects.filter(date_joined__date__gte=spark_start)
+        .values('date_joined__date')
+        .annotate(n=Count('id'))
+    )
+    user_day_map = {row['date_joined__date']: row['n'] for row in user_day_qs}
+    spark_users = json.dumps([user_day_map.get(today - timedelta(days=7 - i), 0) for i in range(8)])
+
+    job_day_qs = (
+        Job.objects.filter(created_at__date__gte=spark_start)
+        .values('created_at__date')
+        .annotate(n=Count('id'))
+    )
+    job_day_map = {row['created_at__date']: row['n'] for row in job_day_qs}
+    spark_jobs = json.dumps([job_day_map.get(today - timedelta(days=7 - i), 0) for i in range(8)])
+
     # Per-org breakdown with detection counts
     orgs = Organisation.objects.annotate(
         member_count=Count('members', distinct=True),
@@ -1940,6 +2028,8 @@ def system_admin_dashboard(request):
         'detections_week':  detections_week,
         'orgs':             orgs,
         'recent_users':     recent_users,
+        'spark_users':      spark_users,
+        'spark_jobs':       spark_jobs,
     })
 
 
@@ -1953,25 +2043,59 @@ def organisation_management(request):
     from apps.accounts.models import Organisation
     from django.db.models import Count
 
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
     if request.method == 'POST':
-        action = request.POST.get('action')
-        if action == 'create':
-            name = request.POST.get('name', '').strip()
-            if name:
-                Organisation.objects.get_or_create(name=name)
-                messages.success(request, f'Organisation "{name}" created.')
-        elif action == 'rename':
-            org_id = request.POST.get('org_id')
+        if is_ajax:
+            try:
+                body = json.loads(request.body)
+            except Exception:
+                return JsonResponse({'success': False, 'error': 'Invalid request.'}, status=400)
+            action = body.get('action', '')
+            name   = body.get('name', '').strip()
+            org_id = body.get('org_id', '').strip()
+        else:
+            action = request.POST.get('action', '')
             name   = request.POST.get('name', '').strip()
-            if org_id and name:
+            org_id = request.POST.get('org_id', '').strip()
+
+        if action == 'create':
+            if not name:
+                if is_ajax:
+                    return JsonResponse({'success': False, 'error': 'Name is required.'}, status=400)
+            else:
+                org, created = Organisation.objects.get_or_create(name=name)
+                if is_ajax:
+                    return JsonResponse({
+                        'success': True,
+                        'created': created,
+                        'id': str(org.id),
+                        'name': org.name,
+                    })
+                messages.success(request, f'Organisation "{name}" created.')
+
+        elif action == 'rename':
+            if not (org_id and name):
+                if is_ajax:
+                    return JsonResponse({'success': False, 'error': 'Name and org ID are required.'}, status=400)
+            else:
                 Organisation.objects.filter(id=org_id).update(name=name)
+                if is_ajax:
+                    return JsonResponse({'success': True})
                 messages.success(request, 'Organisation renamed.')
+
         elif action == 'delete':
-            org_id = request.POST.get('org_id')
-            if org_id:
+            if not org_id:
+                if is_ajax:
+                    return JsonResponse({'success': False, 'error': 'Org ID is required.'}, status=400)
+            else:
                 Organisation.objects.filter(id=org_id).delete()
+                if is_ajax:
+                    return JsonResponse({'success': True})
                 messages.success(request, 'Organisation deleted.')
-        return redirect('dashboard:organisation_management')
+
+        if not is_ajax:
+            return redirect('dashboard:organisation_management')
 
     orgs = Organisation.objects.annotate(
         member_count=Count('members', distinct=True),
