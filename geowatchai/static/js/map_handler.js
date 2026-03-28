@@ -5,9 +5,12 @@ class MapHandler {
         this.map = null;
         this.draw = null;
         this.isDrawing = false;
-        this.isPolling = false; // Add polling state tracker
-        this.pollingTimeout = null; // Add polling timeout tracker
-        this.pollingCacheBuster = 0; // Add polling cache buster
+        this.isPolling = false;
+        this.pollingTimeout = null;
+        this.pollingCacheBuster = 0;
+        this._batchJobs = new Map();   // jobId → {name,geometry,status,elapsed,pollCount}
+        this._focusedJobId = null;
+        this._batchPollInterval = null;
         this.init();
     }
 
@@ -45,9 +48,12 @@ class MapHandler {
             zoom: this.options.zoom || 8,
         });
 
+        this.map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+
         this.map.on('load', () => {
             if (this.options.drawing === true) this.setupDrawingTools();
             this.setupMapLayers();
+            this.setupBatchAOILayer();
             this.setupClickHandlers();
             this.setupKeyboardControls();
             this.startPulseAnimation();
@@ -358,6 +364,58 @@ class MapHandler {
             });
     }
 
+    // ── Batch AOI layers ──────────────────────────────────────────────────
+    setupBatchAOILayer() {
+        this.map.addSource('batch-aois', {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features: [] }
+        });
+        // Semi-transparent fill
+        this.map.addLayer({
+            id: 'batch-aois-fill',
+            type: 'fill',
+            source: 'batch-aois',
+            paint: {
+                'fill-color': [
+                    'match', ['get', 'status'],
+                    'completed', '#4ade80',
+                    'failed',    '#ef4444',
+                    '#fbbf24'   // default: in-progress amber
+                ],
+                'fill-opacity': 0.08
+            }
+        });
+        // Dashed outline
+        this.map.addLayer({
+            id: 'batch-aois-outline',
+            type: 'line',
+            source: 'batch-aois',
+            paint: {
+                'line-color': [
+                    'match', ['get', 'status'],
+                    'completed', '#4ade80',
+                    'failed',    '#ef4444',
+                    '#fbbf24'
+                ],
+                'line-width': ['case', ['==', ['get', 'focused'], true], 2.5, 1.5],
+                'line-dasharray': [3, 2],
+                'line-opacity': 0.85
+            }
+        });
+        // Click to focus
+        this.map.on('click', 'batch-aois-fill', (e) => {
+            if (e.features.length > 0) {
+                this._focusBatchJob(e.features[0].properties.jobId);
+            }
+        });
+        this.map.on('mouseenter', 'batch-aois-fill', () => {
+            this.map.getCanvas().style.cursor = 'pointer';
+        });
+        this.map.on('mouseleave', 'batch-aois-fill', () => {
+            this.map.getCanvas().style.cursor = '';
+        });
+    }
+
     setupClickHandlers() {
         this.map.on('mouseenter', 'detections-layer', () => {
             this.map.getCanvas().style.cursor = 'pointer';
@@ -443,9 +501,9 @@ class MapHandler {
                 scanBtn.classList.add('opacity-50', 'cursor-not-allowed');
                 scanBtn.classList.remove('hover:bg-opacity-90');
             }
-        } else if (ha > 600) {
+        } else if (ha > 6000) {
             if (warningEl) {
-                warningEl.textContent = `Area too large (${ha.toFixed(2)} ha). Maximum is 600 ha.`;
+                warningEl.textContent = `Area too large (${ha.toFixed(2)} ha). Maximum is 6000 ha.`;
                 warningEl.classList.remove('hidden');
             }
             if (scanBtn) {
@@ -485,18 +543,16 @@ class MapHandler {
             alert(`Area too small (${ha.toFixed(2)} ha). Please draw an area of at least 100 hectares.`);
             return;
         }
-        if (ha > 600) {
-            alert(`Area too large (${ha.toFixed(2)} ha). Please draw an area no greater than 600 hectares.`);
+        if (ha > 6000) {
+            alert(`Area too large (${ha.toFixed(2)} ha). Please draw an area no greater than 6000 hectares.`);
             return;
         }
 
-        const dateElement = document.getElementById('hls-date');
-        const dateString = dateElement ? dateElement.textContent.trim() : null;
-        // Fall back to today when the hls-date element isn't present on this page
-        const endDate = dateString || new Date().toISOString().split('T')[0];
-        const startDate = new Date(endDate + 'T00:00:00Z');
-        startDate.setDate(startDate.getDate() - 30);
-        const formattedStartDate = startDate.toISOString().split('T')[0];
+        const today = new Date().toISOString().split('T')[0];
+        const startInput = document.getElementById('scan-start-date');
+        const endInput   = document.getElementById('scan-end-date');
+        const formattedStartDate = (startInput && startInput.value) ? startInput.value : '2023-01-01';
+        const endDate            = (endInput   && endInput.value)   ? endInput.value   : today;
 
         const scanBtn = document.getElementById('scan-aoi-btn');
         if (scanBtn) { 
@@ -721,16 +777,18 @@ class MapHandler {
     }
 
     // ── Radar sweep canvas animation ──────────────────────────────────────
-    startScanSweep() {
+    startScanSweep(overrideBbox = null) {
         const canvas = document.getElementById('scan-sweep-canvas');
         if (!canvas) return;
         canvas.style.display = 'block';
         const ctx = canvas.getContext('2d');
-        const drawData = this.draw ? this.draw.getAll() : null;
-        if (!drawData || !drawData.features.length) { this.stopScanSweep(); return; }
 
-        const feature = drawData.features[0];
-        const bbox = turf.bbox(feature); // [minLng, minLat, maxLng, maxLat]
+        let bbox = overrideBbox;
+        if (!bbox) {
+            const drawData = this.draw ? this.draw.getAll() : null;
+            if (!drawData || !drawData.features.length) { this.stopScanSweep(); return; }
+            bbox = turf.bbox(drawData.features[0]);
+        }
         let progress = 0;
         let lastTime = null;
         const SWEEP_MS = 2400;
@@ -791,6 +849,195 @@ class MapHandler {
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
+    }
+
+    // ── Batch job tracking ────────────────────────────────────────────────
+
+    trackBatchJobs(jobs) {
+        // jobs = [{id, name, geometry}]
+        jobs.forEach(j => this._batchJobs.set(j.id, {
+            name: j.name, geometry: j.geometry,
+            status: 'queued', elapsed: 0, pollCount: 0
+        }));
+        this._updateBatchAOIsOnMap();
+        this._updateBatchPanel();
+        this._startBatchPolling();
+        // Focus first job immediately
+        if (jobs.length > 0) this._focusBatchJob(jobs[0].id);
+    }
+
+    _updateBatchAOIsOnMap() {
+        const src = this.map.getSource('batch-aois');
+        if (!src) return;
+        const features = [];
+        this._batchJobs.forEach((job, jobId) => {
+            features.push({
+                type: 'Feature',
+                properties: { jobId, name: job.name, status: job.status, focused: jobId === this._focusedJobId },
+                geometry: job.geometry
+            });
+        });
+        src.setData({ type: 'FeatureCollection', features });
+    }
+
+    _focusBatchJob(jobId) {
+        this._focusedJobId = jobId;
+        const job = this._batchJobs.get(jobId);
+        if (!job) return;
+
+        // Zoom to AOI
+        const bbox = turf.bbox({ type: 'Feature', geometry: job.geometry });
+        this.map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 80, duration: 800 });
+
+        // Update sweep animation for this AOI
+        this.stopScanSweep();
+        const inProgress = !['completed', 'failed'].includes(job.status);
+        if (inProgress) {
+            this.startScanSweep(bbox);
+            const hud = document.getElementById('scan-hud');
+            if (hud) hud.classList.remove('hidden');
+        } else {
+            const hud = document.getElementById('scan-hud');
+            if (hud) hud.classList.add('hidden');
+        }
+
+        // Highlight focused card
+        document.querySelectorAll('.batch-job-card').forEach(el => {
+            el.style.background = el.dataset.jobId === jobId
+                ? 'rgba(255,255,255,0.08)' : 'transparent';
+        });
+        this._updateBatchAOIsOnMap();
+    }
+
+    _startBatchPolling() {
+        if (this._batchPollInterval) return;
+        const POLL_MS = 3000;
+        const statusLabels = {
+            queued: 'Queued', validating: 'Validating',
+            exporting: 'Fetching imagery', preprocessing: 'Processing',
+            inferring: 'Running model', postprocessing: 'Extracting sites',
+            storing: 'Saving', completed: 'Complete', failed: 'Failed'
+        };
+
+        this._batchPollInterval = setInterval(async () => {
+            const active = [...this._batchJobs.entries()]
+                .filter(([, j]) => !['completed', 'failed'].includes(j.status));
+
+            if (active.length === 0) {
+                clearInterval(this._batchPollInterval);
+                this._batchPollInterval = null;
+                // Fade panel out after 8s if all done
+                setTimeout(() => {
+                    const panel = document.getElementById('batch-scan-panel');
+                    if (panel) panel.classList.add('hidden');
+                    this._batchJobs.clear();
+                    this._updateBatchAOIsOnMap();
+                }, 8000);
+                return;
+            }
+
+            for (const [jobId, job] of active) {
+                job.pollCount++;
+                job.elapsed = Math.round(job.pollCount * POLL_MS / 1000);
+                try {
+                    const res = await fetch(`/api/jobs/${jobId}/?t=${Date.now()}`);
+                    if (!res.ok) continue;
+                    const data = await res.json();
+                    job.status = data.status;
+                    if (data.status === 'completed') this._onBatchJobComplete(jobId, data);
+                    else if (data.status === 'failed')  this._onBatchJobFailed(jobId, data);
+                } catch (_) {}
+            }
+
+            this._updateBatchAOIsOnMap();
+            this._updateBatchPanel();
+
+            // Keep HUD in sync with focused job
+            const focused = this._batchJobs.get(this._focusedJobId);
+            if (focused && !['completed', 'failed'].includes(focused.status)) {
+                const hudText    = document.getElementById('scan-hud-text');
+                const hudElapsed = document.getElementById('scan-hud-elapsed');
+                if (hudText)    hudText.textContent    = statusLabels[focused.status] || focused.status;
+                if (hudElapsed) hudElapsed.textContent = focused.elapsed + 's';
+            }
+        }, POLL_MS);
+    }
+
+    _onBatchJobComplete(jobId, data) {
+        // If focused job completed, hide sweep and show toast
+        if (jobId === this._focusedJobId) {
+            this.stopScanSweep();
+            const hud = document.getElementById('scan-hud');
+            if (hud) hud.classList.add('hidden');
+            // Auto-focus next in-progress job
+            const next = [...this._batchJobs.entries()]
+                .find(([id, j]) => id !== jobId && !['completed', 'failed'].includes(j.status));
+            if (next) this._focusBatchJob(next[0]);
+        }
+        const n = data.total_detections || 0;
+        const ill = data.illegal_count || 0;
+        if (window.showToast) {
+            window.showToast(n > 0
+                ? `${data.scene_id || 'Scan'}: ${n} site${n !== 1 ? 's' : ''} (${ill} illegal)`
+                : `${data.scene_id || 'Scan'}: No mining detected`, n > 0 ? 'error' : 'success');
+        }
+        // Refresh detections on map
+        fetch('/api/sites/', { credentials: 'include' })
+            .then(r => r.ok ? r.json() : null)
+            .then(d => {
+                if (d && this.map.getSource('detections')) {
+                    this.map.getSource('detections').setData(d);
+                    if (typeof this._onDetectionsUpdated === 'function')
+                        this._onDetectionsUpdated(d.features || [], { source: 'scan' });
+                }
+            }).catch(() => {});
+    }
+
+    _onBatchJobFailed(jobId, data) {
+        if (jobId === this._focusedJobId) {
+            this.stopScanSweep();
+            const hud = document.getElementById('scan-hud');
+            if (hud) hud.classList.add('hidden');
+            const next = [...this._batchJobs.entries()]
+                .find(([id, j]) => id !== jobId && !['completed', 'failed'].includes(j.status));
+            if (next) this._focusBatchJob(next[0]);
+        }
+        if (window.showToast)
+            window.showToast('Scan failed: ' + (data.failure_reason || 'Unknown error'), 'error');
+    }
+
+    _updateBatchPanel() {
+        const panel = document.getElementById('batch-scan-panel');
+        const list  = document.getElementById('batch-job-list');
+        if (!panel || !list) return;
+
+        if (this._batchJobs.size === 0) { panel.classList.add('hidden'); return; }
+        panel.classList.remove('hidden');
+
+        const statusLabels = {
+            queued: 'Queued', validating: 'Validating',
+            exporting: 'Fetching imagery', preprocessing: 'Processing',
+            inferring: 'Running model', postprocessing: 'Extracting sites',
+            storing: 'Saving', completed: 'Complete', failed: 'Failed'
+        };
+        const statusColor = s => s === 'completed' ? '#4ade80' : s === 'failed' ? '#ef4444' : '#fbbf24';
+
+        list.innerHTML = [...this._batchJobs.entries()].map(([jobId, job]) => `
+            <div class="batch-job-card" data-job-id="${jobId}"
+                 onclick="window.mapHandler._focusBatchJob('${jobId}')"
+                 style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;cursor:pointer;margin-bottom:4px;
+                        background:${jobId === this._focusedJobId ? 'rgba(255,255,255,0.08)' : 'transparent'};
+                        transition:background 0.2s;">
+                <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:${statusColor(job.status)};
+                            ${!['completed','failed'].includes(job.status) ? 'animation:pulseGreenDot 1.6s ease infinite;' : ''}"></div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:12px;font-weight:500;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
+                         title="${job.name}">${job.name}</div>
+                    <div style="font-size:11px;color:rgba(255,255,255,0.45);">
+                        ${statusLabels[job.status] || job.status}${job.elapsed > 0 ? ' · ' + job.elapsed + 's' : ''}
+                    </div>
+                </div>
+            </div>`).join('');
     }
 
     updateConfidenceFilter(val) {

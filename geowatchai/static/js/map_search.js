@@ -12,7 +12,7 @@ function initMapSearch(containerId, flyToFn) {
     const wrapper = document.createElement('div');
     wrapper.style.cssText = [
         'position:absolute',
-        'top:12px',
+        'top:15.4px',
         'left:12px',
         'z-index:1100',
         'width:260px',

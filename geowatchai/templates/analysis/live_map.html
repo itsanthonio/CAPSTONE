@@ -33,6 +33,25 @@
     }
     #scan-hud-dot { animation: pulseGreenDot 1.6s ease infinite; }
 
+    /* ── Batch scan panel ─────────────────────────────────── */
+    #batch-scan-panel {
+        position: absolute;
+        top: 62px;
+        left: 12px;
+        z-index: 20;
+        width: 220px;
+        max-height: 55vh;
+        overflow-y: auto;
+        background: rgba(0,0,0,0.76);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 12px;
+        padding: 10px;
+        scrollbar-width: none;
+    }
+    #batch-scan-panel::-webkit-scrollbar { display: none; }
+
     /* ── Coordinate HUD ───────────────────────────────────── */
     #map-coords-hud {
         font-family: 'SF Mono','Fira Code','Fira Mono',ui-monospace,monospace;
@@ -110,6 +129,35 @@
     .toast-error   { background: rgba(60,8,8,0.93);  border: 1px solid rgba(248,113,113,0.3); color: #fca5a5; }
     .toast-info    { background: rgba(6,22,55,0.93); border: 1px solid rgba(96,165,250,0.3); color: #93c5fd; }
     .toast-icon    { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+
+    /* ── MapLibre NavigationControl dark theme ────────────── */
+    .maplibregl-ctrl-top-right { top: 15.4px !important; }
+    .maplibregl-ctrl-group {
+        background: var(--surface-2) !important;
+        border: 1px solid var(--border-default) !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.35) !important;
+        overflow: hidden;
+    }
+    .maplibregl-ctrl-group button {
+        background: transparent !important;
+        color: var(--text-primary) !important;
+        width: 36px !important;
+        height: 36px !important;
+        border-bottom: 1px solid var(--border-subtle) !important;
+    }
+    .maplibregl-ctrl-group button:last-child {
+        border-bottom: none !important;
+    }
+    .maplibregl-ctrl-group button:hover {
+        background: var(--surface-3) !important;
+    }
+    .maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon {
+        filter: invert(1) brightness(2) !important;
+    }
+    .maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon {
+        filter: invert(1) brightness(2) !important;
+    }
 </style>
 {% endblock %}
 
@@ -132,35 +180,27 @@
             <span id="scan-hud-elapsed" class="text-xs" style="color:rgba(74,222,128,0.5);">0s</span>
         </div>
 
+        <!-- Batch scan panel (top right of map) -->
+        <div id="batch-scan-panel" class="hidden">
+            <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;
+                        color:rgba(255,255,255,0.35);margin-bottom:8px;padding:0 2px;">
+                Active Scans
+            </div>
+            <div id="batch-job-list"></div>
+        </div>
+
         <!-- Coordinate HUD (bottom center of map) -->
         <div id="map-coords-hud" class="absolute bottom-4 z-20 pointer-events-none"
              style="left:50%;transform:translateX(-50%);">
             <span id="lat-display">0.0000</span>° N &nbsp;·&nbsp; <span id="lng-display">0.0000</span>° W
         </div>
 
-        <!-- Zoom Controls -->
-        <div class="absolute top-4 right-4 z-20 flex flex-col gap-2" role="group" aria-label="Map zoom controls">
-            <button onclick="if(window.mapHandler) window.mapHandler.zoomIn();"
-                    aria-label="Zoom in"
-                    class="rounded-lg p-2 transition-all"
-                    style="background: var(--surface-2); border: 1px solid var(--border-default); color: var(--text-primary);">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m0 0l-3-3m3 3l3-3"></path>
-                </svg>
-            </button>
-            <button onclick="if(window.mapHandler) window.mapHandler.zoomOut();"
-                    aria-label="Zoom out"
-                    class="rounded-lg p-2 transition-all"
-                    style="background: var(--surface-2); border: 1px solid var(--border-default); color: var(--text-primary);">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
-                </svg>
-            </button>
-            <!-- Locate Me -->
+        <!-- Locate Me (zoom +/- are handled by MapLibre NavigationControl) -->
+        <div class="absolute z-30" style="top: 111.4px; right: 10px;">
             <button id="locate-me-btn" onclick="locateMe()"
                     aria-label="Center map on my location"
                     class="rounded-lg p-2 transition-all"
-                    style="background: var(--surface-2); border: 1px solid var(--border-default); color: var(--text-primary);">
+                    style="background: var(--surface-2); border: 1px solid var(--border-default); color: var(--text-primary); display:block;">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <circle cx="12" cy="12" r="3" stroke-width="2"/>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -430,6 +470,21 @@
             <p id="aoi-upload-summary" class="text-[13px] mt-0.5" style="color:var(--text-secondary);"></p>
         </div>
         <div id="aoi-upload-list" class="px-6 py-3 space-y-2 max-h-64 overflow-y-auto"></div>
+        <!-- Date range -->
+        <div class="px-6 pb-3 grid grid-cols-2 gap-3">
+            <div class="space-y-1">
+                <label class="text-[11px]" style="color:var(--text-tertiary)">Start date</label>
+                <input id="upload-start-date" type="date"
+                       class="w-full rounded px-2 py-1 text-[12px]"
+                       style="background:var(--surface-3);border:1px solid var(--border-default);color:var(--text-primary);">
+            </div>
+            <div class="space-y-1">
+                <label class="text-[11px]" style="color:var(--text-tertiary)">End date</label>
+                <input id="upload-end-date" type="date"
+                       class="w-full rounded px-2 py-1 text-[12px]"
+                       style="background:var(--surface-3);border:1px solid var(--border-default);color:var(--text-primary);">
+            </div>
+        </div>
         <div id="aoi-upload-progress" class="hidden px-6 pb-3">
             <div class="rounded-lg p-3 text-[13px]" style="background:var(--surface-3);border:1px solid var(--border-default);">
                 <p id="aoi-upload-progress-text" style="color:var(--text-secondary);"></p>
@@ -875,6 +930,19 @@ function applyDetectionFilter() {
 
 // ── Init ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
+    // Default date range: rolling 2-year window ending today
+    const _today = new Date().toISOString().split('T')[0];
+    const _twoYearsAgo = new Date(); _twoYearsAgo.setFullYear(_twoYearsAgo.getFullYear() - 2);
+    const _twoYearsAgoStr = _twoYearsAgo.toISOString().split('T')[0];
+    const _edScan   = document.getElementById('scan-end-date');
+    const _edUpload = document.getElementById('upload-end-date');
+    const _sdScan   = document.getElementById('scan-start-date');
+    const _sdUpload = document.getElementById('upload-start-date');
+    if (_edScan)   _edScan.value   = _today;
+    if (_edUpload) _edUpload.value = _today;
+    if (_sdScan)   _sdScan.value   = _twoYearsAgoStr;
+    if (_sdUpload) _sdUpload.value = _twoYearsAgoStr;
+
     window.mapHandler = new MapHandler('live-map', {
         center: {{ settings.MAP_DEFAULT_CENTER }},
         zoom: {{ settings.MAP_DEFAULT_ZOOM }},
@@ -952,7 +1020,7 @@ document.addEventListener('DOMContentLoaded', function () {
 <!-- ── AOI File Upload ──────────────────────────────────────────────────────── -->
 <script>
 const AOI_MIN_HA = 10;
-const AOI_MAX_HA = 60;
+const AOI_MAX_HA = 6000;
 const AOI_MAX_FEATURES = 20;
 
 let _aoiBatchFeatures = [];
@@ -1056,12 +1124,14 @@ async function submitAOIBatch() {
     document.getElementById('aoi-upload-cancel-btn').disabled = true;
     document.getElementById('aoi-upload-progress').classList.remove('hidden');
 
-    const endDate = new Date().toISOString().split('T')[0];
-    const startDateObj = new Date(endDate + 'T00:00:00Z');
-    startDateObj.setDate(startDateObj.getDate() - 30);
-    const startDate = startDateObj.toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+    const startInput = document.getElementById('upload-start-date');
+    const endInput   = document.getElementById('upload-end-date');
+    const startDate = (startInput && startInput.value) ? startInput.value : '2023-01-01';
+    const endDate   = (endInput   && endInput.value)   ? endInput.value   : today;
 
     let submitted = 0, failed = 0;
+    const submittedJobs = [];
 
     for (let i = 0; i < valid.length; i++) {
         const feat = valid[i];
@@ -1085,7 +1155,11 @@ async function submitAOIBatch() {
                     model_version: 'v1.0',
                 }),
             });
-            if (resp.ok) { submitted++; } else { failed++; }
+            if (resp.ok) {
+                const job = await resp.json();
+                submittedJobs.push({ id: job.id, name: feat.name, geometry: feat.geometry });
+                submitted++;
+            } else { failed++; }
         } catch (_) { failed++; }
     }
 
@@ -1094,7 +1168,12 @@ async function submitAOIBatch() {
         `Done — ${submitted} job${submitted !== 1 ? 's' : ''} submitted` +
         (failed ? `, ${failed} failed.` : '.');
 
-    setTimeout(() => closeAOIUploadModal(), 2500);
+    // Hand off to map handler for live tracking
+    if (submittedJobs.length > 0 && window.mapHandler) {
+        window.mapHandler.trackBatchJobs(submittedJobs);
+    }
+
+    setTimeout(() => closeAOIUploadModal(), 1500);
 }
 
 function getCsrfToken() {
