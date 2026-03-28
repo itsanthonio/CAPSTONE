@@ -59,7 +59,7 @@ def auto_scan_tick():
     hotspot_cutoff = now - timedelta(hours=HOTSPOT_COOLDOWN_HOURS)
     normal_cutoff  = now - timedelta(days=NORMAL_COOLDOWN_DAYS)
     end_date       = today
-    start_date     = today - timedelta(days=30)
+    start_date     = today.replace(year=today.year - 2)
 
     queued = 0
     failed = 0

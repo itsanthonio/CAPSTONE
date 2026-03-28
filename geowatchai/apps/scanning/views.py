@@ -1,8 +1,10 @@
 """
 Views for the automated scanning system.
-- auto_scan              — web page (Leaflet map + live stats)
+- auto_scan_control      — web page for system_admin (pause/resume + time window)
+- auto_scan              — web page for agency_admin (Leaflet map + live stats)
 - ScanningStatusAPI      — GET /scanning/api/status/
 - ScanningToggleAPI      — POST /scanning/api/toggle/
+- ScanningConfigAPI      — PATCH /scanning/api/config/
 - ScanningRecentTilesAPI — GET /scanning/api/recent-tiles/
 - ScanningDetectionsAPI  — GET /scanning/api/detections/
 - ScanningTileDetailAPI  — GET /scanning/api/tile-detail/?lat=X&lng=Y
@@ -23,18 +25,46 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
 
-from .models import AutoScanConfig, ScanTile
+from .models import AutoScanConfig, OrgScanConfig, ScanTile
 
 logger = logging.getLogger(__name__)
 
 
 @login_required
+def auto_scan_control(request):
+    """System admin only: pause/resume + time window configuration."""
+    if not (hasattr(request.user, 'profile') and request.user.profile.role == 'system_admin'):
+        from django.shortcuts import redirect
+        return redirect('scanning:auto_scan')
+    from apps.accounts.models import Organisation
+    config = AutoScanConfig.get()
+    orgs   = Organisation.objects.all().order_by('name')
+    # Attach per-org scan config (create defaults as needed)
+    global_on   = config.is_enabled
+    org_configs = []
+    for org in orgs:
+        cfg       = OrgScanConfig.get_for_org(org)
+        effective = global_on and cfg.is_enabled
+        org_configs.append({'org': org, 'cfg': cfg, 'effective': effective})
+    return render(request, 'scanning/auto_scan_control.html', {
+        'config':         config,
+        'global_enabled': config.is_enabled,
+        'org_configs':    org_configs,
+        'hours':          list(range(24)),
+        'title':          'Auto Scan Control',
+    })
+
+
+@login_required
 def auto_scan(request):
-    """Render the Auto Scan page. Data is loaded via JS polling."""
+    """Render the detailed Auto Scan page (agency_admin). Redirect system_admin."""
+    if hasattr(request.user, 'profile') and request.user.profile.role == 'system_admin':
+        from django.shortcuts import redirect
+        return redirect('scanning:auto_scan_control')
     config = AutoScanConfig.get()
     return render(request, 'scanning/auto_scan.html', {
         'config': config,
-        'is_system_admin': getattr(getattr(request.user, 'profile', None), 'role', None) == 'system_admin',
+        'is_system_admin': False,
         'title': 'Auto Scan',
     })
 
@@ -178,11 +208,24 @@ class ScanningStatusAPI(View):
         hotspot_tiles = ScanTile.objects.filter(is_active=True, priority=ScanTile.Priority.HOTSPOT).count()
         scanned_tiles = ScanTile.objects.filter(is_active=True, last_scanned_at__isnull=False).count()
 
+        # ── Per-org scan states (2 queries, not N+1) ──────────────────────
+        from apps.accounts.models import Organisation
+        all_orgs    = list(Organisation.objects.all().order_by('name'))
+        cfg_map     = {cfg.organisation_id: cfg.is_enabled
+                       for cfg in OrgScanConfig.objects.all()}
+        org_statuses = [
+            {'id': str(org.pk), 'is_enabled': cfg_map.get(org.pk, True)}
+            for org in all_orgs
+        ]
+        active_orgs  = sum(1 for o in org_statuses if o['is_enabled'])
+        total_orgs   = len(org_statuses)
+
         # ── System status ─────────────────────────────────────────────────
+        # Derived from per-org active count rather than a single global flag.
         within_window = config.is_within_window()
         rate_limited  = config.is_rate_limited_today()
 
-        if not config.is_enabled:
+        if active_orgs == 0:
             system_status = 'paused'
         elif rate_limited:
             system_status = 'rate_limited'
@@ -194,7 +237,7 @@ class ScanningStatusAPI(View):
 
         return JsonResponse({
             'system_status':    system_status,
-            'is_enabled':       config.is_enabled,
+            'is_enabled':       active_orgs > 0,
             'within_window':    within_window,
             'rate_limited':     rate_limited,
             'window_start':     config.window_start_hour,
@@ -209,7 +252,11 @@ class ScanningStatusAPI(View):
             'running_auto_today':    running_auto_today,
             'detections_today':      detections_today,
             'server_time':           now.strftime('%H:%M'),
-            # New fields
+            # Org states for AJAX sync
+            'active_orgs':           active_orgs,
+            'total_orgs':            total_orgs,
+            'org_statuses':          org_statuses,
+            # Other fields
             'running_jobs':          running_jobs,
             'next_tiles':            next_tiles,
             'failed_jobs_today':     failed_jobs_today,
@@ -220,7 +267,7 @@ class ScanningStatusAPI(View):
 
 @method_decorator(login_required, name='dispatch')
 class ScanningToggleAPI(View):
-    """POST /scanning/api/toggle/ — pause or resume the scanner."""
+    """POST /scanning/api/toggle/ — pause or resume ALL organisations at once."""
 
     def post(self, request):
         if not (request.user.is_authenticated and hasattr(request.user, 'profile') and request.user.profile.role == 'system_admin'):
@@ -230,22 +277,130 @@ class ScanningToggleAPI(View):
         except (json.JSONDecodeError, ValueError):
             body = {}
 
-        config = AutoScanConfig.get()
         action = body.get('action')  # 'pause' | 'resume'
+        if action not in ('pause', 'resume'):
+            return JsonResponse({'error': 'action must be pause or resume'}, status=400)
 
+        from apps.accounts.models import Organisation
+        enabled = (action == 'resume')
+
+        # Bulk-update all existing OrgScanConfig records.
+        OrgScanConfig.objects.all().update(is_enabled=enabled)
+
+        # Create missing configs for orgs that don't have one yet.
+        existing_ids = set(OrgScanConfig.objects.values_list('organisation_id', flat=True))
+        new_cfgs = [
+            OrgScanConfig(organisation=org, is_enabled=enabled)
+            for org in Organisation.objects.exclude(pk__in=existing_ids)
+        ]
+        if new_cfgs:
+            OrgScanConfig.objects.bulk_create(new_cfgs)
+
+        total  = Organisation.objects.count()
+        active = total if enabled else 0
+        logger.info(f'Bulk scan {"resume" if enabled else "pause"} by {request.user}')
+        return JsonResponse({'active_orgs': active, 'total_orgs': total})
+
+
+@method_decorator(login_required, name='dispatch')
+class ScanningConfigAPI(View):
+    """PATCH /scanning/api/config/ — update time window (system_admin only)."""
+
+    def patch(self, request):
+        if not (request.user.is_authenticated and hasattr(request.user, 'profile') and request.user.profile.role == 'system_admin'):
+            return JsonResponse({'error': 'System Administrator access required.'}, status=403)
+        try:
+            body = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            body = {}
+
+        config  = AutoScanConfig.get()
+        updated = []
+
+        for field in ('window_start_hour', 'window_end_hour'):
+            if field in body:
+                try:
+                    val = int(body[field])
+                    if 0 <= val <= 23:
+                        setattr(config, field, val)
+                        updated.append(field)
+                except (TypeError, ValueError):
+                    pass
+
+        if updated:
+            config.save(update_fields=updated)
+
+        return JsonResponse({
+            'window_start_hour': config.window_start_hour,
+            'window_end_hour':   config.window_end_hour,
+        })
+
+
+@method_decorator(login_required, name='dispatch')
+class OrgScanToggleAPI(View):
+    """POST /scanning/api/org-toggle/<org_id>/ — pause or resume scanning for one org."""
+
+    def post(self, request, org_id):
+        if not (request.user.is_authenticated and hasattr(request.user, 'profile') and request.user.profile.role == 'system_admin'):
+            return JsonResponse({'error': 'System Administrator access required.'}, status=403)
+        from apps.accounts.models import Organisation
+        try:
+            org = Organisation.objects.get(pk=org_id)
+        except Organisation.DoesNotExist:
+            return JsonResponse({'error': 'Organisation not found.'}, status=404)
+        try:
+            body   = json.loads(request.body)
+            action = body.get('action')
+        except (json.JSONDecodeError, ValueError):
+            return JsonResponse({'error': 'Invalid JSON.'}, status=400)
+
+        cfg = OrgScanConfig.get_for_org(org)
         if action == 'pause':
-            config.is_enabled = False
-            config.save(update_fields=['is_enabled'])
-            logger.info(f'Auto scan paused by {request.user}')
-            return JsonResponse({'is_enabled': False, 'message': 'Scanner paused.'})
+            cfg.is_enabled = False
         elif action == 'resume':
-            config.is_enabled = True
-            config.rate_limited_date = None
-            config.save(update_fields=['is_enabled', 'rate_limited_date'])
-            logger.info(f'Auto scan resumed by {request.user}')
-            return JsonResponse({'is_enabled': True, 'message': 'Scanner resumed.'})
+            cfg.is_enabled = True
         else:
             return JsonResponse({'error': 'action must be pause or resume'}, status=400)
+        cfg.save(update_fields=['is_enabled'])
+        return JsonResponse({'org_id': str(org.pk), 'is_enabled': cfg.is_enabled})
+
+
+@method_decorator(login_required, name='dispatch')
+class OrgScanConfigAPI(View):
+    """PATCH /scanning/api/org-config/<org_id>/ — update time window for one org."""
+
+    def patch(self, request, org_id):
+        if not (request.user.is_authenticated and hasattr(request.user, 'profile') and request.user.profile.role == 'system_admin'):
+            return JsonResponse({'error': 'System Administrator access required.'}, status=403)
+        from apps.accounts.models import Organisation
+        try:
+            org = Organisation.objects.get(pk=org_id)
+        except Organisation.DoesNotExist:
+            return JsonResponse({'error': 'Organisation not found.'}, status=404)
+        try:
+            body = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            return JsonResponse({'error': 'Invalid JSON.'}, status=400)
+
+        cfg     = OrgScanConfig.get_for_org(org)
+        updated = []
+        for field in ('window_start_hour', 'window_end_hour'):
+            if field in body:
+                try:
+                    val = int(body[field])
+                    if 0 <= val <= 23:
+                        setattr(cfg, field, val)
+                        updated.append(field)
+                except (TypeError, ValueError):
+                    pass
+        if updated:
+            cfg.save(update_fields=updated)
+        return JsonResponse({
+            'org_id':            str(org.pk),
+            'is_enabled':        cfg.is_enabled,
+            'window_start_hour': cfg.window_start_hour,
+            'window_end_hour':   cfg.window_end_hour,
+        })
 
 
 @method_decorator(login_required, name='dispatch')
@@ -461,7 +616,7 @@ class ScanningForceScanAPI(View):
 
             now        = timezone.now()
             end_date   = now.date()
-            start_date = end_date - timedelta(days=30)
+            start_date = end_date.replace(year=end_date.year - 2)
 
             job = JobService.create_job(
                 aoi_geometry=tile.geometry,

@@ -88,6 +88,35 @@ class AutoScanConfig(models.Model):
         return f"AutoScanConfig ({status}, {self.window_start_hour}:00–{self.window_end_hour}:00)"
 
 
+class OrgScanConfig(models.Model):
+    """
+    Per-organisation scanning configuration.
+    Controls whether automated scanning is enabled for an org and its daily window.
+    When is_enabled=False the scanner skips jobs that would notify this org.
+    """
+    organisation      = models.OneToOneField(
+        'accounts.Organisation',
+        on_delete=models.CASCADE,
+        related_name='scan_config',
+    )
+    is_enabled        = models.BooleanField(default=True)
+    window_start_hour = models.IntegerField(default=6)
+    window_end_hour   = models.IntegerField(default=18)
+    updated_at        = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Org Scan Config'
+
+    @classmethod
+    def get_for_org(cls, org):
+        obj, _ = cls.objects.get_or_create(organisation=org)
+        return obj
+
+    def __str__(self):
+        status = 'enabled' if self.is_enabled else 'paused'
+        return f"{self.organisation.name} ({status}, {self.window_start_hour}:00–{self.window_end_hour}:00)"
+
+
 class GhanaPlace(models.Model):
     """
     Local gazetteer of Ghana place names.

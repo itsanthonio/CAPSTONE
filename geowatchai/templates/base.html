@@ -422,6 +422,17 @@
                     </li>
                 </ul>
 
+                <p class="gw-nav-group">Analysis</p>
+                <ul class="list-none p-0 m-0 mb-1">
+                    <li>
+                        <a href="{% url 'scanning:auto_scan_control' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'auto_scan_control' %}active{% endif %}">
+                            <i class="ph ph-broadcast" aria-hidden="true"></i>
+                            <span>Auto Scan</span>
+                        </a>
+                    </li>
+                </ul>
+
                 <p class="gw-nav-group">Administration</p>
                 <ul class="list-none p-0 m-0 mb-1">
                     <li>
@@ -486,7 +497,7 @@
                     <li>
                         <a href="{% url 'scanning:auto_scan' %}"
                            class="gw-nav-item {% if request.resolver_match.url_name == 'auto_scan' %}active{% endif %}">
-                            <i class="ph ph-radar" aria-hidden="true"></i>
+                            <i class="ph ph-broadcast" aria-hidden="true"></i>
                             <span>Auto Scan</span>
                         </a>
                     </li>
@@ -554,6 +565,19 @@
                                 <p class="text-[11px] text-fg-secondary">
                                     Area: <span id="aoi-area" class="text-fg-primary font-semibold tabular-nums">0.00</span> ha
                                 </p>
+                                <!-- Date range for scan -->
+                                <div class="space-y-1">
+                                    <label class="text-[11px]" style="color:var(--text-tertiary)">Start date</label>
+                                    <input id="scan-start-date" type="date"
+                                           class="w-full rounded px-2 py-1 text-[12px]"
+                                           style="background:var(--surface-2);border:1px solid var(--border-default);color:var(--text-primary);">
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-[11px]" style="color:var(--text-tertiary)">End date</label>
+                                    <input id="scan-end-date" type="date"
+                                           class="w-full rounded px-2 py-1 text-[12px]"
+                                           style="background:var(--surface-2);border:1px solid var(--border-default);color:var(--text-primary);">
+                                </div>
                                 <p id="aoi-warning" class="hidden text-[11px]" style="color:var(--status-critical)"></p>
                                 <button id="scan-aoi-btn"
                                         onclick="if (window.mapHandler) window.mapHandler.scanAOI();"
@@ -785,7 +809,8 @@
             { icon: 'ph-map-trifold',        label: 'Live Map',           hint: 'Open live map',            group: 'Navigate', href: '/analysis/map/' },
             { icon: 'ph-warning',            label: 'Alerts',             hint: 'View alerts',              group: 'Navigate', href: '/dashboard/alerts/' },
             { icon: 'ph-file-text',          label: 'Reports',            hint: 'Open reports',             group: 'Navigate', href: '/dashboard/report/' },
-            { icon: 'ph-radar',              label: 'Auto Scan',          hint: 'View automated scanning',  group: 'Navigate', href: '/scanning/auto-scan/' },
+            { icon: 'ph-broadcast', label: 'Auto Scan', hint: 'Automated scanning', group: 'Navigate',
+              href: role === 'system_admin' ? '/scanning/control/' : '/scanning/' },
             { icon: 'ph-globe-hemisphere-west', label: 'Regions',         hint: 'Browse regions',           group: 'Navigate', href: '/dashboard/regions/' },
             { icon: 'ph-gear',               label: 'Settings',           hint: 'Account settings',         group: 'Navigate', href: '/dashboard/settings/' },
             { icon: 'ph-user',               label: 'My Account',         hint: 'Edit profile',             group: 'Navigate', href: '/accounts/me/' },

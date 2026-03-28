@@ -307,12 +307,13 @@
                 <span aria-hidden="true">⤢</span>
                 <span class="sr-only">Cinematic mode</span>
             </button>
-            {% if is_system_admin %}
-            <button id="toggle-btn" class="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5" aria-label="Pause auto scan">
+            <button id="toggle-btn"
+                    class="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
+                    aria-label="Pause or resume auto scan"
+                    {% if not is_system_admin %}disabled title="System Administrator access required"{% endif %}>
                 <span id="toggle-icon" aria-hidden="true">⏸</span>
                 <span id="toggle-label">Pause</span>
             </button>
-            {% endif %}
         </div>
     </div>
 
@@ -526,7 +527,7 @@
         minZoom: 6, maxZoom: 16,
         maxBounds: GHANA_BOUNDS.pad(0.25),
         maxBoundsViscosity: 0.85,
-        zoomControl: true,
+        zoomControl: false,
         attributionControl: true,
     });
 
@@ -535,6 +536,7 @@
         subdomains: 'abcd', maxZoom: 19,
     }).addTo(map);
 
+    L.control.zoom({ position: 'bottomleft' }).addTo(map);
     initMapSearch('auto-scan-map', function (lng, lat) { map.flyTo([lat, lng], 13); });
 
     // ── Custom panes ───────────────────────────────────────────────────────
