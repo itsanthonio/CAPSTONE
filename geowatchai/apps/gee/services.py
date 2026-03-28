@@ -173,7 +173,11 @@ class GeeService:
 
     def get_hls_collection(self, start_date: str, end_date: str) -> Optional[ee.ImageCollection]:
         """
-        Get HLS collection filtered by date range
+        Get HLS S30 collection filtered by date range.
+
+        Hardcoded to NASA/HLS/HLSS30/v002 — this is the exact collection the
+        model was trained on.  Do not make this configurable; changing the
+        collection would require retraining the model.
 
         Args:
             start_date: Start date in YYYY-MM-DD format
@@ -187,13 +191,10 @@ class GeeService:
                 logger.warning("GEE not initialized, returning None")
                 return None
 
-            collection_name = config('HLS_COLLECTION', default='COPERNICUS/S2_SR_HARMONIZED')
-
-            # Get collection and filter by date
-            collection = ee.ImageCollection(collection_name) \
+            collection = ee.ImageCollection('NASA/HLS/HLSS30/v002') \
                 .filterDate(start_date, end_date)
 
-            logger.info(f"HLS collection loaded: {collection.size().getInfo()} images")
+            logger.info(f"HLS S30 collection loaded: {collection.size().getInfo()} images")
             return collection
 
         except Exception as e:
@@ -202,29 +203,24 @@ class GeeService:
 
     def apply_cloud_mask(self, image: ee.Image) -> ee.Image:
         """
-        Apply cloud masking to HLS image
+        Apply HLS Fmask cloud masking.
+
+        Uses the HLS Fmask quality band — the same masking used to generate
+        the training data.  Masks clouds (bit 1), cloud shadows (bit 2),
+        and pixels adjacent to cloud (bit 3).
 
         Args:
-            image: GEE Image
+            image: GEE Image from NASA/HLS/HLSS30/v002
 
         Returns:
             ee.Image: Cloud-masked image
         """
         try:
-            cloud_mask_band = config('CLOUD_MASK_BAND', default='QA60')
-
-            # Cloud mask for Sentinel-2
-            cloud_bit_mask = (1 << 10)
-            cirrus_bit_mask = (1 << 11)
-
-            # Create cloud mask
-            cloud_mask = image.select(cloud_mask_band).bitwiseAnd(cloud_bit_mask).eq(0)
-            cirrus_mask = image.select(cloud_mask_band).bitwiseAnd(cirrus_bit_mask).eq(0)
-
-            # Apply mask
-            masked_image = image.updateMask(cloud_mask.And(cirrus_mask))
-
-            return masked_image
+            qa = image.select('Fmask')
+            mask = (qa.bitwiseAnd(1 << 1).eq(0)
+                      .And(qa.bitwiseAnd(1 << 2).eq(0))
+                      .And(qa.bitwiseAnd(1 << 3).eq(0)))
+            return image.updateMask(mask)
 
         except Exception as e:
             logger.error(f"Cloud masking error: {str(e)}")
@@ -281,11 +277,21 @@ class GeeService:
             if collection is None:
                 return {'success': False, 'error': 'Failed to load HLS collection', 'export_id': None}
 
-            # Process collection: cloud mask, band selection, mosaic
+            # Spatially filter to AOI — reduces tiles fetched and matches notebook behaviour
+            collection = collection.filterBounds(ee_geometry)
+
+            # Process collection: cloud mask, band selection, median composite.
+            # .multiply(0.0001) converts HLS DN values (0–10000) → float reflectance (0–1).
+            # getDownloadId does NOT apply the band scale factor automatically (unlike
+            # getDownloadURL), so we must do it explicitly here.
+            # .reproject() forces 30 m pixels in UTM Zone 30N — same CRS as training data.
             processed = collection \
                 .map(self.apply_cloud_mask) \
                 .map(self.select_bands) \
-                .median()  # Create median composite
+                .median() \
+                .toFloat() \
+                .multiply(0.0001) \
+                .reproject(crs=ee.Projection('EPSG:32630'), scale=30)
 
             # Clip to AOI
             clipped = processed.clip(ee_geometry)
@@ -311,7 +317,7 @@ class GeeService:
                 download_id = ee.data.getDownloadId({
                     'image': clipped,
                     'scale': config('MAX_RESOLUTION', default=30, cast=int),
-                    'crs': 'EPSG:4326',
+                    'crs': 'EPSG:32630',
                     'filePerBand': False,
                     'name': 'hls_imagery',
                     'format': 'GEO_TIFF'
@@ -446,7 +452,7 @@ class GeeService:
             'max_aoi_area': config('MAX_AOI_AREA', default=1000000),
             'max_resolution': config('MAX_RESOLUTION', default=30),
             'export_timeout': config('EXPORT_TIMEOUT', default=3600),
-            'hls_collection': config('HLS_COLLECTION', default='COPERNICUS/S2_SR_HARMONIZED')
+            'hls_collection': 'NASA/HLS/HLSS30/v002'
         }
 
 

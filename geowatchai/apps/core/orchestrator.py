@@ -283,7 +283,7 @@ class MiningDetectionPipeline:
 
     def _infer(self, job: Job, tensor: np.ndarray) -> np.ndarray:
         JobService.update_job_status(str(job.id), Job.Status.INFERRING)
-        probability_mask = self.inference_service.predict(tensor)
+        probability_mask = self.inference_service.predict_tiled(tensor)
         logger.info(
             f"[Pipeline] Probability mask "
             f"[{probability_mask.min():.3f}, {probability_mask.max():.3f}]"
@@ -300,6 +300,7 @@ class MiningDetectionPipeline:
 
         from rasterio.transform import Affine
         transform = metadata.get('transform', Affine(1, 0, 0, 0, -1, 0))
+        source_crs = metadata.get('crs')
 
         result = self.postprocessor.process_probability_mask(
             probability_mask,
@@ -307,6 +308,7 @@ class MiningDetectionPipeline:
             job,
             model_version=job.model_version,
             tile_reference=geotiff_path,
+            source_crs=source_crs,
         )
         polygons = result.geojson.get('features', [])
         logger.info(f"[Pipeline] Postprocessing yielded {len(polygons)} polygons")

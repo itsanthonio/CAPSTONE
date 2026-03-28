@@ -162,7 +162,7 @@ class JobCreateSerializer(serializers.Serializer):
         if value.get('type') not in ['Polygon', 'MultiPolygon']:
             raise serializers.ValidationError("AOI geometry must be a Polygon or MultiPolygon")
 
-        # Area validation: 100 ha minimum, 600 ha maximum
+        # Area validation: 100 ha minimum, 6000 ha maximum
         try:
             import json
             from django.contrib.gis.geos import GEOSGeometry
@@ -175,9 +175,9 @@ class JobCreateSerializer(serializers.Serializer):
                 raise serializers.ValidationError(
                     f"AOI is too small ({area_ha:.1f} ha). Minimum is 100 ha."
                 )
-            if area_ha > 600:
+            if area_ha > 6000:
                 raise serializers.ValidationError(
-                    f"AOI is too large ({area_ha:.1f} ha). Maximum is 600 ha."
+                    f"AOI is too large ({area_ha:.1f} ha). Maximum is 6000 ha."
                 )
         except serializers.ValidationError:
             raise

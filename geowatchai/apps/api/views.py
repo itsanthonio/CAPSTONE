@@ -1504,7 +1504,7 @@ def parse_aoi_file(request):
 
     MAX_FEATURES = 20
     MIN_HA = 10
-    MAX_HA = 60
+    MAX_HA = 6000
 
     try:
         suffix = '.zip' if upload.name.endswith('.zip') else '.geojson'

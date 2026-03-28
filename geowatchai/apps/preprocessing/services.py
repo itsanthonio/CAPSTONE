@@ -224,19 +224,31 @@ class PreprocessingService:
             # Step 1: Load GeoTIFF
             self.logger.info(f"Starting preprocessing for: {geotiff_path}")
             data, metadata = self.load_geotiff(geotiff_path)
-            
+
+            # Diagnostic: log raw rasterio values before any processing
+            _finite = data[np.isfinite(data)]
+            self.logger.info(
+                f"[Diag] Raw rasterio values — min={_finite.min():.4f}, max={_finite.max():.4f}, "
+                f"mean={_finite.mean():.4f}, dtype={data.dtype}"
+            )
+
+            # Replace NaN/inf with 0 before band extraction and BSI calculation.
+            # Matches test notebook exactly:
+            # np.nan_to_num(patch_raw, nan=0.0, posinf=0.0, neginf=0.0)
+            data = np.nan_to_num(data, nan=0.0, posinf=0.0, neginf=0.0)
+
             # Step 2: Extract required bands
             bands = self.extract_bands(data)
             
             # Step 3: Calculate BSI
             bsi = self.calculate_bsi(bands)
             bands['BSI'] = bsi
-            
-            # Step 4: Normalize all bands and BSI
-            normalized_bands = self.normalize_bands(bands)
-            
-            # Step 5: Stack bands in model order
-            tensor = self.stack_bands(normalized_bands)
+
+            # Step 4: Stack bands in model order — no normalization here.
+            # Per-band p2-p98 percentile normalization is applied per 256×256
+            # tile inside InferenceService.predict_tiled(), matching exactly
+            # how the training patches were generated.
+            tensor = self.stack_bands(bands)
             
             # Add preprocessing metadata
             metadata.update({
@@ -278,10 +290,10 @@ class PreprocessingService:
         Returns:
             True if valid, raises ValueError if invalid
         """
-        # Check for NaN or infinite values first
+        # Check for NaN or infinite values
         if np.isnan(tensor).any():
             raise ValueError("Tensor contains NaN values")
-        
+
         if np.isinf(tensor).any():
             raise ValueError("Tensor contains infinite values")
         
@@ -293,9 +305,10 @@ class PreprocessingService:
         if tensor.dtype != np.float32:
             raise ValueError(f"Expected float32 dtype, got {tensor.dtype}")
         
-        # Check value range
-        if tensor.min() < 0 or tensor.max() > 1:
-            raise ValueError(f"Tensor values outside [0, 1] range: min={tensor.min()}, max={tensor.max()}")
+        # Value range is intentionally NOT checked here.
+        # HLS reflectance bands are ~[0, 1] but BSI spans [-1, 1].
+        # Per-tile p2-p98 normalization in InferenceService maps everything
+        # to [0, 1] before it reaches the model.
         
         self.logger.info("Tensor validation passed")
         return True

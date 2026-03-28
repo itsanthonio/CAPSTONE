@@ -64,92 +64,114 @@ class PostProcessor:
         
         return binary_mask
     
-    def extract_polygons(self, binary_mask: np.ndarray, transform: Affine) -> List[Dict[str, Any]]:
+    def _is_projected_crs(self, source_crs) -> bool:
+        """Return True if source_crs is a projected (meter-based) CRS."""
+        if source_crs is None:
+            return False
+        try:
+            from rasterio.crs import CRS
+            return CRS.from_user_input(source_crs).is_projected
+        except Exception:
+            return False
+
+    def _reproject_to_wgs84(self, shapely_geom, source_crs):
+        """Reproject a shapely geometry from source_crs to EPSG:4326."""
+        from pyproj import Transformer
+        from shapely.ops import transform as shapely_transform
+        from rasterio.crs import CRS
+        transformer = Transformer.from_crs(
+            CRS.from_user_input(source_crs), 'EPSG:4326', always_xy=True
+        )
+        return shapely_transform(transformer.transform, shapely_geom)
+
+    def extract_polygons(self, binary_mask: np.ndarray, transform: Affine,
+                         source_crs=None) -> List[Dict[str, Any]]:
         """
         Extract polygons from binary mask using rasterio.features.shapes.
-        
+
         Args:
             binary_mask: 2D binary array
             transform: Affine transformation matrix from original GeoTIFF
-            
+            source_crs: CRS of the raster (rasterio CRS object or EPSG string).
+                        Polygons are always returned in EPSG:4326.
+
         Returns:
-            List of polygon dictionaries with geometry and properties
+            List of polygon dictionaries with geometry in WGS84 and properties
         """
         try:
-            # Extract shapes from binary mask
-            shapes = features.shapes(
-                binary_mask,
-                transform=transform,
-                mask=None
-            )
-            
-            # HLS pixel size is 30 m.  One pixel in degrees ≈ 30/111320 ≈ 0.000270°.
-            # Simplify with tolerance = 1 pixel width so staircased pixel edges
-            # become smooth outlines without losing meaningful detail.
-            simplify_tolerance = 0.000270
+            shapes = features.shapes(binary_mask, transform=transform, mask=None)
+
+            projected = self._is_projected_crs(source_crs)
+            # Simplify tolerance: 1 pixel width in CRS units
+            # Projected (metres): 30 m  |  Geographic (degrees): 30/111320 ≈ 0.000270°
+            simplify_tolerance = 30.0 if projected else 0.000270
 
             polygons = []
             for geom, value in shapes:
-                if value == 1:  # Only keep positive shapes
-                    # Convert to shapely geometry for area calculation
-                    shapely_geom = shape(geom)
+                if value != 1:
+                    continue
+                shapely_geom = shape(geom)
 
-                    # Smooth pixel-staircase boundaries (Douglas-Peucker)
-                    shapely_geom = shapely_geom.simplify(
-                        simplify_tolerance, preserve_topology=True
-                    )
-                    if shapely_geom.is_empty:
-                        continue
+                shapely_geom = shapely_geom.simplify(simplify_tolerance, preserve_topology=True)
+                if shapely_geom.is_empty:
+                    continue
 
-                    # Calculate area in square meters
-                    # shapely.area is in CRS units (degrees for WGS84)
-                    # Convert to m² using rough approximation: 1 deg ≈ 111,320 m at equator
+                # Area in m²: projected CRS gives m² directly; geographic needs conversion
+                if projected:
+                    area_m2 = shapely_geom.area
+                else:
+                    import math
                     area_deg = shapely_geom.area
                     centroid_lat = shapely_geom.centroid.y
-                    import math
-                    m_per_deg_lat = 111320.0
-                    m_per_deg_lon = 111320.0 * math.cos(math.radians(centroid_lat))
-                    area_m2 = area_deg * m_per_deg_lat * m_per_deg_lon
+                    area_m2 = area_deg * 111320.0 * (111320.0 * math.cos(math.radians(centroid_lat)))
 
-                    # Filter by minimum area
-                    if area_m2 >= self.min_area:
-                        polygons.append({
-                            'geometry': shapely_geom.__geo_interface__,
-                            'shapely_geometry': shapely_geom,
-                            'area': area_m2,
-                            'value': value
-                        })
-            
+                if area_m2 < self.min_area:
+                    continue
+
+                # Reproject to WGS84 for storage (no-op if already geographic)
+                geom_wgs84 = self._reproject_to_wgs84(shapely_geom, source_crs) if projected else shapely_geom
+
+                polygons.append({
+                    'geometry': geom_wgs84.__geo_interface__,
+                    'shapely_geometry': shapely_geom,   # native CRS — used for pixel ops
+                    'shapely_geometry_wgs84': geom_wgs84,
+                    'area': area_m2,
+                    'value': value,
+                })
+
             self.logger.info(f"Extracted {len(polygons)} polygons above minimum area {self.min_area} m²")
             return polygons
-            
+
         except Exception as e:
             self.logger.error(f"Failed to extract polygons: {str(e)}")
             raise
     
     def calculate_confidence_scores(self, polygons: List[Dict[str, Any]],
                                probability_mask: np.ndarray,
-                               transform: Affine) -> List[Dict[str, Any]]:
+                               transform: Affine,
+                               source_crs=None) -> List[Dict[str, Any]]:
         """
         Calculate confidence scores for each polygon using the original probability mask.
-        Also computes the hotspot coordinate: the pixel of maximum probability within
-        each polygon, which is more accurate than the geometric centroid.
+        Also computes the hotspot coordinate (WGS84 lon/lat): the pixel of maximum
+        probability within each polygon.
 
         Args:
-            polygons: List of polygon dictionaries (geometries in raster CRS)
+            polygons: List of polygon dictionaries (shapely_geometry in raster CRS)
             probability_mask: Original probability mask
             transform: Affine transform of the raster (same one used to extract polygons)
+            source_crs: CRS of the raster; hotspot is reprojected to WGS84 when projected.
 
         Returns:
-            Updated polygon list with confidence scores
+            Updated polygon list with confidence scores and WGS84 hotspot coords
         """
         from rasterio.features import rasterize
 
+        projected = self._is_projected_crs(source_crs)
+
         for polygon in polygons:
+            # Use native-CRS geometry for pixel operations (rasterize / argmax)
             shapely_geom = polygon['shapely_geometry']
 
-            # Rasterize back using the SAME transform used to extract the polygon,
-            # so geographic coordinates map correctly to pixel positions.
             polygon_mask = rasterize(
                 [(shapely_geom, 1)],
                 out_shape=probability_mask.shape,
@@ -159,18 +181,23 @@ class PostProcessor:
             if polygon_mask.sum() > 0:
                 confidence = float(probability_mask[polygon_mask].mean())
 
-                # Find the pixel with the highest probability within this polygon.
-                # That pixel is the model's most confident point — more accurate than
-                # the geometric centroid for locating the mining on the map.
                 masked_prob = np.where(polygon_mask, probability_mask, -1)
                 max_row, max_col = np.unravel_index(masked_prob.argmax(), masked_prob.shape)
-                # Convert pixel (col, row) → (lon, lat) using the raster transform.
-                # +0.5 shifts to the pixel centre rather than its top-left corner.
-                hotspot_lon, hotspot_lat = transform * (max_col + 0.5, max_row + 0.5)
+                # Pixel centre in raster CRS
+                hotspot_x, hotspot_y = transform * (max_col + 0.5, max_row + 0.5)
             else:
                 confidence = 0.0
-                centroid = shapely_geom.centroid
-                hotspot_lon, hotspot_lat = centroid.x, centroid.y
+                c = shapely_geom.centroid
+                hotspot_x, hotspot_y = c.x, c.y
+
+            # Convert to WGS84 lon/lat if the raster is in a projected CRS
+            if projected and source_crs is not None:
+                from pyproj import Transformer
+                from rasterio.crs import CRS
+                t = Transformer.from_crs(CRS.from_user_input(source_crs), 'EPSG:4326', always_xy=True)
+                hotspot_lon, hotspot_lat = t.transform(hotspot_x, hotspot_y)
+            else:
+                hotspot_lon, hotspot_lat = hotspot_x, hotspot_y
 
             polygon['confidence_score'] = confidence
             polygon['hotspot_lon'] = hotspot_lon
@@ -287,37 +314,35 @@ class PostProcessor:
             "std": float(np.std(confidences))
         }
     
-    def process_probability_mask(self, probability_mask: np.ndarray, 
+    def process_probability_mask(self, probability_mask: np.ndarray,
                             transform: Affine, job: Job,
                             model_version: str = "unknown",
-                            tile_reference: str = "unknown") -> Result:
+                            tile_reference: str = "unknown",
+                            source_crs=None) -> Result:
         """
         Main post-processing pipeline: convert probability mask to saved results.
-        
+
         Args:
             probability_mask: 2D probability mask from inference service
             transform: Affine transformation from original GeoTIFF
             job: Job instance
             model_version: Model version string
             tile_reference: Reference to source tiles
-            
+            source_crs: CRS of the raster (rasterio CRS or EPSG string).
+                        Polygons are always output in WGS84 regardless of input CRS.
+
         Returns:
             Created Result instance
         """
         try:
             self.logger.info(f"Starting post-processing for job {job.id}")
 
-            # Squeeze channel dim if present: (1, H, W) -> (H, W)
             if probability_mask.ndim == 3 and probability_mask.shape[0] == 1:
                 probability_mask = probability_mask.squeeze(0)
 
-            # Step 1: Apply threshold
             binary_mask = self.threshold_mask(probability_mask)
-            
-            # Step 2: Extract polygons
-            polygons = self.extract_polygons(binary_mask, transform)
-            
-            # Handle case with no detections
+            polygons = self.extract_polygons(binary_mask, transform, source_crs=source_crs)
+
             if not polygons:
                 self.logger.info(f"No detections found for job {job.id}")
                 empty_geojson = {
@@ -335,19 +360,16 @@ class PostProcessor:
                     }
                 }
                 return self.save_results(empty_geojson, job, tile_reference)
-            
-            # Step 3: Calculate confidence scores
-            polygons = self.calculate_confidence_scores(polygons, probability_mask, transform)
-            
-            # Step 4: Create GeoJSON FeatureCollection
+
+            polygons = self.calculate_confidence_scores(
+                polygons, probability_mask, transform, source_crs=source_crs
+            )
             geojson_fc = self.create_geojson_featurecollection(polygons, str(job.id), model_version)
-            
-            # Step 5: Save to database
             result = self.save_results(geojson_fc, job, tile_reference)
-            
+
             self.logger.info(f"Post-processing completed for job {job.id}")
             return result
-            
+
         except Exception as e:
             self.logger.error(f"Post-processing failed for job {job.id}: {str(e)}")
             raise
