@@ -61,7 +61,7 @@ class JobCreateThrottle(UserRateThrottle):
 
 
 class JobViewSet(OrgScopedMixin, viewsets.ModelViewSet):
-    org_field = 'created_by__profile__organisation'
+    org_field = 'organisation'
     """
     ViewSet for Job model with creation and status tracking.
 
@@ -116,9 +116,9 @@ class JobViewSet(OrgScopedMixin, viewsets.ModelViewSet):
 
             # Create job within transaction
             with transaction.atomic():
-                job = serializer.save(
-                    created_by=request.user if request.user.is_authenticated else None
-                )
+                user = request.user if request.user.is_authenticated else None
+                org = getattr(getattr(user, 'profile', None), 'organisation', None) if user else None
+                job = serializer.save(created_by=user, organisation=org)
 
             logger.info(f"Created new job {job.id} via API")
             _audit(request.user, 'job.created', job.id, status=job.status, source=job.source)
@@ -221,7 +221,7 @@ class JobViewSet(OrgScopedMixin, viewsets.ModelViewSet):
 
 
 class ResultViewSet(OrgScopedMixin, viewsets.ModelViewSet):
-    org_field = 'job__created_by__profile__organisation'
+    org_field = 'job__organisation'
     """
     ViewSet for Result model with GeoJSON output.
 
@@ -240,7 +240,8 @@ class ResultViewSet(OrgScopedMixin, viewsets.ModelViewSet):
         Returns:
             QuerySet: Filtered results
         """
-        queryset = Result.objects.all()
+        self.queryset = Result.objects.all()
+        queryset = super().get_queryset()  # applies OrgScopedMixin
         job_id = self.request.query_params.get('job_id')
         if job_id:
             queryset = queryset.filter(job__id=job_id)
@@ -339,7 +340,7 @@ class ResultViewSet(OrgScopedMixin, viewsets.ModelViewSet):
 
 
 class DetectedSiteViewSet(OrgScopedMixin, viewsets.ReadOnlyModelViewSet):
-    org_field = 'job__created_by__profile__organisation'
+    org_field = 'job__organisation'
     """
     Read-only ViewSet for DetectedSite.
     Provides site detail and timelapse frames for the map panel.
@@ -412,7 +413,9 @@ class DetectedSiteViewSet(OrgScopedMixin, viewsets.ReadOnlyModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         from apps.detections.models import DetectedSite
-        site = get_object_or_404(DetectedSite, pk=kwargs['pk'])
+        site = self.get_queryset().filter(pk=kwargs['pk']).first()
+        if not site:
+            return Response({'error': 'Not found.'}, status=404)
 
         concession = None
         if site.intersecting_concession:
@@ -488,7 +491,9 @@ class DetectedSiteViewSet(OrgScopedMixin, viewsets.ReadOnlyModelViewSet):
     def timelapse(self, request, pk=None):
         """Return ordered timelapse frames for a detected site."""
         from apps.detections.models import DetectedSite, SiteTimelapse
-        site = get_object_or_404(DetectedSite, pk=pk)
+        site = self.get_queryset().filter(pk=pk).first()
+        if not site:
+            return Response({'error': 'Not found.'}, status=404)
         frames = SiteTimelapse.objects.filter(
             detected_site=site
         ).order_by('year').values(
@@ -506,7 +511,9 @@ class DetectedSiteViewSet(OrgScopedMixin, viewsets.ReadOnlyModelViewSet):
         """Return all detection snapshots for a site, oldest first."""
         from apps.detections.models import DetectedSite, DetectionSnapshot
         from django.conf import settings
-        site = get_object_or_404(DetectedSite, pk=pk)
+        site = self.get_queryset().filter(pk=pk).first()
+        if not site:
+            return Response({'error': 'Not found.'}, status=404)
 
         def _media_url(rel_path):
             if not rel_path:
@@ -669,8 +676,8 @@ class AlertViewSet(viewsets.ViewSet):
                 if org is None:
                     return qs.none()
                 qs = qs.filter(
-                    Q(detected_site__job__created_by__profile__organisation=org) |
-                    Q(detected_site__job__created_by__isnull=True)
+                    Q(detected_site__job__organisation=org) |
+                    Q(detected_site__job__organisation__isnull=True, detected_site__job__source='automated')
                 )
         except Exception:
             pass
@@ -736,10 +743,11 @@ class AlertViewSet(viewsets.ViewSet):
     def retrieve(self, request, *args, **kwargs):
         from apps.detections.models import Alert
         from apps.accounts.models import InspectorAssignment
-        a = get_object_or_404(
-            Alert.objects.select_related('detected_site', 'detected_site__region', 'detected_site__job'),
-            pk=kwargs['pk'],
-        )
+        a = self.get_queryset().select_related(
+            'detected_site', 'detected_site__region', 'detected_site__job'
+        ).filter(pk=kwargs['pk']).first()
+        if not a:
+            return Response({'error': 'Not found.'}, status=404)
         site = a.detected_site
         centroid = site.centroid
 
@@ -831,7 +839,9 @@ class AlertViewSet(viewsets.ViewSet):
         from apps.detections.models import Alert
         from django.utils import timezone
         from django.core.cache import cache
-        a = get_object_or_404(Alert, pk=pk)
+        a = self.get_queryset().filter(pk=pk).first()
+        if not a:
+            return Response({'error': 'Not found.'}, status=404)
         prev_status = a.status
         a.status = new_status
         if new_status == 'acknowledged':
@@ -860,7 +870,9 @@ class AlertViewSet(viewsets.ViewSet):
     @action(detail=True, methods=['post'])
     def resolve(self, request, pk=None):
         from apps.detections.models import Alert
-        a = get_object_or_404(Alert, pk=pk)
+        a = self.get_queryset().filter(pk=pk).first()
+        if not a:
+            return Response({'error': 'Not found.'}, status=404)
 
         # Admins can resolve anything; inspectors can only resolve their own dispatched alerts
         if not _is_admin(request.user):
@@ -885,8 +897,10 @@ class AlertViewSet(viewsets.ViewSet):
         
         from apps.detections.models import Alert
         from apps.accounts.models import UserProfile, InspectorAssignment
-        
-        alert = get_object_or_404(Alert, pk=pk)
+
+        alert = self.get_queryset().filter(pk=pk).first()
+        if not alert:
+            return Response({'error': 'Not found.'}, status=404)
         inspector_id = request.data.get('inspector_id')
         
         if not inspector_id:
@@ -940,8 +954,10 @@ class AlertViewSet(viewsets.ViewSet):
         from apps.accounts.models import InspectorAssignment, UserProfile
         from django.utils import timezone
         from django.contrib.gis.geos import Point
-        
-        alert = get_object_or_404(Alert, pk=pk)
+
+        alert = self.get_queryset().filter(pk=pk).first()
+        if not alert:
+            return Response({'error': 'Not found.'}, status=404)
         prev_status = alert.status
         prev_assigned_to = alert.assigned_to_id
         
@@ -1063,8 +1079,8 @@ class AlertViewSet(viewsets.ViewSet):
                     qs = Alert.objects.none()
                 else:
                     qs = qs.filter(
-                        Q(detected_site__job__created_by__profile__organisation=org) |
-                        Q(detected_site__job__created_by__isnull=True)
+                        Q(detected_site__job__organisation=org) |
+                        Q(detected_site__job__organisation__isnull=True, detected_site__job__source='automated')
                     )
         except Exception:
             pass
@@ -1091,8 +1107,10 @@ class AlertViewSet(viewsets.ViewSet):
             return Response({'error': 'Admin access required.'}, status=403)
         
         from apps.detections.models import Alert
-        alert = get_object_or_404(Alert, pk=pk)
-        
+        alert = self.get_queryset().filter(pk=pk).first()
+        if not alert:
+            return Response({'error': 'Not found.'}, status=404)
+
         # Store info for audit before deletion
         alert_info = {
             'id': str(alert.id),
@@ -1223,7 +1241,7 @@ class AlertViewSet(viewsets.ViewSet):
             'dispatched':   ['acknowledged'],
             'dismissed':    ['open', 'acknowledged'],
         }
-        qs = Alert.objects.filter(id__in=ids, status__in=SOURCE_STATUSES[verb])
+        qs = self.get_queryset().filter(id__in=ids, status__in=SOURCE_STATUSES[verb])
 
         now = timezone.now()
         if verb == 'acknowledged':
@@ -1292,7 +1310,7 @@ class AlertViewSet(viewsets.ViewSet):
 
         # Fetch and route-optimise alerts using nearest-neighbour sort
         alerts = list(
-            Alert.objects.filter(
+            self.get_queryset().filter(
                 id__in=alert_ids, status__in=['open', 'acknowledged']
             ).select_related('detected_site')
         )
@@ -1428,33 +1446,33 @@ def geocode_proxy(request):
             results.append({'display_name': label, 'lat': p.latitude, 'lon': p.longitude})
         return JsonResponse({'results': results})
 
-    # ── 2. Google Geocoding API ──────────────────────────────────────────────
+    # ── 2. Google Places Text Search ─────────────────────────────────────────
+    # Uses Places API (not Geocoding) so results have proper place names like
+    # "Ashesi University" rather than street addresses like "1 University Ave".
     api_key = _config('GOOGLE_MAPS_API_KEY', default='')
     if api_key:
         try:
             url = (
-                'https://maps.googleapis.com/maps/api/geocode/json'
-                f'?address={q},+Ghana&key={api_key}&region=gh&language=en'
+                'https://maps.googleapis.com/maps/api/place/textsearch/json'
+                f'?query={q}+Ghana&key={api_key}&region=gh&language=en'
             )
             resp = _requests.get(url, timeout=5)
             data = resp.json()
             results = []
             to_cache = []
-            for item in data.get('results', []):
+            for item in data.get('results', [])[:6]:
                 loc = item['geometry']['location']
-                results.append({
-                    'display_name': item['formatted_address'],
-                    'lat': loc['lat'],
-                    'lon': loc['lng'],
-                })
-                # Cache for future local lookups
-                short_name = item['formatted_address'].split(',')[0].strip()
+                name = item.get('name', q)
+                formatted_address = item.get('formatted_address', '')
+                # Build display_name so frontend shows name as title and address as subtitle
+                display_name = f"{name}, {formatted_address}" if formatted_address else name
+                addr_parts = [p.strip() for p in formatted_address.split(',')]
+                region_str = addr_parts[-2] if len(addr_parts) >= 2 else ''
+                results.append({'display_name': display_name, 'lat': loc['lat'], 'lon': loc['lng']})
                 to_cache.append(GhanaPlace(
-                    name=short_name,
-                    ascii_name=short_name,
-                    latitude=loc['lat'],
-                    longitude=loc['lng'],
-                    source='google',
+                    name=name, ascii_name=name,
+                    latitude=loc['lat'], longitude=loc['lng'],
+                    source='google', region=region_str,
                 ))
             if to_cache:
                 GhanaPlace.objects.bulk_create(to_cache, ignore_conflicts=True)

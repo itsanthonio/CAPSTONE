@@ -292,9 +292,9 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30, org=None):
 
         # Org-scoping filters (only automated scans with no creator are always included)
         if org:
-            site_q  = Q(job__created_by__profile__organisation=org) | Q(job__created_by__isnull=True, job__source='automated')
-            alert_q = Q(detected_site__job__created_by__profile__organisation=org) | Q(detected_site__job__created_by__isnull=True, detected_site__job__source='automated')
-            job_q   = Q(created_by__profile__organisation=org) | Q(created_by__isnull=True, source='automated')
+            site_q  = Q(job__organisation=org) | Q(job__organisation__isnull=True, job__source='automated')
+            alert_q = Q(detected_site__job__organisation=org) | Q(detected_site__job__organisation__isnull=True, detected_site__job__source='automated')
+            job_q   = Q(organisation=org) | Q(organisation__isnull=True, source='automated')
         else:
             site_q  = Q()
             alert_q = Q()
@@ -687,8 +687,8 @@ def dashboard_alerts(request):
     if request.user.profile.role == UserProfile.Role.AGENCY_ADMIN:
         org = request.user.profile.organisation
         qs = qs.filter(
-            Q(detected_site__job__created_by__profile__organisation=org) |
-            Q(detected_site__job__created_by__isnull=True)
+            Q(detected_site__job__organisation=org) |
+            Q(detected_site__job__organisation__isnull=True, detected_site__job__source='automated')
         )
 
     rows = qs.values('status', 'severity').annotate(cnt=Count('id'))
@@ -868,12 +868,25 @@ def _build_report_context(request):
     profile = request.user.profile
     org = profile.organisation if profile.role == 'agency_admin' else None
     if org:
-        site_org_q  = Q(job__created_by__profile__organisation=org) | Q(job__created_by__isnull=True, job__source='automated')
-        alert_org_q = Q(detected_site__job__created_by__profile__organisation=org) | Q(detected_site__job__created_by__isnull=True, detected_site__job__source='automated')
-        job_org_q   = Q(created_by__profile__organisation=org) | Q(created_by__isnull=True, source='automated')
-        assign_org_q = Q(alert__detected_site__job__created_by__profile__organisation=org) | Q(alert__detected_site__job__created_by__isnull=True, alert__detected_site__job__source='automated')
+        site_org_q  = Q(job__organisation=org) | Q(job__organisation__isnull=True, job__source='automated')
+        alert_org_q = Q(detected_site__job__organisation=org) | Q(detected_site__job__organisation__isnull=True, detected_site__job__source='automated')
+        job_org_q   = Q(organisation=org) | Q(organisation__isnull=True, source='automated')
+        assign_org_q = Q(alert__detected_site__job__organisation=org) | Q(alert__detected_site__job__organisation__isnull=True, alert__detected_site__job__source='automated')
     else:
         site_org_q = alert_org_q = job_org_q = assign_org_q = Q()
+
+    # ── All-time org totals — must match dashboard KPI cards exactly ─────────
+    all_qs             = DetectedSite.objects.filter(site_org_q)
+    all_time_sites     = all_qs.count()
+    all_time_illegal   = all_qs.filter(legal_status='illegal').count()
+    all_time_area_ha   = round(
+        all_qs.filter(legal_status='illegal')
+        .aggregate(t=Sum('area_hectares'))['t'] or 0, 1
+    )
+    all_time_high_risk = all_qs.filter(
+        Q(recurrence_count__gt=1) | Q(alerts__severity='critical')
+    ).distinct().count()
+    all_time_open_alerts = Alert.objects.filter(alert_org_q, status='open').count()
 
     # ── Period-scoped site stats ─────────────────────────────────────────────
     sites_qs = DetectedSite.objects.filter(
@@ -1045,8 +1058,17 @@ def _build_report_context(request):
         'trend_legal':          trend_legal,
     }
 
+    all_time = {
+        'total_detected_sites': all_time_sites,
+        'illegal_sites':        all_time_illegal,
+        'total_area_ha':        all_time_area_ha,
+        'high_risk_zones':      all_time_high_risk,
+        'open_alerts':          all_time_open_alerts,
+    }
+
     return {
         'stats':              stats,
+        'all_time':           all_time,
         'alerts_by_severity': alerts_by_severity,
         'alerts_by_status':   alerts_by_status,
         'resolved_assignments': resolved_assignments,
@@ -1529,12 +1551,14 @@ def submit_field_report(request, assignment_id):
 @login_required
 @user_passes_test(is_any_admin)
 def region_list(request):
-    """List all active monitoring regions with summary stats."""
+    """List admin_district zones grouped by Ghana region."""
     from apps.detections.models import Region
     from django.db.models import Count, Q
+    from collections import defaultdict
 
-    regions = list(
-        Region.objects.filter(is_active=True)
+    # Only show district assemblies — exclude region-level and hotspot records
+    districts = list(
+        Region.objects.filter(is_active=True, region_type='admin_district')
         .annotate(
             total_detections=Count('detections', distinct=True),
             illegal_detections=Count(
@@ -1548,11 +1572,41 @@ def region_list(request):
                 distinct=True,
             ),
         )
-        .order_by('-total_detections')
+        .order_by('name')
     )
 
+    # Group by the Ghana region name stored in the district field
+    region_map = defaultdict(list)
+    for d in districts:
+        if d.total_detections == 0:
+            continue  # skip districts with no detections
+        key = d.district.strip() if d.district and d.district.strip() else 'Other'
+        region_map[key].append(d)
+
+    region_groups = []
+    for region_name, zones in region_map.items():
+        total_det    = sum(z.total_detections    for z in zones)
+        illegal_det  = sum(z.illegal_detections  for z in zones)
+        total_alerts = sum(z.open_alerts         for z in zones)
+        # Within each region: zones with detections first, then alpha
+        zones.sort(key=lambda z: (-z.total_detections, z.name))
+        # Build a display name — append "Region" if not already present
+        display_name = region_name if region_name.lower().endswith('region') else f'{region_name} Region'
+        region_groups.append({
+            'name':               display_name,
+            'total_detections':   total_det,
+            'illegal_detections': illegal_det,
+            'open_alerts':        total_alerts,
+            'zones':              zones,
+        })
+
+    # Regions with detections first, then alphabetically
+    region_groups.sort(key=lambda g: (-g['total_detections'], g['name']))
+
+    total_with_detections = sum(len(g['zones']) for g in region_groups)
     return render(request, 'dashboard/region_list.html', {
-        'regions': regions,
+        'district_groups': region_groups,
+        'total_zones': total_with_detections,
     })
 
 
@@ -1568,62 +1622,135 @@ def region_detail(request, region_id):
 
     region = get_object_or_404(Region, id=region_id)
 
+    # Determine org scope for agency_admin
+    try:
+        _role = request.user.profile.role
+    except Exception:
+        _role = None
+    _org = getattr(getattr(request.user, 'profile', None), 'organisation', None)
+
+    # Cache key is per-org so agency admins see their own data
+    _org_key = str(_org.pk) if _org else 'all'
+    cache_key = f'region_detail_{region_id}_{_org_key}'
+    cached = cache.get(cache_key)
+
+    if cached:
+        total_sites       = cached['total_sites']
+        illegal_sites     = cached['illegal_sites']
+        total_area_ha     = cached['total_area_ha']
+        avg_conf          = cached['avg_conf']
+        recurrent         = cached['recurrent']
+        open_alerts       = cached['open_alerts']
+        critical_alerts   = cached['critical_alerts']
+        total_assignments = cached['total_assignments']
+        confirmed_mining  = cached['confirmed_mining']
+        false_positives   = cached['false_positives']
+        trend_labels      = cached['trend_labels']
+        trend_illegal     = cached['trend_illegal']
+        trend_legal       = cached['trend_legal']
+        assigned_inspectors = cached['assigned_inspectors']
+    else:
+        base_qs = DetectedSite.objects.filter(region=region)
+        if _role == 'agency_admin':
+            if _org is None:
+                base_qs = DetectedSite.objects.none()
+            else:
+                from django.db.models import Q as _Q
+                base_qs = base_qs.filter(
+                    _Q(job__organisation=_org) |
+                    _Q(job__organisation__isnull=True, job__source='automated')
+                )
+        sites_qs = base_qs
+
+        # Single aggregate pass for all site-level stats
+        site_stats = sites_qs.aggregate(
+            total_sites=Count('id'),
+            illegal_sites=Count('id', filter=Q(legal_status='illegal')),
+            total_area_ha=Sum('area_hectares', filter=Q(legal_status='illegal')),
+            avg_conf=Avg('confidence_score'),
+            recurrent=Count('id', filter=Q(recurrence_count__gt=1)),
+        )
+        total_sites   = site_stats['total_sites'] or 0
+        illegal_sites = site_stats['illegal_sites'] or 0
+        total_area_ha = round(site_stats['total_area_ha'] or 0, 1)
+        avg_conf      = round((site_stats['avg_conf'] or 0) * 100, 1)
+        recurrent     = site_stats['recurrent'] or 0
+
+        # Single aggregate pass for alert stats
+        alert_stats = Alert.objects.filter(detected_site__region=region).aggregate(
+            open_alerts=Count('id', filter=Q(status='open')),
+            critical_alerts=Count('id', filter=Q(status='open', severity='critical')),
+        )
+        open_alerts     = alert_stats['open_alerts'] or 0
+        critical_alerts = alert_stats['critical_alerts'] or 0
+
+        # Get site IDs once to avoid repeated deep joins in assignment stats
+        site_ids = list(sites_qs.values_list('id', flat=True))
+        assignment_stats = InspectorAssignment.objects.filter(
+            alert__detected_site_id__in=site_ids
+        ).aggregate(
+            total_assignments=Count('id'),
+            confirmed_mining=Count('id', filter=Q(outcome='mining_confirmed')),
+            false_positives=Count('id', filter=Q(outcome='false_positive')),
+        )
+        total_assignments = assignment_stats['total_assignments'] or 0
+        confirmed_mining  = assignment_stats['confirmed_mining'] or 0
+        false_positives   = assignment_stats['false_positives'] or 0
+
+        # Assigned inspectors (from Region.assigned_inspectors M2M)
+        assigned_inspectors = list(region.assigned_inspectors.all())
+
+        # 30-day detection trend
+        thirty_ago = timezone.now().date() - timedelta(days=29)
+        trend_rows = (
+            sites_qs
+            .filter(detection_date__gte=thirty_ago)
+            .annotate(day=TruncDate('detection_date'))
+            .values('day', 'legal_status')
+            .annotate(cnt=Count('id'))
+            .order_by('day')
+        )
+        illegal_by_day, legal_by_day = {}, {}
+        for row in trend_rows:
+            d = row['day']
+            if row['legal_status'] == 'illegal':
+                illegal_by_day[d] = row['cnt']
+            else:
+                legal_by_day[d] = row['cnt']
+
+        trend_labels, trend_illegal, trend_legal = [], [], []
+        for i in range(30):
+            d = thirty_ago + timedelta(days=i)
+            trend_labels.append(d.strftime('%d %b'))
+            trend_illegal.append(illegal_by_day.get(d, 0))
+            trend_legal.append(legal_by_day.get(d, 0))
+
+        cache.set(cache_key, {
+            'total_sites': total_sites, 'illegal_sites': illegal_sites,
+            'total_area_ha': total_area_ha, 'avg_conf': avg_conf, 'recurrent': recurrent,
+            'open_alerts': open_alerts, 'critical_alerts': critical_alerts,
+            'total_assignments': total_assignments, 'confirmed_mining': confirmed_mining,
+            'false_positives': false_positives, 'trend_labels': trend_labels,
+            'trend_illegal': trend_illegal, 'trend_legal': trend_legal,
+            'assigned_inspectors': assigned_inspectors,
+        }, 300)  # cache for 5 minutes
+
+    # Re-build sites_qs for the detection cards (not cached)
     sites_qs = DetectedSite.objects.filter(region=region)
-
-    total_sites   = sites_qs.count()
-    illegal_sites = sites_qs.filter(legal_status='illegal').count()
-    total_area_ha = round(
-        sites_qs.filter(legal_status='illegal')
-        .aggregate(t=Sum('area_hectares'))['t'] or 0, 1
-    )
-    avg_conf = round(
-        (sites_qs.aggregate(a=Avg('confidence_score'))['a'] or 0) * 100, 1
-    )
-    recurrent = sites_qs.filter(recurrence_count__gt=1).count()
-
-    # Alerts for this region
-    alerts_qs       = Alert.objects.filter(detected_site__region=region)
-    open_alerts     = alerts_qs.filter(status='open').count()
-    critical_alerts = alerts_qs.filter(status='open', severity='critical').count()
-
-    # Inspector assignments via alerts
-    assignments_qs    = InspectorAssignment.objects.filter(alert__detected_site__region=region)
-    total_assignments = assignments_qs.count()
-    confirmed_mining  = assignments_qs.filter(outcome='mining_confirmed').count()
-    false_positives   = assignments_qs.filter(outcome='false_positive').count()
-
-    # Assigned inspectors (from Region.assigned_inspectors M2M)
-    assigned_inspectors = list(region.assigned_inspectors.all())
-
-    # 30-day detection trend
-    thirty_ago = timezone.now().date() - timedelta(days=29)
-    trend_rows = (
-        sites_qs
-        .filter(detection_date__gte=thirty_ago)
-        .annotate(day=TruncDate('detection_date'))
-        .values('day', 'legal_status')
-        .annotate(cnt=Count('id'))
-        .order_by('day')
-    )
-    illegal_by_day, legal_by_day = {}, {}
-    for row in trend_rows:
-        d = row['day']
-        if row['legal_status'] == 'illegal':
-            illegal_by_day[d] = row['cnt']
+    if _role == 'agency_admin':
+        if _org is None:
+            sites_qs = DetectedSite.objects.none()
         else:
-            legal_by_day[d] = row['cnt']
-
-    trend_labels, trend_illegal, trend_legal = [], [], []
-    for i in range(30):
-        d = thirty_ago + timedelta(days=i)
-        trend_labels.append(d.strftime('%d %b'))
-        trend_illegal.append(illegal_by_day.get(d, 0))
-        trend_legal.append(legal_by_day.get(d, 0))
+            from django.db.models import Q as _Q
+            sites_qs = sites_qs.filter(
+                _Q(job__organisation=_org) |
+                _Q(job__organisation__isnull=True, job__source='automated')
+            )
 
     # Full detection cards — 20 most recent with all related data
     raw_sites = list(
         sites_qs
-        .select_related('job', 'job__created_by', 'model_run', 'reviewed_by', 'intersecting_concession')
+        .select_related('job', 'model_run', 'reviewed_by', 'intersecting_concession')
         .prefetch_related('alerts', 'timelapse_frames')
         .order_by('-detection_date', '-confidence_score')[:20]
     )

@@ -48,7 +48,6 @@ class MapHandler {
             zoom: this.options.zoom || 8,
         });
 
-        this.map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 
         this.map.on('load', () => {
             if (this.options.drawing === true) this.setupDrawingTools();
@@ -955,8 +954,10 @@ class MapHandler {
             // Keep HUD in sync with focused job
             const focused = this._batchJobs.get(this._focusedJobId);
             if (focused && !['completed', 'failed'].includes(focused.status)) {
+                const hudEl      = document.getElementById('scan-hud');
                 const hudText    = document.getElementById('scan-hud-text');
                 const hudElapsed = document.getElementById('scan-hud-elapsed');
+                if (hudEl)      hudEl.classList.remove('hidden');
                 if (hudText)    hudText.textContent    = statusLabels[focused.status] || focused.status;
                 if (hudElapsed) hudElapsed.textContent = focused.elapsed + 's';
             }

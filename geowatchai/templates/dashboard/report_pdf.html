@@ -111,27 +111,55 @@ body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #1f293
     </div>
 </div>
 
-<!-- 1. Executive Summary -->
+<!-- 1. Executive Summary (all-time cumulative) -->
 <div class="section">Executive Summary</div>
+<p style="font-size:9px;color:#6e7681;margin:0 0 8px;">Cumulative totals as of {{ report_date|date:"j N Y" }} — matches dashboard figures.</p>
+<table class="stat-grid">
+    <tr>
+        <td><div class="stat-card stat-red">
+            <div class="stat-label">Illegal Sites</div>
+            <div class="stat-value">{{ all_time.illegal_sites }}</div>
+            <div class="stat-sub">of {{ all_time.total_detected_sites }} total detected</div>
+        </div></td>
+        <td><div class="stat-card stat-amber">
+            <div class="stat-label">Open Alerts</div>
+            <div class="stat-value">{{ all_time.open_alerts }}</div>
+            <div class="stat-sub">currently open, all time</div>
+        </div></td>
+        <td><div class="stat-card stat-amber">
+            <div class="stat-label">Area Affected (ha)</div>
+            <div class="stat-value">{{ all_time.total_area_ha }}</div>
+            <div class="stat-sub">hectares of degraded land</div>
+        </div></td>
+        <td><div class="stat-card">
+            <div class="stat-label">High-Risk Zones</div>
+            <div class="stat-value">{{ all_time.high_risk_zones }}</div>
+            <div class="stat-sub">recurring or critical</div>
+        </div></td>
+    </tr>
+</table>
+
+<!-- Period Activity -->
+<div class="section">Period Activity — {{ period_start|date:"j N Y" }} to {{ period_end|date:"j N Y" }}</div>
 <table class="stat-grid">
     <tr>
         <td><div class="stat-card stat-red">
             <div class="stat-label">Illegal Sites</div>
             <div class="stat-value">{{ stats.illegal_sites }}</div>
-            <div class="stat-sub">of {{ stats.total_detected_sites }} total detected</div>
+            <div class="stat-sub">of {{ stats.total_detected_sites }} in period</div>
         </div></td>
         <td><div class="stat-card stat-amber">
-            <div class="stat-label">Open Alerts</div>
+            <div class="stat-label">New Alerts</div>
             <div class="stat-value">{{ stats.open_alerts }}</div>
             <div class="stat-sub">{{ stats.critical_alerts }} critical · {{ stats.high_alerts }} high</div>
         </div></td>
         <td><div class="stat-card stat-amber">
-            <div class="stat-label">Area Affected (ha)</div>
+            <div class="stat-label">Area Detected (ha)</div>
             <div class="stat-value">{{ stats.total_area_ha }}</div>
-            <div class="stat-sub">illegal sites only</div>
+            <div class="stat-sub">illegal sites in period</div>
         </div></td>
         <td><div class="stat-card">
-            <div class="stat-label">High-Risk Zones</div>
+            <div class="stat-label">High-Risk in Period</div>
             <div class="stat-value">{{ stats.high_risk_zones }}</div>
             <div class="stat-sub">recurring or critical</div>
         </div></td>

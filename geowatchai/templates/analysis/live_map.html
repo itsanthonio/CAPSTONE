@@ -130,34 +130,20 @@
     .toast-info    { background: rgba(6,22,55,0.93); border: 1px solid rgba(96,165,250,0.3); color: #93c5fd; }
     .toast-icon    { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
 
-    /* ── MapLibre NavigationControl dark theme ────────────── */
-    .maplibregl-ctrl-top-right { top: 15.4px !important; }
-    .maplibregl-ctrl-group {
-        background: var(--surface-2) !important;
-        border: 1px solid var(--border-default) !important;
-        border-radius: 8px !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.35) !important;
-        overflow: hidden;
+    /* ── Custom map controls ──────────────────────────────── */
+    .map-ctrl-btn {
+        display: flex; align-items: center; justify-content: center;
+        width: 36px; height: 36px;
+        background: var(--surface-2);
+        border: 1px solid var(--border-default);
+        border-radius: 8px;
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.35);
     }
-    .maplibregl-ctrl-group button {
-        background: transparent !important;
-        color: var(--text-primary) !important;
-        width: 36px !important;
-        height: 36px !important;
-        border-bottom: 1px solid var(--border-subtle) !important;
-    }
-    .maplibregl-ctrl-group button:last-child {
-        border-bottom: none !important;
-    }
-    .maplibregl-ctrl-group button:hover {
-        background: var(--surface-3) !important;
-    }
-    .maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon {
-        filter: invert(1) brightness(2) !important;
-    }
-    .maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon {
-        filter: invert(1) brightness(2) !important;
-    }
+    .map-ctrl-btn:hover { background: var(--surface-3); }
+    .map-ctrl-btn svg { width: 18px; height: 18px; }
 </style>
 {% endblock %}
 
@@ -173,8 +159,8 @@
         <canvas id="scan-sweep-canvas"></canvas>
 
         <!-- Scan status HUD (top center of map) -->
-        <div id="scan-hud" class="hidden absolute top-4 z-20 flex items-center gap-2.5 px-4 py-2"
-             style="left:50%;transform:translateX(-50%);">
+        <div id="scan-hud" class="hidden absolute z-30 flex items-center gap-2.5 px-4 py-2"
+             style="top:14px;left:50%;transform:translateX(-50%);">
             <div id="scan-hud-dot" class="w-2 h-2 rounded-full shrink-0" style="background:#4ade80;"></div>
             <span id="scan-hud-text" class="text-sm font-medium" style="color:#4ade80;">Scanning…</span>
             <span id="scan-hud-elapsed" class="text-xs" style="color:rgba(74,222,128,0.5);">0s</span>
@@ -195,16 +181,25 @@
             <span id="lat-display">0.0000</span>° N &nbsp;·&nbsp; <span id="lng-display">0.0000</span>° W
         </div>
 
-        <!-- Locate Me (zoom +/- are handled by MapLibre NavigationControl) -->
-        <div class="absolute z-30" style="top: 111.4px; right: 10px;">
+        <!-- Map Controls (zoom + locate) -->
+        <div class="absolute z-30 flex flex-col gap-2" style="top: 14px; right: 10px;">
+            <button onclick="if(window.mapHandler) window.mapHandler.zoomIn();"
+                    aria-label="Zoom in" class="map-ctrl-btn">
+                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/>
+                </svg>
+            </button>
+            <button onclick="if(window.mapHandler) window.mapHandler.zoomOut();"
+                    aria-label="Zoom out" class="map-ctrl-btn">
+                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/>
+                </svg>
+            </button>
             <button id="locate-me-btn" onclick="locateMe()"
-                    aria-label="Center map on my location"
-                    class="rounded-lg p-2 transition-all"
-                    style="background: var(--surface-2); border: 1px solid var(--border-default); color: var(--text-primary); display:block;">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    aria-label="Center map on my location" class="map-ctrl-btn">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                     <circle cx="12" cy="12" r="3" stroke-width="2"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
                 </svg>
             </button>
         </div>

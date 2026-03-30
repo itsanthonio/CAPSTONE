@@ -187,17 +187,17 @@
                  style="border-bottom: 1px solid var(--border-subtle); background: var(--surface-2);">
                 <div class="flex items-center gap-1.5 flex-wrap">
                     {% if d.site.legal_status == 'illegal' %}
-                        <span class="gw-badge--critical">Illegal</span>
+                        <span class="gw-badge gw-badge--critical">Illegal</span>
                     {% elif d.site.legal_status == 'legal' %}
-                        <span class="gw-badge--resolved">Legal</span>
+                        <span class="gw-badge gw-badge--resolved">Legal</span>
                     {% else %}
-                        <span class="gw-badge--moderate">Unknown</span>
+                        <span class="gw-badge gw-badge--moderate">Unknown</span>
                     {% endif %}
                     {% if d.alert %}
-                        {% if d.alert.severity == 'critical' %}<span class="gw-badge--critical">Critical</span>
-                        {% elif d.alert.severity == 'high' %}<span class="gw-badge--high">High</span>
-                        {% elif d.alert.severity == 'medium' %}<span class="gw-badge--moderate">Medium</span>
-                        {% else %}<span class="gw-badge--info">Low</span>{% endif %}
+                        {% if d.alert.severity == 'critical' %}<span class="gw-badge gw-badge--critical">Critical</span>
+                        {% elif d.alert.severity == 'high' %}<span class="gw-badge gw-badge--high">High</span>
+                        {% elif d.alert.severity == 'medium' %}<span class="gw-badge gw-badge--moderate">Medium</span>
+                        {% else %}<span class="gw-badge gw-badge--info">Low</span>{% endif %}
                     {% endif %}
                     {% if d.job_source == 'automated' %}
                     <span class="text-[9px] px-1 py-0.5 rounded"
@@ -379,30 +379,49 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbo
 
 // ── Trend chart ──
 (function(){
-    const labels  = [{% for l in trend_labels %}"{{ l }}"{% if not forloop.last %},{% endif %}{% endfor %}];
-    const illegal = [{% for v in trend_illegal %}{{ v }}{% if not forloop.last %},{% endif %}{% endfor %}];
-    const legal   = [{% for v in trend_legal %}{{ v }}{% if not forloop.last %},{% endif %}{% endfor %}];
-    const ctx = document.getElementById('trend-chart').getContext('2d');
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels,
-            datasets: [
-                { label: 'Illegal', data: illegal, backgroundColor: 'rgba(239,68,68,0.75)', borderRadius: 2, stack: 'a' },
-                { label: 'Legal',   data: legal,   backgroundColor: 'rgba(34,197,94,0.4)',  borderRadius: 2, stack: 'a' },
-            ],
-        },
+    var labels  = [{% for l in trend_labels %}"{{ l }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    var illegal = [{% for v in trend_illegal %}{{ v }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    var legal   = [{% for v in trend_legal %}{{ v }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    var canvas  = document.getElementById('trend-chart');
+    if (!canvas) return;
+
+    // Trim leading all-zero columns
+    var firstNonZero = 0;
+    for (var i = 0; i < labels.length; i++) {
+        if (illegal[i] || legal[i]) { firstNonZero = Math.max(0, i - 1); break; }
+    }
+    labels = labels.slice(firstNonZero);
+    illegal = illegal.slice(firstNonZero);
+    legal   = legal.slice(firstNonZero);
+
+    var hasData = illegal.some(v => v > 0) || legal.some(v => v > 0);
+    if (!hasData) { canvas.parentNode.innerHTML = '<p style="font-size:12px;color:var(--text-tertiary);text-align:center;padding-top:40px;">No detections in the last 30 days</p>'; return; }
+
+    new Chart(canvas, {
+        type: 'line',
+        data: { labels, datasets: [
+            { label: 'Illegal', data: illegal,
+              borderColor: 'rgba(224,82,82,0.9)', backgroundColor: 'rgba(224,82,82,0.12)',
+              borderWidth: 2, fill: true, tension: 0.35, pointRadius: 0, pointHoverRadius: 4 },
+            { label: 'Legal', data: legal,
+              borderColor: 'rgba(56,139,253,0.8)', backgroundColor: 'rgba(56,139,253,0.08)',
+              borderWidth: 2, fill: true, tension: 0.35, pointRadius: 0, pointHoverRadius: 4 },
+        ]},
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: false,
+            responsive: true, maintainAspectRatio: false,
+            animation: { duration: 600, easing: 'easeOutQuart' },
             plugins: {
                 legend: { display: false },
-                tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y}` } },
+                tooltip: {
+                    mode: 'index', intersect: false,
+                    backgroundColor: 'var(--surface-3)', borderColor: 'var(--border-default)', borderWidth: 1,
+                    titleColor: 'var(--text-primary)', bodyColor: 'var(--text-secondary)',
+                    callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.y}` },
+                },
             },
             scales: {
-                x: { stacked: true, ticks: { color: 'rgba(240,246,252,0.4)', font:{size:9}, maxTicksLimit:8, maxRotation:0 }, grid: { color: 'rgba(240,246,252,0.05)' } },
-                y: { stacked: true, beginAtZero: true, ticks: { color: 'rgba(240,246,252,0.4)', font:{size:9}, precision:0 }, grid: { color: 'rgba(240,246,252,0.05)' } },
+                x: { ticks: { color: 'rgba(240,246,252,0.4)', font:{size:9}, maxTicksLimit:8, maxRotation:0 }, grid: { color: 'rgba(240,246,252,0.05)' } },
+                y: { beginAtZero: true, ticks: { color: 'rgba(240,246,252,0.4)', font:{size:9}, precision:0 }, grid: { color: 'rgba(240,246,252,0.05)' } },
             },
         },
     });

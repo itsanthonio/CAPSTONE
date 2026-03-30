@@ -5,79 +5,172 @@
 
 {% block extra_css %}
 <style>
+/* ── District card ── */
+.district-card {
+    border-radius: 10px;
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-1);
+    overflow: hidden;
+    transition: border-color 0.15s;
+}
+.district-card:hover { border-color: var(--border-default); }
+
+.district-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    cursor: pointer;
+    user-select: none;
+}
+.district-header:hover { background: var(--surface-2); }
+
+.district-chevron {
+    width: 16px; height: 16px; flex-shrink: 0;
+    transition: transform 0.2s ease;
+    color: var(--text-tertiary);
+}
+.district-card.open .district-chevron { transform: rotate(90deg); }
+
+/* ── Zone grid inside district ── */
+.zone-grid {
+    display: none;
+    padding: 0 14px 14px;
+    gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+.district-card.open .zone-grid { display: grid; }
+
+/* ── Zone card ── */
+.zone-card {
+    border-radius: 8px;
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-2);
+    padding: 12px 14px;
+    text-decoration: none;
+    display: block;
+    transition: border-color 0.15s, background 0.15s;
+}
+.zone-card:hover {
+    border-color: var(--accent-border);
+    background: var(--surface-3);
+}
+
 @keyframes barGrowW { from { width: 0 !important; } }
-.bar-grow { animation: barGrowW 0.7s ease both; }
+.bar-grow { animation: barGrowW 0.6s ease both; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="p-6 space-y-6" data-animate-cards>
+<div class="p-6 space-y-5" data-animate-cards>
 
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold" style="color: var(--text-primary);">Monitoring Regions</h1>
-            <p class="text-sm mt-0.5" style="color: var(--text-secondary);">{{ regions|length }} active zone{{ regions|length|pluralize }}</p>
+            <h1 class="text-[22px] font-semibold tracking-tight" style="color: var(--text-primary);">Monitoring Regions</h1>
+            <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">
+                {{ district_groups|length }} region{{ district_groups|length|pluralize }} · {{ total_zones }} district{{ total_zones|pluralize }}
+            </p>
         </div>
     </div>
 
-    {% if regions %}
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {% for region in regions %}
-        <a href="{% url 'dashboard:region_detail' region.id %}"
-           class="gw-card p-5 block hover:ring-1 transition-all"
-           style="--tw-ring-color: var(--accent); text-decoration: none; border-top: 2px solid {% if region.illegal_detections > 0 %}var(--status-critical){% elif region.open_alerts > 0 %}var(--status-moderate){% else %}var(--status-resolved){% endif %};"
-           data-aos="fade-up"
-           data-aos-delay="{% widthratio forloop.counter0 1 80 %}">
+    {% if district_groups %}
+    <div class="space-y-3">
+        {% for grp in district_groups %}
+        {% with grp_idx=forloop.counter0 %}
+        <div class="district-card {% if grp_idx == 0 %}open{% endif %}"
+             id="district-{{ grp_idx }}">
 
-            <!-- Region name + type badge -->
-            <div class="flex items-start justify-between gap-2 mb-3">
-                <div class="min-w-0">
-                    <h2 class="text-sm font-semibold truncate" style="color: var(--text-primary);">{{ region.name }}</h2>
-                    {% if region.district %}
-                    <p class="text-xs mt-0.5 truncate" style="color: var(--text-tertiary);">{{ region.district }}</p>
-                    {% endif %}
+            <!-- District header (clickable) -->
+            <div class="district-header" onclick="toggleDistrict('district-{{ grp_idx }}')"
+                 role="button" tabindex="0"
+                 onkeydown="if(event.key==='Enter'||event.key===' '){toggleDistrict('district-{{ grp_idx }}')}"
+                 aria-expanded="{% if grp_idx == 0 %}true{% else %}false{% endif %}"
+                 style="border-left: 3px solid {% if grp.illegal_detections > 0 %}var(--status-critical){% elif grp.open_alerts > 0 %}var(--status-moderate){% else %}var(--border-default){% endif %};">
+
+                <!-- Left: name + zone count -->
+                <div class="min-w-0 flex-1">
+                    <p class="text-[14px] font-semibold truncate" style="color: var(--text-primary);">{{ grp.name }}</p>
+                    <p class="text-[11px] mt-0.5" style="color: var(--text-tertiary);">
+                        {{ grp.zones|length }} district{{ grp.zones|length|pluralize }}
+                    </p>
                 </div>
-                {% if region.region_type %}
-                <span class="shrink-0 text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wide"
-                      style="background: var(--surface-3); color: var(--text-secondary); border: 1px solid var(--border-subtle);">
-                    {{ region.get_region_type_display }}
-                </span>
-                {% endif %}
+
+                <!-- Middle: stats pills -->
+                <div class="hidden sm:flex items-center gap-3 shrink-0">
+                    <div class="text-center min-w-[44px]">
+                        <p class="text-[15px] font-bold tabular-nums" style="color: var(--text-primary);">{{ grp.total_detections }}</p>
+                        <p class="text-[9px] uppercase tracking-wide" style="color: var(--text-tertiary);">Detected</p>
+                    </div>
+                    <div class="text-center min-w-[44px]">
+                        <p class="text-[15px] font-bold tabular-nums"
+                           style="color: {% if grp.illegal_detections > 0 %}var(--status-critical){% else %}var(--text-primary){% endif %};">
+                            {{ grp.illegal_detections }}
+                        </p>
+                        <p class="text-[9px] uppercase tracking-wide" style="color: var(--text-tertiary);">Illegal</p>
+                    </div>
+                    <div class="text-center min-w-[44px]">
+                        <p class="text-[15px] font-bold tabular-nums"
+                           style="color: {% if grp.open_alerts > 0 %}var(--status-moderate){% else %}var(--text-primary){% endif %};">
+                            {{ grp.open_alerts }}
+                        </p>
+                        <p class="text-[9px] uppercase tracking-wide" style="color: var(--text-tertiary);">Alerts</p>
+                    </div>
+                </div>
+
+                <!-- Chevron -->
+                <svg class="district-chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/>
+                </svg>
             </div>
 
-            <!-- Stats row -->
-            <div class="grid grid-cols-3 gap-2 mt-3 pt-3" style="border-top: 1px solid var(--border-subtle);">
-                <div class="text-center">
-                    <p class="text-lg font-bold" style="color: var(--text-primary);">{{ region.total_detections }}</p>
-                    <p class="text-[10px] mt-0.5" style="color: var(--text-tertiary);">Detections</p>
-                </div>
-                <div class="text-center">
-                    <p class="text-lg font-bold" style="color: {% if region.illegal_detections > 0 %}var(--status-critical){% else %}var(--text-primary){% endif %};">
-                        {{ region.illegal_detections }}
-                    </p>
-                    <p class="text-[10px] mt-0.5" style="color: var(--text-tertiary);">Illegal</p>
-                </div>
-                <div class="text-center">
-                    <p class="text-lg font-bold" style="color: {% if region.open_alerts > 0 %}var(--status-moderate){% else %}var(--text-primary){% endif %};">
-                        {{ region.open_alerts }}
-                    </p>
-                    <p class="text-[10px] mt-0.5" style="color: var(--text-tertiary);">Open Alerts</p>
-                </div>
-            </div>
-
-            <!-- Bar showing illegal % -->
-            {% if region.total_detections > 0 %}
-            <div class="mt-3">
-                <div class="w-full rounded-full h-1" style="background: var(--border-subtle);">
-                    <div class="h-1 rounded-full bar-grow" style="width: {% widthratio region.illegal_detections region.total_detections 100 %}%; background: var(--status-critical); animation-delay: {{ forloop.counter0 }}00ms;"></div>
-                </div>
+            <!-- Thin illegal bar -->
+            {% if grp.total_detections > 0 %}
+            <div style="height:2px;background:var(--surface-3);">
+                <div class="bar-grow" style="height:2px;background:var(--status-critical);width:{% widthratio grp.illegal_detections grp.total_detections 100 %}%;"></div>
             </div>
             {% endif %}
 
-        </a>
+            <!-- Zone grid (expanded) -->
+            <div class="zone-grid">
+                {% for zone in grp.zones %}
+                <a href="{% url 'dashboard:region_detail' zone.id %}" class="zone-card">
+                    <!-- Zone name -->
+                    <p class="text-[12px] font-semibold leading-snug mb-2" style="color: var(--text-primary);">{{ zone.name }}</p>
+
+                    <!-- Stats row -->
+                    <div class="flex items-center gap-3 text-[11px]">
+                        <span style="color: var(--text-secondary);">
+                            <span class="font-semibold" style="color: var(--text-primary);">{{ zone.total_detections }}</span> detected
+                        </span>
+                        {% if zone.illegal_detections > 0 %}
+                        <span style="color: var(--status-critical);">
+                            <span class="font-semibold">{{ zone.illegal_detections }}</span> illegal
+                        </span>
+                        {% endif %}
+                        {% if zone.open_alerts > 0 %}
+                        <span style="color: var(--status-moderate);">
+                            <span class="font-semibold">{{ zone.open_alerts }}</span> open
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Progress bar -->
+                    {% if zone.total_detections > 0 %}
+                    <div class="mt-2 w-full rounded-full h-0.5" style="background: var(--surface-4);">
+                        <div class="h-0.5 rounded-full" style="width: {% widthratio zone.illegal_detections zone.total_detections 100 %}%; background: var(--status-critical);"></div>
+                    </div>
+                    {% endif %}
+                </a>
+                {% endfor %}
+            </div>
+
+        </div>
+        {% endwith %}
         {% endfor %}
     </div>
+
     {% else %}
     <div class="gw-card p-10 text-center">
         <p class="text-sm italic" style="color: var(--text-tertiary);">No monitoring regions configured yet.</p>
@@ -85,4 +178,16 @@
     {% endif %}
 
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleDistrict(id) {
+    const card = document.getElementById(id);
+    if (!card) return;
+    const isOpen = card.classList.toggle('open');
+    const header = card.querySelector('.district-header');
+    if (header) header.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+}
+</script>
 {% endblock %}

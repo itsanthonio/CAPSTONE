@@ -848,17 +848,30 @@ function showConfirm(title, message) {
 
     // ── Severity / status styling ──
     const SEVERITY_CLASS = {
-        critical: 'gw-badge--critical',
-        high:     'gw-badge--high',
-        medium:   'gw-badge--moderate',
-        low:      'gw-badge--info',
+        critical: 'gw-badge gw-badge--critical',
+        high:     'gw-badge gw-badge--high',
+        medium:   'gw-badge gw-badge--moderate',
+        low:      'gw-badge gw-badge--info',
+    };
+    const SEVERITY_DOT_COLOR = {
+        critical: 'var(--status-critical)',
+        high:     'var(--status-high)',
+        medium:   'var(--status-moderate)',
+        low:      'var(--status-info)',
     };
     const STATUS_CLASS = {
-        open:         'gw-badge--critical',
-        acknowledged: 'gw-badge--moderate',
-        dispatched:   'gw-badge--dispatched',
-        resolved:     'gw-badge--resolved',
-        dismissed:    'gw-badge--info',
+        open:         'gw-badge gw-badge--critical',
+        acknowledged: 'gw-badge gw-badge--moderate',
+        dispatched:   'gw-badge gw-badge--dispatched',
+        resolved:     'gw-badge gw-badge--resolved',
+        dismissed:    'gw-badge gw-badge--neutral',
+    };
+    const STATUS_ICON = {
+        open:         '●',
+        acknowledged: '◑',
+        dispatched:   '↑',
+        resolved:     '✓',
+        dismissed:    '×',
     };
 
     // ── Fetch ──
@@ -953,7 +966,10 @@ function showConfirm(title, message) {
                 </td>
                 <td class="px-3 py-3 text-sm font-medium max-w-[160px] truncate" style="color: var(--text-primary);">${a.title}</td>
                 <td class="px-3 py-3">
-                    <span class="${sevCls}">${a.severity_display}</span>
+                    <span class="${sevCls}">
+                        <span style="width:5px;height:5px;border-radius:50%;display:inline-block;background:${SEVERITY_DOT_COLOR[a.severity]||'currentColor'};flex-shrink:0;"></span>
+                        ${a.severity_display}
+                    </span>
                 </td>
                 <td class="px-3 py-3 text-xs" style="color: var(--text-secondary);">${a.alert_type_display}</td>
                 <td class="px-3 py-3 text-xs" style="color: var(--text-secondary);">${locStr}</td>
@@ -966,7 +982,10 @@ function showConfirm(title, message) {
                     </div>
                 </td>
                 <td class="px-3 py-3">
-                    <span class="${staCls}">${a.status_display}</span>
+                    <span class="${staCls}">
+                        <span style="font-size:9px;line-height:1;">${STATUS_ICON[a.status]||''}</span>
+                        ${a.status_display}
+                    </span>
                 </td>
                 <td class="px-3 py-3">${srcBadge}</td>
                 <td class="px-3 py-3 text-xs" style="color: var(--text-secondary);">${a.created_at}</td>

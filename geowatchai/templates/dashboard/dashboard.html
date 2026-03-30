@@ -356,25 +356,21 @@
                     <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Detection Map</h2>
                     <p class="text-xs mt-0.5" style="color: var(--text-secondary);">Click a polygon to inspect · Zoom to explore</p>
                 </div>
-                <div class="flex items-center gap-1.5 text-xs" id="map-legend">
-                    <button data-filter="all"
-                            class="map-filter-btn active flex items-center gap-1 px-2 py-1 rounded font-medium transition-colors"
-                            style="background: var(--surface-3); border: 1px solid var(--border-strong); color: var(--text-primary);">All</button>
-                    <button data-filter="illegal"
-                            class="map-filter-btn flex items-center gap-1 px-2 py-1 rounded transition-colors"
-                            style="background: var(--surface-2); border: 1px solid var(--border-default); color: var(--text-secondary);">
-                        <span class="w-2.5 h-2.5 rounded-sm inline-block shrink-0" style="background: var(--viz-illegal); opacity:0.8;"></span> Illegal
-                    </button>
-                    <button data-filter="legal"
-                            class="map-filter-btn flex items-center gap-1 px-2 py-1 rounded transition-colors"
-                            style="background: var(--surface-2); border: 1px solid var(--border-default); color: var(--text-secondary);">
-                        <span class="w-2.5 h-2.5 rounded-sm inline-block shrink-0" style="background: var(--viz-legal); opacity:0.8;"></span> Legal
-                    </button>
-                    <button data-filter="concession"
-                            class="map-filter-btn flex items-center gap-1 px-2 py-1 rounded transition-colors"
-                            style="background: var(--surface-2); border: 1px solid var(--border-default); color: var(--text-secondary);">
-                        <span class="w-2.5 h-2.5 rounded-sm inline-block border-2 shrink-0" style="border-color: var(--viz-forest); border-style:dashed;"></span> Concessions
-                    </button>
+                <div style="position:relative;width:200px;">
+                    <svg style="position:absolute;left:8px;top:50%;transform:translateY(-50%);width:13px;height:13px;pointer-events:none;"
+                         fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+                         style="color:var(--text-tertiary);">
+                        <circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35"/>
+                    </svg>
+                    <input id="map-header-search" type="text" autocomplete="off" placeholder="Search location…"
+                           style="width:100%;padding:5px 8px 5px 28px;border-radius:7px;font-size:12px;
+                                  outline:none;background:var(--surface-2);border:1px solid var(--border-default);
+                                  color:var(--text-primary);">
+                    <div id="map-header-results"
+                         style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;
+                                border-radius:8px;overflow:hidden;background:var(--surface-2);
+                                border:1px solid var(--border-default);box-shadow:0 4px 16px rgba(0,0,0,0.45);
+                                max-height:200px;overflow-y:auto;z-index:50;"></div>
                 </div>
             </div>
             <div id="dashboard-map" style="flex:1; min-height:320px;"></div>
@@ -409,7 +405,7 @@
                             <span class="shrink-0 ml-3 flex items-center gap-1.5">
                                 <span style="color: var(--text-secondary);">{{ r.total }}</span>
                                 {% if r.illegal > 0 %}
-                                <span class="gw-badge--critical">{{ r.illegal }} illegal</span>
+                                <span class="gw-badge gw-badge--critical">{{ r.illegal }} illegal</span>
                                 {% endif %}
                             </span>
                         </div>
@@ -459,9 +455,9 @@
                         </div>
                         <div class="shrink-0 ml-3">
                             {% if site.legal_status == 'illegal' %}
-                            <span class="gw-badge--critical">Illegal</span>
+                            <span class="gw-badge gw-badge--critical">Illegal</span>
                             {% elif site.legal_status == 'legal' %}
-                            <span class="gw-badge--resolved">Legal</span>
+                            <span class="gw-badge gw-badge--resolved">Legal</span>
                             {% else %}
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
                                   style="background: var(--surface-3); color: var(--text-secondary);">Unknown</span>
@@ -720,8 +716,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!mapContainer) return;
 
     const dashboardMap = new MapHandler('dashboard-map', { center: [-1.6244, 6.6885], zoom: 7 });
+    window.dashboardMap = dashboardMap;
     dashboardMap.onSiteClick(siteId => window._sitePanel.load(siteId));
-    initMapSearch('dashboard-map', (lng, lat) => dashboardMap.map.flyTo({ center: [lng, lat], zoom: 13 }));
     // Resize after DOM settles so MapLibre fills the flex container
     setTimeout(() => dashboardMap.map.resize(), 0);
 
@@ -756,99 +752,66 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         } catch (err) { console.error('Failed to load detections:', err); }
 
-        // ── Legend filter buttons ──
-        const map = dashboardMap.map;
-        let activeFilter = 'all';
+    });
 
-        const CLEAR_HOVER = ['==', ['get', 'site_id'], ''];
+    // ── Map header search ──
+    (function () {
+        const input   = document.getElementById('map-header-search');
+        const results = document.getElementById('map-header-results');
+        if (!input || !results) return;
+        let timer;
+        const _cache = new Map();
 
-        function resetToAll() {
-            activeFilter = 'all';
-            // Show all detection layers, remove any filter
-            ['detections-layer', 'detections-outline'].forEach(id => {
-                if (map.getLayer(id)) {
-                    map.setFilter(id, null);
-                    map.setLayoutProperty(id, 'visibility', 'visible');
-                }
-            });
-            if (map.getLayer('detections-hover')) map.setFilter('detections-hover', CLEAR_HOVER);
-            // Show concessions
-            ['concessions-fill', 'concessions-outline'].forEach(id => {
-                if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'visible');
-            });
-            // Reset all buttons to idle state
-            document.querySelectorAll('.map-filter-btn').forEach(b => {
-                b.style.background = 'var(--surface-2)';
-                b.style.borderColor = 'var(--border-default)';
-                b.style.color = 'var(--text-secondary)';
-                b.classList.remove('font-medium');
-            });
-            // Mark "All" active
-            const allBtn = document.querySelector('[data-filter="all"]');
-            if (allBtn) {
-                allBtn.style.background = 'var(--surface-3)';
-                allBtn.style.borderColor = 'var(--border-strong)';
-                allBtn.style.color = 'var(--text-primary)';
-                allBtn.classList.add('font-medium');
+        function showResults(places) {
+            results.innerHTML = '';
+            if (!places.length) {
+                results.innerHTML = '<div style="padding:8px 10px;font-size:12px;color:var(--text-tertiary);">No results found</div>';
+                results.style.display = 'block'; return;
             }
+            places.forEach(p => {
+                const parts = p.display_name.split(',');
+                const item = document.createElement('div');
+                item.dataset.lat = p.lat; item.dataset.lon = p.lon; item.dataset.name = parts[0].trim();
+                item.style.cssText = 'padding:7px 10px;cursor:pointer;border-bottom:1px solid var(--border-subtle);font-size:12px;';
+                item.onmouseover = () => item.style.background = 'var(--surface-3)';
+                item.onmouseout  = () => item.style.background = '';
+                item.innerHTML = `<div style="font-weight:500;color:var(--text-primary);">${parts[0]}</div>
+                    ${parts.length > 1 ? `<div style="font-size:10px;color:var(--text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${parts.slice(1).join(',').trim()}</div>` : ''}`;
+                item.addEventListener('click', function () {
+                    if (window.dashboardMap) window.dashboardMap.map.flyTo({ center: [parseFloat(this.dataset.lon), parseFloat(this.dataset.lat)], zoom: 13 });
+                    input.value = this.dataset.name;
+                    results.style.display = 'none';
+                });
+                results.appendChild(item);
+            });
+            results.style.display = 'block';
         }
 
-        document.querySelectorAll('.map-filter-btn').forEach(btn => {
-            btn.addEventListener('click', function () {
-                const filter = this.dataset.filter;
+        function doSearch(q) {
+            const key = q.toLowerCase();
+            if (_cache.has(key)) { showResults(_cache.get(key)); return; }
+            results.innerHTML = '<div style="padding:8px 10px;font-size:12px;color:var(--text-tertiary);">Searching…</div>';
+            results.style.display = 'block';
+            fetch('/api/geocode/?q=' + encodeURIComponent(q), { credentials: 'include' })
+                .then(r => r.json()).then(d => { _cache.set(key, d.results || []); showResults(d.results || []); })
+                .catch(() => { results.style.display = 'none'; });
+        }
 
-                // "All" button or clicking the already-active filter → reset
-                if (filter === 'all' || filter === activeFilter) {
-                    resetToAll();
-                    return;
-                }
-
-                // Activate this filter exclusively
-                activeFilter = filter;
-
-                // Reset all button styles
-                document.querySelectorAll('.map-filter-btn').forEach(b => {
-                    b.style.background = 'var(--surface-2)';
-                    b.style.borderColor = 'var(--border-default)';
-                    b.style.color = 'var(--text-secondary)';
-                    b.classList.remove('font-medium');
-                });
-                this.style.background = 'var(--surface-3)';
-                this.style.borderColor = 'var(--border-strong)';
-                this.style.color = 'var(--text-primary)';
-                this.classList.add('font-medium');
-
-                if (filter === 'illegal') {
-                    const f = ['==', ['get', 'legal_status'], 'illegal'];
-                    ['detections-layer', 'detections-outline'].forEach(id => {
-                        if (map.getLayer(id)) { map.setFilter(id, f); map.setLayoutProperty(id, 'visibility', 'visible'); }
-                    });
-                    if (map.getLayer('detections-hover')) map.setFilter('detections-hover', CLEAR_HOVER);
-                    ['concessions-fill', 'concessions-outline'].forEach(id => {
-                        if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
-                    });
-
-                } else if (filter === 'legal') {
-                    const f = ['==', ['get', 'legal_status'], 'legal'];
-                    ['detections-layer', 'detections-outline'].forEach(id => {
-                        if (map.getLayer(id)) { map.setFilter(id, f); map.setLayoutProperty(id, 'visibility', 'visible'); }
-                    });
-                    if (map.getLayer('detections-hover')) map.setFilter('detections-hover', CLEAR_HOVER);
-                    ['concessions-fill', 'concessions-outline'].forEach(id => {
-                        if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
-                    });
-
-                } else if (filter === 'concession') {
-                    ['detections-layer', 'detections-outline', 'detections-hover'].forEach(id => {
-                        if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
-                    });
-                    ['concessions-fill', 'concessions-outline'].forEach(id => {
-                        if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'visible');
-                    });
-                }
-            });
+        input.addEventListener('input', function () {
+            clearTimeout(timer);
+            const q = this.value.trim();
+            if (q.length < 2) { results.style.display = 'none'; return; }
+            if (_cache.has(q.toLowerCase())) { doSearch(q); return; }
+            timer = setTimeout(() => doSearch(q), 200);
         });
-    });
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { results.style.display = 'none'; this.blur(); }
+            if (e.key === 'Enter') { const first = results.querySelector('[data-lat]'); if (first) first.click(); }
+        });
+        document.addEventListener('click', function (e) {
+            if (!input.contains(e.target) && !results.contains(e.target)) results.style.display = 'none';
+        });
+    })();
 
     // ── Detection Velocity Chart (Chart.js line) ──
     var velocityChart = null;

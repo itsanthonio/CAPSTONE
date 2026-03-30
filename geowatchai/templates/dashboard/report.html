@@ -12,9 +12,8 @@
 .bar-fill  { height: 100%; background: linear-gradient(90deg, var(--accent), var(--status-resolved)); border-radius: 4px; min-width: 2px; }
 .bar-count { width: 36px; text-align: right; font-size: 12px; font-weight: 600; color: var(--text-secondary); flex-shrink: 0; }
 
-/* ── Trend sparkline ── */
-#trend-sparkline { display: flex; gap: 2px; align-items: flex-end; height: 56px; }
-.trend-bar { flex: 1; border-radius: 2px 2px 0 0; min-height: 2px; background: var(--status-critical); opacity: 0.8; }
+/* ── Trend chart container ── */
+#trend-chart-report { position: relative; height: 200px; }
 
 /* ── Tables ── */
 .report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -105,7 +104,6 @@
     .rpt-badge-purple { background: #f5f3ff !important; color: #6d28d9 !important; border-color: #c4b5fd !important; }
 
     .bar-fill  { background: #d97706 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-    .trend-bar { background: #b91c1c !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 
     .report-table thead th { color: #6b7280 !important; border-color: #d1d5db !important; }
     .report-table tbody td { border-color: #e5e7eb !important; color: #374151 !important; }
@@ -156,26 +154,53 @@
         </div>
     </div>
 
-    <!-- ── 1. Executive Summary ── -->
+    <!-- ── 1. Executive Summary (all-time — matches dashboard KPIs) ── -->
     <div class="rpt-section">Executive Summary</div>
+    <p class="text-[11px] mb-3" style="color: var(--text-tertiary);">Cumulative totals as of {{ report_date|date:"j N Y" }} — these figures match your dashboard.</p>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Illegal Sites</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--status-critical);">{{ all_time.illegal_sites }}</p>
+            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">of {{ all_time.total_detected_sites }} total detected</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Open Alerts</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--status-high);">{{ all_time.open_alerts }}</p>
+            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">currently open, all time</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Area Affected</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--accent);">{{ all_time.total_area_ha }}</p>
+            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">hectares of degraded land</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">High-Risk Zones</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ all_time.high_risk_zones }}</p>
+            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">recurring or critical sites</p>
+        </div>
+    </div>
+
+    <!-- ── Period Activity ── -->
+    <div class="rpt-section">Period Activity</div>
+    <p class="text-[11px] mb-3" style="color: var(--text-tertiary);">Detections and alerts recorded between {{ period_start|date:"j N Y" }} and {{ period_end|date:"j N Y" }}.</p>
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="gw-card p-5">
             <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Illegal Sites</p>
             <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--status-critical);">{{ stats.illegal_sites }}</p>
-            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">of {{ stats.total_detected_sites }} total detected</p>
+            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">of {{ stats.total_detected_sites }} detected in period</p>
         </div>
         <div class="gw-card p-5">
-            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Open Alerts</p>
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">New Alerts</p>
             <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--status-high);">{{ stats.open_alerts }}</p>
             <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">{{ stats.critical_alerts }} critical · {{ stats.high_alerts }} high</p>
         </div>
         <div class="gw-card p-5">
-            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Area Affected</p>
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Area Detected</p>
             <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--accent);">{{ stats.total_area_ha }}</p>
-            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">hectares (illegal sites)</p>
+            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">hectares (illegal, in period)</p>
         </div>
         <div class="gw-card p-5">
-            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">High-Risk Zones</p>
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">High-Risk in Period</p>
             <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ stats.high_risk_zones }}</p>
             <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">recurring or critical sites</p>
         </div>
@@ -318,16 +343,28 @@
     <!-- ── 5. Detection Trend ── -->
     {% if stats.trend_labels %}
     <div class="rpt-section">Detection Trend — Period</div>
-    <div class="gw-card p-5">
-        <div id="trend-sparkline" class="mb-2">
-            {% for val in stats.trend_illegal %}
-            <div class="trend-bar" data-val="{{ val }}" title="Illegal: {{ val }}"></div>
-            {% endfor %}
+    <div class="gw-card overflow-hidden">
+        <div class="px-5 py-3 flex items-center gap-4" style="border-bottom: 1px solid var(--border-subtle);">
+            <div class="flex items-center gap-3 text-xs" style="color: var(--text-secondary);">
+                <span class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-sm inline-block" style="background: rgba(224,82,82,0.9);"></span>Illegal
+                </span>
+                <span class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-sm inline-block" style="background: rgba(56,139,253,0.8);"></span>Legal
+                </span>
+            </div>
+            <span class="text-xs ml-auto" style="color: var(--text-tertiary);">{{ period_start|date:"j N Y" }} — {{ period_end|date:"j N Y" }}</span>
         </div>
-        <div class="flex justify-between text-[11px]" style="color: var(--text-tertiary);">
-            <span>{{ stats.trend_labels.0 }}</span>
-            <span style="color: var(--status-critical); font-weight: 600;">&#9632; Illegal detections</span>
-            <span>{{ stats.trend_labels|last }}</span>
+        <div class="p-5">
+            <div id="trend-chart-report">
+                <canvas id="report-trend-canvas"></canvas>
+                {% if not stats.trend_illegal %}
+                <div class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center">
+                    <i class="ph ph-chart-line" style="font-size:32px; color: var(--text-tertiary); opacity:0.5;"></i>
+                    <p class="text-sm font-medium" style="color: var(--text-secondary);">No detections in this period</p>
+                </div>
+                {% endif %}
+            </div>
         </div>
     </div>
     {% endif %}
@@ -435,11 +472,82 @@
 
 <script>
 (function () {
-    var bars = document.querySelectorAll('#trend-sparkline .trend-bar');
-    var max = 0;
-    bars.forEach(function (b) { var v = parseInt(b.dataset.val, 10) || 0; if (v > max) max = v; });
-    if (!max) max = 1;
-    bars.forEach(function (b) { b.style.height = Math.max(2, Math.round(parseInt(b.dataset.val, 10) / max * 56)) + 'px'; });
+    var canvas = document.getElementById('report-trend-canvas');
+    if (!canvas) return;
+
+    var labels  = [{% for l in stats.trend_labels %}"{{ l }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    var illegal = [{% for v in stats.trend_illegal %}{{ v }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    var legal   = [{% for v in stats.trend_legal %}{{ v }}{% if not forloop.last %},{% endif %}{% endfor %}];
+
+    // trim leading all-zero columns
+    var firstNonZero = 0;
+    for (var i = 0; i < labels.length; i++) {
+        if (illegal[i] || legal[i]) { firstNonZero = Math.max(0, i - 1); break; }
+    }
+    labels  = labels.slice(firstNonZero);
+    illegal = illegal.slice(firstNonZero);
+    legal   = legal.slice(firstNonZero);
+
+    var hasData = illegal.some(function (v) { return v > 0; }) || legal.some(function (v) { return v > 0; });
+    if (!hasData) return; // empty-state overlay shown via Django template
+
+    new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Illegal',
+                    data: illegal,
+                    borderColor: 'rgba(224,82,82,0.9)',
+                    backgroundColor: 'rgba(224,82,82,0.12)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                },
+                {
+                    label: 'Legal',
+                    data: legal,
+                    borderColor: 'rgba(56,139,253,0.8)',
+                    backgroundColor: 'rgba(56,139,253,0.08)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'var(--surface-2)',
+                    borderColor: 'var(--border-default)',
+                    borderWidth: 1,
+                    titleColor: 'var(--text-primary)',
+                    bodyColor: 'var(--text-secondary)',
+                    padding: 10,
+                },
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: 'var(--text-tertiary)', font: { size: 11 }, maxTicksLimit: 8, maxRotation: 0 },
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(128,128,128,0.08)' },
+                    ticks: { color: 'var(--text-tertiary)', font: { size: 11 }, precision: 0 },
+                },
+            },
+        },
+    });
 })();
 </script>
 {% endblock %}

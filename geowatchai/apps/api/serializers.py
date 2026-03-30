@@ -224,6 +224,7 @@ class JobCreateSerializer(serializers.Serializer):
             end_date=validated_data['end_date'],
             model_version=validated_data['model_version'],
             created_by=validated_data.get('created_by'),
+            organisation=validated_data.get('organisation'),
         )
 
         return job

@@ -49,6 +49,14 @@ class Job(models.Model):
         related_name='jobs',
         help_text='Admin user who triggered this scan',
     )
+    organisation = models.ForeignKey(
+        'accounts.Organisation',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='jobs',
+        help_text='Organisation that owns this job. Null for automated scans (visible to all orgs).',
+    )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)

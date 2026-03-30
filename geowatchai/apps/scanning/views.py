@@ -618,12 +618,17 @@ class ScanningForceScanAPI(View):
             end_date   = now.date()
             start_date = end_date.replace(year=end_date.year - 2)
 
+            # Agency admin force-scans are tagged with their org so the job
+            # appears in their org-scoped dashboard view.
+            org = getattr(getattr(request.user, 'profile', None), 'organisation', None)
+
             job = JobService.create_job(
                 aoi_geometry=tile.geometry,
                 start_date=str(start_date),
                 end_date=str(end_date),
                 source='automated',
                 scan_tile_id=str(tile.id),
+                organisation=org,
             )
             run_detection_task.apply_async(
                 args=[str(job.id)],

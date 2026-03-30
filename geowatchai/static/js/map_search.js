@@ -12,7 +12,7 @@ function initMapSearch(containerId, flyToFn) {
     const wrapper = document.createElement('div');
     wrapper.style.cssText = [
         'position:absolute',
-        'top:15.4px',
+        'top:14px',
         'left:12px',
         'z-index:1100',
         'width:260px',
@@ -45,6 +45,7 @@ function initMapSearch(containerId, flyToFn) {
     const input   = wrapper.querySelector('input');
     const results = wrapper.querySelector('.ms-results');
     let timer;
+    const _cache = new Map();  // session-level query cache
 
     function showResults(places) {
         results.innerHTML = '';
@@ -77,11 +78,13 @@ function initMapSearch(containerId, flyToFn) {
     }
 
     function search(q) {
+        const key = q.toLowerCase();
+        if (_cache.has(key)) { showResults(_cache.get(key)); return; }
         results.innerHTML = '<div style="padding:10px 12px;font-size:13px;color:var(--text-tertiary);">Searching…</div>';
         results.style.display = 'block';
         fetch('/api/geocode/?q=' + encodeURIComponent(q), { credentials: 'include' })
             .then(r => r.json())
-            .then(data => showResults(data.results || []))
+            .then(data => { _cache.set(key, data.results || []); showResults(data.results || []); })
             .catch(() => { results.style.display = 'none'; });
     }
 
@@ -89,7 +92,9 @@ function initMapSearch(containerId, flyToFn) {
         clearTimeout(timer);
         const q = this.value.trim();
         if (q.length < 2) { results.style.display = 'none'; return; }
-        timer = setTimeout(() => search(q), 400);
+        // Show cached result instantly, otherwise wait 200ms before hitting the server
+        if (_cache.has(q.toLowerCase())) { search(q); return; }
+        timer = setTimeout(() => search(q), 200);
     });
 
     input.addEventListener('keydown', function (e) {

@@ -45,15 +45,14 @@ class OrgScopedMixin:
     Mixin for DRF ViewSets. Scopes querysets to the requesting user's organisation
     when the user is an Agency Admin. System Admins see everything.
 
-    Subclasses must set `org_field` to the ORM lookup path from the model to
-    `accounts_organisation.id`, e.g.:
-        - Job:           'created_by__profile__organisation'
-        - DetectedSite:  'job__created_by__profile__organisation'
-        - Result:        'job__created_by__profile__organisation'
-        - Alert:         'detected_site__job__created_by__profile__organisation'
+    Subclasses must set `org_field` to the ORM lookup path to Job.organisation, e.g.:
+        - Job:          'organisation'
+        - DetectedSite: 'job__organisation'
+        - Result:       'job__organisation'
+        - Alert:        'detected_site__job__organisation'
 
-    Automated jobs (created_by=None) are always included for Agency Admins because
-    they benefit all organisations equally.
+    Automated jobs (organisation=None, source='automated') are always visible to
+    all agency admins because they benefit all organisations equally.
     """
     org_field: str = ''
 
@@ -71,13 +70,11 @@ class OrgScopedMixin:
             if org is None:
                 return qs.none()
             from django.db.models import Q
-            # null created_by + source='automated' → visible to all agency admins
-            # manual jobs with no creator must NOT leak through
-            null_lookup = self.org_field.replace('__profile__organisation', '__isnull')
-            source_path = self.org_field.replace('created_by__profile__organisation', 'source').rstrip('_')
+            # Derive the field prefix (e.g. 'job__organisation' → prefix='job__')
+            prefix = self.org_field.rsplit('organisation', 1)[0]
             return qs.filter(
                 Q(**{self.org_field: org}) |
-                Q(**{null_lookup: True, source_path: 'automated'})
+                Q(**{f'{prefix}organisation__isnull': True, f'{prefix}source': 'automated'})
             )
         return qs  # system_admin and inspector see full set
 
