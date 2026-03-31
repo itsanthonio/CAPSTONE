@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 — Page Not Found | SankofaWatch</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f172a;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+      padding: 2rem;
+    }
+    .kente-bar {
+      width: 100%;
+      height: 6px;
+      background: repeating-linear-gradient(90deg,
+        #B45309 0px, #B45309 20px,
+        #065F46 20px, #065F46 40px,
+        #1E40AF 40px, #1E40AF 60px,
+        #7C3AED 60px, #7C3AED 80px,
+        #DC2626 80px, #DC2626 100px
+      );
+      position: fixed;
+      top: 0; left: 0;
+    }
+    .code {
+      font-size: 6rem;
+      font-weight: 800;
+      color: #B45309;
+      line-height: 1;
+      margin-bottom: 1rem;
+    }
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      margin-bottom: 0.75rem;
+    }
+    p {
+      color: #94a3b8;
+      max-width: 420px;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+    a {
+      display: inline-block;
+      padding: 0.65rem 1.5rem;
+      background: #B45309;
+      color: #fff;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    a:hover { background: #92400E; }
+  </style>
+</head>
+<body>
+  <div class="kente-bar"></div>
+  <div class="code">404</div>
+  <h1>Page Not Found</h1>
+  <p>The page you are looking for does not exist or has been moved. Please check the URL or return to the dashboard.</p>
+  <a href="/dashboard/">Go to Dashboard</a>
+</body>
+</html>

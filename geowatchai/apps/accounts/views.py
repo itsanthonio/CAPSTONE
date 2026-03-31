@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -7,6 +9,8 @@ from django.contrib.auth.decorators import login_required
 from .models import UserProfile, InspectorAssignment, SystemConfig
 from .serializers import UserProfileSerializer, InspectorSerializer, InspectorAssignmentSerializer
 from apps.detections.models import Alert
+
+logger = logging.getLogger(__name__)
 
 
 def _resolve_assignment_config(inspector_profile):
@@ -134,7 +138,7 @@ def create_assignment(request):
                 target=send_new_assignment, args=(assignment, alert), daemon=True
             ).start()
         except Exception:
-            pass
+            logger.exception('Failed to send assignment notification for assignment %s', assignment.id)
 
         serializer = InspectorAssignmentSerializer(assignment)
         return Response({

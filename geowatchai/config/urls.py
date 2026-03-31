@@ -76,8 +76,6 @@ urlpatterns = [
     path('scanning/', include('apps.scanning.urls')),
     # Authenticated media serving (replaces unauthenticated static() in DEBUG too)
     path('media/<path:path>', protected_media, name='protected_media'),
-    # Test page
-    path('test-map/', lambda request: render(request, 'test_map.html'), name='test_map'),
 ]
 
 # Serve static files during development from source directory (media served via protected_media view above)

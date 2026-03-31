@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="SankofaWatch — AI-powered satellite detection of illegal galamsey mining in Ghana. Protecting forests, rivers, and communities.">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{% block title %}{{ settings.APP_NAME }}{% endblock %}</title>
 
     <!-- Favicon -->
@@ -997,8 +998,7 @@
         };
 
         function getCsrf() {
-            const m = document.cookie.match(/csrftoken=([^;]+)/);
-            return m ? m[1] : '';
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         }
 
         function setBadge(count) {
@@ -1381,8 +1381,7 @@
         }
 
         function getCsrf() {
-            var m = document.cookie.match(/csrftoken=([^;]+)/);
-            return m ? m[1] : '';
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         }
 
         // ── Show the warning modal ───────────────────────────────────────

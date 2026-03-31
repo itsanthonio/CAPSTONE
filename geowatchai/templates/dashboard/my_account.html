@@ -109,6 +109,10 @@
 <script>
 (function () {
     function getCookie(name) {
+        if (name === 'csrftoken') {
+            var meta = document.querySelector('meta[name="csrf-token"]');
+            if (meta) return meta.getAttribute('content') || '';
+        }
         var m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
         return m ? m.pop() : null;
     }

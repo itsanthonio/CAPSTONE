@@ -210,7 +210,7 @@ function toggleAvailability() {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
         },
         body: JSON.stringify({ is_available: goingAvailable }),
     })
@@ -503,8 +503,12 @@ function printDetectionCard(btn) {
     document.body.removeChild(overlay);
 }
 
-/* ---------- Cookie helper ---------- */
+/* ---------- CSRF helper ---------- */
 function getCookie(name) {
+    if (name === 'csrftoken') {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) return meta.getAttribute('content') || '';
+    }
     const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
     return v ? decodeURIComponent(v.pop()) : '';
 }

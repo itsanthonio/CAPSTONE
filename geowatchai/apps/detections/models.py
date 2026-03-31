@@ -1,10 +1,8 @@
 import uuid
 from django.contrib.auth.models import User
 from django.contrib.gis.db import models
-from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 from apps.jobs.models import Job
-import uuid
 
 
 # ---------------------------------------------------------------------------

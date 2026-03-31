@@ -339,7 +339,7 @@
 <div id="toast-container" class="fixed top-4 right-4 space-y-2 z-[60]"></div>
 
 <script>
-const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+const CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
 /* ── Row builder (mirrors the Django template) ── */
 function esc(s) {

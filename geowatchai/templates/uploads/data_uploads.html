@@ -455,6 +455,10 @@ function showToast(msg, type) {
 }
 
 function getCookie(name) {
+    if (name === 'csrftoken') {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) return meta.getAttribute('content') || '';
+    }
     const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
     return v ? decodeURIComponent(v.pop()) : '';
 }

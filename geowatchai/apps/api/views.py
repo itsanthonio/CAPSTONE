@@ -668,7 +668,7 @@ class AlertViewSet(viewsets.ViewSet):
         if atype:    qs = qs.filter(alert_type=atype)
         if source in ('manual', 'automated'):
             qs = qs.filter(detected_site__job__source=source)
-        # Org scoping for agency admins
+        # Role-based scoping
         try:
             role = self.request.user.profile.role
             if role == 'agency_admin':
@@ -679,6 +679,9 @@ class AlertViewSet(viewsets.ViewSet):
                     Q(detected_site__job__organisation=org) |
                     Q(detected_site__job__organisation__isnull=True, detected_site__job__source='automated')
                 )
+            elif role == 'inspector':
+                # Inspectors only see alerts assigned to them
+                qs = qs.filter(assigned_to=self.request.user)
         except Exception:
             pass
         return qs

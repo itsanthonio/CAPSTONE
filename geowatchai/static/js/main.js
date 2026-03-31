@@ -150,9 +150,14 @@ async function makeRequest(url, options = {}) {
 }
 
 /**
- * Get CSRF token
+ * Get CSRF token from the meta tag injected by the base template.
+ * Falls back to cookie for any page that doesn't extend base.html.
  */
 function getCookie(name) {
+    if (name === 'csrftoken') {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) return meta.getAttribute('content') || '';
+    }
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
         const cookies = document.cookie.split(';');

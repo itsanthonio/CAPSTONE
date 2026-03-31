@@ -23,9 +23,9 @@ ENVIRONMENT = config('ENVIRONMENT', default='Development')
 DJANGO_ENVIRONMENT = config('DJANGO_ENVIRONMENT', default='development')
 
 
-SECRET_KEY = 'django-insecure-development-secret-key-change-in-production-abc123def456'
-DEBUG = True
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-development-secret-key-change-in-production-abc123def456')
+DEBUG = config('DEBUG', default=False, cast=bool)
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,0.0.0.0', cast=lambda v: [s.strip() for s in v.split(',')])
 
 # CSRF trusted origins for browser preview
 CSRF_TRUSTED_ORIGINS = [
@@ -193,13 +193,13 @@ SECURE_HSTS_PRELOAD = True if not DEBUG else False
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_HTTPONLY = True
 
 # ── Session Timeout ──────────────────────────────────────────
 # Sessions die when the browser is closed (no "remember me" cookie).
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-# Absolute ceiling: even an active session expires after 8 hours.
-SESSION_COOKIE_AGE = 8 * 60 * 60          # 8 hours in seconds
+# Absolute ceiling: even an active session expires after 4 hours.
+SESSION_COOKIE_AGE = 4 * 60 * 60          # 4 hours in seconds
 # Sliding expiry: any request resets the 8-hour clock.
 SESSION_SAVE_EVERY_REQUEST = True
 # Frontend idle timeout fed to the JS timer (seconds).

@@ -255,6 +255,10 @@ document.getElementById('quiet-hours-checkbox').addEventListener('change', funct
 });
 
 function getCookie(name) {
+    if (name === 'csrftoken') {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) return meta.getAttribute('content') || '';
+    }
     const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
     return m ? m.pop() : null;
 }

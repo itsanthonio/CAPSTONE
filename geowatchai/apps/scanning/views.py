@@ -74,6 +74,8 @@ class ScanningStatusAPI(View):
     """GET /scanning/api/status/ — returns system state + today's stats."""
 
     def get(self, request):
+        if not (hasattr(request.user, 'profile') and request.user.profile.role in ('system_admin', 'agency_admin')):
+            return JsonResponse({'error': 'Administrator access required.'}, status=403)
         from apps.jobs.models import Job
         from apps.detections.models import DetectedSite
 
@@ -410,6 +412,8 @@ class ScanningRecentTilesAPI(View):
     """
 
     def get(self, request):
+        if not (hasattr(request.user, 'profile') and request.user.profile.role in ('system_admin', 'agency_admin')):
+            return JsonResponse({'error': 'Administrator access required.'}, status=403)
         limit     = min(int(request.GET.get('limit', 100)), 500)
         date_str  = request.GET.get('date')
 
@@ -453,6 +457,8 @@ class ScanningDetectionsAPI(View):
     """
 
     def get(self, request):
+        if not (hasattr(request.user, 'profile') and request.user.profile.role in ('system_admin', 'agency_admin')):
+            return JsonResponse({'error': 'Administrator access required.'}, status=403)
         from apps.detections.models import DetectedSite
         from django.conf import settings as django_settings
 
@@ -523,6 +529,8 @@ class ScanningTileDetailAPI(View):
     """
 
     def get(self, request):
+        if not (hasattr(request.user, 'profile') and request.user.profile.role in ('system_admin', 'agency_admin')):
+            return JsonResponse({'error': 'Administrator access required.'}, status=403)
         from apps.jobs.models import Job
         from apps.detections.models import DetectedSite
         from django.contrib.gis.geos import Point
@@ -649,6 +657,8 @@ class ScanningExportAPI(View):
     """
 
     def get(self, request):
+        if not (hasattr(request.user, 'profile') and request.user.profile.role in ('system_admin', 'agency_admin')):
+            return JsonResponse({'error': 'Administrator access required.'}, status=403)
         from apps.detections.models import DetectedSite
 
         fmt   = request.GET.get('format', 'geojson').lower()
