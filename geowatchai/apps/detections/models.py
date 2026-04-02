@@ -431,8 +431,8 @@ class DetectedSite(models.Model):
         return f"Site {self.id} | {self.legal_status} | {self.confidence_score:.2f} | {self.detection_date}"
 
     def save(self, *args, **kwargs):
-        # Auto-compute centroid from geometry
-        if self.geometry and not self.centroid:
+        # Auto-compute centroid from geometry (always recompute when geometry is set)
+        if self.geometry:
             self.centroid = self.geometry.centroid
         super().save(*args, **kwargs)
 
@@ -604,7 +604,9 @@ class Inspection(models.Model):
     )
     inspector = models.ForeignKey(
         'auth.User',
-        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
         related_name='inspections'
     )
     visit_date = models.DateField(db_index=True)

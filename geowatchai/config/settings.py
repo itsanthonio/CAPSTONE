@@ -23,7 +23,7 @@ ENVIRONMENT = config('ENVIRONMENT', default='Development')
 DJANGO_ENVIRONMENT = config('DJANGO_ENVIRONMENT', default='development')
 
 
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-development-secret-key-change-in-production-abc123def456')
+SECRET_KEY = config('SECRET_KEY')  # Must be set in .env — no insecure fallback
 DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,0.0.0.0', cast=lambda v: [s.strip() for s in v.split(',')])
 

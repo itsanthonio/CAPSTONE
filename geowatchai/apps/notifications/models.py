@@ -1,6 +1,18 @@
+import re
 import uuid
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+
+
+def _validate_notification_link(value):
+    """Accept only blank, relative paths (/…), or http(s) URLs.
+    Blocks javascript: and data: URIs which could cause XSS in link tags."""
+    if not value:
+        return
+    if re.match(r'^https?://', value) or value.startswith('/'):
+        return
+    raise ValidationError('Link must be a relative path starting with / or an http(s) URL.')
 
 
 class NotificationInbox(models.Model):
@@ -18,7 +30,7 @@ class NotificationInbox(models.Model):
     kind       = models.CharField(max_length=20, choices=Kind.choices, default=Kind.SYSTEM)
     title      = models.CharField(max_length=200)
     body       = models.CharField(max_length=500, blank=True)
-    link       = models.CharField(max_length=300, blank=True)
+    link       = models.CharField(max_length=300, blank=True, validators=[_validate_notification_link])
     is_read    = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 

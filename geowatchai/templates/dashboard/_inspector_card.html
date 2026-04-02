@@ -362,7 +362,8 @@
                     <div class="flex items-center gap-1.5 ml-auto">
                         <label for="visit-date-{{ assignment.id }}" class="text-xs whitespace-nowrap" style="color: var(--text-secondary);">Visit date</label>
                         <input type="date" id="visit-date-{{ assignment.id }}" name="visit_date"
-                               class="gw-input text-xs py-1" style="width: 140px;">
+                               class="gw-input text-xs py-1" style="width: 140px;"
+                               value="{% now 'Y-m-d' %}">
                     </div>
                 </div>
             </div>

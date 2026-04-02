@@ -1,6 +1,7 @@
 import uuid
 from django.contrib.auth.models import User
 from django.contrib.gis.db import models
+from django.core.validators import MinValueValidator
 
 
 class SystemConfig(models.Model):
@@ -36,10 +37,12 @@ class Organisation(models.Model):
     name = models.CharField(max_length=100, unique=True)
     sla_days_override = models.IntegerField(
         null=True, blank=True,
+        validators=[MinValueValidator(1)],
         help_text='Override the system-wide SLA days for inspectors in this organisation. Leave blank to use the system default.',
     )
     max_pending_override = models.IntegerField(
         null=True, blank=True,
+        validators=[MinValueValidator(1)],
         help_text='Override the system-wide max pending assignments for inspectors in this organisation. Leave blank to use the system default.',
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -243,13 +246,13 @@ class InspectorAssignment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     alert = models.ForeignKey(
         'detections.Alert',
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name='assignments',
         db_column='alert_id',
     )
     inspector = models.ForeignKey(
         UserProfile,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name='inspector_assignments'
     )
     status = models.CharField(
@@ -297,6 +300,7 @@ class InspectorAssignment(models.Model):
         verbose_name = 'Inspector Assignment'
         verbose_name_plural = 'Inspector Assignments'
         ordering = ['-created_at']
+        unique_together = [('alert', 'inspector')]
 
     def __str__(self):
         return f"Alert {self.alert_id} → {self.inspector.user.username}"

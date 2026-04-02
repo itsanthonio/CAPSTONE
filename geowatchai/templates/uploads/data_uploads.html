@@ -29,7 +29,7 @@
     </div>
 
     <!-- Summary cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-1 gap-4" style="max-width: 280px;">
         <div class="gw-card p-4 flex items-center gap-4">
             <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
                  style="background: var(--status-resolved-bg); border: 1px solid var(--status-resolved-border);">
@@ -43,69 +43,6 @@
                 <div class="text-[12px]" style="color: var(--text-secondary);">Legal Concessions</div>
             </div>
         </div>
-        <div class="gw-card p-4 flex items-center gap-4">
-            <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                 style="background: var(--status-info-bg); border: 1px solid var(--status-info-border);">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                     style="color: var(--viz-water);" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
-                </svg>
-            </div>
-            <div>
-                <div class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);" data-countup="{{ water_count }}">{{ water_count }}</div>
-                <div class="text-[12px]" style="color: var(--text-secondary);">Water Body Boundaries</div>
-            </div>
-        </div>
-        <div class="gw-card p-4 flex items-center gap-4">
-            <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                 style="background: rgba(35,133,81,0.12); border: 1px solid rgba(35,133,81,0.25);">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                     style="color: var(--viz-forest);" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
-                </svg>
-            </div>
-            <div>
-                <div class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);" data-countup="{{ forest_count }}">{{ forest_count }}</div>
-                <div class="text-[12px]" style="color: var(--text-secondary);">Protected Forest Boundaries</div>
-            </div>
-        </div>
-        <div class="gw-card p-4 flex items-center gap-4">
-            <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                 style="background: var(--surface-3); border: 1px solid var(--border-default);">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                     style="color: var(--text-secondary);" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-                </svg>
-            </div>
-            <div>
-                <div class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);" data-countup="{{ district_count }}">{{ district_count }}</div>
-                <div class="text-[12px]" style="color: var(--text-secondary);">District Boundaries</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Tabs -->
-    <div class="flex gap-2">
-        <button onclick="switchTab('concessions')" id="tab-concessions"
-                class="tab-btn active px-4 py-1.5 rounded-lg text-[13px] font-medium"
-                style="border: 1px solid transparent;">
-            Legal Concessions
-        </button>
-        <button onclick="switchTab('water')" id="tab-water"
-                class="tab-btn px-4 py-1.5 rounded-lg text-[13px] font-medium"
-                style="border: 1px solid var(--border-default); color: var(--text-secondary);">
-            Water Bodies
-        </button>
-        <button onclick="switchTab('forest')" id="tab-forest"
-                class="tab-btn px-4 py-1.5 rounded-lg text-[13px] font-medium"
-                style="border: 1px solid var(--border-default); color: var(--text-secondary);">
-            Protected Forests
-        </button>
-        <button onclick="switchTab('districts')" id="tab-districts"
-                class="tab-btn px-4 py-1.5 rounded-lg text-[13px] font-medium"
-                style="border: 1px solid var(--border-default); color: var(--text-secondary);">
-            Districts
-        </button>
     </div>
 
     <!-- ===== CONCESSIONS PANEL ===== -->
@@ -185,152 +122,6 @@
         </div>
     </div>
 
-    <!-- ===== WATER BODIES PANEL ===== -->
-    <div id="panel-water" class="upload-panel hidden">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-2 space-y-4">
-                <div class="gw-card overflow-hidden">
-                    <div class="px-6 py-4" style="border-bottom: 1px solid var(--border-subtle);">
-                        <h2 class="text-[14px] font-semibold" style="color: var(--text-primary);">River & Water Body Boundaries — GeoJSON Upload</h2>
-                        <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">
-                            Rivers, lakes, and other water bodies. Used to flag detections near water sources.
-                        </p>
-                    </div>
-                    <div class="p-6">
-                        <div id="dz-water"
-                             class="drop-zone border-2 border-dashed rounded-lg p-10 text-center cursor-pointer"
-                             style="border-color: var(--border-default);"
-                             onclick="document.getElementById('fi-water').click()"
-                             ondragover="handleDragOver(event, this)" ondragleave="handleDragLeave(this)"
-                             ondrop="handleDrop(event, 'fi-water', this)">
-                            <svg class="w-10 h-10 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                 style="color: var(--text-tertiary);" aria-hidden="true" focusable="false">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                            </svg>
-                            <p class="text-[13px] font-medium mb-1" style="color: var(--text-secondary);">Drop GeoJSON file here or click to browse</p>
-                            <p class="text-[12px]" style="color: var(--text-tertiary);">Accepted: .geojson, .json</p>
-                        </div>
-                        <input type="file" id="fi-water" class="hidden" accept=".geojson,.json"
-                               onchange="previewFile(this, 'preview-water')">
-                        <div id="preview-water" class="hidden mt-4 rounded-lg p-4 text-[13px]"
-                             style="background: var(--surface-3); border: 1px solid var(--border-default);">
-                            <p class="font-medium mb-1" style="color: var(--text-primary);" id="preview-water-name"></p>
-                            <p style="color: var(--text-secondary);" id="preview-water-info"></p>
-                        </div>
-                        <button onclick="uploadFile('fi-water', '/uploads/upload/water-bodies/', 'result-water')"
-                                class="btn-primary mt-4 px-5 py-2 text-[13px]">Import Water Bodies</button>
-                    </div>
-                </div>
-                <div id="result-water" class="hidden"></div>
-            </div>
-            <div class="lg:col-span-1">
-                <div class="gw-card p-5 space-y-3 text-[13px]" style="color: var(--text-secondary);">
-                    <h3 class="font-semibold" style="color: var(--text-primary);">About this data</h3>
-                    <p>Water body boundaries are stored as monitoring regions. On the live map they can be toggled as a layer to visualise proximity of illegal mining to rivers and lakes.</p>
-                    <p>Uploading replaces all previously imported water body regions. Feature property <code>name</code> is used as the region name.</p>
-                    <p class="text-[11px]" style="color: var(--text-tertiary);">Source suggestion: Ghana Water Resources Commission, OpenStreetMap rivers export, or HydroSHEDS.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== PROTECTED FORESTS PANEL ===== -->
-    <div id="panel-forest" class="upload-panel hidden">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-2 space-y-4">
-                <div class="gw-card overflow-hidden">
-                    <div class="px-6 py-4" style="border-bottom: 1px solid var(--border-subtle);">
-                        <h2 class="text-[14px] font-semibold" style="color: var(--text-primary);">Protected Forest Boundaries — GeoJSON Upload</h2>
-                        <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">
-                            Ghana Forestry Commission forest reserves, national parks, and IUCN protected areas.
-                        </p>
-                    </div>
-                    <div class="p-6">
-                        <div id="dz-forest"
-                             class="drop-zone border-2 border-dashed rounded-lg p-10 text-center cursor-pointer"
-                             style="border-color: var(--border-default);"
-                             onclick="document.getElementById('fi-forest').click()"
-                             ondragover="handleDragOver(event, this)" ondragleave="handleDragLeave(this)"
-                             ondrop="handleDrop(event, 'fi-forest', this)">
-                            <svg class="w-10 h-10 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                 style="color: var(--text-tertiary);" aria-hidden="true" focusable="false">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                            </svg>
-                            <p class="text-[13px] font-medium mb-1" style="color: var(--text-secondary);">Drop GeoJSON file here or click to browse</p>
-                            <p class="text-[12px]" style="color: var(--text-tertiary);">Accepted: .geojson, .json</p>
-                        </div>
-                        <input type="file" id="fi-forest" class="hidden" accept=".geojson,.json"
-                               onchange="previewFile(this, 'preview-forest')">
-                        <div id="preview-forest" class="hidden mt-4 rounded-lg p-4 text-[13px]"
-                             style="background: var(--surface-3); border: 1px solid var(--border-default);">
-                            <p class="font-medium mb-1" style="color: var(--text-primary);" id="preview-forest-name"></p>
-                            <p style="color: var(--text-secondary);" id="preview-forest-info"></p>
-                        </div>
-                        <button onclick="uploadFile('fi-forest', '/uploads/upload/protected-forests/', 'result-forest')"
-                                class="btn-primary mt-4 px-5 py-2 text-[13px]">Import Protected Forests</button>
-                    </div>
-                </div>
-                <div id="result-forest" class="hidden"></div>
-            </div>
-            <div class="lg:col-span-1">
-                <div class="gw-card p-5 space-y-3 text-[13px]" style="color: var(--text-secondary);">
-                    <h3 class="font-semibold" style="color: var(--text-primary);">About this data</h3>
-                    <p>Protected forest boundaries define high-sensitivity monitoring zones. Any detection falling inside a forest reserve or national park can be automatically flagged as a critical alert.</p>
-                    <p>Uploading replaces all previously imported protected forest regions. Feature property <code>name</code> is used as the region name.</p>
-                    <p class="text-[11px]" style="color: var(--text-tertiary);">Source suggestion: Ghana Forestry Commission, WDPA (Protected Planet), or Global Forest Watch.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== DISTRICTS PANEL ===== -->
-    <div id="panel-districts" class="upload-panel hidden">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-2 space-y-4">
-                <div class="gw-card overflow-hidden">
-                    <div class="px-6 py-4" style="border-bottom: 1px solid var(--border-subtle);">
-                        <h2 class="text-[14px] font-semibold" style="color: var(--text-primary);">Ghana District Boundaries — GeoJSON Upload</h2>
-                        <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">
-                            All 260 administrative districts. Used to show the district name on every detected site in the live map sidebar.
-                        </p>
-                    </div>
-                    <div class="p-6">
-                        <div id="dz-districts"
-                             class="drop-zone border-2 border-dashed rounded-lg p-10 text-center cursor-pointer"
-                             style="border-color: var(--border-default);"
-                             onclick="document.getElementById('fi-districts').click()"
-                             ondragover="handleDragOver(event, this)" ondragleave="handleDragLeave(this)"
-                             ondrop="handleDrop(event, 'fi-districts', this)">
-                            <svg class="w-10 h-10 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                 style="color: var(--text-tertiary);" aria-hidden="true" focusable="false">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                            </svg>
-                            <p class="text-[13px] font-medium mb-1" style="color: var(--text-secondary);">Drop GeoJSON file here or click to browse</p>
-                            <p class="text-[12px]" style="color: var(--text-tertiary);">Accepted: .geojson, .json &nbsp;·&nbsp; Expected property: <code>DISTRICT</code></p>
-                        </div>
-                        <input type="file" id="fi-districts" class="hidden" accept=".geojson,.json"
-                               onchange="previewFile(this, 'preview-districts')">
-                        <div id="preview-districts" class="hidden mt-4 rounded-lg p-4 text-[13px]"
-                             style="background: var(--surface-3); border: 1px solid var(--border-default);">
-                            <p class="font-medium mb-1" style="color: var(--text-primary);" id="preview-districts-name"></p>
-                            <p style="color: var(--text-secondary);" id="preview-districts-info"></p>
-                        </div>
-                        <button onclick="uploadFile('fi-districts', '/uploads/upload/districts/', 'result-districts')"
-                                class="btn-primary mt-4 px-5 py-2 text-[13px]">Import Districts</button>
-                    </div>
-                </div>
-                <div id="result-districts" class="hidden"></div>
-            </div>
-            <div class="lg:col-span-1">
-                <div class="gw-card p-5 space-y-3 text-[13px]" style="color: var(--text-secondary);">
-                    <h3 class="font-semibold" style="color: var(--text-primary);">About this data</h3>
-                    <p>District boundaries are used to label detected sites with their specific district name in the live map sidebar — replacing the generic region name.</p>
-                    <p>Uploading replaces all previously imported district boundaries. The spatial lookup is automatic — no need to re-process existing detections.</p>
-                    <p class="text-[11px]" style="color: var(--text-tertiary);">Expected GeoJSON properties: <code>DISTRICT</code> (name), <code>Region_19</code> (parent region). Source: Ghana Statistical Service / CERSGIS.</p>
-                </div>
-            </div>
-        </div>
-    </div>
 
 </div>
 
@@ -340,19 +131,6 @@
 
 {% block extra_js %}
 <script>
-function switchTab(name) {
-    document.querySelectorAll('.upload-panel').forEach(p => p.classList.add('hidden'));
-    document.querySelectorAll('.tab-btn').forEach(b => {
-        b.classList.remove('active');
-        b.style.borderColor = 'var(--border-default)';
-        b.style.color = 'var(--text-secondary)';
-    });
-    document.getElementById('panel-' + name).classList.remove('hidden');
-    const btn = document.getElementById('tab-' + name);
-    btn.classList.add('active');
-    btn.style.borderColor = 'transparent';
-    btn.style.color = '';
-}
 
 function handleDragOver(e, el) { e.preventDefault(); el.classList.add('dragover'); }
 function handleDragLeave(el) { el.classList.remove('dragover'); }

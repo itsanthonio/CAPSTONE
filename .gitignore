@@ -1,3 +1,11 @@
+# Project-specific ignores
+geowatchai/local_exports/
+geowatchai/media/
+*.ipynb
+*.docx
+*.png
+*.geojson
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

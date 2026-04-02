@@ -70,8 +70,14 @@
             <p class="text-sm mt-0.5" style="color: var(--text-secondary);">Field verification tasks assigned to you</p>
         </div>
 
-        <!-- Availability toggle -->
+        <!-- Availability toggle + Settings -->
         <div class="flex items-center gap-3">
+            <a href="{% url 'dashboard:settings' %}"
+               class="btn-ghost px-3 py-1.5 text-xs flex items-center gap-1.5"
+               title="Settings">
+                <i class="ph ph-gear" style="font-size:14px;" aria-hidden="true"></i>
+                <span>Settings</span>
+            </a>
             <div id="availability-status" class="flex items-center gap-2 text-sm font-medium"
                  style="color: {% if is_available %}#3fb950{% else %}var(--text-secondary){% endif %};">
                 <span id="availability-dot" class="w-2.5 h-2.5 rounded-full flex-shrink-0{% if is_available %} avail-dot-pulse{% endif %}"

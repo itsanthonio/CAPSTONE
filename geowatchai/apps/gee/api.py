@@ -107,7 +107,11 @@ def trigger_export(request, job_id):
     try:
         # Get job
         job = Job.objects.get(id=job_id)
-        
+
+        # Ownership check: only the job creator or staff may trigger a manual export
+        if not request.user.is_staff and job.created_by != request.user:
+            return Response({'error': 'You do not have permission to trigger this export.'}, status=status.HTTP_403_FORBIDDEN)
+
         # Check if job is in appropriate status
         if job.status not in [Job.Status.QUEUED, Job.Status.VALIDATING]:
             return Response({

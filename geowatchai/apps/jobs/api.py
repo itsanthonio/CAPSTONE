@@ -15,27 +15,52 @@ logger = logging.getLogger(__name__)
 
 class JobViewSet(viewsets.ModelViewSet):
     """Job API endpoints following Anti-Vibe guardrails"""
-    
-    queryset = Job.objects.all()
+
     serializer_class = JobSerializer
     permission_classes = [IsAuthenticated]
-    
+
+    def get_queryset(self):
+        """Scope jobs by the requesting user's organisation.
+        System admins see all jobs; everyone else sees their org's jobs
+        plus automated scans (created_by=None, source='automated')."""
+        user = self.request.user
+        try:
+            profile = user.profile
+        except Exception:
+            return Job.objects.none()
+        from apps.accounts.models import UserProfile
+        if profile.role == UserProfile.Role.SYSTEM_ADMIN:
+            return Job.objects.all()
+        org = profile.organisation
+        from django.db.models import Q
+        return Job.objects.filter(
+            Q(organisation=org) | Q(created_by=None, source=Job.Source.AUTOMATED)
+        )
+
     def get_serializer_class(self):
         """Return appropriate serializer based on action"""
         if self.action == 'create':
             return JobCreateSerializer
         return JobSerializer
-    
+
     def create(self, request, *args, **kwargs):
         """Create new job with validation and business logic"""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
+
+        try:
+            profile = request.user.profile
+            org = profile.organisation
+        except Exception:
+            org = None
+
         try:
             job = JobService.create_job(
                 aoi_geometry=serializer.validated_data['aoi_geometry'],
                 start_date=serializer.validated_data['start_date'],
-                end_date=serializer.validated_data['end_date']
+                end_date=serializer.validated_data['end_date'],
+                created_by=request.user,
+                organisation=org,
             )
             
             logger.info(f"Created job {job.id} for user {request.user}")

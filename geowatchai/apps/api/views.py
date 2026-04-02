@@ -52,6 +52,20 @@ def _is_admin(user):
         return False
 
 
+def _invalidate_stats_cache():
+    """Delete all dashboard_stats cache entries (all org scopes + global)."""
+    from django.core.cache import cache
+    from apps.accounts.models import Organisation
+    org_ids = ['global'] + [str(pk) for pk in Organisation.objects.values_list('pk', flat=True)]
+    keys = [
+        f'dashboard_stats_{w}_{td}_{oid}'
+        for w in range(2, 53)
+        for td in (7, 30, 90, 365)
+        for oid in org_ids
+    ]
+    cache.delete_many(keys)
+
+
 from rest_framework.throttling import UserRateThrottle
 
 
@@ -365,16 +379,23 @@ class DetectedSiteViewSet(OrgScopedMixin, viewsets.ReadOnlyModelViewSet):
         from apps.detections.models import Region as _Region
         qs = self.get_queryset().filter(geometry__isnull=False).order_by('-created_at')
 
-        # Annotate each site with the name of the most specific sub-region whose
-        # polygon contains the site centroid (excludes broad district-type regions
-        # so we surface the most granular label available).
-        sub_region_name = Subquery(
+        # Annotate each site with the district name and parent Ghana region name
+        # from the admin_district spatial layer.
+        _district_name = Subquery(
             _Region.objects.filter(
                 geometry__contains=OuterRef('centroid'),
                 is_active=True,
-            ).exclude(region_type__in=['district']).values('name')[:1]
+                region_type='admin_district',
+            ).values('name')[:1]
         )
-        qs = qs.annotate(sub_region_name=sub_region_name)
+        _district_parent = Subquery(
+            _Region.objects.filter(
+                geometry__contains=OuterRef('centroid'),
+                is_active=True,
+                region_type='admin_district',
+            ).values('district')[:1]
+        )
+        qs = qs.annotate(_district_name=_district_name, _district_parent=_district_parent)
 
         page     = request.query_params.get('page')
         per_page = min(int(request.query_params.get('per_page', 200)), 500)
@@ -398,8 +419,8 @@ class DetectedSiteViewSet(OrgScopedMixin, viewsets.ReadOnlyModelViewSet):
                     'area_hectares': round(site.area_hectares, 2),
                     'legal_status': site.legal_status,
                     'detection_date': str(site.detection_date),
-                    'region': site.region.name if site.region else None,
-                    'district': site.sub_region_name or None,
+                    'region': site._district_parent or None,
+                    'district': site._district_name or None,
                     'lat': round(centroid.y, 4) if centroid else None,
                     'lng': round(centroid.x, 4) if centroid else None,
                 }
@@ -454,17 +475,19 @@ class DetectedSiteViewSet(OrgScopedMixin, viewsets.ReadOnlyModelViewSet):
                     'overlay':             _media_url(job.img_overlay),
                 }
 
-        # Spatial district lookup (same logic as list())
+        # Spatial district lookup — fetch name (district) and district field (Ghana region)
         district = None
+        region = None
         if site.centroid:
             from apps.detections.models import Region as _Region
             dist_obj = _Region.objects.filter(
                 geometry__contains=site.centroid,
                 is_active=True,
                 region_type='admin_district',
-            ).values('name').first()
+            ).values('name', 'district').first()
             if dist_obj:
                 district = dist_obj['name']
+                region = dist_obj['district'] or None
 
         return Response({
             'id': str(site.id),
@@ -480,7 +503,7 @@ class DetectedSiteViewSet(OrgScopedMixin, viewsets.ReadOnlyModelViewSet):
             'recurrence_count': site.recurrence_count,
             'first_detected_at': site.first_detected_at.isoformat() if site.first_detected_at else None,
             'concession': concession,
-            'region': site.region.name if site.region else None,
+            'region': region,
             'district': district,
             'lat': round(site.centroid.y, 4) if site.centroid else None,
             'lng': round(site.centroid.x, 4) if site.centroid else None,
@@ -699,9 +722,21 @@ class AlertViewSet(viewsets.ViewSet):
             qs = qs.order_by(ordering)
 
         page    = int(request.query_params.get('page', 1))
-        per_page = min(int(request.query_params.get('per_page', 20)), 10000)
+        per_page = min(int(request.query_params.get('per_page', 20)), 500)
         total   = qs.count()
         alerts  = qs[(page - 1) * per_page: page * per_page]
+
+        from apps.detections.models import Region as _Region
+
+        def _site_region(site):
+            if not site.centroid:
+                return None
+            dist_obj = _Region.objects.filter(
+                geometry__contains=site.centroid,
+                is_active=True,
+                region_type='admin_district',
+            ).values('district').first()
+            return (dist_obj['district'] or None) if dist_obj else None
 
         def fmt(a):
             site = a.detected_site
@@ -727,7 +762,7 @@ class AlertViewSet(viewsets.ViewSet):
                     'legal_status': site.legal_status,
                     'detection_date': str(site.detection_date),
                     'recurrence_count': site.recurrence_count,
-                    'region': site.region.name if site.region else None,
+                    'region': _site_region(site),
                     'lat': round(centroid.y, 4) if centroid else None,
                     'lng': round(centroid.x, 4) if centroid else None,
                 },
@@ -810,6 +845,18 @@ class AlertViewSet(viewsets.ViewSet):
                     'overlay':             _murl(job.img_overlay),
                 }
 
+        # Spatial region lookup
+        from apps.detections.models import Region as _Region
+        site_region = None
+        if centroid:
+            dist_obj = _Region.objects.filter(
+                geometry__contains=centroid,
+                is_active=True,
+                region_type='admin_district',
+            ).values('district').first()
+            if dist_obj:
+                site_region = dist_obj['district'] or None
+
         return Response({
             'id': str(a.id),
             'title': a.title,
@@ -831,7 +878,7 @@ class AlertViewSet(viewsets.ViewSet):
                 'legal_status': site.legal_status,
                 'detection_date': str(site.detection_date),
                 'recurrence_count': site.recurrence_count,
-                'region': site.region.name if site.region else None,
+                'region': site_region,
                 'lat': round(centroid.y, 4) if centroid else None,
                 'lng': round(centroid.x, 4) if centroid else None,
                 'patch_images': patch_images,
@@ -841,7 +888,6 @@ class AlertViewSet(viewsets.ViewSet):
     def _change_status(self, request, pk, new_status, extra=None):
         from apps.detections.models import Alert
         from django.utils import timezone
-        from django.core.cache import cache
         a = self.get_queryset().filter(pk=pk).first()
         if not a:
             return Response({'error': 'Not found.'}, status=404)
@@ -853,7 +899,7 @@ class AlertViewSet(viewsets.ViewSet):
             a.resolved_at = timezone.now()
             a.resolution_notes = request.data.get('resolution_notes', '')
         a.save()
-        cache.delete_many([f'dashboard_stats_{w}_{td}' for w in range(2, 53) for td in (7, 30, 90, 365)])
+        _invalidate_stats_cache()
         _audit(request.user, f'alert.{new_status}', a.id,
                prev_status=prev_status, severity=a.severity)
         return Response({'id': str(a.id), 'status': a.status})
@@ -913,25 +959,47 @@ class AlertViewSet(viewsets.ViewSet):
             inspector_profile = UserProfile.objects.get(id=inspector_id, role=UserProfile.Role.INSPECTOR)
 
             # Agency admins can only assign inspectors from their own org
-            try:
-                if request.user.profile.role == 'agency_admin':
-                    requester_org = request.user.profile.organisation
-                    if inspector_profile.organisation != requester_org:
-                        return Response({'error': 'You can only assign inspectors from your organisation.'}, status=403)
-            except Exception:
-                pass
+            if request.user.profile.role == 'agency_admin':
+                requester_org = request.user.profile.organisation
+                if inspector_profile.organisation != requester_org:
+                    return Response({'error': 'You can only assign inspectors from your organisation.'}, status=403)
+
+            # Enforce capacity / SLA config (same rules as create_assignment)
+            from apps.accounts.views import _resolve_assignment_config
+            from datetime import timedelta
+            from django.utils import timezone as _tz
+            sla_days, max_pending = _resolve_assignment_config(inspector_profile)
+            current_pending = InspectorAssignment.objects.filter(
+                inspector=inspector_profile,
+                status=InspectorAssignment.Status.PENDING,
+            ).count()
+            if current_pending >= max_pending:
+                return Response({
+                    'error': f'Inspector already has {current_pending} pending assignment(s) (maximum {max_pending}).'
+                }, status=400)
+            due_date = (_tz.now() + timedelta(days=sla_days)).date()
 
             # Update alert
             alert.assigned_to = inspector_profile.user
             alert.status = 'dispatched'
             alert.save()
-            
-            # Create inspector assignment
-            assignment = InspectorAssignment.objects.create(
-                inspector=inspector_profile,
-                alert_id=alert.id,
-                status=InspectorAssignment.Status.PENDING
-            )
+
+            # Create inspector assignment (get_or_create guards the unique_together)
+            from django.db import IntegrityError
+            try:
+                assignment, _ = InspectorAssignment.objects.get_or_create(
+                    inspector=inspector_profile,
+                    alert_id=alert.id,
+                    defaults={
+                        'status': InspectorAssignment.Status.PENDING,
+                        'due_date': due_date,
+                    },
+                )
+            except IntegrityError:
+                return Response(
+                    {'error': 'This inspector is already assigned to this alert.'},
+                    status=409
+                )
             
             _audit(request.user, 'alert.assign_inspector', alert.id, 
                    inspector_id=inspector_id, inspector_name=inspector_profile.user.get_full_name())
@@ -996,14 +1064,21 @@ class AlertViewSet(viewsets.ViewSet):
                     alert.assigned_to = user
                     updated_fields.append('assigned_to')
                     
-                    # Remove all existing assignments for this alert first
-                    InspectorAssignment.objects.filter(alert=alert).delete()
-                    
-                    # Create new assignment for the new inspector
-                    InspectorAssignment.objects.create(
+                    # Close existing pending assignments (preserve evidence records)
+                    from django.utils import timezone as _tz
+                    InspectorAssignment.objects.filter(
+                        alert=alert, status=InspectorAssignment.Status.PENDING
+                    ).update(
+                        status=InspectorAssignment.Status.RESOLVED,
+                        notes='Superseded by reassignment.',
+                        completed_at=_tz.now(),
+                    )
+
+                    # Create new assignment for the new inspector (skip if already exists)
+                    InspectorAssignment.objects.get_or_create(
                         inspector=inspector_profile,
                         alert=alert,
-                        status=InspectorAssignment.Status.PENDING
+                        defaults={'status': InspectorAssignment.Status.PENDING},
                     )
                         
                 except (User.DoesNotExist, UserProfile.DoesNotExist):
@@ -1011,8 +1086,15 @@ class AlertViewSet(viewsets.ViewSet):
             else:
                 alert.assigned_to = None
                 updated_fields.append('assigned_to')
-                # Remove all existing assignments when unassigned
-                InspectorAssignment.objects.filter(alert=alert).delete()
+                # Close (not delete) pending assignments when unassigning — preserve evidence
+                from django.utils import timezone as _tz
+                InspectorAssignment.objects.filter(
+                    alert=alert, status=InspectorAssignment.Status.PENDING
+                ).update(
+                    status=InspectorAssignment.Status.RESOLVED,
+                    notes='Closed by unassignment.',
+                    completed_at=_tz.now(),
+                )
         
         # Update associated DetectedSite if site data is provided
         site_updated = False
@@ -1085,6 +1167,8 @@ class AlertViewSet(viewsets.ViewSet):
                         Q(detected_site__job__organisation=org) |
                         Q(detected_site__job__organisation__isnull=True, detected_site__job__source='automated')
                     )
+            elif role == 'inspector':
+                qs = qs.filter(assigned_to=request.user)
         except Exception:
             pass
         rows = qs.values('status', 'severity').annotate(cnt=Count('id'))
@@ -1121,10 +1205,19 @@ class AlertViewSet(viewsets.ViewSet):
             'severity': alert.severity,
             'status': alert.status
         }
-        
+
+        # Block deletion if any assignments exist — evidence must be preserved
+        from apps.accounts.models import InspectorAssignment
+        if InspectorAssignment.objects.filter(alert=alert).exists():
+            return Response(
+                {'error': 'Cannot delete an alert that has inspector assignments. '
+                          'Resolve or reassign all assignments first.'},
+                status=409
+            )
+
         alert.delete()
         _audit(request.user, 'alert.delete', alert.id, alert_info=alert_info)
-        
+
         return Response({'message': 'Alert deleted successfully.'})
 
     @action(detail=False, methods=['post'])
@@ -1252,8 +1345,7 @@ class AlertViewSet(viewsets.ViewSet):
         else:
             updated = qs.update(status=verb)
 
-        from django.core.cache import cache
-        cache.delete_many([f'dashboard_stats_{w}_{td}' for w in range(2, 53) for td in (7, 30, 90, 365)])
+        _invalidate_stats_cache()
         _audit(request.user, f'alert.bulk_{verb}', '',
                alert_ids=ids, updated=updated)
         return Response({'updated': updated})
@@ -1304,7 +1396,8 @@ class AlertViewSet(viewsets.ViewSet):
             inspector=inspector,
             status=InspectorAssignment.Status.PENDING,
         ).count()
-        if current_pending >= max_pending:
+        remaining_capacity = max_pending - current_pending
+        if remaining_capacity <= 0:
             return Response({
                 'error': f'Inspector already has {current_pending} pending assignment(s) (maximum {max_pending}).'
             }, status=400)
@@ -1342,6 +1435,10 @@ class AlertViewSet(viewsets.ViewSet):
         else:
             alerts = [item[0] for item in with_coords] + without_coords
 
+        # Cap the list to the inspector's remaining capacity (partial success)
+        skipped = max(0, len(alerts) - remaining_capacity)
+        alerts = alerts[:remaining_capacity]
+
         created = 0
         with transaction.atomic():
             for alert in alerts:
@@ -1358,8 +1455,7 @@ class AlertViewSet(viewsets.ViewSet):
                        inspector=inspector_username)
                 created += 1
 
-        from django.core.cache import cache
-        cache.delete_many([f'dashboard_stats_{w}_{td}' for w in range(2, 53) for td in (7, 30, 90, 365)])
+        _invalidate_stats_cache()
 
         # Push a single in-app notification summarising all newly assigned alerts
         try:
@@ -1375,7 +1471,13 @@ class AlertViewSet(viewsets.ViewSet):
         except Exception:
             pass
 
-        return Response({'assigned': created, 'inspector': inspector_username})
+        response_data = {'assigned': created, 'inspector': inspector_username}
+        if skipped:
+            response_data['skipped'] = skipped
+            response_data['warning'] = (
+                f'{skipped} alert(s) not assigned — inspector quota reached ({max_pending} max).'
+            )
+        return Response(response_data)
 
 
 from django.contrib.auth.decorators import login_required

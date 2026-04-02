@@ -58,7 +58,10 @@ def auto_scan_control(request):
 @login_required
 def auto_scan(request):
     """Render the detailed Auto Scan page (agency_admin). Redirect system_admin."""
-    if hasattr(request.user, 'profile') and request.user.profile.role == 'system_admin':
+    if not (hasattr(request.user, 'profile') and request.user.profile.role in ('system_admin', 'agency_admin')):
+        from django.shortcuts import redirect
+        return redirect('dashboard:home')
+    if request.user.profile.role == 'system_admin':
         from django.shortcuts import redirect
         return redirect('scanning:auto_scan_control')
     config = AutoScanConfig.get()
@@ -478,7 +481,20 @@ class ScanningDetectionsAPI(View):
         # Order by detection_date DESC so recently-confirmed sites (including
         # deduplicated ones whose detection_date was updated today) appear first
         # and are not cut off by the limit.
-        sites = qs.select_related('job', 'region').order_by('-detection_date', '-confidence_score')[:limit]
+        from django.db.models import Subquery, OuterRef
+        from apps.detections.models import Region as _Region
+        _district_parent = Subquery(
+            _Region.objects.filter(
+                geometry__contains=OuterRef('centroid'),
+                is_active=True,
+                region_type='admin_district',
+            ).values('district')[:1]
+        )
+        sites = (
+            qs.annotate(_district_parent=_district_parent)
+            .select_related('job')
+            .order_by('-detection_date', '-confidence_score')
+        )[:limit]
 
         media = django_settings.MEDIA_URL
 
@@ -511,7 +527,7 @@ class ScanningDetectionsAPI(View):
                     'area_hectares':    round(site.area_hectares, 2),
                     'legal_status':     site.legal_status,
                     'detection_date':   str(site.detection_date),
-                    'region':           site.region.name if site.region else None,
+                    'region':           site._district_parent or None,
                     'patch_images':     patch_images,
                     'google_earth_url': (
                         f'https://earth.google.com/web/@{lat:.6f},{lng:.6f},500a,400d,35y,0h,0t,0r'
@@ -647,7 +663,7 @@ class ScanningForceScanAPI(View):
             return JsonResponse({'job_id': str(job.id), 'tile': tile.name})
         except Exception as exc:
             logger.error(f'Force scan failed for tile {tile_id}: {exc}')
-            return JsonResponse({'error': str(exc)}, status=500)
+            return JsonResponse({'error': 'Failed to queue scan. Check server logs for details.'}, status=500)
 
 
 @method_decorator(login_required, name='dispatch')
@@ -664,10 +680,19 @@ class ScanningExportAPI(View):
         fmt   = request.GET.get('format', 'geojson').lower()
         today = timezone.now().date()
 
+        from django.db.models import Subquery, OuterRef
+        from apps.detections.models import Region as _Region
+        _district_parent = Subquery(
+            _Region.objects.filter(
+                geometry__contains=OuterRef('centroid'),
+                is_active=True,
+                region_type='admin_district',
+            ).values('district')[:1]
+        )
         sites = (
             DetectedSite.objects
             .filter(job__source='automated', detection_date=today, centroid__isnull=False)
-            .select_related('region')
+            .annotate(_district_parent=_district_parent)
             .order_by('-detection_date', '-confidence_score')
         )
 
@@ -686,7 +711,7 @@ class ScanningExportAPI(View):
                     round(site.area_hectares, 2),
                     site.legal_status,
                     str(site.detection_date),
-                    site.region.name if site.region else '',
+                    site._district_parent or '',
                 ])
             response = HttpResponse(output.getvalue(), content_type='text/csv')
             response['Content-Disposition'] = f'attachment; filename="{filename_base}.csv"'
@@ -705,7 +730,7 @@ class ScanningExportAPI(View):
                     'area_hectares':   round(site.area_hectares, 2),
                     'legal_status':    site.legal_status,
                     'detection_date':  str(site.detection_date),
-                    'region':          site.region.name if site.region else None,
+                    'region':          site._district_parent or None,
                 },
             })
 

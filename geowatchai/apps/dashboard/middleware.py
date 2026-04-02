@@ -17,7 +17,6 @@ class RoleBasedAccessMiddleware:
             '/analysis/',
             '/dashboard/alerts/',
             '/dashboard/model-insights/',
-            '/dashboard/settings/',
             '/dashboard/users/',
             '/uploads/',
             '/jobs/',

@@ -20,7 +20,8 @@ class JobService:
                   preprocessing_version: str = "v1.0.0",
                   source: str = "manual",
                   scan_tile_id: Optional[str] = None,
-                  organisation=None) -> Job:
+                  organisation=None,
+                  created_by=None) -> Job:
         """
         Create a new detection job with AOI deduplication
         
@@ -73,6 +74,7 @@ class JobService:
                 source=source,
                 scan_tile_id=scan_tile_id,
                 organisation=organisation,
+                created_by=created_by,
             )
             
             logger.info(f"Created new job {job.id} with status {job.status}")

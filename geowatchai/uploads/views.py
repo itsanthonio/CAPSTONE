@@ -19,25 +19,15 @@ class DataUploadsView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         try:
-            from apps.detections.models import LegalConcession, Region
+            from apps.detections.models import LegalConcession
             concession_count = LegalConcession.objects.count()
-            water_count = Region.objects.filter(region_type='water_body').count()
-            forest_count = Region.objects.filter(region_type='protected_forest').count()
         except Exception:
-            concession_count = water_count = forest_count = 0
-
-        try:
-            district_count = Region.objects.filter(region_type='admin_district').count()
-        except Exception:
-            district_count = 0
+            concession_count = 0
 
         context.update({
             'settings': settings,
             'page_title': 'Data Uploads',
             'concession_count': concession_count,
-            'water_count': water_count,
-            'forest_count': forest_count,
-            'district_count': district_count,
         })
         return context
 
@@ -85,94 +75,98 @@ class UploadConcessionsView(LoginRequiredMixin, View):
 
         try:
             geojson = _parse_geojson(upload)
-        except Exception as e:
-            return JsonResponse({'error': f'Could not parse file: {e}'}, status=400)
+        except Exception:
+            return JsonResponse({'error': 'Could not parse file: invalid or unsupported format.'}, status=400)
 
         features = geojson.get('features', [])
         if not features:
             return JsonResponse({'error': 'GeoJSON has no features.'}, status=400)
 
         from apps.detections.models import LegalConcession, DetectedSite
-
-        # Clear and reimport
-        LegalConcession.objects.all().delete()
+        from django.db import transaction
 
         imported = 0
         skipped = 0
-        for feat in features:
-            props = feat.get('properties') or {}
-            raw_geom = feat.get('geometry')
-            if not raw_geom:
-                skipped += 1
-                continue
 
-            try:
-                geom = _to_multipolygon(GEOSGeometry(json.dumps(raw_geom), srid=4326))
-            except Exception:
-                skipped += 1
-                continue
-            if geom is None:
-                skipped += 1
-                continue
+        with transaction.atomic():
+            # Clear and reimport — all within a single transaction so a
+            # mid-import failure rolls back the delete automatically.
+            LegalConcession.objects.all().delete()
 
-            # Try common GeoJSON property name variants
-            def get_prop(*keys):
-                for k in keys:
-                    v = props.get(k) or props.get(k.lower()) or props.get(k.upper())
-                    if v:
-                        return str(v).strip()
-                return ''
+            for feat in features:
+                props = feat.get('properties') or {}
+                raw_geom = feat.get('geometry')
+                if not raw_geom:
+                    skipped += 1
+                    continue
 
-            license_number = get_prop('license_number', 'LicenseNo', 'license_no', 'LICENSE_NO', 'id', 'FID') or f'IMPORT-{imported + 1}'
-            concession_name = get_prop('concession_name', 'Name', 'name', 'ConcessionName', 'CONCESSION') or f'Concession {imported + 1}'
-            holder_name = get_prop('holder_name', 'Holder', 'Company', 'company', 'CompanyName', 'COMPANY') or 'Unknown'
-            license_type = get_prop('license_type', 'LicenseType', 'Type', 'type', 'LICENSE_TYPE') or 'small_scale'
+                try:
+                    geom = _to_multipolygon(GEOSGeometry(json.dumps(raw_geom), srid=4326))
+                except Exception:
+                    skipped += 1
+                    continue
+                if geom is None:
+                    skipped += 1
+                    continue
 
-            # Normalise license type to valid choice
-            lt_map = {
-                'large': 'large_scale', 'large_scale': 'large_scale',
-                'small': 'small_scale', 'small_scale': 'small_scale',
-                'exploration': 'exploration', 'reconnaissance': 'reconnaissance',
-            }
-            license_type = lt_map.get(license_type.lower().replace(' ', '_'), 'small_scale')
+                # Try common GeoJSON property name variants
+                def get_prop(*keys):
+                    for k in keys:
+                        v = props.get(k) or props.get(k.lower()) or props.get(k.upper())
+                        if v:
+                            return str(v).strip()
+                    return ''
 
-            try:
-                LegalConcession.objects.create(
-                    license_number=license_number,
-                    concession_name=concession_name,
-                    holder_name=holder_name,
-                    license_type=license_type,
-                    geometry=geom,
-                    is_active=True,
-                    data_source='minerals_commission',
-                )
-                imported += 1
-            except Exception:
-                # Duplicate license_number — skip
-                skipped += 1
-                continue
+                license_number = get_prop('license_number', 'LicenseNo', 'license_no', 'LICENSE_NO', 'id', 'FID') or f'IMPORT-{imported + 1}'
+                concession_name = get_prop('concession_name', 'Name', 'name', 'ConcessionName', 'CONCESSION') or f'Concession {imported + 1}'
+                holder_name = get_prop('holder_name', 'Holder', 'Company', 'company', 'CompanyName', 'COMPANY') or 'Unknown'
+                license_type = get_prop('license_type', 'LicenseType', 'Type', 'type', 'LICENSE_TYPE') or 'small_scale'
 
-        # Rerun spatial join for all detected sites
-        updated_legal = 0
-        updated_illegal = 0
-        sites = list(DetectedSite.objects.all().select_related('intersecting_concession'))
-        for site in sites:
-            if not site.geometry:
-                continue
-            match = LegalConcession.objects.filter(
-                geometry__intersects=site.geometry,
-                is_active=True
-            ).first()
-            if match:
-                site.legal_status = DetectedSite.LegalStatus.LEGAL
-                site.intersecting_concession = match
-                updated_legal += 1
-            else:
-                site.legal_status = DetectedSite.LegalStatus.ILLEGAL
-                site.intersecting_concession = None
-                updated_illegal += 1
+                # Normalise license type to valid choice
+                lt_map = {
+                    'large': 'large_scale', 'large_scale': 'large_scale',
+                    'small': 'small_scale', 'small_scale': 'small_scale',
+                    'exploration': 'exploration', 'reconnaissance': 'reconnaissance',
+                }
+                license_type = lt_map.get(license_type.lower().replace(' ', '_'), 'small_scale')
 
-        DetectedSite.objects.bulk_update(sites, ['legal_status', 'intersecting_concession'])
+                try:
+                    LegalConcession.objects.create(
+                        license_number=license_number,
+                        concession_name=concession_name,
+                        holder_name=holder_name,
+                        license_type=license_type,
+                        geometry=geom,
+                        is_active=True,
+                        data_source='minerals_commission',
+                    )
+                    imported += 1
+                except Exception:
+                    # Duplicate license_number — skip
+                    skipped += 1
+                    continue
+
+            # Rerun spatial join for all detected sites
+            updated_legal = 0
+            updated_illegal = 0
+            sites = list(DetectedSite.objects.all().select_related('intersecting_concession'))
+            for site in sites:
+                if not site.geometry:
+                    continue
+                match = LegalConcession.objects.filter(
+                    geometry__intersects=site.geometry,
+                    is_active=True
+                ).first()
+                if match:
+                    site.legal_status = DetectedSite.LegalStatus.LEGAL
+                    site.intersecting_concession = match
+                    updated_legal += 1
+                else:
+                    site.legal_status = DetectedSite.LegalStatus.ILLEGAL
+                    site.intersecting_concession = None
+                    updated_illegal += 1
+
+            DetectedSite.objects.bulk_update(sites, ['legal_status', 'intersecting_concession'])
 
         return JsonResponse({
             'success': True,
@@ -202,69 +196,73 @@ class UploadRegionView(LoginRequiredMixin, View):
 
         try:
             geojson = _parse_geojson(upload)
-        except Exception as e:
-            return JsonResponse({'error': f'Could not parse file: {e}'}, status=400)
+        except Exception:
+            return JsonResponse({'error': 'Could not parse file: invalid or unsupported format.'}, status=400)
 
         features = geojson.get('features', [])
         if not features:
             return JsonResponse({'error': 'GeoJSON has no features.'}, status=400)
 
         from apps.detections.models import Region
-
-        # Clear existing regions of this type and reimport
-        Region.objects.filter(region_type=self.region_type).delete()
+        from django.db import transaction
 
         imported = 0
         skipped = 0
-        for i, feat in enumerate(features):
-            props = feat.get('properties') or {}
-            raw_geom = feat.get('geometry')
-            if not raw_geom:
-                skipped += 1
-                continue
 
-            try:
-                geom = GEOSGeometry(json.dumps(raw_geom), srid=4326)
-            except Exception:
-                skipped += 1
-                continue
+        with transaction.atomic():
+            # Clear existing regions of this type and reimport — atomic so a
+            # mid-import failure rolls back the delete.
+            Region.objects.filter(region_type=self.region_type).delete()
 
-            # Region needs a MultiPolygon
-            mp = _to_multipolygon(geom)
-            if mp is None:
-                skipped += 1
-                continue
+            for i, feat in enumerate(features):
+                props = feat.get('properties') or {}
+                raw_geom = feat.get('geometry')
+                if not raw_geom:
+                    skipped += 1
+                    continue
 
-            def get_prop(*keys):
-                for k in keys:
-                    v = props.get(k) or props.get(k.lower()) or props.get(k.upper())
-                    if v:
-                        return str(v).strip()
-                return ''
+                try:
+                    geom = GEOSGeometry(json.dumps(raw_geom), srid=4326)
+                except Exception:
+                    skipped += 1
+                    continue
 
-            name = get_prop('name', 'Name', 'NAME', 'label', 'Label') or f'Region {i + 1}'
-            district = get_prop('district', 'District', 'DISTRICT', 'region', 'Region') or ''
-            notes = get_prop('notes', 'Notes', 'description', 'Description') or ''
+                # Region needs a MultiPolygon
+                mp = _to_multipolygon(geom)
+                if mp is None:
+                    skipped += 1
+                    continue
 
-            # Ensure unique name
-            base_name = name
-            counter = 1
-            while Region.objects.filter(name=name).exists():
-                name = f'{base_name} ({counter})'
-                counter += 1
+                def get_prop(*keys):
+                    for k in keys:
+                        v = props.get(k) or props.get(k.lower()) or props.get(k.upper())
+                        if v:
+                            return str(v).strip()
+                    return ''
 
-            try:
-                Region.objects.create(
-                    name=name,
-                    region_type=self.region_type,
-                    geometry=mp,
-                    district=district,
-                    notes=notes,
-                    is_active=True,
-                )
-                imported += 1
-            except Exception:
-                skipped += 1
+                name = get_prop('name', 'Name', 'NAME', 'label', 'Label') or f'Region {i + 1}'
+                district = get_prop('district', 'District', 'DISTRICT', 'region', 'Region') or ''
+                notes = get_prop('notes', 'Notes', 'description', 'Description') or ''
+
+                # Ensure unique name
+                base_name = name
+                counter = 1
+                while Region.objects.filter(name=name).exists():
+                    name = f'{base_name} ({counter})'
+                    counter += 1
+
+                try:
+                    Region.objects.create(
+                        name=name,
+                        region_type=self.region_type,
+                        geometry=mp,
+                        district=district,
+                        notes=notes,
+                        is_active=True,
+                    )
+                    imported += 1
+                except Exception:
+                    skipped += 1
 
         return JsonResponse({
             'success': True,
@@ -296,61 +294,65 @@ class UploadDistrictsView(LoginRequiredMixin, View):
 
         try:
             geojson = _parse_geojson(upload)
-        except Exception as e:
-            return JsonResponse({'error': f'Could not parse file: {e}'}, status=400)
+        except Exception:
+            return JsonResponse({'error': 'Could not parse file: invalid or unsupported format.'}, status=400)
 
         features = geojson.get('features', [])
         if not features:
             return JsonResponse({'error': 'GeoJSON has no features.'}, status=400)
 
         from apps.detections.models import Region
-
-        Region.objects.filter(region_type='admin_district').delete()
+        from django.db import transaction
 
         imported = skipped = 0
-        for i, feat in enumerate(features):
-            props = feat.get('properties') or {}
-            raw_geom = feat.get('geometry')
-            if not raw_geom:
-                skipped += 1
-                continue
 
-            raw_name   = props.get('DISTRICT') or props.get('name') or props.get('NAME') or ''
-            raw_region = props.get('Region_19') or props.get('REGION') or props.get('region') or ''
+        with transaction.atomic():
+            # Atomic: if any unrecoverable error occurs, the delete is rolled back.
+            Region.objects.filter(region_type='admin_district').delete()
 
-            if not raw_name.strip():
-                skipped += 1
-                continue
+            for i, feat in enumerate(features):
+                props = feat.get('properties') or {}
+                raw_geom = feat.get('geometry')
+                if not raw_geom:
+                    skipped += 1
+                    continue
 
-            name   = _title(raw_name)
-            parent = _title(raw_region)
+                raw_name   = props.get('DISTRICT') or props.get('name') or props.get('NAME') or ''
+                raw_region = props.get('Region_19') or props.get('REGION') or props.get('region') or ''
 
-            try:
-                geom = _to_multipolygon(GEOSGeometry(json.dumps(raw_geom), srid=4326))
-            except Exception:
-                skipped += 1
-                continue
-            if geom is None:
-                skipped += 1
-                continue
+                if not raw_name.strip():
+                    skipped += 1
+                    continue
 
-            # Ensure unique name
-            base_name, counter = name, 1
-            while Region.objects.filter(name=name).exists():
-                name = f'{base_name} ({counter})'
-                counter += 1
+                name   = _title(raw_name)
+                parent = _title(raw_region)
 
-            try:
-                Region.objects.create(
-                    name=name,
-                    region_type='admin_district',
-                    district=parent,
-                    geometry=geom,
-                    is_active=True,
-                )
-                imported += 1
-            except Exception:
-                skipped += 1
+                try:
+                    geom = _to_multipolygon(GEOSGeometry(json.dumps(raw_geom), srid=4326))
+                except Exception:
+                    skipped += 1
+                    continue
+                if geom is None:
+                    skipped += 1
+                    continue
+
+                # Ensure unique name
+                base_name, counter = name, 1
+                while Region.objects.filter(name=name).exists():
+                    name = f'{base_name} ({counter})'
+                    counter += 1
+
+                try:
+                    Region.objects.create(
+                        name=name,
+                        region_type='admin_district',
+                        district=parent,
+                        geometry=geom,
+                        is_active=True,
+                    )
+                    imported += 1
+                except Exception:
+                    skipped += 1
 
         return JsonResponse({
             'success': True,

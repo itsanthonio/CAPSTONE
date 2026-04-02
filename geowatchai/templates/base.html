@@ -646,6 +646,20 @@
 
         <!-- ── Main Content ─────────────────────────────────── -->
         <main class="flex-1 ml-55" id="main-content" tabindex="-1">
+            {% if messages %}
+            <div id="base-messages" class="px-6 pt-4 space-y-2">
+                {% for msg in messages %}
+                <div class="flex items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm
+                            {% if msg.tags == 'error' %}base-msg-error{% elif msg.tags == 'success' %}base-msg-success{% else %}base-msg-info{% endif %}"
+                     style="{% if msg.tags == 'error' %}background:var(--status-critical-bg);border:1px solid var(--status-critical-border);color:var(--status-critical);{% elif msg.tags == 'success' %}background:var(--status-resolved-bg);border:1px solid var(--status-resolved-border);color:var(--status-resolved);{% else %}background:var(--status-info-bg);border:1px solid var(--status-info-border);color:var(--status-info);{% endif %}">
+                    <span>{{ msg }}</span>
+                    <button onclick="this.parentElement.remove()"
+                            class="shrink-0 opacity-60 hover:opacity-100 transition-opacity text-lg leading-none"
+                            aria-label="Dismiss">&times;</button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
             {% block content %}
             {% endblock %}
         </main>

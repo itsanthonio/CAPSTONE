@@ -1,3 +1,5 @@
+import logging
+
 from django.shortcuts import render
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -8,6 +10,8 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 from django.conf import settings
 from apps.accounts.models import UserProfile
+
+logger = logging.getLogger(__name__)
 
 
 def is_admin(user):
@@ -60,10 +64,9 @@ class AnalysisView(LoginRequiredMixin, TemplateView):
         return context
 
 def analysis_view(request):
-    """Geospatial analysis and tools view"""
-    
-    view = AnalysisView()
-    return view.get(request)
+    """Geospatial analysis and tools view — delegates through dispatch so all
+    decorators (login_required, user_passes_test) are correctly enforced."""
+    return AnalysisView.as_view()(request)
 
 class LiveMapView(LoginRequiredMixin, TemplateView):
     template_name = 'analysis/live_map.html'
@@ -122,9 +125,10 @@ def run_hls_inference(request):
             return JsonResponse(response_data)
             
         except Exception as e:
+            logger.error(f'HLS inference failed: {e}')
             return JsonResponse({
                 'status': 'error',
-                'message': f'HLS inference failed: {str(e)}'
+                'message': 'HLS inference failed. Check server logs for details.'
             }, status=500)
     
     return JsonResponse({

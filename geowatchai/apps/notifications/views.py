@@ -43,11 +43,13 @@ def notification_mark_read(request):
     try:
         body = json.loads(request.body or '{}')
     except (json.JSONDecodeError, ValueError):
-        body = {}
+        return JsonResponse({'ok': False, 'error': 'Invalid JSON'}, status=400)
 
     ids = body.get('ids')
     qs = NotificationInbox.objects.filter(user=request.user, is_read=False)
-    if ids:
+    if ids is not None:
+        if not isinstance(ids, list):
+            return JsonResponse({'ok': False, 'error': 'ids must be a list'}, status=400)
         qs = qs.filter(id__in=ids)
     updated = qs.update(is_read=True)
     return JsonResponse({'ok': True, 'updated': updated})

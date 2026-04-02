@@ -51,7 +51,8 @@ def inspector_list(request):
         serializer = InspectorSerializer(qs, many=True)
         return Response(serializer.data)
     except Exception as e:
-        return Response({'error': str(e), 'inspectors': []}, status=500)
+        logger.exception('inspector_list failed')
+        return Response({'error': 'Failed to retrieve inspectors.', 'inspectors': []}, status=500)
 
 
 @api_view(['POST'])
@@ -100,14 +101,28 @@ def create_assignment(request):
         from django.utils import timezone as _tz
         due_date = (_tz.now() + timedelta(days=sla_days)).date()
 
-        # Create assignment
-        assignment = InspectorAssignment.objects.create(
-            alert_id=alert_id,
-            inspector=inspector,
-            status=InspectorAssignment.Status.PENDING,
-            notes=notes,
-            due_date=due_date,
-        )
+        # Create assignment (guard unique_together constraint)
+        from django.db import IntegrityError
+        try:
+            assignment, created = InspectorAssignment.objects.get_or_create(
+                alert_id=alert_id,
+                inspector=inspector,
+                defaults={
+                    'status': InspectorAssignment.Status.PENDING,
+                    'notes': notes,
+                    'due_date': due_date,
+                },
+            )
+            if not created:
+                return Response({
+                    'success': False,
+                    'error': 'This inspector is already assigned to this alert.'
+                }, status=status.HTTP_409_CONFLICT)
+        except IntegrityError:
+            return Response({
+                'success': False,
+                'error': 'This inspector is already assigned to this alert.'
+            }, status=status.HTTP_409_CONFLICT)
         
         # Update the alert status to dispatched
         alert = None
@@ -147,9 +162,10 @@ def create_assignment(request):
         }, status=status.HTTP_201_CREATED)
     
     except Exception as e:
+        logger.exception('create_assignment failed')
         return Response({
             'success': False,
-            'error': str(e)
+            'error': 'Assignment could not be created.'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -210,11 +226,12 @@ def delete_assignment(request, assignment_id):
                     'error': 'Assignment not found or you do not have permission to delete it'
                 }, status=status.HTTP_404_NOT_FOUND)
         
-        # Get the alert to unassign the inspector
+        # Unassign inspector and revert alert to open
         alert = assignment.alert
         alert.assigned_to = None
-        alert.save()
-        
+        alert.status = 'open'
+        alert.save(update_fields=['assigned_to', 'status'])
+
         # Delete the assignment
         assignment.delete()
         
@@ -228,9 +245,10 @@ def delete_assignment(request, assignment_id):
             'error': 'Assignment not found or you do not have permission to delete it'
         }, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
+        logger.exception('delete_assignment failed')
         return Response({
             'success': False,
-            'error': str(e)
+            'error': 'Assignment could not be deleted.'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -307,9 +325,10 @@ def update_user_preferences(request):
         })
         
     except Exception as e:
+        logger.exception('update_user_preferences failed')
         return Response({
             'success': False,
-            'error': str(e)
+            'error': 'Preferences could not be updated.'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -368,10 +387,11 @@ def system_config(request):
             cfg.max_pending_assignments = val
         cfg.save()
         return Response({'success': True, 'sla_days': cfg.sla_days, 'max_pending_assignments': cfg.max_pending_assignments})
-    except (ValueError, TypeError) as e:
-        return Response({'success': False, 'error': str(e)}, status=400)
-    except Exception as e:
-        return Response({'success': False, 'error': str(e)}, status=500)
+    except (ValueError, TypeError):
+        return Response({'success': False, 'error': 'Invalid number format.'}, status=400)
+    except Exception:
+        logger.exception('system_config update failed')
+        return Response({'success': False, 'error': 'Configuration could not be saved.'}, status=500)
 
 
 @api_view(['POST'])
@@ -399,7 +419,8 @@ def update_org_config(request, org_id):
             'sla_days_override': org.sla_days_override,
             'max_pending_override': org.max_pending_override,
         })
-    except (ValueError, TypeError) as e:
-        return Response({'success': False, 'error': str(e)}, status=400)
-    except Exception as e:
-        return Response({'success': False, 'error': str(e)}, status=500)
+    except (ValueError, TypeError):
+        return Response({'success': False, 'error': 'Invalid number format.'}, status=400)
+    except Exception:
+        logger.exception('update_org_config failed')
+        return Response({'success': False, 'error': 'Organisation config could not be saved.'}, status=500)

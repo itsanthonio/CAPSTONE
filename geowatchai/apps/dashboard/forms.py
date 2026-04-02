@@ -30,21 +30,3 @@ class CustomUserCreationForm(UserCreationForm):
             self.fields[fieldname].help_text = None
 
 
-class RoleBasedLoginForm(forms.Form):
-    username = forms.CharField(max_length=150)
-    password = forms.CharField(widget=forms.PasswordInput)
-    role = forms.ChoiceField(
-        choices=[
-            ('agency_admin', 'Agency Administrator'),
-            ('inspector', 'Inspector'),
-        ],
-        required=False,
-        widget=forms.RadioSelect,
-        help_text="Select your role for this session"
-    )
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['username'].widget.attrs.update({'placeholder': 'Enter your username'})
-        self.fields['password'].widget.attrs.update({'placeholder': 'Enter your password'})
-        self.fields['role'].widget.attrs.update({'class': 'space-y-2'})

@@ -16,12 +16,29 @@ Recipients are filtered by UserProfile.receive_email_alerts = True.
 """
 
 import logging
+from html import escape as _esc
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
 APP_NAME = getattr(settings, 'APP_NAME', 'SankofaWatch')
+
+
+def _get_site_region(site):
+    """Return the Ghana region name for a site via spatial lookup against admin_district records."""
+    if not site or not getattr(site, 'centroid', None):
+        return '—'
+    try:
+        from apps.detections.models import Region
+        dist_obj = Region.objects.filter(
+            geometry__contains=site.centroid,
+            is_active=True,
+            region_type='admin_district',
+        ).values('district').first()
+        return (dist_obj['district'] or '—') if dist_obj else '—'
+    except Exception:
+        return '—'
 
 # ─────────────────────────────────────────────
 # HTML primitives
@@ -323,7 +340,7 @@ def send_scan_failed(job):
             ('Start date', str(job.start_date)),
             ('End date',   str(job.end_date)),
             ('Source',     source_label),
-            ('Reason',     f'<span style="color:#dc2626;">{reason}</span>'),
+            ('Reason',     f'<span style="color:#dc2626;">{_esc(reason)}</span>'),
         ])
         + _cta_button(_site_url('/dashboard/home/'), 'Go to Dashboard &rarr;')
     )
@@ -371,7 +388,7 @@ def send_field_report_received(assignment, alert):
     site = getattr(alert, 'detected_site', None)
     area = f'{site.area_hectares:.2f} ha' if site else '—'
     conf = f'{site.confidence_score:.0%}' if site else '—'
-    region = site.region.name if site and site.region else '—'
+    region = _get_site_region(site)
 
     OUTCOME_BADGE = {
         'mining_confirmed': _badge('Mining Confirmed', '#991b1b', '#fef2f2'),
@@ -384,17 +401,17 @@ def send_field_report_received(assignment, alert):
 
     body = (
         _heading('Field Report Submitted')
-        + _subheading(f'Inspector: {inspector_name} &nbsp;·&nbsp; Visit date: {visit_date}')
+        + _subheading(f'Inspector: {_esc(inspector_name)} &nbsp;·&nbsp; Visit date: {_esc(visit_date)}')
         + f'<div style="margin-bottom:20px;">Outcome: &nbsp;{outcome_badge}</div>'
         + _divider()
         + _detail_table([
-            ('Inspector',  inspector_name),
-            ('Visit date', visit_date),
-            ('Region',     region),
-            ('Area',       area),
-            ('Confidence', conf),
+            ('Inspector',  _esc(inspector_name)),
+            ('Visit date', _esc(visit_date)),
+            ('Region',     _esc(region)),
+            ('Area',       _esc(area)),
+            ('Confidence', _esc(conf)),
         ])
-        + _notes_block(notes)
+        + _notes_block(_esc(notes))
         + _cta_button(_site_url('/dashboard/alerts/'), 'View Alert &rarr;')
     )
 
@@ -432,7 +449,7 @@ def send_new_assignment(assignment, alert):
     severity = alert.get_severity_display() if alert else '—'
     area     = f'{site.area_hectares:.2f} ha' if site else '—'
     conf     = f'{site.confidence_score:.0%}' if site else '—'
-    region   = site.region.name if site and site.region else '—'
+    region   = _get_site_region(site)
 
     centroid = site.centroid if site else None
     coords   = (
@@ -453,17 +470,17 @@ def send_new_assignment(assignment, alert):
     subject = f'New Field Assignment — {severity} Alert | {APP_NAME}'
 
     body = (
-        f'<p style="margin:0 0 4px;font-size:15px;color:#374151;">Hello <strong>{inspector_name}</strong>,</p>'
+        f'<p style="margin:0 0 4px;font-size:15px;color:#374151;">Hello <strong>{_esc(inspector_name)}</strong>,</p>'
         + '<p style="margin:0 0 24px;font-size:14px;color:#6b7280;">You have been assigned a new field verification task. Please review the details below and visit the site as soon as possible.</p>'
         + f'<div style="margin-bottom:20px;">Alert severity: &nbsp;{severity_badge}</div>'
         + _divider()
         + _detail_table([
-            ('Region',      region),
+            ('Region',      _esc(region)),
             ('Coordinates', coords),
-            ('Area',        area),
-            ('Confidence',  conf),
+            ('Area',        _esc(area)),
+            ('Confidence',  _esc(conf)),
         ])
-        + _notes_block(notes)
+        + _notes_block(_esc(notes))
         + _alert_box('Please visit the site and submit your field verification report promptly.', 'info')
         + _cta_button(_site_url('/dashboard/inspector/'), 'Open My Dashboard &rarr;')
     )
@@ -503,13 +520,13 @@ def send_assignment_reminder(assignment, alert, days_pending):
 
     site     = getattr(alert, 'detected_site', None) if alert else None
     severity = alert.get_severity_display() if alert else '—'
-    region   = site.region.name if site and site.region else '—'
+    region   = _get_site_region(site)
     assigned = assignment.assigned_at.strftime('%d %b %Y') if assignment.assigned_at else '—'
 
     subject = f'Reminder: Field Report Pending ({days_pending} days) | {APP_NAME}'
 
     body = (
-        f'<p style="margin:0 0 4px;font-size:15px;color:#374151;">Hello <strong>{inspector_name}</strong>,</p>'
+        f'<p style="margin:0 0 4px;font-size:15px;color:#374151;">Hello <strong>{_esc(inspector_name)}</strong>,</p>'
         + '<p style="margin:0 0 24px;font-size:14px;color:#6b7280;">This is a reminder that you have a pending field assignment that has not yet been completed.</p>'
         + _alert_box(
             f'This assignment has been pending for <strong>{days_pending} day{"s" if days_pending != 1 else ""}</strong>. '
@@ -517,10 +534,10 @@ def send_assignment_reminder(assignment, alert, days_pending):
             'warning'
         )
         + _detail_table([
-            ('Assigned on',     assigned),
+            ('Assigned on',     _esc(assigned)),
             ('Days pending',    str(days_pending)),
-            ('Alert severity',  severity),
-            ('Region',          region),
+            ('Alert severity',  _esc(severity)),
+            ('Region',          _esc(region)),
         ])
         + _cta_button(_site_url('/dashboard/inspector/'), 'Submit Field Report &rarr;')
     )
@@ -560,24 +577,24 @@ def send_sla_reminder(assignment, alert, days_overdue):
 
     site     = getattr(alert, 'detected_site', None) if alert else None
     severity = alert.get_severity_display() if alert else '—'
-    region   = site.region.name if site and site.region else '—'
+    region   = _get_site_region(site)
     due      = assignment.due_date.strftime('%d %b %Y') if assignment.due_date else '—'
 
     subject = f'Action Required: Field Assignment Overdue ({days_overdue} day{"s" if days_overdue != 1 else ""}) | {APP_NAME}'
 
     body = (
-        f'<p style="margin:0 0 4px;font-size:15px;color:#374151;">Hello <strong>{inspector_name}</strong>,</p>'
+        f'<p style="margin:0 0 4px;font-size:15px;color:#374151;">Hello <strong>{_esc(inspector_name)}</strong>,</p>'
         + '<p style="margin:0 0 24px;font-size:14px;color:#6b7280;">Your field assignment has passed its deadline. Please submit your report immediately.</p>'
         + _alert_box(
             f'This assignment is <strong>{days_overdue} day{"s" if days_overdue != 1 else ""} overdue</strong> '
-            f'(deadline was <strong>{due}</strong>). Failure to submit will trigger an escalation.',
+            f'(deadline was <strong>{_esc(due)}</strong>). Failure to submit will trigger an escalation.',
             'danger'
         )
         + _detail_table([
-            ('Deadline',        due),
+            ('Deadline',        _esc(due)),
             ('Days overdue',    str(days_overdue)),
-            ('Alert severity',  severity),
-            ('Region',          region),
+            ('Alert severity',  _esc(severity)),
+            ('Region',          _esc(region)),
         ])
         + _cta_button(_site_url('/dashboard/inspector/'), 'Submit Field Report Now &rarr;')
     )
@@ -622,7 +639,7 @@ def send_sla_escalation(assignment, alert, days_overdue):
 
     site     = getattr(alert, 'detected_site', None) if alert else None
     severity = alert.get_severity_display() if alert else '—'
-    region   = site.region.name if site and site.region else '—'
+    region   = _get_site_region(site)
     due      = assignment.due_date.strftime('%d %b %Y') if assignment.due_date else '—'
     assigned = assignment.assigned_at.strftime('%d %b %Y') if assignment.assigned_at else '—'
 
@@ -630,20 +647,20 @@ def send_sla_escalation(assignment, alert, days_overdue):
 
     body = (
         _heading('SLA Breach — Inspector Assignment Escalated')
-        + _subheading(f'Inspector: {inspector_name} &nbsp;·&nbsp; {days_overdue} days overdue')
+        + _subheading(f'Inspector: {_esc(inspector_name)} &nbsp;·&nbsp; {days_overdue} days overdue')
         + _alert_box(
-            f'<strong>{inspector_name}</strong> ({inspector_username}) has not submitted their field report. '
+            f'<strong>{_esc(inspector_name)}</strong> ({_esc(inspector_username)}) has not submitted their field report. '
             f'The assignment is <strong>{days_overdue} day{"s" if days_overdue != 1 else ""} past deadline</strong>. '
             f'Please follow up or reassign.',
             'danger'
         )
         + _detail_table([
-            ('Inspector',    f'{inspector_name} ({inspector_username})'),
-            ('Assigned on',  assigned),
-            ('Deadline',     due),
+            ('Inspector',    f'{_esc(inspector_name)} ({_esc(inspector_username)})'),
+            ('Assigned on',  _esc(assigned)),
+            ('Deadline',     _esc(due)),
             ('Days overdue', str(days_overdue)),
-            ('Severity',     severity),
-            ('Region',       region),
+            ('Severity',     _esc(severity)),
+            ('Region',       _esc(region)),
         ])
         + _cta_button(_site_url('/dashboard/alerts/'), 'View Alerts &rarr;')
     )

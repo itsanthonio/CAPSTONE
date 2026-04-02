@@ -7,7 +7,7 @@ from .models import UserProfile, UserPreferences
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
-        UserProfile.objects.create(user=instance)
+        UserProfile.objects.get_or_create(user=instance)
 
 
 @receiver(post_save, sender=User)
@@ -19,7 +19,7 @@ def save_user_profile(sender, instance, **kwargs):
 @receiver(post_save, sender=User)
 def create_user_preferences(sender, instance, created, **kwargs):
     if created:
-        UserPreferences.objects.create(user=instance)
+        UserPreferences.objects.get_or_create(user=instance)
 
 
 @receiver(post_save, sender=User)

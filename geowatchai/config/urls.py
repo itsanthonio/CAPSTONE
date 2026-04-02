@@ -32,7 +32,9 @@ from apps.dashboard.views import (
 @login_required
 def protected_media(request, path):
     """Serve media files only to authenticated users.
-    Prevents unauthenticated access to evidence photos and other uploads."""
+    Prevents unauthenticated access to evidence photos and other uploads.
+    Evidence photos (inspections/<assignment_id>/...) are only served to the
+    owning inspector, system admins, and agency admins."""
     media_root = os.path.realpath(settings.MEDIA_ROOT)
     full_path  = os.path.realpath(os.path.join(media_root, path))
     # Block path traversal (e.g. ../../etc/passwd)
@@ -40,6 +42,20 @@ def protected_media(request, path):
         return HttpResponseForbidden()
     if not os.path.isfile(full_path):
         raise Http404
+
+    # Ownership check for evidence photos
+    parts = path.replace('\\', '/').split('/')
+    if parts[0] == 'inspections' and len(parts) >= 2:
+        assignment_id = parts[1]
+        try:
+            from apps.accounts.models import InspectorAssignment, UserProfile
+            profile = request.user.profile
+            if profile.role not in ('system_admin', 'agency_admin'):
+                # Inspector may only access their own assignment's photos
+                InspectorAssignment.objects.get(id=assignment_id, inspector=profile)
+        except Exception:
+            return HttpResponseForbidden()
+
     content_type, _ = mimetypes.guess_type(full_path)
     return FileResponse(
         open(full_path, 'rb'),

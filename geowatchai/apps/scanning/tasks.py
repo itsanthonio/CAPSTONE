@@ -12,6 +12,23 @@ from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
+
+def _get_site_region(site):
+    """Return the Ghana region name for a site via spatial lookup against admin_district records."""
+    if not site or not getattr(site, 'centroid', None):
+        return 'Unknown region'
+    try:
+        from apps.detections.models import Region
+        dist_obj = Region.objects.filter(
+            geometry__contains=site.centroid,
+            is_active=True,
+            region_type='admin_district',
+        ).values('district').first()
+        return (dist_obj['district'] or 'Unknown region') if dist_obj else 'Unknown region'
+    except Exception:
+        return 'Unknown region'
+
+
 # Tiered scanning strategy:
 #   Tier 1 — never-scanned tiles (any priority) — always first
 #   Tier 2 — hotspot tiles not scanned in the last HOTSPOT_COOLDOWN_HOURS hours
@@ -180,13 +197,14 @@ def automated_scan_daily_digest():
     today = timezone.now().date()
     site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
 
-    # Automated alerts created today
+    # Automated alerts created today (exclude dismissed/resolved — not actionable)
     alerts = (
         Alert.objects
         .filter(
             created_at__date=today,
             detected_site__job__source='automated',
         )
+        .exclude(status__in=[Alert.AlertStatus.DISMISSED, Alert.AlertStatus.RESOLVED])
         .select_related('detected_site', 'detected_site__region')
         .order_by('-severity', '-created_at')
     )
@@ -208,7 +226,7 @@ def automated_scan_daily_digest():
     )
     detail_lines = '\n'.join(
         f"  - {a.title} | {a.detected_site.area_hectares:.1f} ha | "
-        f"{a.detected_site.region.name if a.detected_site.region else 'Unknown region'} | "
+        f"{_get_site_region(a.detected_site)} | "
         f"{a.get_severity_display()}"
         for a in alerts[:30]  # cap at 30 in the email body
     )

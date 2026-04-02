@@ -216,16 +216,12 @@
     <div class="gw-card p-4 flex items-center gap-5">
         <!-- Status dot -->
         <div class="flex items-center gap-2 shrink-0">
-            {% if stats.scan_enabled and stats.scan_within_window %}
-            <div class="w-2 h-2 rounded-full scan-dot-running" style="background:#3cc878;"></div>
-            <span class="text-xs font-semibold" style="color:#3cc878;">Auto Scanner Running</span>
-            {% elif stats.scan_enabled %}
-            <div class="w-2 h-2 rounded-full" style="background:var(--accent);"></div>
-            <span class="text-xs font-semibold" style="color:var(--accent);">Auto Scanner Waiting</span>
-            {% else %}
-            <div class="w-2 h-2 rounded-full" style="background:var(--border-default);"></div>
-            <span class="text-xs font-semibold" style="color:var(--text-tertiary);">Auto Scanner Paused</span>
-            {% endif %}
+            <div id="scan-status-dot" class="w-2 h-2 rounded-full{% if stats.scan_enabled and stats.scan_within_window %} scan-dot-running{% endif %}"
+                 style="background:{% if stats.scan_enabled and stats.scan_within_window %}#3cc878{% elif stats.scan_enabled %}var(--accent){% else %}var(--border-default){% endif %};"></div>
+            <span id="scan-status-text" class="text-xs font-semibold"
+                  style="color:{% if stats.scan_enabled and stats.scan_within_window %}#3cc878{% elif stats.scan_enabled %}var(--accent){% else %}var(--text-tertiary){% endif %};">
+                {% if stats.scan_enabled and stats.scan_within_window %}Auto Scanner Running{% elif stats.scan_enabled %}Auto Scanner Waiting{% else %}Auto Scanner Paused{% endif %}
+            </span>
         </div>
 
         <div class="h-4 w-px shrink-0" style="background: var(--border-subtle);"></div>
@@ -1076,6 +1072,36 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(function () {});
     }
     setInterval(_refreshKPIs, 15000);
+
+    // ── Scan status live poll (5 s) ──
+    function _refreshScanStatus() {
+        fetch('/dashboard/api/kpis/', { credentials: 'include' })
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(d) {
+                if (!d || d.scan_enabled === undefined) return;
+                var dot = document.getElementById('scan-status-dot');
+                var txt = document.getElementById('scan-status-text');
+                if (!dot || !txt) return;
+                if (d.scan_enabled && d.scan_within_window) {
+                    dot.style.background = '#3cc878';
+                    dot.classList.add('scan-dot-running');
+                    txt.style.color = '#3cc878';
+                    txt.textContent = 'Auto Scanner Running';
+                } else if (d.scan_enabled) {
+                    dot.style.background = 'var(--accent)';
+                    dot.classList.remove('scan-dot-running');
+                    txt.style.color = 'var(--accent)';
+                    txt.textContent = 'Auto Scanner Waiting';
+                } else {
+                    dot.style.background = 'var(--border-default)';
+                    dot.classList.remove('scan-dot-running');
+                    txt.style.color = 'var(--text-tertiary)';
+                    txt.textContent = 'Auto Scanner Paused';
+                }
+            })
+            .catch(function() {});
+    }
+    setInterval(_refreshScanStatus, 5000);
 
     // ── Count-up animation for KPI numbers ──
     (function () {

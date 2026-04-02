@@ -24,7 +24,7 @@ from django.contrib import messages
 import os
 import random
 import threading
-from .forms import CustomUserCreationForm, RoleBasedLoginForm
+from .forms import CustomUserCreationForm
 from apps.accounts.models import UserProfile
 
 User = get_user_model()
@@ -47,10 +47,7 @@ def impact_page(request):
         alerts_resolved = Alert.objects.filter(
             status__in=['resolved', 'dismissed']
         ).count()
-        regions_covered = (
-            DetectedSite.objects.filter(region__isnull=False)
-            .values('region').distinct().count()
-        )
+        regions_covered = 16  # All 16 administrative regions of Ghana
         total_jobs = Job.objects.filter(status='completed').count()
         scan_tiles_total = ScanTile.objects.filter(is_active=True).count()
         scan_tiles_scanned = ScanTile.objects.filter(is_active=True, last_scanned_at__isnull=False).count()
@@ -600,14 +597,6 @@ def dashboard_home(request):
             logger.debug(f" dashboard_home: No profile, creating INSPECTOR profile")
             UserProfile.objects.create(user=request.user, role=UserProfile.Role.INSPECTOR)
     
-    # Any non-inspector gets admin dashboard
-    try:
-        if request.user.profile.role == UserProfile.Role.INSPECTOR:
-            logger.debug(f" dashboard_home: Inspector redirecting to inspector dashboard")
-            return redirect('/dashboard/inspector/')
-    except UserProfile.DoesNotExist:
-        pass
-    
     logger.debug(f"dashboard_home: Rendering admin dashboard")
     try:
         try:
@@ -655,6 +644,13 @@ def dashboard_home(request):
 def dashboard_chart_data(request):
     """JSON endpoint returning chart-only data — used by AJAX selectors (no page reload)."""
     try:
+        role = request.user.profile.role
+    except Exception:
+        role = None
+    if role == 'inspector':
+        return JsonResponse({'trend_labels': [], 'trend_illegal': [], 'trend_legal': [],
+                             'trend_days': 30, 'velocity_data': [], 'velocity_labels': [], 'velocity_weeks': 8})
+    try:
         vw = int(request.GET.get('velocity_weeks', 8))
     except (ValueError, TypeError):
         vw = 8
@@ -664,7 +660,7 @@ def dashboard_chart_data(request):
             td = 30
     except (ValueError, TypeError):
         td = 30
-    org = request.user.profile.organisation if request.user.profile.role == 'agency_admin' else None
+    org = request.user.profile.organisation if role == 'agency_admin' else None
     stats = _get_dashboard_stats(velocity_weeks=vw, trend_days=td, org=org)
     return JsonResponse({
         'trend_labels':    stats.get('trend_labels', []),
@@ -820,7 +816,19 @@ def dashboard_audit(request):
 @login_required
 def dashboard_kpis(request):
     """JSON endpoint returning headline KPI numbers — polled every 60 s for live refresh."""
-    org = request.user.profile.organisation if request.user.profile.role == 'agency_admin' else None
+    try:
+        role = request.user.profile.role
+    except Exception:
+        role = None
+    if role == 'inspector':
+        # Inspectors have their own dashboard; this endpoint is admin-only data
+        return JsonResponse({k: 0 for k in [
+            'total_detected_sites', 'illegal_sites', 'open_alerts', 'critical_alerts',
+            'high_alerts', 'high_risk_zones', 'total_area_ha', 'completed_jobs',
+            'failed_jobs', 'total_jobs', 'alerts_this_month', 'alerts_change',
+            'sites_change', 'auto_jobs_today', 'auto_detections_today', 'scan_coverage_pct',
+        ]})
+    org = request.user.profile.organisation if role == 'agency_admin' else None
     stats = _get_dashboard_stats(org=org)
     return JsonResponse({
         'total_detected_sites':  stats.get('total_detected_sites', 0),
@@ -839,6 +847,8 @@ def dashboard_kpis(request):
         'auto_jobs_today':       stats.get('auto_jobs_today', 0),
         'auto_detections_today': stats.get('auto_detections_today', 0),
         'scan_coverage_pct':     stats.get('scan_coverage_pct', 0),
+        'scan_enabled':          stats.get('scan_enabled', False),
+        'scan_within_window':    stats.get('scan_within_window', False),
     })
 
 
@@ -1415,13 +1425,20 @@ def submit_field_report(request, assignment_id):
 
         # Save uploaded photos and create EvidencePhoto records
         import hashlib
+        import uuid as _uuid
         photos = request.FILES.getlist('evidence_photos')
         photo_paths = list(assignment.evidence_photos or [])
         if photos:
             upload_dir = os.path.join(django_settings.MEDIA_ROOT, 'inspections', str(assignment_id))
             os.makedirs(upload_dir, exist_ok=True)
             for photo in photos:
-                safe_name = os.path.basename(photo.name).replace(' ', '_')
+                # Use a UUID filename to prevent path traversal / filename collisions
+                original_name = photo.name
+                ext = os.path.splitext(os.path.basename(original_name))[1].lower()
+                # Whitelist safe image extensions
+                if ext not in ('.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic'):
+                    ext = '.jpg'
+                safe_name = f'{_uuid.uuid4().hex}{ext}'
                 dest = os.path.join(upload_dir, safe_name)
                 content = photo.read()
                 sha256 = hashlib.sha256(content).hexdigest()
@@ -1434,7 +1451,7 @@ def submit_field_report(request, assignment_id):
                         assignment=assignment,
                         file=rel_path,
                         sha256_hash=sha256,
-                        original_name=photo.name,
+                        original_name=original_name,
                     )
                 except Exception:
                     pass
@@ -1457,7 +1474,8 @@ def submit_field_report(request, assignment_id):
             if outcome == 'inconclusive':
                 # Increment inconclusive counter; auto-escalate if limit reached
                 alert.inspection_count = (alert.inspection_count or 0) + 1
-                alert.status = Alert.AlertStatus.OPEN
+                # Stay DISPATCHED — inspector still has the assignment and can resubmit
+                alert.status = Alert.AlertStatus.DISPATCHED
                 alert.resolved_at = None
 
                 inconclusive_limit = getattr(django_settings, 'ALERT_INCONCLUSIVE_ESCALATION_COUNT', 3)
@@ -1478,6 +1496,34 @@ def submit_field_report(request, assignment_id):
                         )
                     except Exception:
                         pass
+                    # Notify admins of escalation
+                    try:
+                        from apps.accounts.models import UserProfile as _UP
+                        from apps.notifications.services import push_notification
+                        admin_users = list(
+                            _UP.objects.filter(
+                                role__in=(_UP.Role.SYSTEM_ADMIN, _UP.Role.AGENCY_ADMIN)
+                            ).select_related('user').values_list('user', flat=True)
+                        )
+                        for uid in admin_users:
+                            from django.contrib.auth import get_user_model as _gum
+                            _User = _gum()
+                            try:
+                                admin_user = _User.objects.get(pk=uid)
+                                push_notification(
+                                    user=admin_user,
+                                    title=f'Alert escalated to CRITICAL',
+                                    body=(
+                                        f'Alert "{alert.title or alert.id}" has been escalated to CRITICAL '
+                                        f'after {alert.inspection_count} inconclusive field reports.'
+                                    ),
+                                    link=f'/dashboard/alerts/',
+                                    kind='escalation',
+                                )
+                            except Exception:
+                                pass
+                    except Exception:
+                        logger.exception('Failed to notify admins of alert escalation %s', alert.id)
             else:
                 alert.status = Alert.AlertStatus.RESOLVED
                 alert.resolved_at = timezone.now()
@@ -1531,7 +1577,11 @@ def submit_field_report(request, assignment_id):
         except Exception:
             pass
 
-        cache.delete_many([f'dashboard_stats_{w}_{td}' for w in range(2, 53) for td in (7, 30, 90, 365)])
+        try:
+            from apps.api.views import _invalidate_stats_cache
+            _invalidate_stats_cache()
+        except Exception:
+            pass
         return JsonResponse({
             'success': True,
             'outcome': outcome,
@@ -1599,6 +1649,10 @@ def region_list(request):
             'open_alerts':        total_alerts,
             'zones':              zones,
         })
+
+    # Drop the catch-all "Other" group — districts with no valid parent region
+    # name are a data quality issue and shouldn't inflate the region count.
+    region_groups = [g for g in region_groups if g['name'] not in ('Other', 'Other Region')]
 
     # Regions with detections first, then alphabetically
     region_groups.sort(key=lambda g: (-g['total_detections'], g['name']))
@@ -1854,19 +1908,27 @@ def activation_pin_entry(request):
     error = None
     if request.method == 'POST':
         pin = request.POST.get('pin', '').strip()
-        data = cache.get(f'activation_pin_{email}')
-        if data and data['pin'] == pin:
-            try:
-                user = User.objects.get(pk=data['user_pk'])
-                user.is_active = True
-                user.save()
-                cache.delete(f'activation_pin_{email}')
-                messages.success(request, 'Account activated! You can now sign in.')
-                return redirect('login')
-            except User.DoesNotExist:
-                error = 'Something went wrong. Please sign up again.'
+        # Rate-limit: max 5 attempts per email before lockout
+        attempts_key = f'activation_attempts_{email}'
+        attempts = cache.get(attempts_key, 0)
+        if attempts >= 5:
+            error = 'Too many incorrect attempts. Please request a new code.'
         else:
-            error = 'That code is incorrect or has expired.'
+            data = cache.get(f'activation_pin_{email}')
+            if data and data['pin'] == pin:
+                try:
+                    user = User.objects.get(pk=data['user_pk'])
+                    user.is_active = True
+                    user.save()
+                    cache.delete(f'activation_pin_{email}')
+                    cache.delete(attempts_key)
+                    messages.success(request, 'Account activated! You can now sign in.')
+                    return redirect('login')
+                except User.DoesNotExist:
+                    error = 'Something went wrong. Please sign up again.'
+            else:
+                cache.set(attempts_key, attempts + 1, timeout=600)
+                error = 'That code is incorrect or has expired.'
     return render(request, 'registration/activation_pin.html', {'email': email, 'error': error})
 
 
@@ -1961,13 +2023,21 @@ def password_reset_pin_entry(request):
     error = None
     if request.method == 'POST':
         pin = request.POST.get('pin', '').strip()
-        data = cache.get(f'pwd_reset_{email}')
-        if data and data['pin'] == pin:
-            request.session['pwd_reset_user_pk'] = data['user_pk']
-            cache.delete(f'pwd_reset_{email}')
-            return redirect('/accounts/password_reset/new/')
+        # Rate-limit: max 5 attempts per email before locking out for 10 minutes
+        attempts_key = f'pwd_reset_attempts_{email}'
+        attempts = cache.get(attempts_key, 0)
+        if attempts >= 5:
+            error = 'Too many incorrect attempts. Please request a new code and try again.'
         else:
-            error = 'That code is incorrect or has expired. Please try again.'
+            data = cache.get(f'pwd_reset_{email}')
+            if data and data['pin'] == pin:
+                request.session['pwd_reset_user_pk'] = data['user_pk']
+                cache.delete(f'pwd_reset_{email}')
+                cache.delete(attempts_key)
+                return redirect('/accounts/password_reset/new/')
+            else:
+                cache.set(attempts_key, attempts + 1, timeout=600)
+                error = 'That code is incorrect or has expired. Please try again.'
     return render(request, 'registration/password_reset_pin.html', {'email': email, 'error': error})
 
 
@@ -1991,11 +2061,19 @@ def password_reset_new_password(request):
         elif len(p1) < 8:
             error = 'Password must be at least 8 characters.'
         else:
-            user.set_password(p1)
-            user.save()
-            del request.session['pwd_reset_user_pk']
-            messages.success(request, 'Password changed! You can now sign in.')
-            return redirect('login')
+            # Run full Django password validators (common passwords, similarity, numeric-only)
+            from django.contrib.auth.password_validation import validate_password
+            from django.core.exceptions import ValidationError as _VE
+            try:
+                validate_password(p1, user)
+            except _VE as ve:
+                error = ' '.join(ve.messages)
+            else:
+                user.set_password(p1)
+                user.save()
+                del request.session['pwd_reset_user_pk']
+                messages.success(request, 'Password changed! You can now sign in.')
+                return redirect('login')
 
     return render(request, 'registration/password_reset_new.html', {'error': error})
 
@@ -2049,7 +2127,8 @@ def my_account(request):
                 return JsonResponse({'success': False, 'errors': errors}, status=400)
         else:
             from apps.accounts.models import Organisation
-            request.user.email      = new_email
+            if new_email:  # Only overwrite email if something was provided
+                request.user.email = new_email
             request.user.first_name = new_first
             request.user.last_name  = new_last
             request.user.save()
