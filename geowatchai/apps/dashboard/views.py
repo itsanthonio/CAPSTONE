@@ -1618,19 +1618,41 @@ def region_list(request):
     from django.db.models import Count, Q
     from collections import defaultdict
 
+    # Org scope for agency admins
+    try:
+        _role = request.user.profile.role
+        _org  = request.user.profile.organisation
+    except Exception:
+        _role = None
+        _org  = None
+
+    if _role == 'agency_admin' and _org:
+        _org_q = (
+            Q(detections__job__organisation=_org) |
+            Q(detections__job__organisation__isnull=True, detections__job__source='automated')
+        )
+        _alert_org_q = (
+            Q(detections__alerts__detected_site__job__organisation=_org) |
+            Q(detections__alerts__detected_site__job__organisation__isnull=True,
+              detections__alerts__detected_site__job__source='automated')
+        )
+    else:
+        _org_q       = Q()
+        _alert_org_q = Q()
+
     # Only show district assemblies — exclude region-level and hotspot records
     districts = list(
         Region.objects.filter(is_active=True, region_type='admin_district')
         .annotate(
-            total_detections=Count('detections', distinct=True),
+            total_detections=Count('detections', filter=_org_q, distinct=True),
             illegal_detections=Count(
                 'detections',
-                filter=Q(detections__legal_status='illegal'),
+                filter=_org_q & Q(detections__legal_status='illegal'),
                 distinct=True,
             ),
             open_alerts=Count(
                 'detections__alerts',
-                filter=Q(detections__alerts__status='open'),
+                filter=_alert_org_q & Q(detections__alerts__status='open'),
                 distinct=True,
             ),
         )
