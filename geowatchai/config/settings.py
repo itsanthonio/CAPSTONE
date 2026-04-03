@@ -310,6 +310,14 @@ EMAIL_HOST_USER     = config('EMAIL_HOST_USER',     default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL  = config('DEFAULT_FROM_EMAIL',  default='SankofaWatch <noreply@sankofawatch.ai>')
 
+# ── Cache (Redis — shared across all Gunicorn workers) ───────────────────────
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/1',  # DB 1 — separate from Celery (DB 0)
+    }
+}
+
 # ── Celery Configuration ─────────────────────────────────────────────────────
 CELERY_BROKER_URL       = 'redis://localhost:6379/0'
 CELERY_RESULT_BACKEND   = 'redis://localhost:6379/0'
