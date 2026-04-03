@@ -128,7 +128,7 @@ if platform.system() == 'Windows':
 DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': 'galamsey_watch_db',
+        'NAME': config('DB_NAME', default='galamsey_watch_db'),
         'USER': config('DB_USER', default='admin'),
         'PASSWORD': config('DB_PASSWORD', default=''),
         'HOST': config('DB_HOST', default='localhost'),
