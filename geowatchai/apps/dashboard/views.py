@@ -62,13 +62,22 @@ def impact_page(request):
             'scan_coverage_pct': scan_coverage_pct,
         }
 
-        # Top 2 largest illegal detections for the impact case studies
+        # Top 2 largest illegal detections that have real satellite imagery
         impact_sites = list(
             DetectedSite.objects
             .filter(legal_status='illegal')
+            .exclude(img_overlay='')
             .select_related('region', 'job')
             .order_by('-area_hectares')[:2]
         )
+        # Fall back to any illegal sites if none have imagery
+        if not impact_sites:
+            impact_sites = list(
+                DetectedSite.objects
+                .filter(legal_status='illegal')
+                .select_related('region', 'job')
+                .order_by('-area_hectares')[:2]
+            )
 
         # Real scan status for the hero badge
         from apps.scanning.models import AutoScanConfig as _ASC, OrgScanConfig as _OSC
@@ -87,7 +96,13 @@ def impact_page(request):
         }
         impact_sites = []
         scan_active = False
-    return render(request, 'impact.html', {'stats': stats, 'impact_sites': impact_sites, 'scan_active': scan_active})
+    from django.conf import settings as _settings
+    return render(request, 'impact.html', {
+        'stats': stats,
+        'impact_sites': impact_sites,
+        'scan_active': scan_active,
+        'MEDIA_URL': _settings.MEDIA_URL,
+    })
 
 
 @login_required

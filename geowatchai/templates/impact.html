@@ -451,7 +451,15 @@
 
                 <!-- Image -->
                 <div class="relative overflow-hidden" style="height: 220px;">
-                    {% if forloop.first %}
+                    {% if site.img_overlay %}
+                    <img src="{{ MEDIA_URL }}{{ site.img_overlay }}" alt="Satellite detection overlay"
+                         class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                         style="opacity: 0.85;">
+                    {% elif site.img_false_color %}
+                    <img src="{{ MEDIA_URL }}{{ site.img_false_color }}" alt="Satellite false colour"
+                         class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                         style="opacity: 0.85;">
+                    {% elif forloop.first %}
                     <img src="{% static 'images/mining_detection.jpg' %}" alt="Satellite detection"
                          class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                          style="opacity: 0.85;">

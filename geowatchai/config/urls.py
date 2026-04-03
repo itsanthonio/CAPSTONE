@@ -29,6 +29,18 @@ from apps.dashboard.views import (
 )
 
 
+def public_site_images(request, path):
+    """Serve ML site imagery publicly — no auth required."""
+    media_root = os.path.realpath(settings.MEDIA_ROOT)
+    full_path  = os.path.realpath(os.path.join(media_root, 'site_images', path))
+    if not full_path.startswith(os.path.join(media_root, 'site_images') + os.sep):
+        return HttpResponseForbidden()
+    if not os.path.isfile(full_path):
+        raise Http404
+    content_type, _ = mimetypes.guess_type(full_path)
+    return FileResponse(open(full_path, 'rb'), content_type=content_type or 'application/octet-stream')
+
+
 @login_required
 def protected_media(request, path):
     """Serve media files only to authenticated users.
@@ -90,6 +102,8 @@ urlpatterns = [
     path('api/notifications/', include('apps.notifications.urls')),
     path('accounts/api/', include('apps.accounts.urls')),
     path('scanning/', include('apps.scanning.urls')),
+    # Public ML site imagery (no auth required)
+    path('media/site_images/<path:path>', public_site_images, name='public_site_images'),
     # Authenticated media serving (replaces unauthenticated static() in DEBUG too)
     path('media/<path:path>', protected_media, name='protected_media'),
 ]
