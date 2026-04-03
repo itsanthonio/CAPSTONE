@@ -61,6 +61,20 @@ def impact_page(request):
             'total_jobs': total_jobs,
             'scan_coverage_pct': scan_coverage_pct,
         }
+
+        # Top 2 largest illegal detections for the impact case studies
+        impact_sites = list(
+            DetectedSite.objects
+            .filter(legal_status='illegal')
+            .select_related('region', 'job')
+            .order_by('-area_hectares')[:2]
+        )
+
+        # Real scan status for the hero badge
+        from apps.scanning.models import AutoScanConfig as _ASC, OrgScanConfig as _OSC
+        _asc = _ASC.get()
+        scan_active = _OSC.objects.filter(is_enabled=True).exists() and _asc.is_within_window()
+
     except Exception:
         stats = {
             'total_area_ha': 0,
@@ -71,7 +85,9 @@ def impact_page(request):
             'total_jobs': 0,
             'scan_coverage_pct': 0,
         }
-    return render(request, 'impact.html', {'stats': stats})
+        impact_sites = []
+        scan_active = False
+    return render(request, 'impact.html', {'stats': stats, 'impact_sites': impact_sites, 'scan_active': scan_active})
 
 
 @login_required

@@ -10,163 +10,223 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
-                        'surface-base': 'var(--surface-base)',
-                        'surface-2':    'var(--surface-2)',
-                        'surface-3':    'var(--surface-3)',
-                        'fg-primary':   'var(--text-primary)',
-                        'fg-secondary': 'var(--text-secondary)',
-                        'fg-muted':     'var(--text-tertiary)',
-                        'gw-accent':    'var(--accent)',
-                        'edge-default': 'var(--border-default)',
+                        'primary':                '#f6be39',
+                        'primary-container':      '#d4a017',
+                        'on-primary':             '#402d00',
+                        'surface':                '#10141a',
+                        'surface-container-low':  '#181c22',
+                        'surface-container-lowest':'#0a0e14',
+                        'surface-container-high': '#262a31',
+                        'on-surface':             '#dfe2eb',
+                        'on-surface-variant':     '#d3c5ae',
+                        'outline':                '#9b8f7a',
+                        'outline-variant':        '#4f4634',
+                        'tertiary':               '#67df70',
+                        'error':                  '#ffb4ab',
+                        'error-container':        '#93000a',
                     },
-                    fontFamily: {
-                        'sans': ['Inter', 'ui-sans-serif', 'system-ui'],
-                    },
+                    fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] },
                 }
             }
         }
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/custom.css' %}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/bold/style.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
-        /* ── Login page ambient background ── */
-        @keyframes orb1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px,-30px) scale(1.12); } }
-        @keyframes orb2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-30px,40px) scale(1.08); } }
-        @keyframes scanLine { 0% { transform: translateY(-100%); } 100% { transform: translateY(100vh); } }
-        .login-orb { position:fixed; border-radius:50%; filter:blur(80px); pointer-events:none; z-index:0; }
-        .login-orb-1 {
-            width: 420px; height: 420px;
-            background: radial-gradient(circle, rgba(212,160,23,0.10) 0%, transparent 70%);
-            top: -100px; right: -100px;
-            animation: orb1 12s ease-in-out infinite;
+        .glass-panel {
+            background: rgba(16, 20, 26, 0.65);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
         }
-        .login-orb-2 {
-            width: 360px; height: 360px;
-            background: radial-gradient(circle, rgba(60,200,120,0.07) 0%, transparent 70%);
-            bottom: -80px; left: -80px;
-            animation: orb2 15s ease-in-out infinite;
+        .sentinel-grid {
+            background-image: radial-gradient(circle at 1px 1px, rgba(155, 143, 122, 0.06) 1px, transparent 0);
+            background-size: 40px 40px;
         }
-        .login-orb-3 {
-            width: 240px; height: 240px;
-            background: radial-gradient(circle, rgba(56,139,253,0.06) 0%, transparent 70%);
-            top: 40%; left: 30%;
-            animation: orb1 18s ease-in-out infinite reverse;
+        .input-underline {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid rgba(79, 70, 52, 0.4);
+            border-radius: 0;
+            outline: none;
+            width: 100%;
+            padding: 10px 0;
+            color: #dfe2eb;
+            font-size: 14px;
+            transition: border-color 0.2s;
         }
-        .scan-sweep {
-            position:fixed; top:0; left:0; width:100%; height:3px; pointer-events:none; z-index:0;
-            background: linear-gradient(90deg, transparent 0%, rgba(212,160,23,0.18) 40%, rgba(212,160,23,0.35) 50%, rgba(212,160,23,0.18) 60%, transparent 100%);
-            animation: scanLine 8s linear infinite;
-            opacity: 0.7;
+        .input-underline::placeholder { color: rgba(155, 143, 122, 0.45); }
+        .input-underline:focus { border-bottom-color: #f6be39; }
+        .input-underline:-webkit-autofill,
+        .input-underline:-webkit-autofill:focus {
+            -webkit-box-shadow: 0 0 0 1000px #0a0e14 inset;
+            -webkit-text-fill-color: #dfe2eb;
         }
-        .login-content { position:relative; z-index:1; }
     </style>
 </head>
-<body class="bg-surface-base font-sans antialiased">
+<body class="bg-surface font-sans antialiased dark h-screen overflow-hidden flex flex-col">
 
-<!-- Ambient background effects -->
-<div class="login-orb login-orb-1" aria-hidden="true"></div>
-<div class="login-orb login-orb-2" aria-hidden="true"></div>
-<div class="login-orb login-orb-3" aria-hidden="true"></div>
-<div class="scan-sweep" aria-hidden="true"></div>
+<!-- Background -->
+<div class="fixed inset-0 z-0 overflow-hidden">
+    <img src="{% static 'images/login_bg.jpg' %}" alt="" aria-hidden="true"
+         class="w-full h-full object-cover opacity-30 grayscale">
+    <div class="absolute inset-0 bg-gradient-to-b from-transparent via-surface/80 to-surface z-10"></div>
+    <div class="absolute inset-0" style="background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(212,160,23,0.07) 0%, transparent 70%);"></div>
+    <div class="absolute inset-0 sentinel-grid z-20"></div>
+</div>
 
-<div class="min-h-screen flex items-center justify-center px-4 py-12 login-content">
-    <div class="w-full max-w-sm space-y-6">
+<!-- Header -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center h-16 px-8"
+        style="background: rgba(16,20,26,0.7); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.04);">
+    <span class="text-sm font-black tracking-tighter" style="color: #dfe2eb;">{{ settings.APP_NAME|upper }}</span>
+    <div class="flex items-center gap-6">
+        <span class="text-[10px] uppercase tracking-widest font-medium" style="color: #9b8f7a;">Help</span>
+        <a href="{% url 'signup' %}"
+           class="text-[10px] uppercase tracking-widest font-medium px-4 py-2 transition-colors"
+           style="color: #dfe2eb; border: 1px solid rgba(255,255,255,0.08);"
+           onmouseover="this.style.background='rgba(255,255,255,0.05)'"
+           onmouseout="this.style.background='transparent'">
+            Sign Up
+        </a>
+    </div>
+</header>
 
-        <!-- Sankofa bird mark -->
-        <div class="flex flex-col items-center gap-3">
-            <div class="w-12 h-12 rounded-2xl flex items-center justify-center"
-                 style="background: rgba(var(--accent-rgb, 212,160,23), 0.08); border: 1px solid rgba(var(--accent-rgb, 212,160,23), 0.2);">
-                <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" aria-hidden="true" focusable="false">
-                    <ellipse cx="16" cy="18" rx="7" ry="4.5" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.5"/>
-                    <path d="M12 16 Q16 11 21 15" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round" fill="none"/>
-                    <path d="M22 17 Q27 12 23.5 6" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" fill="none"/>
-                    <path d="M11 14 Q7 11 8.5 7" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-                    <circle cx="8.5" cy="5.5" r="2.3" fill="var(--accent)"/>
-                    <circle cx="7.6" cy="5" r="0.55" fill="#0d1117" fill-opacity="0.7"/>
-                    <path d="M7.5 6.5 L5 8" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round"/>
-                    <ellipse cx="16" cy="14.5" rx="2.1" ry="1.5" fill="var(--accent)" fill-opacity="0.4" stroke="var(--accent)" stroke-width="1"/>
-                </svg>
-            </div>
-            <div class="text-center">
-                <h1 class="text-[20px] font-semibold text-fg-primary tracking-tight">{{ settings.APP_NAME }}</h1>
-                <p class="text-[13px] text-fg-secondary mt-1">
-                    <span style="color: var(--accent); font-style: italic;">Akwaaba</span> — sign in to your account
-                </p>
-            </div>
-        </div>
+<!-- Main -->
+<main class="relative z-30 flex-1 flex items-center justify-center p-6 pt-16">
+    <div class="w-full max-w-md">
 
         <!-- Card -->
-        <div class="gw-card" style="padding: 28px;">
+        <div class="glass-panel p-7 rounded-lg shadow-2xl" style="border: 1px solid rgba(79,70,52,0.15);">
+
+            <!-- Heading -->
+            <div class="mb-6">
+                <div class="flex items-center gap-2.5 mb-3">
+                    <svg viewBox="0 0 16 16" fill="none" class="w-4 h-4" style="color:#f6be39;" aria-hidden="true">
+                        <path d="M8 1.5a5 5 0 100 10 5 5 0 000-10zM.5 8a7.5 7.5 0 1115 0 7.5 7.5 0 01-15 0z" fill="currentColor" fill-opacity=".3"/>
+                        <path d="M8 5.5a.75.75 0 01.75.75v2.5a.75.75 0 01-1.5 0v-2.5A.75.75 0 018 5.5zM8 11a1 1 0 110-2 1 1 0 010 2z" fill="currentColor"/>
+                    </svg>
+                    <span class="text-[10px] uppercase tracking-[0.2em] font-bold" style="color: #f6be39;">Secure Access Terminal</span>
+                </div>
+                <h1 class="text-2xl font-bold tracking-tight" style="color: #dfe2eb;">System Login</h1>
+                <p class="text-sm mt-2 leading-relaxed" style="color: #d3c5ae;">
+                    Enter your credentials to access the sentinel network and environmental data stream.
+                </p>
+            </div>
 
             <!-- Errors -->
             {% if form.errors %}
-            <div class="gw-alert-error mb-5 flex gap-2.5" role="alert" aria-live="assertive">
-                <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true" focusable="false">
+            <div class="mb-6 px-4 py-3 rounded text-sm flex gap-2.5"
+                 style="background: rgba(147,0,10,0.15); border: 1px solid rgba(255,180,171,0.2); color: #ffb4ab;"
+                 role="alert" aria-live="assertive">
+                <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                 </svg>
-                <p>Incorrect username or password.</p>
+                <p>
+                    {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+                    {% if not form.non_field_errors %}Incorrect username or password.{% endif %}
+                </p>
             </div>
             {% endif %}
 
-            <!-- Django messages (e.g. rate limit) -->
+            <!-- Django messages -->
             {% if messages %}
-            <div class="mb-5 space-y-2">
+            <div class="mb-6 space-y-2">
                 {% for msg in messages %}
-                <div class="gw-alert-{% if msg.tags == 'error' %}error{% elif msg.tags == 'success' %}success{% else %}warning{% endif %} flex gap-2.5">
-                    <p>{{ msg }}</p>
+                <div class="px-4 py-3 rounded text-sm"
+                     style="background: rgba(147,0,10,0.15); border: 1px solid rgba(255,180,171,0.2); color: #ffb4ab;">
+                    {{ msg }}
                 </div>
                 {% endfor %}
             </div>
             {% endif %}
 
-            <form method="post" class="space-y-4">
+            <form method="post" class="space-y-5">
                 {% csrf_token %}
 
+                <!-- Username -->
                 <div>
-                    <label for="id_username" class="gw-label">Username</label>
+                    <label for="id_username" class="block text-[10px] uppercase tracking-widest font-semibold mb-2" style="color: #9b8f7a;">
+                        Identification (Username)
+                    </label>
                     <input id="id_username" name="username" type="text" required autocomplete="username"
-                           class="gw-input" placeholder="Enter your username">
+                           class="input-underline" placeholder="Enter your username">
                 </div>
 
+                <!-- Password -->
                 <div>
-                    <div class="flex items-center justify-between mb-1.5">
-                        <label for="id_password" class="gw-label" style="margin-bottom:0">Password</label>
+                    <div class="flex justify-between items-end mb-2">
+                        <label for="id_password" class="text-[10px] uppercase tracking-widest font-semibold" style="color: #9b8f7a;">
+                            Security Cipher
+                        </label>
                         <a href="/accounts/password_reset/"
-                           class="text-[11px] hover:underline" style="color:var(--text-link)">
+                           class="text-[10px] uppercase tracking-widest font-bold transition-colors"
+                           style="color: #f6be39;"
+                           onmouseover="this.style.color='#d4a017'"
+                           onmouseout="this.style.color='#f6be39'">
                             Forgot password?
                         </a>
                     </div>
                     <input id="id_password" name="password" type="password" required autocomplete="current-password"
-                           class="gw-input" placeholder="Enter your password">
+                           class="input-underline" placeholder="••••••••••••">
                 </div>
 
-                <div class="flex items-center gap-2 pt-1">
+                <!-- Remember me -->
+                <div class="flex items-center gap-2.5">
                     <input id="remember-me" name="remember_me" type="checkbox"
-                           class="w-3.5 h-3.5 rounded" style="accent-color:var(--accent)">
-                    <label for="remember-me" class="text-[12px] text-fg-secondary cursor-pointer select-none">
+                           class="w-3.5 h-3.5 rounded-sm" style="accent-color: #f6be39;">
+                    <label for="remember-me" class="text-[11px] cursor-pointer select-none" style="color: #d3c5ae;">
                         Keep me signed in for 14 days
                     </label>
                 </div>
 
-                <button type="submit" class="btn-primary w-full py-2 mt-2">
-                    Sign in
+                <!-- Submit -->
+                <button type="submit"
+                        class="w-full py-3.5 text-xs uppercase tracking-[0.2em] font-bold rounded transition-all duration-200 active:scale-[0.98]"
+                        style="background: linear-gradient(135deg, #f6be39 0%, #d4a017 100%); color: #402d00; box-shadow: 0 4px 24px rgba(246,190,57,0.12);"
+                        onmouseover="this.style.boxShadow='0 4px 32px rgba(246,190,57,0.22)'"
+                        onmouseout="this.style.boxShadow='0 4px 24px rgba(246,190,57,0.12)'">
+                    Sign In
                 </button>
             </form>
+
+            <!-- Footer link -->
+            <div class="mt-6 pt-5" style="border-top: 1px solid rgba(79,70,52,0.15);">
+                <p class="text-xs text-center mb-4" style="color: #d3c5ae;">No active operative profile?</p>
+                <a href="{% url 'signup' %}"
+                   class="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest transition-colors"
+                   style="color: #dfe2eb;"
+                   onmouseover="this.style.color='#f6be39'"
+                   onmouseout="this.style.color='#dfe2eb'">
+                    Create an Account
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                    </svg>
+                </a>
+            </div>
         </div>
 
-        <p class="text-center text-[13px] text-fg-secondary">
-            Don't have an account?
-            <a href="{% url 'signup' %}" class="font-semibold hover:underline" style="color:var(--accent)">Create one</a>
-        </p>
+        <!-- Status bar -->
+        <div class="mt-4 flex justify-between items-center px-2">
+            <div class="flex items-center gap-5">
+                <div class="flex items-center gap-2">
+                    <div class="w-1.5 h-1.5 rounded-full animate-pulse" style="background: #67df70;"></div>
+                    <span class="text-[9px] uppercase tracking-widest" style="color: #9b8f7a;">System: Online</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-1.5 h-1.5 rounded-full" style="background: rgba(103,223,112,0.35);"></div>
+                    <span class="text-[9px] uppercase tracking-widest" style="color: #9b8f7a;">Network: Encrypted</span>
+                </div>
+            </div>
+            <span class="text-[9px] uppercase tracking-widest" style="color: rgba(79,70,52,0.8);">NODE: S-WATCH-01</span>
+        </div>
+
     </div>
-</div>
+</main>
+
 
 </body>
 </html>

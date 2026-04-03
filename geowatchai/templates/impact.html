@@ -1,641 +1,607 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <link rel="icon" type="image/svg+xml" href="{% static 'images/favicon.svg' %}">
     <link rel="alternate icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SankofaWatch — Protecting Ghana's Environment</title>
-    <meta name="description" content="SankofaWatch — AI-powered satellite detection of illegal galamsey mining across Ghana. Protecting forests, rivers, and communities.">
+    <title>{{ settings.APP_NAME }} — Protecting Ghana's Environment</title>
+    <meta name="description" content="AI-powered satellite detection of illegal galamsey mining across Ghana. Protecting forests, rivers, and communities.">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#f6be39',
+                        'primary-container': '#d4a017',
+                        'on-primary': '#402d00',
+                        'surface': '#10141a',
+                        'surface-container-lowest': '#0a0e14',
+                        'surface-container-low': '#181c22',
+                        'surface-container': '#1c2026',
+                        'surface-container-high': '#262a31',
+                        'surface-container-highest': '#31353c',
+                        'on-surface': '#dfe2eb',
+                        'on-surface-variant': '#d3c5ae',
+                        'outline': '#9b8f7a',
+                        'outline-variant': '#4f4634',
+                        'tertiary': '#67df70',
+                        'error': '#ffb4ab',
+                    },
+                    fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] },
+                }
+            }
+        }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; box-sizing: border-box; }
-
-        :root {
-            --gold: #d4a017;
-            --gold-dim: rgba(212, 160, 23, 0.10);
-            --gold-border: rgba(212, 160, 23, 0.22);
-            --bg: #0d1117;
-            --surface: rgba(22, 27, 34, 0.85);
-            --border: rgba(48, 54, 61, 0.8);
-            --text: #e6edf3;
-            --text-dim: rgba(230, 237, 243, 0.5);
-        }
-
-        html, body { margin: 0; padding: 0; }
-        body {
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        /* Subtle dot grid background */
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background-image:
-                radial-gradient(circle, rgba(212,160,23,0.07) 1px, transparent 1px);
-            background-size: 28px 28px;
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        /* Ambient glow orbs */
-        .orb {
-            position: fixed;
-            border-radius: 50%;
-            filter: blur(120px);
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        /* Animated radar scan line */
+        /* Scan line */
         @keyframes scan-down {
             0%   { transform: translateY(-2px); opacity: 0; }
             4%   { opacity: 1; }
-            92%  { opacity: 0.5; }
+            92%  { opacity: 0.4; }
             100% { transform: translateY(100vh); opacity: 0; }
         }
         .scan-line {
-            position: fixed;
-            top: 0; left: 0; right: 0; height: 1px;
-            background: linear-gradient(90deg,
-                transparent 0%,
-                rgba(212,160,23,0.4) 20%,
-                rgba(212,160,23,0.85) 50%,
-                rgba(212,160,23,0.4) 80%,
-                transparent 100%);
-            animation: scan-down 12s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-            pointer-events: none;
-            z-index: 2;
-            box-shadow: 0 0 8px 1px rgba(212,160,23,0.2);
+            position: fixed; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent 0%, rgba(246,190,57,0.35) 20%, rgba(246,190,57,0.8) 50%, rgba(246,190,57,0.35) 80%, transparent 100%);
+            animation: scan-down 14s cubic-bezier(0.4,0,0.6,1) infinite;
+            pointer-events: none; z-index: 100;
+            box-shadow: 0 0 8px 1px rgba(246,190,57,0.15);
         }
-
-        /* Live pulse dot */
+        /* Live dot */
         @keyframes pulse-out {
             0%   { transform: scale(1); opacity: 0.8; }
-            100% { transform: scale(2.8); opacity: 0; }
+            100% { transform: scale(3); opacity: 0; }
         }
         .live-dot {
-            position: relative;
-            display: inline-block;
-            width: 7px; height: 7px;
-            flex-shrink: 0;
+            position: relative; display: inline-block;
+            width: 7px; height: 7px; flex-shrink: 0;
         }
         .live-dot::before {
-            content: '';
-            position: absolute; inset: 0;
-            border-radius: 50%;
-            background: var(--gold);
-            animation: pulse-out 2s ease-out infinite;
+            content: ''; position: absolute; inset: 0; border-radius: 50%;
+            background: #f6be39; animation: pulse-out 2s ease-out infinite;
         }
         .live-dot::after {
-            content: '';
-            position: absolute; inset: 1px;
-            border-radius: 50%;
-            background: var(--gold);
+            content: ''; position: absolute; inset: 1px;
+            border-radius: 50%; background: #f6be39;
         }
-
-        /* Cards */
+        /* Card rise */
         @keyframes rise {
-            from { opacity: 0; transform: translateY(24px); }
+            from { opacity: 0; transform: translateY(20px); }
             to   { opacity: 1; transform: translateY(0); }
         }
-
-        .stat-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 28px 24px;
-            text-align: center;
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
-            animation: rise 0.65s ease-out both;
-        }
-        .stat-card:hover {
-            border-color: rgba(212,160,23,0.35);
-            transform: translateY(-4px);
-            box-shadow: 0 16px 40px rgba(212,160,23,0.07);
-        }
-
-        .stat-number {
-            font-size: clamp(2.2rem, 4vw, 2.8rem);
-            font-weight: 900;
-            color: var(--gold);
-            line-height: 1;
-            letter-spacing: -0.03em;
-            font-variant-numeric: tabular-nums;
-        }
-
-        .info-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 18px 20px;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            transition: border-color 0.3s, transform 0.3s;
-            animation: rise 0.65s ease-out both;
-        }
-
-        .feature-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 28px 24px;
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            transition: border-color 0.3s, transform 0.3s;
-            animation: rise 0.65s ease-out both;
-        }
-        .feature-card:hover {
-            border-color: var(--gold-border);
-            transform: translateY(-3px);
-        }
-
-        .icon-box {
-            width: 40px; height: 40px;
-            border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0;
-        }
-
-        /* Buttons */
-        .btn-primary {
-            background: var(--gold);
-            color: #0d1117;
-            font-weight: 700;
-            padding: 13px 28px;
-            border-radius: 10px;
-            font-size: 15px;
-            transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            text-decoration: none;
-            letter-spacing: -0.01em;
-        }
-        .btn-primary:hover {
-            background: #e8b820;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 32px rgba(212,160,23,0.28);
-        }
-        .btn-ghost {
-            color: rgba(230,237,243,0.65);
-            border: 1px solid var(--border);
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            transition: border-color 0.2s, color 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            text-decoration: none;
-        }
-        .btn-ghost:hover {
-            border-color: var(--gold-border);
-            color: var(--gold);
-        }
-
-        /* Headline gradient */
-        .headline-gold {
-            background: linear-gradient(130deg, #d4a017 0%, #f8c840 45%, #d4a017 100%);
+        .rise { animation: rise 0.6s ease-out both; }
+        /* Gradient text */
+        .text-gold-gradient {
+            background: linear-gradient(130deg, #d4a017 0%, #f6be39 50%, #d4a017 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-
-        /* Tech tags */
-        .tech-tag {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 6px;
-            background: rgba(240,246,252,0.04);
-            border: 1px solid rgba(240,246,252,0.09);
-            font-size: 11px;
-            color: rgba(230,237,243,0.38);
-            font-family: 'SFMono-Regular', 'Consolas', monospace;
-            letter-spacing: 0.01em;
+        /* Number counter font */
+        .stat-num { font-variant-numeric: tabular-nums; }
+        /* Pipeline connector */
+        .pipeline-connector {
+            position: absolute; top: 28px; left: calc(100% + 1px); width: calc(100% - 2px); height: 1px;
+            background: linear-gradient(90deg, rgba(246,190,57,0.4), transparent);
         }
-
-        .gradient-divider {
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--border), transparent);
-        }
+        /* Hover card */
+        .hover-card { transition: border-color 0.3s, transform 0.25s, box-shadow 0.25s; }
+        .hover-card:hover { border-color: rgba(246,190,57,0.3) !important; transform: translateY(-3px); box-shadow: 0 16px 40px rgba(246,190,57,0.06); }
+        /* Nav link */
+        .nav-link { transition: color 0.2s; }
+        .nav-link:hover { color: #f6be39; }
     </style>
 </head>
-<body>
-
-<!-- Ambient orbs -->
-<div class="orb" style="width:800px;height:800px;background:rgba(212,160,23,0.03);top:-350px;left:-250px;"></div>
-<div class="orb" style="width:600px;height:600px;background:rgba(56,139,253,0.025);bottom:-200px;right:-200px;"></div>
-<div class="orb" style="width:350px;height:350px;background:rgba(63,185,80,0.018);top:35%;left:55%;"></div>
+<body class="font-sans antialiased dark" style="background: #10141a; color: #dfe2eb; overflow-x: hidden;">
 
 <!-- Scan line -->
 <div class="scan-line"></div>
 
+<!-- Ambient orbs -->
+<div class="fixed pointer-events-none z-0" style="width:700px;height:700px;background:rgba(246,190,57,0.03);top:-300px;left:-200px;border-radius:50%;filter:blur(100px);"></div>
+<div class="fixed pointer-events-none z-0" style="width:500px;height:500px;background:rgba(103,223,112,0.02);bottom:-150px;right:-150px;border-radius:50%;filter:blur(100px);"></div>
+
 <!-- ── Navigation ── -->
-<nav class="relative z-10 flex items-center justify-between px-6 sm:px-10 py-5"
-     style="border-bottom: 1px solid var(--border);">
+<nav class="fixed top-0 w-full z-50 flex justify-between items-center px-8 h-18 py-4"
+     style="background: rgba(16,20,26,0.75); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(79,70,52,0.2);">
     <div class="flex items-center gap-3">
-        <!-- Sankofa bird mark (Akan Adinkra: "go back and fetch it") -->
-        <div class="w-9 h-9 rounded-xl flex items-center justify-center"
-             style="background: var(--gold-dim); border: 1px solid var(--gold-border);">
-            <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" aria-hidden="true" focusable="false">
-                <ellipse cx="16" cy="18" rx="7" ry="4.5" fill="var(--gold)" fill-opacity="0.15" stroke="var(--gold)" stroke-width="1.5"/>
-                <path d="M12 16 Q16 11 21 15" stroke="var(--gold)" stroke-width="1.3" stroke-linecap="round" fill="none"/>
-                <path d="M22 17 Q27 12 23.5 6" stroke="var(--gold)" stroke-width="1.6" stroke-linecap="round" fill="none"/>
-                <path d="M11 14 Q7 11 8.5 7" stroke="var(--gold)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-                <circle cx="8.5" cy="5.5" r="2.3" fill="var(--gold)"/>
-                <circle cx="7.6" cy="5" r="0.55" fill="#0d1117" fill-opacity="0.6"/>
-                <path d="M7.5 6.5 L5 8" stroke="var(--gold)" stroke-width="1.3" stroke-linecap="round"/>
-                <ellipse cx="16" cy="14.5" rx="2.1" ry="1.5" fill="var(--gold)" fill-opacity="0.4" stroke="var(--gold)" stroke-width="1"/>
+        <!-- Sankofa bird -->
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+             style="background: rgba(246,190,57,0.08); border: 1px solid rgba(246,190,57,0.18);">
+            <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" aria-hidden="true">
+                <ellipse cx="16" cy="18" rx="7" ry="4.5" fill="#f6be39" fill-opacity="0.13" stroke="#f6be39" stroke-width="1.5"/>
+                <path d="M12 16 Q16 11 21 15" stroke="#f6be39" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+                <path d="M22 17 Q27 12 23.5 6" stroke="#f6be39" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+                <path d="M11 14 Q7 11 8.5 7" stroke="#f6be39" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+                <circle cx="8.5" cy="5.5" r="2.3" fill="#f6be39"/>
+                <circle cx="7.6" cy="5" r="0.55" fill="#0a0e14" fill-opacity="0.7"/>
+                <path d="M7.5 6.5 L5 8" stroke="#f6be39" stroke-width="1.3" stroke-linecap="round"/>
+                <ellipse cx="16" cy="14.5" rx="2.1" ry="1.5" fill="#f6be39" fill-opacity="0.4" stroke="#f6be39" stroke-width="1"/>
             </svg>
         </div>
-        <span class="font-bold text-sm tracking-tight" style="color: var(--text);">
-            Sankofa<span style="color: var(--gold);">Watch</span>
+        <span class="font-black text-sm tracking-tighter" style="color: #dfe2eb;">
+            Sankofa<span style="color: #f6be39;">Watch</span>
         </span>
     </div>
+
+    <div class="hidden md:flex items-center gap-10">
+        <a href="#pipeline" class="nav-link text-xs uppercase tracking-widest font-medium" style="color: #9b8f7a;">How It Works</a>
+        <a href="#impact" class="nav-link text-xs uppercase tracking-widest font-medium" style="color: #9b8f7a;">Impact</a>
+        <a href="#about" class="nav-link text-xs uppercase tracking-widest font-medium" style="color: #9b8f7a;">About</a>
+    </div>
+
     <div class="flex items-center gap-3">
         {% if user.is_authenticated %}
-            <a href="{% url 'dashboard:home' %}" class="btn-primary" style="padding: 9px 18px; font-size: 13px;">
-                Dashboard
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
+            <a href="{% url 'dashboard:home' %}"
+               class="px-5 py-2 text-xs uppercase tracking-widest font-bold rounded transition-all duration-200 active:scale-95"
+               style="background: linear-gradient(135deg, #f6be39 0%, #d4a017 100%); color: #402d00; box-shadow: 0 4px 20px rgba(246,190,57,0.15);">
+                Dashboard →
             </a>
         {% else %}
-            <a href="{% url 'login' %}" class="btn-ghost">Sign In</a>
-            <a href="{% url 'login' %}" class="btn-primary" style="padding: 9px 18px; font-size: 13px;">
+            <a href="{% url 'login' %}"
+               class="px-5 py-2 text-xs uppercase tracking-widest font-bold rounded transition-all duration-200 active:scale-95"
+               style="background: linear-gradient(135deg, #f6be39 0%, #d4a017 100%); color: #402d00; box-shadow: 0 4px 20px rgba(246,190,57,0.15);">
                 Access Platform
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
             </a>
         {% endif %}
     </div>
 </nav>
 
-<!-- ── Hero ── -->
-<section class="relative z-10 text-center px-6 pt-20 pb-14">
-    <!-- Adinkra / Sankofa badge row -->
-    <div class="flex flex-col items-center gap-3 mb-10">
-        <!-- Live monitoring badge -->
-        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full"
-             style="background: rgba(212,160,23,0.07); border: 1px solid var(--gold-border);
-                    color: var(--gold); font-size: 11px; font-weight: 700; letter-spacing: 0.06em;">
+<!-- ── Hero Section ── -->
+<section class="relative min-h-screen flex items-center overflow-hidden" style="padding-top: 72px;">
+
+    <!-- Background image -->
+    <div class="absolute inset-0 z-0">
+        <img src="{% static 'images/hero_bg.jpg' %}" alt="" aria-hidden="true"
+             class="w-full h-full object-cover"
+             style="opacity: 0.35; filter: grayscale(20%);">
+        <div class="absolute inset-0" style="background: linear-gradient(to bottom, rgba(16,20,26,0.3) 0%, rgba(16,20,26,0.6) 50%, #10141a 100%);"></div>
+        <div class="absolute inset-0" style="background: radial-gradient(ellipse 70% 50% at 30% 40%, rgba(246,190,57,0.05) 0%, transparent 70%);"></div>
+        <!-- Dot grid -->
+        <div class="absolute inset-0" style="background-image: radial-gradient(circle at 1px 1px, rgba(79,70,52,0.2) 1px, transparent 0); background-size: 28px 28px;"></div>
+    </div>
+
+    <div class="relative z-10 max-w-6xl mx-auto px-8 w-full py-24">
+
+        <!-- Live badge -->
+        <div class="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full mb-8"
+             style="background: rgba(31,35,42,0.8); border: 1px solid {% if scan_active %}rgba(79,70,52,0.3){% else %}rgba(79,70,52,0.2){% endif %};">
+            {% if scan_active %}
             <span class="live-dot"></span>
-            LIVE MONITORING &nbsp;·&nbsp; GHANA MINING BELT
-        </div>
-        <!-- Sankofa Adinkra proverb -->
-        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full"
-             style="background: rgba(212,160,23,0.04); border: 1px solid rgba(212,160,23,0.12);
-                    color: rgba(212,160,23,0.6); font-size: 10px; font-style: italic; letter-spacing: 0.04em;">
-            <!-- Sankofa bird glyph (Adinkra) -->
-            <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:12px;height:12px;flex-shrink:0;" aria-hidden="true" focusable="false">
-                <ellipse cx="9" cy="11" rx="4" ry="2.8" fill="var(--gold)" fill-opacity="0.15" stroke="var(--gold)" stroke-width="1"/>
-                <path d="M6.5 9.5 Q9 7 12 9" stroke="var(--gold)" stroke-width="0.9" stroke-linecap="round" fill="none"/>
-                <path d="M12.5 10 Q15 7.5 13.5 4" stroke="var(--gold)" stroke-width="1" stroke-linecap="round" fill="none"/>
-                <path d="M6 8.5 Q4 7 4.5 4.5" stroke="var(--gold)" stroke-width="0.9" stroke-linecap="round" fill="none"/>
-                <circle cx="4.5" cy="3.5" r="1.4" fill="var(--gold)"/>
-                <path d="M3.8 4.2 L2.2 5.2" stroke="var(--gold)" stroke-width="0.9" stroke-linecap="round"/>
-                <ellipse cx="9" cy="8.5" rx="1.3" ry="1" fill="var(--gold)" fill-opacity="0.4" stroke="var(--gold)" stroke-width="0.7"/>
-            </svg>
-            Se wo were fi na wosankofa a yenkyi &nbsp;— &nbsp;It is not wrong to go back for what you forgot
-        </div>
-    </div>
-
-    <h1 class="font-black tracking-tight mb-6 leading-tight"
-        style="font-size: clamp(2.4rem, 6vw, 4.2rem); color: var(--text);">
-        Detecting Illegal Mining<br>
-        <span class="headline-gold">with Satellite AI</span>
-    </h1>
-
-    <p class="text-base sm:text-lg max-w-2xl mx-auto mb-10"
-       style="color: var(--text-dim); line-height: 1.75;">
-        SankofaWatch applies deep learning to Landsat &amp; Sentinel-2 satellite imagery,
-        automatically detecting illegal <em>galamsey</em> activity across Ghana's mining belt —
-        guarding the Pra, Offin, and Ankobra rivers, the Atewa Forest Reserve,
-        and the communities that depend on them.
-    </p>
-
-    <!-- Tech tags -->
-    <div class="flex flex-wrap justify-center gap-2 mb-4">
-        <span class="tech-tag">FPN-ResNet50</span>
-        <span class="tech-tag">HLS Landsat/Sentinel-2</span>
-        <span class="tech-tag">97.9% test accuracy</span>
-        <span class="tech-tag">6-band multispectral</span>
-        <span class="tech-tag">PostGIS · Celery · Django</span>
-    </div>
-</section>
-
-<!-- ── Primary stats ── -->
-<section class="relative z-10 max-w-5xl mx-auto px-6 pb-4">
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-
-        <div class="stat-card" style="animation-delay: 0.05s;">
-            <div class="stat-number" data-target="{{ stats.total_area_ha }}" data-decimals="1" data-suffix=" ha">—</div>
-            <div class="text-sm font-semibold mt-3 mb-1" style="color: var(--text);">Degraded Land</div>
-            <div class="text-xs" style="color: var(--text-dim);">Hectares of illegal mining mapped</div>
+            <span class="text-[10px] uppercase tracking-[0.2em] font-bold" style="color: #f6be39;">Automated Scanning Active · Ghana Mining Belt</span>
+            {% else %}
+            <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background: #9b8f7a;"></span>
+            <span class="text-[10px] uppercase tracking-[0.2em] font-bold" style="color: #9b8f7a;">Scanning Paused · Ghana Mining Belt</span>
+            {% endif %}
         </div>
 
-        <div class="stat-card" style="animation-delay: 0.15s;">
-            <div class="stat-number" data-target="{{ stats.illegal_sites }}" data-decimals="0" data-suffix="">—</div>
-            <div class="text-sm font-semibold mt-3 mb-1" style="color: var(--text);">Illegal Sites</div>
-            <div class="text-xs" style="color: var(--text-dim);">AI-confirmed, outside licensed concessions</div>
-        </div>
+        <!-- Headline -->
+        <h1 class="font-black tracking-tighter leading-[0.9] mb-8"
+            style="font-size: clamp(3rem, 8vw, 6.5rem); color: #dfe2eb; max-width: 900px;">
+            GUARDIANS OF<br>THE <span class="text-gold-gradient">MINING BELT.</span>
+        </h1>
 
-        <div class="stat-card" style="animation-delay: 0.25s;">
-            <div class="stat-number" data-target="{{ stats.alerts_resolved }}" data-decimals="0" data-suffix="">—</div>
-            <div class="text-sm font-semibold mt-3 mb-1" style="color: var(--text);">Cases Closed</div>
-            <div class="text-xs" style="color: var(--text-dim);">Verified by field inspectors on the ground</div>
-        </div>
-
-        <div class="stat-card" style="animation-delay: 0.35s;">
-            <div class="stat-number" data-target="{{ stats.regions_covered }}" data-decimals="0" data-suffix="">—</div>
-            <div class="text-sm font-semibold mt-3 mb-1" style="color: var(--text);">Regions Monitored</div>
-            <div class="text-xs" style="color: var(--text-dim);">Across Ghana's Western, Ashanti &amp; Eastern belts</div>
-        </div>
-
-    </div>
-</section>
-
-<!-- ── Secondary stats ── -->
-<section class="relative z-10 max-w-5xl mx-auto px-6 pb-16">
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-
-        <div class="info-card" style="animation-delay: 0.45s; border-color: rgba(212,160,23,0.18);">
-            <div class="icon-box"
-                 style="background: rgba(212,160,23,0.09); border: 1px solid rgba(212,160,23,0.2);">
-                <svg class="w-5 h-5" style="color: var(--gold);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-            </div>
-            <div>
-                <div class="text-xl font-bold" style="color: var(--gold);">97.9%</div>
-                <div class="text-xs mt-0.5" style="color: var(--text-dim);">Model test accuracy</div>
-            </div>
-        </div>
-
-        <div class="info-card" style="animation-delay: 0.55s; border-color: rgba(56,139,253,0.18);">
-            <div class="icon-box"
-                 style="background: rgba(56,139,253,0.09); border: 1px solid rgba(56,139,253,0.2);">
-                <svg class="w-5 h-5" style="color: #388bfd;" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                </svg>
-            </div>
-            <div>
-                <div class="text-xl font-bold" style="color: #388bfd;"
-                     data-target="{{ stats.total_jobs }}" data-decimals="0" data-suffix="">
-                    {{ stats.total_jobs }}
-                </div>
-                <div class="text-xs mt-0.5" style="color: var(--text-dim);">Scans completed</div>
-            </div>
-        </div>
-
-        <div class="info-card" style="animation-delay: 0.65s; border-color: rgba(63,185,80,0.18);">
-            <div class="icon-box"
-                 style="background: rgba(63,185,80,0.09); border: 1px solid rgba(63,185,80,0.2);">
-                <svg class="w-5 h-5" style="color: #3fb950;" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-                </svg>
-            </div>
-            <div>
-                <div class="text-xl font-bold" style="color: #3fb950;"
-                     data-target="{{ stats.scan_coverage_pct }}" data-decimals="1" data-suffix="%">
-                    {{ stats.scan_coverage_pct }}%
-                </div>
-                <div class="text-xs mt-0.5" style="color: var(--text-dim);">Ghana grid scanned</div>
-            </div>
-        </div>
-
-    </div>
-</section>
-
-<!-- Divider -->
-<div class="relative z-10 max-w-5xl mx-auto px-6 pb-16">
-    <div class="gradient-divider"></div>
-</div>
-
-<!-- ── Capabilities ── -->
-<section class="relative z-10 max-w-5xl mx-auto px-6 pb-20">
-    <p class="text-center text-[11px] uppercase tracking-[0.18em] mb-8"
-       style="color: rgba(230,237,243,0.3);">Platform Capabilities</p>
-
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-        <div class="feature-card" style="animation-delay: 0.1s;">
-            <div class="icon-box mb-4"
-                 style="background: var(--gold-dim); border: 1px solid var(--gold-border);">
-                <svg class="w-5 h-5" style="color: var(--gold);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                          d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/>
-                </svg>
-            </div>
-            <h3 class="text-sm font-bold mb-2" style="color: var(--text);">AI Detection Pipeline</h3>
-            <p class="text-xs leading-relaxed" style="color: var(--text-dim);">
-                FPN-ResNet50 processes 6-band HLS imagery into per-pixel mining probability maps.
-                Detections are vectorised, area-filtered, and cross-checked against legal concession boundaries.
-            </p>
-        </div>
-
-        <div class="feature-card" style="animation-delay: 0.2s;">
-            <div class="icon-box mb-4"
-                 style="background: rgba(56,139,253,0.09); border: 1px solid rgba(56,139,253,0.2);">
-                <svg class="w-5 h-5" style="color: #388bfd;" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                </svg>
-            </div>
-            <h3 class="text-sm font-bold mb-2" style="color: var(--text);">Field Verification</h3>
-            <p class="text-xs leading-relaxed" style="color: var(--text-dim);">
-                Alerts are dispatched to field inspectors who verify detections on the ground.
-                Evidence photos, visit dates, and outcomes feed back into live model accuracy tracking.
-            </p>
-        </div>
-
-        <div class="feature-card" style="animation-delay: 0.3s;">
-            <div class="icon-box mb-4"
-                 style="background: rgba(63,185,80,0.09); border: 1px solid rgba(63,185,80,0.2);">
-                <svg class="w-5 h-5" style="color: #3fb950;" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                </svg>
-            </div>
-            <h3 class="text-sm font-bold mb-2" style="color: var(--text);">Automated Scanning</h3>
-            <p class="text-xs leading-relaxed" style="color: var(--text-dim);">
-                A Ghana-wide scan grid runs automatically 6am–6pm daily, prioritising known hotspot
-                regions and scheduling work via a Celery task queue backed by Google Earth Engine.
-            </p>
-        </div>
-
-    </div>
-</section>
-
-<!-- ── What is Galamsey? ── -->
-<section class="relative z-10 max-w-5xl mx-auto px-6 pb-20">
-    <div class="gradient-divider mb-16"></div>
-
-    <p class="text-center text-[11px] uppercase tracking-[0.18em] mb-3"
-       style="color: rgba(230,237,243,0.3);">Understanding the Crisis</p>
-    <h2 class="text-center font-bold mb-10"
-        style="font-size: clamp(1.3rem, 3vw, 1.8rem); color: var(--text);">
-        What is <span style="color: var(--gold); font-style: italic;">Galamsey</span>?
-    </h2>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-
-        <div class="feature-card">
-            <div class="icon-box mb-4"
-                 style="background: rgba(212,160,23,0.09); border: 1px solid rgba(212,160,23,0.2);">
-                <!-- Drop / mercury icon -->
-                <svg class="w-5 h-5" style="color: var(--gold);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                          d="M12 3C12 3 5 10 5 15a7 7 0 0014 0c0-5-7-12-7-12z"/>
-                </svg>
-            </div>
-            <h3 class="text-sm font-bold mb-2" style="color: var(--text);">The Human Cost</h3>
-            <p class="text-xs leading-relaxed" style="color: var(--text-dim);">
-                <em>Galamsey</em> — from "gather them and sell" — is illegal artisanal gold mining
-                operating outside licensed concessions. Unregulated operations discharge mercury and
-                cyanide directly into rivers, threatening the drinking water of millions of Ghanaians
-                living downstream and poisoning fishing communities that depend on the water.
-            </p>
-        </div>
-
-        <div class="feature-card">
-            <div class="icon-box mb-4"
-                 style="background: rgba(63,185,80,0.09); border: 1px solid rgba(63,185,80,0.2);">
-                <!-- Tree / forest icon -->
-                <svg class="w-5 h-5" style="color: #3fb950;" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                          d="M12 2L8 8H4l8 6-3 8 3-2 3 2-3-8 8-6h-4L12 2z"/>
-                </svg>
-            </div>
-            <h3 class="text-sm font-bold mb-2" style="color: var(--text);">Ecosystems Under Threat</h3>
-            <p class="text-xs leading-relaxed" style="color: var(--text-dim);">
-                The Pra, Offin, and Ankobra river basins — once clean — have suffered severe
-                water-quality degradation. The Atewa Forest Reserve in Ghana's Eastern Region,
-                a globally significant biodiversity hotspot and the source of three major rivers,
-                faces ongoing encroachment from illegal miners pushing ever deeper into the forest.
-            </p>
-        </div>
-
-    </div>
-
-    <!-- Ashesi credit card -->
-    <div class="feature-card text-center" style="border-color: rgba(212,160,23,0.15);">
-        <!-- Adinkra Gye Nyame diamond -->
-        <div class="flex justify-center mb-3">
-            <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:16px;height:16px;opacity:.5;" aria-hidden="true" focusable="false">
-                <path d="M10 1 L19 10 L10 19 L1 10 Z" stroke="var(--gold)" stroke-width="1.2" fill="none"/>
-                <circle cx="10" cy="10" r="3" fill="var(--gold)" fill-opacity="0.45"/>
-            </svg>
-        </div>
-        <p class="text-xs leading-relaxed max-w-xl mx-auto" style="color: var(--text-dim);">
-            SankofaWatch was built at <strong style="color: var(--text);">Ashesi University</strong>,
-            Berekuso, Ghana — named for the Sankofa bird that flies forward while looking back,
-            a reminder that protecting Ghana's future means learning from and restoring its past.
+        <p class="text-lg leading-relaxed mb-10 max-w-2xl" style="color: #d3c5ae; font-weight: 300;">
+            SankofaWatch leverages orbital surveillance and high-fidelity neural networks to detect
+            illegal <em>galamsey</em> operations in real-time — protecting Ghana's forests, rivers,
+            and communities.
         </p>
+
+        <!-- Sankofa proverb -->
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-10"
+             style="background: rgba(246,190,57,0.04); border: 1px solid rgba(246,190,57,0.1); color: rgba(246,190,57,0.55); font-size: 11px; font-style: italic; letter-spacing: 0.03em;">
+            <svg viewBox="0 0 16 16" fill="none" style="width:11px;height:11px;flex-shrink:0;" aria-hidden="true">
+                <ellipse cx="9" cy="11" rx="4" ry="2.8" fill="#f6be39" fill-opacity="0.15" stroke="#f6be39" stroke-width="1"/>
+                <path d="M6.5 9.5 Q9 7 12 9" stroke="#f6be39" stroke-width="0.9" stroke-linecap="round" fill="none"/>
+                <path d="M12.5 10 Q15 7.5 13.5 4" stroke="#f6be39" stroke-width="1" stroke-linecap="round" fill="none"/>
+                <circle cx="4.5" cy="3.5" r="1.4" fill="#f6be39"/>
+                <path d="M3.8 4.2 L2.2 5.2" stroke="#f6be39" stroke-width="0.9" stroke-linecap="round"/>
+            </svg>
+            Se wo were fi na wosankofa a yenkyi — It is not wrong to go back for what you forgot
+        </div>
+
+        <!-- CTAs -->
+        <div class="flex flex-col sm:flex-row gap-4">
+            <a href="{% url 'login' %}"
+               class="inline-flex items-center justify-center gap-2 px-8 py-4 font-bold rounded text-base transition-all duration-200 active:scale-[0.98]"
+               style="background: linear-gradient(135deg, #f6be39 0%, #d4a017 100%); color: #402d00; box-shadow: 0 8px 32px rgba(246,190,57,0.2);"
+               onmouseover="this.style.boxShadow='0 8px 40px rgba(246,190,57,0.32)'"
+               onmouseout="this.style.boxShadow='0 8px 32px rgba(246,190,57,0.2)'">
+                Access Platform
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+            </a>
+            <a href="#pipeline"
+               class="inline-flex items-center justify-center gap-2 px-8 py-4 font-bold rounded text-base transition-all duration-200"
+               style="color: #dfe2eb; background: rgba(38,42,49,0.5); border: 1px solid rgba(79,70,52,0.3); backdrop-filter: blur(8px);"
+               onmouseover="this.style.background='rgba(38,42,49,0.8)'"
+               onmouseout="this.style.background='rgba(38,42,49,0.5)'">
+                View Methodology
+            </a>
+        </div>
+
+        <!-- Tech tags -->
+        <div class="flex flex-wrap gap-2 mt-10">
+<span class="px-2.5 py-1 rounded text-[10px] font-medium" style="background:rgba(240,246,252,0.04);border:1px solid rgba(240,246,252,0.08);color:rgba(211,197,174,0.45);font-family:'SFMono-Regular','Consolas',monospace;">FPN-ResNet50</span>
+            <span class="px-2.5 py-1 rounded text-[10px] font-medium" style="background:rgba(240,246,252,0.04);border:1px solid rgba(240,246,252,0.08);color:rgba(211,197,174,0.45);font-family:'SFMono-Regular','Consolas',monospace;">HLS Landsat/Sentinel-2</span>
+            <span class="px-2.5 py-1 rounded text-[10px] font-medium" style="background:rgba(240,246,252,0.04);border:1px solid rgba(240,246,252,0.08);color:rgba(211,197,174,0.45);font-family:'SFMono-Regular','Consolas',monospace;">97.9% accuracy</span>
+            <span class="px-2.5 py-1 rounded text-[10px] font-medium" style="background:rgba(240,246,252,0.04);border:1px solid rgba(240,246,252,0.08);color:rgba(211,197,174,0.45);font-family:'SFMono-Regular','Consolas',monospace;">6-band multispectral</span>
+            <span class="px-2.5 py-1 rounded text-[10px] font-medium" style="background:rgba(240,246,252,0.04);border:1px solid rgba(240,246,252,0.08);color:rgba(211,197,174,0.45);font-family:'SFMono-Regular','Consolas',monospace;">PostGIS · Celery · Django</span>
+        </div>
+    </div>
+
+    <!-- Scroll cue -->
+    <div class="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 opacity-40">
+        <span class="text-[9px] uppercase tracking-widest" style="color: #9b8f7a;">Scroll</span>
+        <svg class="w-4 h-4 animate-bounce" fill="none" stroke="#9b8f7a" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+        </svg>
     </div>
 </section>
 
-<!-- ── CTA ── -->
-<section class="relative z-10 text-center pb-24 px-6">
-    {% if user.is_authenticated %}
-        <a href="{% url 'dashboard:home' %}" class="btn-primary text-base">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-            </svg>
-            Go to Dashboard
-        </a>
-    {% else %}
-        <a href="{% url 'login' %}" class="btn-primary text-base">
-            Access the Platform
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
-            </svg>
-        </a>
-    {% endif %}
-    <p class="text-xs mt-5" style="color: rgba(230,237,243,0.22);">
-        Ashesi University Capstone · SankofaWatch
-    </p>
+<!-- ── Live Statistics Bento ── -->
+<section class="relative z-10 py-24 px-8 max-w-7xl mx-auto">
+    <div class="flex items-center gap-3 mb-12">
+        <div class="w-1 h-6 rounded-full" style="background: #f6be39;"></div>
+        <h2 class="text-xs uppercase tracking-[0.2em] font-bold" style="color: #9b8f7a;">Live System Telemetry</h2>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
+
+        <!-- Big stat card -->
+        <div class="md:col-span-7 hover-card rise rounded-xl p-8 relative overflow-hidden"
+             style="background: #181c22; border: 1px solid rgba(79,70,52,0.2); animation-delay: 0.05s;">
+            <!-- Background sat icon -->
+            <div class="absolute top-6 right-6 opacity-[0.04]">
+                <svg class="w-32 h-32" fill="#f6be39" viewBox="0 0 24 24"><path d="M21.71 3.29a1 1 0 00-1.42 0l-1.58 1.58A8 8 0 005.48 16.23l-2.19 2.19a1 1 0 000 1.42A1 1 0 004 20a1 1 0 00.71-.29l2.19-2.19A8 8 0 0018.42 5.29l1.58-1.58a1 1 0 000-1.42zM7 12A5 5 0 0117 12 5 5 0 017 12z"/></svg>
+            </div>
+            <p class="text-[10px] uppercase tracking-[0.2em] font-bold mb-3" style="color: #f6be39;">Total Illegal Area Detected</p>
+            <div class="flex items-baseline gap-3 mb-6">
+                <span class="stat-num font-black tracking-tighter leading-none" style="font-size: clamp(3rem,6vw,4.5rem); color: #dfe2eb;">{{ stats.total_area_ha|floatformat:0 }}</span>
+                <span class="text-xl font-medium" style="color: #9b8f7a;">hectares</span>
+            </div>
+            <!-- Bar chart visual -->
+            <div class="h-20 w-full rounded-lg p-3 flex items-end gap-1.5"
+                 style="background: rgba(10,14,20,0.5); border: 1px solid rgba(79,70,52,0.15);">
+                <div class="flex-1 rounded-t-sm" style="height:35%;background:rgba(246,190,57,0.15);"></div>
+                <div class="flex-1 rounded-t-sm" style="height:52%;background:rgba(246,190,57,0.2);"></div>
+                <div class="flex-1 rounded-t-sm" style="height:43%;background:rgba(246,190,57,0.25);"></div>
+                <div class="flex-1 rounded-t-sm" style="height:65%;background:rgba(246,190,57,0.3);"></div>
+                <div class="flex-1 rounded-t-sm" style="height:78%;background:rgba(246,190,57,0.5);"></div>
+                <div class="flex-1 rounded-t-sm relative" style="height:100%;background:#f6be39;">
+                    <div class="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[8px] font-bold" style="color:#f6be39;">PEAK</div>
+                </div>
+                <div class="flex-1 rounded-t-sm" style="height:60%;background:rgba(246,190,57,0.35);"></div>
+            </div>
+        </div>
+
+        <!-- Right two cards stacked -->
+        <div class="md:col-span-5 grid grid-rows-2 gap-5">
+            <div class="hover-card rise rounded-xl p-6"
+                 style="background: #181c22; border: 1px solid rgba(79,70,52,0.2); animation-delay: 0.1s;">
+                <div class="flex items-center gap-2 mb-3">
+                    <div class="w-2 h-2 rounded-full" style="background: #67df70;"></div>
+                    <p class="text-[10px] uppercase tracking-widest font-bold" style="color: #9b8f7a;">Illegal Sites Confirmed</p>
+                </div>
+                <div class="stat-num font-black tracking-tighter" style="font-size: 3rem; color: #dfe2eb; line-height: 1;">{{ stats.illegal_sites }}</div>
+                <p class="text-xs mt-2" style="color: #67df70;">
+                    <span>{{ stats.alerts_resolved }} alerts resolved</span>
+                </p>
+            </div>
+            <div class="hover-card rise rounded-xl p-6"
+                 style="background: #181c22; border: 1px solid rgba(79,70,52,0.2); animation-delay: 0.15s;">
+                <div class="flex items-center gap-2 mb-3">
+                    <div class="w-2 h-2 rounded-full" style="background: #f6be39;"></div>
+                    <p class="text-[10px] uppercase tracking-widest font-bold" style="color: #9b8f7a;">Ghana Grid Coverage</p>
+                </div>
+                <div class="stat-num font-black tracking-tighter" style="font-size: 3rem; color: #dfe2eb; line-height: 1;">{{ stats.scan_coverage_pct }}%</div>
+                <div class="w-full rounded-full mt-3" style="height: 3px; background: rgba(79,70,52,0.3);">
+                    <div class="rounded-full h-full" style="width: {{ stats.scan_coverage_pct }}%; background: linear-gradient(90deg, #f6be39, #d4a017);"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom four small stats -->
+        <div class="md:col-span-3 hover-card rise rounded-xl p-5"
+             style="background: #181c22; border: 1px solid rgba(79,70,52,0.2); animation-delay:0.2s;">
+            <p class="text-[9px] uppercase tracking-widest font-bold mb-2" style="color: #9b8f7a;">Completed Scans</p>
+            <div class="stat-num text-3xl font-black" style="color: #dfe2eb;">{{ stats.total_jobs }}</div>
+        </div>
+        <div class="md:col-span-3 hover-card rise rounded-xl p-5"
+             style="background: #181c22; border: 1px solid rgba(79,70,52,0.2); animation-delay:0.25s;">
+            <p class="text-[9px] uppercase tracking-widest font-bold mb-2" style="color: #9b8f7a;">Regions Monitored</p>
+            <div class="stat-num text-3xl font-black" style="color: #dfe2eb;">{{ stats.regions_covered }}</div>
+        </div>
+        <div class="md:col-span-3 hover-card rise rounded-xl p-5"
+             style="background: #181c22; border: 1px solid rgba(79,70,52,0.2); animation-delay:0.3s;">
+            <p class="text-[9px] uppercase tracking-widest font-bold mb-2" style="color: #9b8f7a;">Total Detections</p>
+            <div class="stat-num text-3xl font-black" style="color: #dfe2eb;">{{ stats.total_detections }}</div>
+        </div>
+        <div class="md:col-span-3 hover-card rise rounded-xl p-5"
+             style="background: #181c22; border: 1px solid rgba(79,70,52,0.2); animation-delay:0.35s;">
+            <p class="text-[9px] uppercase tracking-widest font-bold mb-2" style="color: #9b8f7a;">Model Precision</p>
+            <div class="stat-num text-3xl font-black" style="color: #dfe2eb;">73.1%</div>
+        </div>
+
+    </div>
+</section>
+
+<!-- ── Detection Pipeline ── -->
+<section id="pipeline" class="relative z-10 py-24" style="background: #0a0e14;">
+    <div class="max-w-7xl mx-auto px-8">
+
+        <div class="flex flex-col md:flex-row items-end justify-between mb-16 gap-8">
+            <div class="max-w-2xl">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-1 h-6 rounded-full" style="background: #f6be39;"></div>
+                    <span class="text-xs uppercase tracking-[0.2em] font-bold" style="color: #9b8f7a;">System Architecture</span>
+                </div>
+                <h2 class="font-black tracking-tight leading-tight" style="font-size: clamp(1.8rem,4vw,2.8rem); color: #dfe2eb;">
+                    THE DETECTION <span class="text-gold-gradient">PIPELINE.</span>
+                </h2>
+                <p class="text-base mt-4 leading-relaxed" style="color: #d3c5ae;">
+                    Our multi-layered approach ensures no environmental disturbance goes undetected —
+                    from raw satellite data to actionable field intelligence.
+                </p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-16">
+
+            <div class="relative rise" style="animation-delay:0.05s;">
+                <div class="text-8xl font-black absolute -top-10 -left-2 select-none pointer-events-none"
+                     style="color: rgba(79,70,52,0.12); line-height:1;">01</div>
+                <div class="relative z-10">
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-5"
+                         style="background: rgba(246,190,57,0.08); border: 1px solid rgba(246,190,57,0.15);">
+                        <svg class="w-5 h-5" fill="none" stroke="#f6be39" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                        </svg>
+                    </div>
+                    <h4 class="text-lg font-bold mb-3" style="color: #dfe2eb;">Data Acquisition</h4>
+                    <p class="text-sm leading-relaxed mb-5" style="color: #d3c5ae;">
+                        Ingesting multi-spectral HLS imagery from Landsat-9 and Sentinel-2 constellations.
+                        Scenes are cloud-filtered and normalised before inference.
+                    </p>
+                    <div class="p-3.5 rounded-lg" style="background: rgba(16,20,26,0.8); border-left: 2px solid #f6be39;">
+                        <code class="text-[10px]" style="color: rgba(246,190,57,0.75); font-family:'SFMono-Regular','Consolas',monospace;">
+                            QUERY: hls_assets WHERE cloud_cover &lt; 10
+                        </code>
+                    </div>
+                </div>
+            </div>
+
+            <div class="relative rise" style="animation-delay:0.1s;">
+                <div class="text-8xl font-black absolute -top-10 -left-2 select-none pointer-events-none"
+                     style="color: rgba(79,70,52,0.12); line-height:1;">02</div>
+                <div class="relative z-10">
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-5"
+                         style="background: rgba(246,190,57,0.08); border: 1px solid rgba(246,190,57,0.15);">
+                        <svg class="w-5 h-5" fill="none" stroke="#f6be39" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+                        </svg>
+                    </div>
+                    <h4 class="text-lg font-bold mb-3" style="color: #dfe2eb;">Neural Analysis</h4>
+                    <p class="text-sm leading-relaxed mb-5" style="color: #d3c5ae;">
+                        FPN-ResNet50 CNN identifies patterns of canopy loss, sedimentation, and
+                        surface disturbance at 30m resolution across the Ghana mining belt.
+                    </p>
+                    <div class="p-3.5 rounded-lg" style="background: rgba(16,20,26,0.8); border-left: 2px solid #f6be39;">
+                        <code class="text-[10px]" style="color: rgba(246,190,57,0.75); font-family:'SFMono-Regular','Consolas',monospace;">
+                            EXEC: fpn_resnet50_inference_v1
+                        </code>
+                    </div>
+                </div>
+            </div>
+
+            <div class="relative rise" style="animation-delay:0.15s;">
+                <div class="text-8xl font-black absolute -top-10 -left-2 select-none pointer-events-none"
+                     style="color: rgba(79,70,52,0.12); line-height:1;">03</div>
+                <div class="relative z-10">
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-5"
+                         style="background: rgba(246,190,57,0.08); border: 1px solid rgba(246,190,57,0.15);">
+                        <svg class="w-5 h-5" fill="none" stroke="#f6be39" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                        </svg>
+                    </div>
+                    <h4 class="text-lg font-bold mb-3" style="color: #dfe2eb;">Stakeholder Alert</h4>
+                    <p class="text-sm leading-relaxed mb-5" style="color: #d3c5ae;">
+                        Verified threats are immediately dispatched to EPA, Forestry Commission,
+                        and regional agencies via encrypted notification channels.
+                    </p>
+                    <div class="p-3.5 rounded-lg" style="background: rgba(16,20,26,0.8); border-left: 2px solid #f6be39;">
+                        <code class="text-[10px]" style="color: rgba(246,190,57,0.75); font-family:'SFMono-Regular','Consolas',monospace;">
+                            STATUS: alert_dispatched_encrypted
+                        </code>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- ── Impact Case Studies ── -->
+<section id="impact" class="relative z-10 py-24 px-8">
+    <div class="max-w-7xl mx-auto">
+
+        <div class="mb-14">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-1 h-6 rounded-full" style="background: #f6be39;"></div>
+                <span class="text-xs uppercase tracking-[0.2em] font-bold" style="color: #9b8f7a;">Field Operations</span>
+            </div>
+            <h2 class="font-black tracking-tight" style="font-size: clamp(1.8rem,4vw,2.8rem); color: #dfe2eb;">
+                IMPACT STUDIES
+            </h2>
+            <div class="w-16 h-0.5 mt-3" style="background: #f6be39;"></div>
+        </div>
+
+        {% if impact_sites %}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+            {% for site in impact_sites %}
+            <div class="group rounded-xl overflow-hidden flex flex-col hover-card"
+                 style="background: #181c22; border: 1px solid rgba(79,70,52,0.2);">
+
+                <!-- Image -->
+                <div class="relative overflow-hidden" style="height: 220px;">
+                    {% if forloop.first %}
+                    <img src="{% static 'images/mining_detection.jpg' %}" alt="Satellite detection"
+                         class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                         style="opacity: 0.85;">
+                    {% else %}
+                    <img src="{% static 'images/forest_protected.jpg' %}" alt="Satellite detection"
+                         class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                         style="opacity: 0.85;">
+                    {% endif %}
+                    <div class="absolute inset-0" style="background: linear-gradient(to top, rgba(24,28,34,0.9) 0%, transparent 55%);"></div>
+                    <div class="absolute top-4 left-4">
+                        <span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest"
+                              style="background: rgba(255,180,171,0.15); border: 1px solid rgba(255,180,171,0.3); color: #ffb4ab;">
+                            Illegal
+                        </span>
+                    </div>
+                    {% if site.status == 'confirmed_illegal' %}
+                    <div class="absolute top-4 right-4">
+                        <span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest"
+                              style="background: rgba(103,223,112,0.12); border: 1px solid rgba(103,223,112,0.25); color: #67df70;">
+                            Confirmed
+                        </span>
+                    </div>
+                    {% endif %}
+                    <!-- Detection date overlaid on image -->
+                    <div class="absolute bottom-4 left-4">
+                        <span class="text-[10px] font-mono" style="color: rgba(211,197,174,0.7);">
+                            Detected {{ site.detection_date|date:"d M Y" }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="p-7 flex flex-col justify-between flex-1">
+                    <div>
+                        <h3 class="text-xl font-bold mb-2" style="color: #dfe2eb;">
+                            {% if site.region %}{{ site.region.name }}{% else %}Unknown Region{% endif %}
+                        </h3>
+                        <p class="text-sm leading-relaxed" style="color: #d3c5ae;">
+                            Illegal mining activity detected by the {{ settings.APP_NAME }} neural network
+                            {% if site.region %}within the {{ site.region.get_region_type_display|lower }} zone{% endif %}.
+                            {% if site.recurrence_count > 1 %}This site has been flagged {{ site.recurrence_count }} times.{% endif %}
+                        </p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mt-5 pt-5"
+                         style="border-top: 1px solid rgba(79,70,52,0.2);">
+                        <div>
+                            <div class="text-[9px] uppercase tracking-widest font-bold mb-1" style="color: #9b8f7a;">Affected Area</div>
+                            <div class="text-lg font-black" style="color: #f6be39;">{{ site.area_hectares|floatformat:1 }} Ha</div>
+                        </div>
+                        <div>
+                            <div class="text-[9px] uppercase tracking-widest font-bold mb-1" style="color: #9b8f7a;">Confidence</div>
+                            <div class="text-lg font-black" style="color: #f6be39;">{% widthratio site.confidence_score 1 100 %}%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+        </div>
+        {% else %}
+        <div class="text-center py-16" style="color: #9b8f7a;">
+            <p class="text-sm uppercase tracking-widest">No confirmed detections to display yet.</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- ── Final CTA ── -->
+<section class="relative z-10 py-32 px-8 overflow-hidden" style="background: #0a0e14;">
+    <div class="absolute inset-0" style="background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(246,190,57,0.04) 0%, transparent 70%);"></div>
+    <div class="max-w-4xl mx-auto text-center relative z-10">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-8"
+             style="background: rgba(31,35,42,0.8); border: 1px solid rgba(79,70,52,0.3);">
+            <span class="live-dot"></span>
+            <span class="text-[10px] uppercase tracking-[0.2em] font-bold" style="color: #f6be39;">Open to New Partners</span>
+        </div>
+
+        <h2 class="font-black tracking-tighter leading-none mb-8"
+            style="font-size: clamp(2.5rem,7vw,5rem); color: #dfe2eb;">
+            JOIN THE <span class="text-gold-gradient">GUARDIANS.</span>
+        </h2>
+
+        <p class="text-lg leading-relaxed mb-12 max-w-2xl mx-auto" style="color: #d3c5ae; font-weight: 300;">
+            Help expand the monitoring network. Partner with {{ settings.APP_NAME }} to deploy
+            high-precision environmental oversight across Ghana's mining belt.
+        </p>
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-5">
+            <a href="{% url 'signup' %}"
+               class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-12 py-4 font-black rounded text-base transition-all duration-200 active:scale-[0.98]"
+               style="background: linear-gradient(135deg, #f6be39 0%, #d4a017 100%); color: #402d00; box-shadow: 0 8px 32px rgba(246,190,57,0.2);"
+               onmouseover="this.style.boxShadow='0 8px 40px rgba(246,190,57,0.32)'; this.style.transform='scale(1.02)'"
+               onmouseout="this.style.boxShadow='0 8px 32px rgba(246,190,57,0.2)'; this.style.transform='scale(1)'">
+                Become a Guardian
+            </a>
+            <a href="{% url 'login' %}"
+               class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-12 py-4 font-bold rounded text-base transition-all duration-200"
+               style="color: #f6be39; border: 1px solid rgba(246,190,57,0.3);"
+               onmouseover="this.style.background='rgba(246,190,57,0.06)'"
+               onmouseout="this.style.background='transparent'">
+                Sign In to Platform
+            </a>
+        </div>
+    </div>
 </section>
 
 <!-- ── Footer ── -->
-<footer class="relative z-10 px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-2"
-        style="border-top: 1px solid var(--border);">
-    <div class="flex items-center gap-2">
-        <!-- Adinkra Gye Nyame-inspired diamond mark: "none greater" -->
-        <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:10px;height:10px;opacity:.35;" aria-hidden="true" focusable="false">
-            <path d="M7 1 L13 7 L7 13 L1 7 Z" stroke="var(--gold)" stroke-width="1" fill="none"/>
-            <circle cx="7" cy="7" r="2" fill="var(--gold)" fill-opacity="0.5"/>
-        </svg>
-        <span class="text-xs" style="color: rgba(230,237,243,0.28);">
-            © 2026 SankofaWatch &nbsp;·&nbsp; Ashesi University Capstone
-        </span>
+<footer id="about" class="relative z-10 px-8 py-16"
+        style="background: #0a0e14; border-top: 1px solid rgba(79,70,52,0.15);">
+    <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-10">
+
+        <div class="md:col-span-1">
+            <div class="flex items-center gap-2.5 mb-4">
+                <div class="w-7 h-7 rounded-md flex items-center justify-center"
+                     style="background: rgba(246,190,57,0.08); border: 1px solid rgba(246,190,57,0.18);">
+                    <svg viewBox="0 0 28 28" fill="none" class="w-4 h-4" aria-hidden="true">
+                        <ellipse cx="16" cy="18" rx="7" ry="4.5" fill="#f6be39" fill-opacity="0.13" stroke="#f6be39" stroke-width="1.5"/>
+                        <path d="M12 16 Q16 11 21 15" stroke="#f6be39" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+                        <path d="M22 17 Q27 12 23.5 6" stroke="#f6be39" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+                        <circle cx="8.5" cy="5.5" r="2.3" fill="#f6be39"/>
+                        <path d="M7.5 6.5 L5 8" stroke="#f6be39" stroke-width="1.3" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <span class="font-black text-sm tracking-tighter" style="color: #dfe2eb;">Sankofa<span style="color:#f6be39;">Watch</span></span>
+            </div>
+            <p class="text-[11px] uppercase tracking-wider leading-loose" style="color: #6b7280;">
+                © 2024 {{ settings.APP_NAME }}.<br>Data-driven guardianship.
+            </p>
+        </div>
+
+        <div>
+            <h5 class="text-[10px] uppercase tracking-[0.15em] font-bold mb-5" style="color: #f6be39;">Platform</h5>
+            <ul class="space-y-3">
+                <li><a href="{% url 'login' %}" class="text-[11px] uppercase tracking-wider nav-link" style="color: #6b7280;">Sign In</a></li>
+                <li><a href="{% url 'signup' %}" class="text-[11px] uppercase tracking-wider nav-link" style="color: #6b7280;">Create Account</a></li>
+            </ul>
+        </div>
+
+        <div>
+            <h5 class="text-[10px] uppercase tracking-[0.15em] font-bold mb-5" style="color: #f6be39;">Learn More</h5>
+            <ul class="space-y-3">
+                <li><a href="#pipeline" class="text-[11px] uppercase tracking-wider nav-link" style="color: #6b7280;">How It Works</a></li>
+                <li><a href="#impact" class="text-[11px] uppercase tracking-wider nav-link" style="color: #6b7280;">Impact</a></li>
+            </ul>
+        </div>
+
+        <div></div>
+
     </div>
-    <span class="text-xs" style="color: rgba(230,237,243,0.18);">
-        Satellite intelligence protecting Ghana's environment
-    </span>
 </footer>
-
-<!-- ── Animated counters ── -->
-<script>
-(function () {
-    function animateCounter(el) {
-        var target = parseFloat(el.dataset.target);
-        if (isNaN(target)) return;
-        var decimals = parseInt(el.dataset.decimals, 10) || 0;
-        var suffix   = el.dataset.suffix || '';
-        var duration = 1800;
-        var startTs  = null;
-
-        function step(ts) {
-            if (!startTs) startTs = ts;
-            var progress = Math.min((ts - startTs) / duration, 1);
-            // Ease-out quartic
-            var ease  = 1 - Math.pow(1 - progress, 4);
-            var value = target * ease;
-            el.textContent = (decimals > 0
-                ? value.toFixed(decimals)
-                : Math.round(value).toLocaleString()
-            ) + suffix;
-            if (progress < 1) requestAnimationFrame(step);
-        }
-        requestAnimationFrame(step);
-    }
-
-    var observer = new IntersectionObserver(function (entries) {
-        entries.forEach(function (entry) {
-            if (entry.isIntersecting) {
-                animateCounter(entry.target);
-                observer.unobserve(entry.target);
-            }
-        });
-    }, { threshold: 0.25 });
-
-    document.querySelectorAll('[data-target]').forEach(function (el) {
-        observer.observe(el);
-    });
-})();
-</script>
 
 </body>
 </html>
