@@ -63,9 +63,13 @@ class GeeService:
             project_id = config('GEE_PROJECT_ID', default='')
 
             if service_account_path and os.path.exists(service_account_path) and project_id:
-                # Production: service account
-                credentials = ee.ServiceAccountCredentials(service_account_path, project_id)
-                ee.Initialize(credentials)
+                # Production: service account — read email from the JSON key file
+                import json as _json
+                with open(service_account_path) as _f:
+                    _key_data = _json.load(_f)
+                service_account_email = _key_data.get('client_email', '')
+                credentials = ee.ServiceAccountCredentials(service_account_email, service_account_path)
+                ee.Initialize(credentials, project=project_id)
                 logger.info("GEE authenticated via service account")
             elif project_id:
                 # Development: personal credentials (earthengine authenticate)
