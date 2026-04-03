@@ -34,8 +34,8 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:62075',
     'http://localhost:62075',
     'http://localhost:8001',
-    'http://127.0.0.1:8001'
-
+    'http://127.0.0.1:8001',
+    'http://34.26.32.215',
 ]
 
 # Additional CORS settings for development
