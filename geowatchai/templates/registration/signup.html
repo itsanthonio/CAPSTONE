@@ -102,10 +102,10 @@
                 </div>
 
                 <div>
-                    <label for="id_organization" class="gw-label">Organization</label>
-                    <select id="id_organization" name="organization" required class="gw-select">
-                        {% for choice in form.organization.field.choices %}
-                        <option value="{{ choice.0 }}" {% if form.organization.value == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
+                    <label for="id_organisation" class="gw-label">Organisation</label>
+                    <select id="id_organisation" name="organisation" required class="gw-select">
+                        {% for choice in form.organisation.field.choices %}
+                        <option value="{{ choice.0 }}" {% if form.organisation.value == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
                         {% endfor %}
                     </select>
                 </div>
