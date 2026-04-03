@@ -211,12 +211,20 @@ class CustomLoginView(LoginView):
                 None,
                 f'Invalid credentials. {remaining} attempt{"s" if remaining != 1 else ""} remaining before lockout.'
             )
-        # Give a specific, helpful message when the account is unverified
+        # Give a specific message when the account is inactive
         username = self.request.POST.get('username', '')
         try:
             u = User.objects.get(username=username)
             if not u.is_active:
-                form.add_error(None, 'Please verify your email address before signing in.')
+                from apps.detections.models import AuditLog
+                admin_deactivated = AuditLog.objects.filter(
+                    action='user.deactivated',
+                    object_id=str(u.pk),
+                ).exists()
+                if admin_deactivated:
+                    form.add_error(None, 'Your account has been deactivated. Please contact your administrator.')
+                else:
+                    form.add_error(None, 'Please verify your email address before signing in.')
         except User.DoesNotExist:
             pass
         return super().form_invalid(form)
