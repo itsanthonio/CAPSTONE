@@ -282,6 +282,11 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30, org=None):
     cache_key = f'dashboard_stats_{velocity_weeks}_{trend_days}_{org_id}'
     cached = cache.get(cache_key)
     if cached is not None:
+        # Always refresh scan status outside the cache so toggling takes effect immediately
+        from apps.scanning.models import AutoScanConfig as _ASC
+        _sc = _ASC.get()
+        cached['scan_enabled'] = _sc.is_enabled
+        cached['scan_within_window'] = _sc.is_within_window()
         return cached
     try:
         from apps.detections.models import DetectedSite, Alert, ModelRun
