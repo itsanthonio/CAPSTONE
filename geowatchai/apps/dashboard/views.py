@@ -282,11 +282,6 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30, org=None):
     cache_key = f'dashboard_stats_{velocity_weeks}_{trend_days}_{org_id}'
     cached = cache.get(cache_key)
     if cached is not None:
-        # Always refresh scan status outside the cache so toggling takes effect immediately
-        from apps.scanning.models import AutoScanConfig as _ASC
-        _sc = _ASC.get()
-        cached['scan_enabled'] = _sc.is_enabled
-        cached['scan_within_window'] = _sc.is_within_window()
         return cached
     try:
         from apps.detections.models import DetectedSite, Alert, ModelRun
@@ -539,9 +534,7 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30, org=None):
             'spark_sites': spark_sites,
             'spark_alerts_data': spark_alerts_data,
             'has_data': total_sites > 0,
-            # Auto scan
-            'scan_enabled':          scan_config.is_enabled,
-            'scan_within_window':    scan_config.is_within_window(),
+            # Auto scan (scan_enabled/scan_within_window are injected fresh by callers, not cached)
             'auto_jobs_today':       auto_jobs_today,
             'auto_detections_today': auto_detections_today,
             'scan_coverage_pct':     scan_coverage_pct,
@@ -624,6 +617,10 @@ def dashboard_home(request):
             _td = 30
         _org = request.user.profile.organisation if request.user.profile.role == 'agency_admin' else None
         stats = _get_dashboard_stats(velocity_weeks=_vw, trend_days=_td, org=_org)
+        from apps.scanning.models import AutoScanConfig as _ASC, OrgScanConfig as _OSC
+        _sc = _ASC.get()
+        stats['scan_enabled'] = _OSC.objects.filter(is_enabled=True).exists()
+        stats['scan_within_window'] = _sc.is_within_window()
     except Exception as e:
         _vw = 8
         _td = 30
@@ -843,6 +840,8 @@ def dashboard_kpis(request):
         ]})
     org = request.user.profile.organisation if role == 'agency_admin' else None
     stats = _get_dashboard_stats(org=org)
+    from apps.scanning.models import AutoScanConfig as _ASC, OrgScanConfig as _OSC
+    _sc = _ASC.get()
     return JsonResponse({
         'total_detected_sites':  stats.get('total_detected_sites', 0),
         'illegal_sites':         stats.get('illegal_sites', 0),
@@ -860,8 +859,8 @@ def dashboard_kpis(request):
         'auto_jobs_today':       stats.get('auto_jobs_today', 0),
         'auto_detections_today': stats.get('auto_detections_today', 0),
         'scan_coverage_pct':     stats.get('scan_coverage_pct', 0),
-        'scan_enabled':          stats.get('scan_enabled', False),
-        'scan_within_window':    stats.get('scan_within_window', False),
+        'scan_enabled':          _OSC.objects.filter(is_enabled=True).exists(),
+        'scan_within_window':    _sc.is_within_window(),
     })
 
 
