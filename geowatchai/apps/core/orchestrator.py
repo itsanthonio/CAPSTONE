@@ -481,11 +481,10 @@ class MiningDetectionPipeline:
         if not sites:
             return
         _, _, _, _, _, _, Region = _get_detection_models()
-        # Exclude admin_district — those are surfaced via the separate district
-        # spatial lookup in the API, not via the site.region FK.
         active_regions = Region.objects.filter(
-            is_active=True
-        ).exclude(region_type='admin_district')
+            is_active=True,
+            region_type='admin_district',
+        )
         for site in sites:
             region = active_regions.filter(
                 geometry__contains=site.geometry.centroid
