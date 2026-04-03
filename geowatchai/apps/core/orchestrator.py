@@ -588,15 +588,13 @@ class MiningDetectionPipeline:
                 alert_type = Alert.AlertType.NEW_DETECTION
                 severity = Alert.Severity.MEDIUM
 
+            location = site.region.name if site.region else 'Unknown Area'
+            type_label = Alert.AlertType(alert_type).label
             Alert.objects.create(
                 detected_site=site,
                 alert_type=alert_type,
                 severity=severity,
-                title=(
-                    f"Illegal mining detected — "
-                    f"{site.area_hectares:.2f} ha "
-                    f"({site.confidence_score:.0%} confidence)"
-                ),
+                title=f"{type_label} — {location}",
                 description=(
                     f"Detection date: {site.detection_date}\n"
                     f"Area: {site.area_hectares:.2f} ha\n"
