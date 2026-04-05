@@ -127,7 +127,7 @@ class GhanaPlace(models.Model):
     ascii_name  = models.CharField(max_length=200, db_index=True)
     latitude    = models.FloatField()
     longitude   = models.FloatField()
-    feature_code = models.CharField(max_length=10, blank=True)  # PPL, PPLA, PPLX, etc.
+    feature_code = models.CharField(max_length=50, blank=True)  # PPL, PPLA, PPLX, etc.
     population  = models.IntegerField(default=0)
     region      = models.CharField(max_length=100, blank=True)  # admin1 name
     source      = models.CharField(max_length=20, default='geonames')  # 'geonames' or 'google'
