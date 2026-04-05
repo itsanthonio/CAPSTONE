@@ -6,240 +6,258 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-    .mini-map { height: 150px; border-radius: 0.5rem; overflow: hidden; }
-    .mini-map-wrap { position: relative; cursor: pointer; }
-    .mini-map-overlay {
-        position: absolute; bottom: 0; right: 0; z-index: 800;
-        padding: 8px; pointer-events: none;
+    /* Card map column */
+    .assignment-map-col { min-height: 120px; }
+    .mini-map { width: 100%; height: 100%; }
+    .mini-map-wrap { position: relative; height: 100%; cursor: pointer; }
+
+    /* Tab pills */
+    .tab-pill { transition: background 0.15s, color 0.15s; }
+    .tab-pill.active {
+        background: #f6be39;
+        color: #402d00;
     }
-    .mini-map-overlay span {
-        background: rgba(0,0,0,0.6); color: #fff;
-        font-size: 0.7rem; padding: 3px 8px; border-radius: 4px;
-        pointer-events: auto; cursor: pointer;
+    .tab-pill:not(.active) {
+        background: transparent;
+        color: rgba(223,226,235,0.5);
     }
-    .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .tab-pill:not(.active):hover { color: #dfe2eb; }
+
+    /* Assignment cards */
     .assignment-card { display: none; }
-    .assignment-card.visible { display: block; }
+    .assignment-card.visible { display: grid; }
+    .assignment-tl { display: none; }
+    .assignment-tl.visible { display: block; }
+
+    /* Outcome buttons */
     .outcome-btn { transition: all 0.15s; }
-    /* Drop zone styles */
-    .drop-zone.drag-over { border-color: var(--accent); background: var(--surface-3); }
-    /* Timelapse thumbnail active state — ring managed on wrapper div by JS */
+
+    /* Drop zone */
+    .drop-zone { border: 1px dashed rgba(79,70,52,0.4); }
+    .drop-zone.drag-over { border-color: #f6be39; background: rgba(246,190,57,0.05); }
+
+    /* Timelapse */
     .tl-thumb { opacity: 0.55; cursor: pointer; transition: opacity 0.15s; }
     .tl-thumb:hover { opacity: 0.85; }
     .tl-thumb.active { opacity: 1; }
-    /* Collapsible section toggle button */
-    .assignment-card button[onclick="toggleSection(this)"] {
-        border-bottom: 1px solid var(--border-subtle);
-        background: none;
-    }
-    .assignment-card button[onclick="toggleSection(this)"]:hover { background: var(--surface-3); border-radius: 0.25rem; }
+
     /* Availability dot pulse */
-    @keyframes availPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(63,185,80,0.55); } 60% { box-shadow: 0 0 0 5px rgba(63,185,80,0); } }
+    @keyframes availPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(103,223,112,0.55); } 60% { box-shadow: 0 0 0 5px rgba(103,223,112,0); } }
     .avail-dot-pulse { animation: availPulse 2s ease infinite; }
-    /* Summary bar card entrance */
+
+    /* Summary card entrance */
     @keyframes sumCardIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
     .sum-card-in { animation: sumCardIn 0.4s ease both; }
-    /* Print isolation — only the dynamically appended overlay is rendered */
+
+    /* Dot grid background */
+    .dot-grid {
+        background-image: radial-gradient(rgba(155,143,122,0.07) 1px, transparent 1px);
+        background-size: 24px 24px;
+    }
+
+    /* Gradient CTA */
+    .cta-gradient { background: linear-gradient(135deg, #f6be39 0%, #d4a017 100%); }
+
+    /* Print */
     #print-overlay { display: none; }
     @media print {
         body.is-printing > *:not(#print-overlay) { display: none !important; }
         body.is-printing #print-overlay { display: block !important; }
         .print-hide { display: none !important; }
     }
+
+    /* Field notes textarea */
+    .sentinel-textarea {
+        background: #0a0e14;
+        border: 1px solid rgba(79,70,52,0.3);
+        border-radius: 0.75rem;
+        color: #dfe2eb;
+        font-size: 0.875rem;
+        padding: 1rem;
+        width: 100%;
+        resize: vertical;
+        min-height: 90px;
+        outline: none;
+        transition: border-color 0.15s;
+    }
+    .sentinel-textarea::placeholder { color: rgba(223,226,235,0.2); }
+    .sentinel-textarea:focus { border-color: #f6be39; }
+
+    .sentinel-input {
+        background: #0a0e14;
+        border: 1px solid rgba(79,70,52,0.3);
+        border-radius: 0.5rem;
+        color: #dfe2eb;
+        font-size: 0.75rem;
+        padding: 0.375rem 0.625rem;
+        outline: none;
+        transition: border-color 0.15s;
+    }
+    .sentinel-input:focus { border-color: #f6be39; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="p-6 space-y-6" data-animate-cards>
+<div class="dot-grid min-h-full" style="background: #0a0e14;">
+<div class="px-8 py-8 space-y-8 max-w-screen-2xl">
 
-    <!-- New-assignment banner (shown by polling JS) -->
-    <div id="new-assignment-banner"
-         class="hidden rounded-lg px-4 py-3 flex items-center justify-between text-sm"
-         style="background: var(--status-info-bg); border: 1px solid var(--status-info-border); color: var(--status-info);">
+    <!-- New-assignment banner -->
+    <div id="new-assignment-banner" class="hidden rounded-xl px-5 py-3 flex items-center justify-between text-sm"
+         style="background: rgba(170,199,255,0.08); border: 1px solid rgba(170,199,255,0.2); color: #aac7ff;">
         <span>New assignment available.</span>
         <button onclick="refreshAssignments()"
-                class="btn-primary ml-4 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
+                class="ml-4 px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all"
+                style="background: rgba(170,199,255,0.12); color: #aac7ff; border: 1px solid rgba(170,199,255,0.2);">
             Reload
         </button>
     </div>
 
-    <!-- Header -->
-    <div class="gw-page-header">
+    <!-- Page header -->
+    <div class="flex items-end justify-between">
         <div>
-            <h1 class="text-2xl font-bold" style="color: var(--text-primary);">My Assignments</h1>
-            <p class="text-sm mt-0.5" style="color: var(--text-secondary);">Field verification tasks assigned to you</p>
+            <h1 class="text-4xl font-extrabold tracking-tight mb-2" style="color: #dfe2eb; letter-spacing: -0.02em;">My Assignments</h1>
+            <p class="text-sm" style="color: #9b8f7a;">Field verification queue for high-confidence mining detections.</p>
         </div>
-
-        <!-- Availability toggle + Settings -->
-        <div class="flex items-center gap-3">
-            <a href="{% url 'dashboard:settings' %}"
-               class="btn-ghost px-3 py-1.5 text-xs flex items-center gap-1.5"
-               title="Settings">
-                <i class="ph ph-gear" style="font-size:14px;" aria-hidden="true"></i>
-                <span>Settings</span>
-            </a>
-            <div id="availability-status" class="flex items-center gap-2 text-sm font-medium"
-                 style="color: {% if is_available %}#3fb950{% else %}var(--text-secondary){% endif %};">
-                <span id="availability-dot" class="w-2.5 h-2.5 rounded-full flex-shrink-0{% if is_available %} avail-dot-pulse{% endif %}"
-                      style="background: {% if is_available %}#3fb950{% else %}#484f58{% endif %};"></span>
-                <span id="availability-label">
-                    {% if is_available %}Available{% else %}Unavailable{% endif %}
-                </span>
+        <div class="flex items-center gap-6">
+            <!-- Availability -->
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 text-sm font-medium" id="availability-status"
+                     style="color: {% if is_available %}#67df70{% else %}#9b8f7a{% endif %};">
+                    <span id="availability-dot" class="w-2.5 h-2.5 rounded-full flex-shrink-0{% if is_available %} avail-dot-pulse{% endif %}"
+                          style="background: {% if is_available %}#67df70{% else %}#484f58{% endif %};"></span>
+                    <span id="availability-label">{% if is_available %}Available{% else %}Unavailable{% endif %}</span>
+                </div>
+                <button id="availability-btn" onclick="toggleAvailability()"
+                        class="px-3 py-1.5 text-xs font-bold rounded-lg border uppercase tracking-wider transition-all"
+                        style="{% if is_available %}background: rgba(255,180,171,0.08); border-color: rgba(255,180,171,0.25); color: #ffb4ab;{% else %}background: rgba(103,223,112,0.08); border-color: rgba(103,223,112,0.25); color: #67df70;{% endif %}">
+                    {% if is_available %}Go Unavailable{% else %}Go Available{% endif %}
+                </button>
             </div>
-            <button id="availability-btn"
-                    onclick="toggleAvailability()"
-                    class="px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors"
-                    style="{% if is_available %}background: var(--status-critical-bg); border-color: var(--status-critical-border); color: var(--status-critical);{% else %}background: var(--status-resolved-bg); border-color: var(--status-resolved-border); color: var(--status-resolved);{% endif %}">
-                {% if is_available %}Go Unavailable{% else %}Go Available{% endif %}
-            </button>
+            <div class="text-right">
+                <div class="text-[10px] uppercase tracking-[0.2em] mb-1" style="color: rgba(223,226,235,0.3);">Last Updated</div>
+                <div class="text-sm font-mono" style="color: #dfe2eb;">{% now "H:i:s" %} GMT</div>
+            </div>
         </div>
     </div>
 
     {% if error %}
-    <div class="rounded-lg p-4 text-sm" role="alert" aria-live="assertive"
-         style="background: var(--status-critical-bg); border: 1px solid var(--status-critical-border); color: var(--status-critical);">
+    <div class="rounded-xl px-5 py-4 text-sm" role="alert"
+         style="background: rgba(255,180,171,0.08); border: 1px solid rgba(255,180,171,0.2); color: #ffb4ab;">
         <strong>Error loading assignments:</strong> {{ error }}
     </div>
     {% endif %}
 
-    <!-- Summary bar -->
-    <div id="inspector-summary-bar" class="grid grid-cols-3 gap-4">
-        <div class="rounded-lg p-4 text-center sum-card-in" style="animation-delay:0ms; background: var(--status-moderate-bg); border: 1px solid var(--status-moderate-border); border-top: 3px solid var(--status-moderate);">
-            <div class="text-3xl font-bold" data-countup="{{ pending_count }}" style="color: var(--status-moderate);">{{ pending_count }}</div>
-            <div class="text-sm mt-1" style="color: var(--status-moderate);">Pending</div>
+    <!-- Summary metric cards -->
+    <div id="inspector-summary-bar" class="grid grid-cols-3 gap-5">
+        <div class="rounded-xl p-6 sum-card-in" style="animation-delay:0ms; background: #181c22; border-left: 4px solid #f6be39;">
+            <div class="flex justify-between items-start mb-5">
+                <svg class="w-7 h-7" style="color: rgba(246,190,57,0.35);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                </svg>
+                <span class="text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider" style="background: rgba(246,190,57,0.1); color: #f6be39;">Action Required</span>
+            </div>
+            <div class="text-4xl font-black mb-1" style="color: #dfe2eb;" data-countup="{{ pending_count }}">{{ pending_count }}</div>
+            <div class="text-[10px] uppercase tracking-widest font-semibold" style="color: rgba(223,226,235,0.5);">Pending Verification</div>
         </div>
-        <div class="rounded-lg p-4 text-center sum-card-in" style="animation-delay:80ms; background: var(--status-resolved-bg); border: 1px solid var(--status-resolved-border); border-top: 3px solid var(--status-resolved);">
-            <div class="text-3xl font-bold" data-countup="{{ verified_count }}" style="color: var(--status-resolved);">{{ verified_count }}</div>
-            <div class="text-sm mt-1" style="color: var(--status-resolved);">Verified</div>
+        <div class="rounded-xl p-6 sum-card-in" style="animation-delay:80ms; background: #181c22; border-left: 4px solid #67df70;">
+            <div class="flex justify-between items-start mb-5">
+                <svg class="w-7 h-7" style="color: rgba(103,223,112,0.35);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider" style="background: rgba(103,223,112,0.1); color: #67df70;">Completed</span>
+            </div>
+            <div class="text-4xl font-black mb-1" style="color: #dfe2eb;" data-countup="{{ verified_count }}">{{ verified_count }}</div>
+            <div class="text-[10px] uppercase tracking-widest font-semibold" style="color: rgba(223,226,235,0.5);">Verified Accurate</div>
         </div>
-        <div class="rounded-lg p-4 text-center sum-card-in" style="animation-delay:160ms; background: var(--surface-3); border: 1px solid var(--border-default); border-top: 3px solid var(--border-default);">
-            <div class="text-3xl font-bold" data-countup="{{ inconclusive_count }}" style="color: var(--text-secondary);">{{ inconclusive_count }}</div>
-            <div class="text-sm mt-1" style="color: var(--text-tertiary);">Inconclusive</div>
+        <div class="rounded-xl p-6 sum-card-in" style="animation-delay:160ms; background: #181c22; border-left: 4px solid rgba(155,143,122,0.4);">
+            <div class="flex justify-between items-start mb-5">
+                <svg class="w-7 h-7" style="color: rgba(155,143,122,0.35);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider" style="background: rgba(155,143,122,0.1); color: #9b8f7a;">Re-assigned</span>
+            </div>
+            <div class="text-4xl font-black mb-1" style="color: #dfe2eb;" data-countup="{{ inconclusive_count }}">{{ inconclusive_count }}</div>
+            <div class="text-[10px] uppercase tracking-widest font-semibold" style="color: rgba(223,226,235,0.5);">Inconclusive Sites</div>
         </div>
     </div>
 
-    <!-- Tabs -->
-    <div id="tab-bar" class="flex space-x-2">
-        <button onclick="filterTab('all')" id="tab-all"
-                class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium border">
-            All ({{ assignments|length }})
+    <!-- Filter tab pills -->
+    <div id="tab-bar" class="flex items-center gap-2 p-1.5 rounded-full w-fit" style="background: #0a0e14; border: 1px solid rgba(79,70,52,0.15);">
+        <button onclick="filterTab('all')" id="tab-all" class="tab-pill active px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all">
+            All Tasks
         </button>
-        <button onclick="filterTab('pending')" id="tab-pending"
-                class="tab-btn px-4 py-2 rounded-lg text-sm font-medium border"
-                style="border-color: var(--border-default); color: var(--text-secondary); background: transparent;">
+        <button onclick="filterTab('pending')" id="tab-pending" class="tab-pill px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all">
             Pending ({{ pending_count }})
         </button>
-        <button onclick="filterTab('verified')" id="tab-verified"
-                class="tab-btn px-4 py-2 rounded-lg text-sm font-medium border"
-                style="border-color: var(--border-default); color: var(--text-secondary); background: transparent;">
+        <button onclick="filterTab('verified')" id="tab-verified" class="tab-pill px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all">
             Verified ({{ verified_count }})
         </button>
-        <button onclick="filterTab('inconclusive')" id="tab-inconclusive"
-                class="tab-btn px-4 py-2 rounded-lg text-sm font-medium border"
-                style="border-color: var(--border-default); color: var(--text-secondary); background: transparent;">
+        <button onclick="filterTab('inconclusive')" id="tab-inconclusive" class="tab-pill px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all">
             Inconclusive ({{ inconclusive_count }})
         </button>
     </div>
 
     <!-- Assignment cards -->
     {% if assignments %}
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6" id="cards-container">
+    <div class="space-y-5" id="cards-container">
         {% for d in assignments %}
         {% with assignment=d.assignment alert=d.alert site=d.site %}
-
-        {# Determine card's tab class #}
         {% if assignment.status == 'pending' %}
-            {% with card_tab='pending' %}
-            {% include 'dashboard/_inspector_card.html' %}
-            {% endwith %}
+            {% with card_tab='pending' %}{% include 'dashboard/_inspector_card.html' %}{% endwith %}
         {% elif assignment.outcome == 'inconclusive' %}
-            {% with card_tab='inconclusive' %}
-            {% include 'dashboard/_inspector_card.html' %}
-            {% endwith %}
+            {% with card_tab='inconclusive' %}{% include 'dashboard/_inspector_card.html' %}{% endwith %}
         {% else %}
-            {% with card_tab='verified' %}
-            {% include 'dashboard/_inspector_card.html' %}
-            {% endwith %}
+            {% with card_tab='verified' %}{% include 'dashboard/_inspector_card.html' %}{% endwith %}
         {% endif %}
-
         {% endwith %}
         {% endfor %}
     </div>
     {% else %}
-    <div class="gw-card p-12 text-center">
-        <svg class="w-12 h-12 mx-auto mb-4" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <div class="rounded-2xl p-16 text-center" style="background: #181c22;">
+        <svg class="w-12 h-12 mx-auto mb-4" style="color: #9b8f7a;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
         </svg>
-        <h3 class="text-lg font-medium mb-2" style="color: var(--text-primary);">No assignments yet</h3>
-        <p style="color: var(--text-secondary);">You haven't been assigned any alerts. Check back later.</p>
+        <h3 class="text-lg font-bold mb-2" style="color: #dfe2eb;">No assignments yet</h3>
+        <p style="color: #9b8f7a;">You haven't been assigned any alerts. Check back later.</p>
     </div>
     {% endif %}
 
 </div>
-
-<!-- Toast handled by Notyf -->
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-/* ---------- Collapsible section toggle ---------- */
-function toggleSection(btn) {
-    const body = btn.nextElementSibling;
-    const chevron = btn.querySelector('.section-chevron');
-    const isHidden = body.classList.toggle('hidden');
-    chevron.style.transform = isHidden ? '' : 'rotate(180deg)';
-    // Ensure timelapse is initialised when first opened
-    if (!isHidden) {
-        requestAnimationFrame(initMiniMaps);
-        initTimelapse();
-    }
-}
-
 /* ---------- Availability toggle ---------- */
 let _availabilityBusy = false;
-
 function toggleAvailability() {
     if (_availabilityBusy) return;
     _availabilityBusy = true;
-
     const btn    = document.getElementById('availability-btn');
     const dot    = document.getElementById('availability-dot');
     const label  = document.getElementById('availability-label');
     const status = document.getElementById('availability-status');
-
-    // Determine the NEW state (flip from current button text)
     const goingAvailable = btn.textContent.trim() === 'Go Available';
     btn.textContent = 'Saving…';
     btn.disabled = true;
-
     fetch('/accounts/api/availability/', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-        },
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
         body: JSON.stringify({ is_available: goingAvailable }),
     })
     .then(r => r.json())
     .then(data => {
         if (data.success !== false) {
             const available = data.is_available ?? goingAvailable;
-            // Update dot colour + pulse
-            dot.style.background = available ? '#3fb950' : '#484f58';
+            dot.style.background = available ? '#67df70' : '#484f58';
             dot.classList.toggle('avail-dot-pulse', available);
-            // Update label colour + text
-            status.style.color = available ? '#3fb950' : 'var(--text-secondary)';
+            status.style.color = available ? '#67df70' : '#9b8f7a';
             label.textContent = available ? 'Available' : 'Unavailable';
-            // Update button
             btn.textContent = available ? 'Go Unavailable' : 'Go Available';
             if (available) {
-                btn.style.background = 'var(--status-critical-bg)';
-                btn.style.borderColor = 'var(--status-critical-border)';
-                btn.style.color = 'var(--status-critical)';
+                btn.style.background = 'rgba(255,180,171,0.08)'; btn.style.borderColor = 'rgba(255,180,171,0.25)'; btn.style.color = '#ffb4ab';
             } else {
-                btn.style.background = 'var(--status-resolved-bg)';
-                btn.style.borderColor = 'var(--status-resolved-border)';
-                btn.style.color = 'var(--status-resolved)';
+                btn.style.background = 'rgba(103,223,112,0.08)'; btn.style.borderColor = 'rgba(103,223,112,0.25)'; btn.style.color = '#67df70';
             }
             showToast(available ? 'You are now available for new assignments.' : 'You are now unavailable.', available ? 'success' : 'info');
         } else {
@@ -247,153 +265,96 @@ function toggleAvailability() {
             btn.textContent = goingAvailable ? 'Go Available' : 'Go Unavailable';
         }
     })
-    .catch(() => {
-        showToast('Network error — please try again.', 'error');
-        btn.textContent = goingAvailable ? 'Go Available' : 'Go Unavailable';
-    })
-    .finally(() => {
-        btn.disabled = false;
-        _availabilityBusy = false;
-    });
+    .catch(() => { showToast('Network error — please try again.', 'error'); btn.textContent = goingAvailable ? 'Go Available' : 'Go Unavailable'; })
+    .finally(() => { btn.disabled = false; _availabilityBusy = false; });
 }
 
 /* ---------- Tab filtering ---------- */
 function filterTab(tab) {
-    document.querySelectorAll('.tab-btn').forEach(b => {
-        b.classList.remove('active');
-        b.style.background = 'transparent';
-        b.style.color = 'var(--text-secondary)';
-        b.style.borderColor = 'var(--border-default)';
-    });
-    const active = document.getElementById('tab-' + tab);
-    active.classList.add('active');
-    active.style.background = '';
-    active.style.color = '';
-    active.style.borderColor = '';
-
-    document.querySelectorAll('.assignment-card').forEach(card => {
-        if (tab === 'all' || card.dataset.tab === tab) {
-            card.classList.add('visible');
-        } else {
-            card.classList.remove('visible');
-        }
+    document.querySelectorAll('.tab-pill').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.querySelectorAll('.assignment-card, .assignment-tl').forEach(el => {
+        if (tab === 'all' || el.dataset.tab === tab) el.classList.add('visible');
+        else el.classList.remove('visible');
     });
 }
 filterTab('all');
 
-/* ---------- Mini-maps (Leaflet — no WebGL context limit) ---------- */
+/* ---------- Mini-maps (Leaflet) ---------- */
 function openInLiveMap(lng, lat) {
     if (!lng || !lat) return;
     window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
 }
-
 function initMiniMaps() {
     if (typeof L === 'undefined') {
-        console.error('Leaflet failed to load — check network/CDN');
         document.querySelectorAll('.mini-map').forEach(el => {
-            el.innerHTML = '<div class="flex items-center justify-center h-full rounded-lg text-sm" style="background: var(--surface-3); color: var(--text-tertiary);">Map unavailable</div>';
+            el.innerHTML = '<div class="flex items-center justify-center h-full text-sm" style="color:#9b8f7a;">Map unavailable</div>';
         });
         return;
     }
     document.querySelectorAll('.mini-map').forEach(el => {
-        if (el._leaflet_id) return;   // already initialised
-        const lng = parseFloat(el.dataset.lng);
-        const lat = parseFloat(el.dataset.lat);
+        if (el._leaflet_id) return;
+        const lng = parseFloat(el.dataset.lng), lat = parseFloat(el.dataset.lat);
         if (isNaN(lng) || isNaN(lat)) {
-            el.innerHTML = '<div class="flex items-center justify-center h-full rounded-lg text-sm" style="background: var(--surface-3); color: var(--text-tertiary);">No location data</div>';
+            el.innerHTML = '<div class="flex items-center justify-center h-full text-sm" style="color:#9b8f7a;">No location data</div>';
             return;
         }
-        const m = L.map(el, {
-            zoomControl: false,
-            attributionControl: false,
-            dragging: false,
-            scrollWheelZoom: false,
-            doubleClickZoom: false,
-            keyboard: false,
-        }).setView([lat, lng], 13);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            maxZoom: 19,
-            subdomains: 'abcd',
-        }).addTo(m);
-        L.circleMarker([lat, lng], {
-            radius: 8,
-            color: '#ef4444',
-            fillColor: '#ef4444',
-            fillOpacity: 0.85,
-            weight: 2,
-        }).addTo(m);
-        // Force reflow after a tick in case container was hidden during init
+        const m = L.map(el, { zoomControl:false, attributionControl:false, dragging:false, scrollWheelZoom:false, doubleClickZoom:false, keyboard:false }).setView([lat, lng], 13);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom:19 }).addTo(m);
+        L.circleMarker([lat, lng], { radius:8, color:'#f6be39', fillColor:'#f6be39', fillOpacity:0.85, weight:2 }).addTo(m);
         setTimeout(() => m.invalidateSize(), 150);
     });
 }
 requestAnimationFrame(initMiniMaps);
 
+/* ---------- Collapsible sections ---------- */
+function toggleSection(btn) {
+    const body = btn.nextElementSibling;
+    const chevron = btn.querySelector('.section-chevron');
+    const isHidden = body.classList.toggle('hidden');
+    chevron.style.transform = isHidden ? '' : 'rotate(180deg)';
+    if (!isHidden) { requestAnimationFrame(initMiniMaps); initTimelapse(); }
+}
+
 /* ---------- Outcome selection ---------- */
 function selectOutcome(assignmentId, outcome) {
     document.querySelectorAll(`[data-assignment="${assignmentId}"] .outcome-btn`).forEach(btn => {
-        btn.classList.remove('ring-2', 'ring-offset-1');
-        btn.style.opacity = '0.6';
+        btn.style.opacity = '0.5'; btn.style.outline = 'none';
     });
     const chosen = document.querySelector(`[data-assignment="${assignmentId}"] [data-outcome="${outcome}"]`);
-    if (chosen) {
-        chosen.classList.add('ring-2', 'ring-offset-1');
-        chosen.style.opacity = '1';
-    }
+    if (chosen) { chosen.style.opacity = '1'; chosen.style.outline = '2px solid #f6be39'; chosen.style.outlineOffset = '2px'; }
     document.getElementById(`outcome-input-${assignmentId}`).value = outcome;
 }
 
 /* ---------- Drag-and-drop photo upload ---------- */
-window._draftFiles = {};   // assignmentId → File[]
-
+window._draftFiles = {};
 function initDropZones() {
     document.querySelectorAll('.drop-zone').forEach(zone => {
         const aid = zone.dataset.assignment;
         const fileInput = document.getElementById(`file-input-${aid}`);
         const preview   = document.getElementById(`photo-preview-${aid}`);
         if (!_draftFiles[aid]) _draftFiles[aid] = [];
-
         zone.addEventListener('click', () => fileInput.click());
-
-        zone.addEventListener('dragover', e => {
-            e.preventDefault();
-            zone.classList.add('drag-over');
-        });
+        zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
         zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
-        zone.addEventListener('drop', e => {
-            e.preventDefault();
-            zone.classList.remove('drag-over');
-            addFiles(aid, e.dataTransfer.files, preview);
-        });
-        fileInput.addEventListener('change', () => {
-            addFiles(aid, fileInput.files, preview);
-            fileInput.value = '';   // reset so same file can be re-added
-        });
+        zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag-over'); addFiles(aid, e.dataTransfer.files, preview); });
+        fileInput.addEventListener('change', () => { addFiles(aid, fileInput.files, preview); fileInput.value = ''; });
     });
 }
-
 function addFiles(aid, fileList, previewEl) {
     Array.from(fileList).forEach(file => {
         if (!file.type.startsWith('image/')) return;
         _draftFiles[aid].push(file);
-        const wrap = document.createElement('div');
-        wrap.className = 'relative';
+        const wrap = document.createElement('div'); wrap.className = 'relative';
         const img = document.createElement('img');
-        img.src = URL.createObjectURL(file);
-        img.className = 'w-16 h-12 object-cover rounded-lg';
-        img.style.border = '1px solid var(--border-subtle)';
-        const btn = document.createElement('button');
-        btn.type = 'button';
+        img.src = URL.createObjectURL(file); img.className = 'w-16 h-12 object-cover rounded-lg';
+        img.style.border = '1px solid rgba(79,70,52,0.3)';
+        const btn = document.createElement('button'); btn.type = 'button';
         btn.className = 'absolute -top-1 -right-1 w-4 h-4 text-white rounded-full text-xs flex items-center justify-center leading-none';
-        btn.style.background = 'var(--surface-4)';
-        btn.textContent = '×';
+        btn.style.background = '#31353c'; btn.textContent = '×';
         const idx = _draftFiles[aid].length - 1;
-        btn.addEventListener('click', () => {
-            _draftFiles[aid].splice(idx, 1);
-            wrap.remove();
-        });
-        wrap.appendChild(img);
-        wrap.appendChild(btn);
-        previewEl.appendChild(wrap);
+        btn.addEventListener('click', () => { _draftFiles[aid].splice(idx, 1); wrap.remove(); });
+        wrap.appendChild(img); wrap.appendChild(btn); previewEl.appendChild(wrap);
     });
 }
 
@@ -401,87 +362,98 @@ function addFiles(aid, fileList, previewEl) {
 function submitReport(assignmentId) {
     const outcome = document.getElementById(`outcome-input-${assignmentId}`).value;
     if (!outcome) { showToast('Please select an outcome.', 'error'); return; }
-
     const form = document.getElementById(`report-form-${assignmentId}`);
     const formData = new FormData(form);
-
-    // Append drag-and-drop files (hidden input won't have them)
     (_draftFiles[assignmentId] || []).forEach(f => formData.append('evidence_photos', f));
-
     fetch(`/dashboard/assignment/${assignmentId}/report/`, {
-        method: 'POST',
-        headers: { 'X-CSRFToken': getCookie('csrftoken') },
-        body: formData,
+        method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') }, body: formData,
     })
     .then(r => r.json())
     .then(data => {
-        if (data.success) {
-            showToast(data.message, 'success');
-            setTimeout(() => location.reload(), 1200);
-        } else {
-            showToast(data.error || 'Failed to submit report.', 'error');
-        }
+        if (data.success) { showToast(data.message, 'success'); setTimeout(() => location.reload(), 1200); }
+        else showToast(data.error || 'Failed to submit report.', 'error');
     })
     .catch(() => showToast('Network error. Please try again.', 'error'));
 }
 
-/* ---------- Timelapse slideshow ---------- */
+/* ---------- Timelapse ---------- */
 function initTimelapse() {
     document.querySelectorAll('[data-tl-assignment]').forEach(container => {
-        if (container._tlInit) return;   // already initialised
-        container._tlInit = true;
+        if (container._tlInit) return; container._tlInit = true;
         const aid = container.dataset.tlAssignment;
         const featured = document.getElementById(`tl-featured-${aid}`);
         const yearLabel = document.getElementById(`tl-year-${aid}`);
         const playBtn   = document.getElementById(`tl-play-${aid}`);
         const thumbs    = Array.from(container.querySelectorAll('.tl-thumb'));
         if (!featured || thumbs.length === 0) return;
-
-        let current = 0;
-        let timer = null;
-
+        let current = 0, timer = null;
         function showFrame(idx) {
             current = idx;
             thumbs.forEach((t, i) => {
-                const isActive = i === idx;
-                t.classList.toggle('active', isActive);
-                // Apply ring to wrapper div — outline on the img itself is clipped by overflow-hidden
-                if (t.parentElement) {
-                    t.parentElement.style.outline = isActive ? '2px solid #f59e0b' : '';
-                    t.parentElement.style.outlineOffset = isActive ? '1px' : '';
-                }
+                t.classList.toggle('active', i === idx);
+                if (t.parentElement) { t.parentElement.style.outline = i === idx ? '2px solid #f6be39' : ''; t.parentElement.style.outlineOffset = i === idx ? '1px' : ''; }
             });
             featured.src = thumbs[idx].dataset.src;
             if (yearLabel) yearLabel.textContent = thumbs[idx].dataset.year;
         }
         showFrame(0);
-
-        thumbs.forEach((t, i) => t.addEventListener('click', () => {
+        thumbs.forEach((t, i) => t.addEventListener('click', () => { if (timer) { clearInterval(timer); timer = null; if (playBtn) playBtn.textContent = '▶ Play'; } showFrame(i); }));
+        if (playBtn) playBtn.addEventListener('click', () => {
             if (timer) { clearInterval(timer); timer = null; playBtn.textContent = '▶ Play'; }
-            showFrame(i);
-        }));
-
-        if (playBtn) {
-            playBtn.addEventListener('click', () => {
-                if (timer) {
-                    clearInterval(timer); timer = null;
-                    playBtn.textContent = '▶ Play';
-                } else {
-                    timer = setInterval(() => showFrame((current + 1) % thumbs.length), 800);
-                    playBtn.textContent = '⏸ Pause';
-                }
-            });
-        }
+            else { timer = setInterval(() => showFrame((current + 1) % thumbs.length), 800); playBtn.textContent = '⏸ Pause'; }
+        });
     });
 }
 
-// Initialise interactive components once DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    initDropZones();
-    initTimelapse();
-});
+/* ---------- Delete Assignment ---------- */
+function deleteAssignment(assignmentId) {
+    if (!confirm('Remove this assignment from your list?')) return;
+    fetch(`/accounts/api/assignments/${assignmentId}/delete/`, {
+        method: 'DELETE', headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/json' }, credentials: 'include'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Assignment removed.', 'success');
+            const card = document.querySelector(`[data-assignment="${assignmentId}"]`);
+            if (card) card.remove();
+            const container = document.getElementById('cards-container');
+            if (container && container.children.length === 0) location.reload();
+        } else showToast(data.error || 'Failed to remove assignment', 'error');
+    })
+    .catch(() => showToast('Network error. Please try again.', 'error'));
+}
 
-/* ---------- Toast (delegates to global window.notyf) ---------- */
+/* ---------- Print ---------- */
+function printDetectionCard(btn) {
+    var card = btn.closest('.assignment-card');
+    var clone = card.cloneNode(true);
+    clone.querySelectorAll('.print-hide').forEach(el => el.remove());
+    clone.style.cssText = 'display:block;box-shadow:none;border:none;margin:0;';
+    var overlay = document.createElement('div'); overlay.id = 'print-overlay'; overlay.appendChild(clone);
+    document.body.appendChild(overlay); document.body.classList.add('is-printing');
+    window.print();
+    document.body.classList.remove('is-printing'); document.body.removeChild(overlay);
+}
+
+/* ---------- AJAX refresh ---------- */
+async function refreshAssignments() {
+    try {
+        const r = await fetch(window.location.pathname, { credentials: 'include' });
+        if (!r.ok) { showToast('Refresh failed — try reloading.', 'error'); return; }
+        const html = await r.text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        ['inspector-summary-bar','tab-bar','cards-container'].forEach(id => {
+            const n = doc.getElementById(id), o = document.getElementById(id);
+            if (n && o) o.replaceWith(n);
+        });
+        requestAnimationFrame(initMiniMaps); initDropZones(); initTimelapse(); filterTab('all');
+        document.getElementById('new-assignment-banner').classList.add('hidden');
+        showToast('Assignments refreshed.', 'success');
+    } catch (_) { showToast('Refresh failed — try reloading.', 'error'); }
+}
+
+/* ---------- Toast ---------- */
 function showToast(msg, type) {
     if (!window.notyf) return;
     if (type === 'success') window.notyf.success(msg);
@@ -489,97 +461,14 @@ function showToast(msg, type) {
     else window.notyf.error(msg);
 }
 
-/* ---------- Print detection card ---------- */
-function printDetectionCard(btn) {
-    var card = btn.closest('.assignment-card');
-    var clone = card.cloneNode(true);
-    // Remove UI-only elements (buttons, print button, etc.)
-    clone.querySelectorAll('.print-hide').forEach(function (el) { el.remove(); });
-    clone.style.cssText = 'display:block;box-shadow:none;border:none;margin:0;';
-
-    var overlay = document.createElement('div');
-    overlay.id = 'print-overlay';
-    overlay.appendChild(clone);
-    document.body.appendChild(overlay);
-    document.body.classList.add('is-printing');
-
-    window.print();
-
-    document.body.classList.remove('is-printing');
-    document.body.removeChild(overlay);
-}
-
-/* ---------- CSRF helper ---------- */
+/* ---------- CSRF ---------- */
 function getCookie(name) {
-    if (name === 'csrftoken') {
-        const meta = document.querySelector('meta[name="csrf-token"]');
-        if (meta) return meta.getAttribute('content') || '';
-    }
+    if (name === 'csrftoken') { const m = document.querySelector('meta[name="csrf-token"]'); if (m) return m.getAttribute('content') || ''; }
     const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
     return v ? decodeURIComponent(v.pop()) : '';
 }
 
-/* ---------- Real-time polling + AJAX refresh ---------- */
-async function refreshAssignments() {
-    try {
-        const r = await fetch(window.location.pathname, { credentials: 'include' });
-        if (!r.ok) { showToast('Refresh failed — try reloading.', 'error'); return; }
-        const html = await r.text();
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-
-        const newSummary = doc.getElementById('inspector-summary-bar');
-        if (newSummary) document.getElementById('inspector-summary-bar').replaceWith(newSummary);
-
-        const newTabBar = doc.getElementById('tab-bar');
-        if (newTabBar) document.getElementById('tab-bar').replaceWith(newTabBar);
-
-        const newCards = doc.getElementById('cards-container');
-        const oldCards = document.getElementById('cards-container');
-        if (newCards && oldCards) oldCards.replaceWith(newCards);
-
-        // Re-initialise interactive components for any new cards
-        requestAnimationFrame(initMiniMaps);
-        initDropZones();
-        initTimelapse();
-        filterTab('all');
-
-        document.getElementById('new-assignment-banner').classList.add('hidden');
-        showToast('Assignments refreshed.', 'success');
-    } catch (_) {
-        showToast('Refresh failed — try reloading.', 'error');
-    }
-}
-
-/* ---------- Delete Assignment ---------- */
-function deleteAssignment(assignmentId) {
-    if (!confirm('Are you sure you want to delete this assignment? This will remove the assignment from your list and unassign you from the alert.')) {
-        return;
-    }
-
-    fetch(`/accounts/api/assignments/${assignmentId}/delete/`, {
-        method: 'DELETE',
-        headers: {
-            'X-CSRFToken': getCookie('csrftoken'),
-            'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast('Assignment deleted successfully', 'success');
-            const card = document.querySelector(`[data-assignment="${assignmentId}"]`);
-            if (card) card.remove();
-            const container = document.getElementById('cards-container');
-            if (container && container.children.length === 0) location.reload();
-        } else {
-            showToast(data.error || 'Failed to delete assignment', 'error');
-        }
-    })
-    .catch(() => showToast('Network error. Please try again.', 'error'));
-}
-
-/* ---------- Real-time polling — new assignments ---------- */
+/* ---------- Real-time poll ---------- */
 (function () {
     let knownPending = parseInt('{{ pending_count|default:0 }}');
     setInterval(async function () {
@@ -587,11 +476,11 @@ function deleteAssignment(assignmentId) {
             const r = await fetch('/api/my-assignments/', { credentials: 'include' });
             if (!r.ok) return;
             const d = await r.json();
-            if (d.count > knownPending) {
-                document.getElementById('new-assignment-banner').classList.remove('hidden');
-            }
+            if (d.count > knownPending) document.getElementById('new-assignment-banner').classList.remove('hidden');
         } catch (_) {}
     }, 30000);
 })();
+
+document.addEventListener('DOMContentLoaded', () => { initDropZones(); initTimelapse(); });
 </script>
 {% endblock %}

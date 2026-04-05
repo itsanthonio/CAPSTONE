@@ -1,478 +1,373 @@
 {% load static %}
-{# Variables in scope: assignment, alert, site, d (full dict with centroid_lng, centroid_lat, timelapse_frames, photo_urls), card_tab #}
-<div class="assignment-card visible gw-card overflow-hidden"
-     data-tab="{{ card_tab }}"
-     data-assignment="{{ assignment.id }}">
+{# Variables: assignment, alert, site, d (centroid_lng, centroid_lat, timelapse_frames, photo_urls, patch_images), card_tab #}
 
-    <!-- Card header -->
-    <div class="px-4 py-3 flex items-center justify-between"
-         style="border-bottom: 1px solid var(--border-subtle);">
-        <div class="flex items-center space-x-3">
-            <!-- Severity dot -->
-            <div class="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                 style="background: {% if alert and alert.severity == 'critical' %}var(--status-critical){% elif alert and alert.severity == 'high' %}var(--status-high){% elif alert and alert.severity == 'medium' %}var(--status-moderate){% else %}var(--text-tertiary){% endif %};"></div>
-            <div>
-                <h3 class="text-base font-semibold" style="color: var(--text-primary);">
-                    {% if alert %}{{ alert.title }}{% else %}Assignment {{ assignment.id|truncatechars:8 }}{% endif %}
-                </h3>
-                <p class="text-xs mt-0.5" style="color: var(--text-secondary);">
-                    Assigned {{ assignment.assigned_at|date:"M d, Y" }}
-                    {% if assignment.status == 'pending' and assignment.due_date %}
-                        &nbsp;·&nbsp;
-                        {% if assignment.sla_escalated %}
-                            <span class="font-semibold" style="color: var(--status-critical);">SLA breached</span>
-                        {% elif assignment.sla_reminder_sent %}
-                            <span class="font-semibold" style="color: var(--status-moderate);">Overdue — due {{ assignment.due_date|date:"M d" }}</span>
-                        {% else %}
-                            Due {{ assignment.due_date|date:"M d" }}
-                        {% endif %}
-                    {% endif %}
-                </p>
+<div class="assignment-card visible group grid grid-cols-12 gap-0 rounded-2xl overflow-hidden transition-all"
+     data-tab="{{ card_tab }}"
+     data-assignment="{{ assignment.id }}"
+     style="background: #181c22; border: 1px solid rgba(79,70,52,0.08);"
+     onmouseover="this.style.borderColor='rgba(246,190,57,0.15)'"
+     onmouseout="this.style.borderColor='rgba(79,70,52,0.08)'">
+
+    <!-- ── Left: Map / image ──────────────────────────────────── -->
+    <div class="col-span-3 relative overflow-hidden assignment-map-col"
+         onclick="openInLiveMap('{{ d.centroid_lng|default:'' }}', '{{ d.centroid_lat|default:'' }}')"
+         style="cursor: {% if d.centroid_lng %}pointer{% else %}default{% endif %}; min-height: 120px;">
+
+        {% if d.patch_images.false_color %}
+        <!-- Use false-colour patch as visual thumbnail -->
+        <img src="{{ d.patch_images.false_color }}" alt="Site imagery"
+             class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+             style="display:block;">
+        {% elif d.patch_images.overlay %}
+        <img src="{{ d.patch_images.overlay }}" alt="Site imagery"
+             class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+             style="display:block;">
+        {% else %}
+        <!-- Leaflet mini-map -->
+        <div class="mini-map-wrap" style="height:100%;">
+            <div class="mini-map"
+                 data-lng="{{ d.centroid_lng|default:'' }}"
+                 data-lat="{{ d.centroid_lat|default:'' }}"
+                 id="map-{{ assignment.id }}"
+                 style="height:100%; min-height:160px;">
             </div>
         </div>
-        <div class="flex items-center space-x-2">
-            <!-- Delete assignment button -->
-            <button onclick="deleteAssignment('{{ assignment.id }}')"
-                    class="btn-ghost p-1.5 rounded transition-colors"
-                    style="color: var(--text-tertiary);"
-                    onmouseover="this.style.color='var(--status-critical)';this.style.background='var(--status-critical-bg)';"
-                    onmouseout="this.style.color='var(--text-tertiary)';this.style.background='';"
-                    aria-label="Delete assignment">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"/>
-                </svg>
-            </button>
-            {% if alert %}
-            <span class="px-2 py-0.5 text-xs font-medium rounded-full
-                {% if alert.severity == 'critical' %}gw-badge--critical
-                {% elif alert.severity == 'high' %}gw-badge--high
-                {% elif alert.severity == 'medium' %}gw-badge--moderate
-                {% else %}gw-badge--info{% endif %}">
-                {{ alert.get_severity_display }}
+        {% endif %}
+
+        <!-- Gradient fade to card bg -->
+        <div class="absolute inset-0 pointer-events-none"
+             style="background: linear-gradient(to right, transparent 60%, #181c22);"></div>
+
+        <!-- Location chip at bottom -->
+        {% if site.region %}
+        <div class="absolute bottom-4 left-4">
+            <span class="text-[10px] px-2 py-1 rounded uppercase tracking-tight"
+                  style="background: rgba(10,14,20,0.75); backdrop-filter: blur(8px); color: rgba(223,226,235,0.7); border: 1px solid rgba(255,255,255,0.05);">
+                {% if site.region.district %}{{ site.region.district }}{% else %}{{ site.region.name }}{% endif %}
             </span>
-            {% endif %}
-            {% if alert and alert.detected_site and alert.detected_site.job %}
-            {% if alert.detected_site.job.source == 'automated' %}
-            <span class="px-1.5 py-0.5 text-[10px] font-semibold rounded"
-                  style="background:rgba(212,160,23,0.12);color:var(--accent);border:1px solid rgba(212,160,23,0.3);">
-                Auto
-            </span>
-            {% else %}
-            <span class="px-1.5 py-0.5 text-[10px] font-semibold rounded"
-                  style="background:var(--surface-3);color:var(--text-tertiary);border:1px solid var(--border-subtle);">
-                Manual
-            </span>
-            {% endif %}
-            {% endif %}
-            {% if assignment.status == 'pending' and assignment.outcome == 'inconclusive' %}
-            <span class="px-2 py-0.5 text-xs font-medium rounded-full gw-badge--info">Inconclusive — Update Required</span>
-            {% elif assignment.status == 'pending' %}
-            <span class="px-2 py-0.5 text-xs font-medium rounded-full gw-badge--moderate">Pending</span>
-            {% elif assignment.outcome == 'mining_confirmed' %}
-            <span class="px-2 py-0.5 text-xs font-medium rounded-full gw-badge--critical">Mining Confirmed</span>
-            {% elif assignment.outcome == 'false_positive' %}
-            <span class="px-2 py-0.5 text-xs font-medium rounded-full gw-badge--resolved">False Positive</span>
-            {% elif assignment.outcome == 'inconclusive' %}
-            <span class="px-2 py-0.5 text-xs font-medium rounded-full gw-badge--info">Inconclusive</span>
-            {% endif %}
-            <!-- Print button -->
-            <button onclick="printDetectionCard(this)" aria-label="Print this detection report"
-                    class="print-hide btn-ghost p-1 rounded" style="color: var(--text-tertiary);">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-                </svg>
-            </button>
         </div>
+        {% endif %}
+
+        {% if d.centroid_lng %}
+        <div class="absolute top-3 right-3 print-hide">
+            <span class="text-[10px] px-2 py-1 rounded" style="background: rgba(10,14,20,0.75); backdrop-filter: blur(8px); color: rgba(223,226,235,0.5);">↗ Maps</span>
+        </div>
+        {% endif %}
     </div>
 
-    <div class="p-4 space-y-4">
+    <!-- ── Center: Info ───────────────────────────────────────── -->
+    <div class="col-span-5 p-4 flex flex-col justify-between"
+         style="border-right: 1px solid rgba(79,70,52,0.12);">
+        <div>
+            <!-- Chips row -->
+            <div class="flex flex-wrap gap-2 mb-4">
+                <!-- Severity -->
+                {% if alert %}
+                {% if alert.severity == 'critical' %}
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider" style="background: rgba(255,180,171,0.1); color: #ffb4ab;">Critical</span>
+                {% elif alert.severity == 'high' %}
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider" style="background: rgba(255,176,124,0.1); color: #ffb86c;">High Severity</span>
+                {% elif alert.severity == 'medium' %}
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider" style="background: rgba(246,190,57,0.1); color: #f6be39;">Medium</span>
+                {% else %}
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider" style="background: rgba(155,143,122,0.1); color: #9b8f7a;">Low Severity</span>
+                {% endif %}
+                {% endif %}
 
-        <!-- Two-column layout: site details + mini-map -->
-        <div class="grid grid-cols-2 gap-4">
+                <!-- Source -->
+                {% if alert and alert.detected_site and alert.detected_site.job %}
+                {% if alert.detected_site.job.source == 'automated' %}
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider" style="background: rgba(49,53,60,1); color: rgba(223,226,235,0.5);">Automated</span>
+                {% else %}
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider" style="background: rgba(49,53,60,1); color: rgba(223,226,235,0.5);">Manual</span>
+                {% endif %}
+                {% endif %}
 
-            <!-- Site details -->
-            {% if site %}
-            <div class="rounded-lg p-4 space-y-2"
-                 style="background: var(--surface-3); border: 1px solid var(--border-subtle);">
-                <h4 class="text-sm font-medium mb-2" style="color: var(--text-primary);">Site Details</h4>
-                <div class="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                    <div class="text-xs" style="color: var(--text-secondary);">Confidence</div>
-                    <div class="text-sm font-medium" style="color: var(--text-primary);">
-                        {% widthratio site.confidence_score 1 100 %}%
-                    </div>
-                    <div class="text-xs" style="color: var(--text-secondary);">Area</div>
-                    <div class="text-sm font-medium" style="color: var(--text-primary);">{{ site.area_hectares|floatformat:2 }} ha</div>
-                    <div class="text-xs" style="color: var(--text-secondary);">Detection Date</div>
-                    <div class="text-sm font-medium" style="color: var(--text-primary);">{{ site.detection_date|date:"M d, Y" }}</div>
-                    <div class="text-xs" style="color: var(--text-secondary);">Region</div>
-                    <div class="text-sm font-medium" style="color: var(--text-primary);">{{ site.region.name|default:"Unknown" }}</div>
-                    <div class="text-xs" style="color: var(--text-secondary);">Legal Status</div>
-                    <div class="text-sm font-medium"
-                         style="color: {% if site.legal_status == 'illegal' %}var(--status-critical){% elif site.legal_status == 'legal' %}var(--status-resolved){% else %}var(--text-secondary){% endif %};">
-                        {{ site.get_legal_status_display }}
-                    </div>
-                    {% if site.recurrence_count > 1 %}
-                    <div class="text-xs" style="color: var(--text-secondary);">Recurrences</div>
-                    <div class="text-sm font-medium" style="color: var(--status-high);">{{ site.recurrence_count }}×</div>
-                    {% endif %}
-                </div>
-                {% if alert and alert.description %}
-                <p class="text-xs pt-1 mt-2" style="color: var(--text-secondary); border-top: 1px solid var(--border-subtle);">{{ alert.description }}</p>
+                <!-- Outcome status -->
+                {% if assignment.status == 'pending' and assignment.outcome == 'inconclusive' %}
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider" style="background: rgba(170,199,255,0.1); color: #aac7ff;">Inconclusive — Update Required</span>
+                {% elif assignment.status == 'pending' %}
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider" style="background: rgba(246,190,57,0.08); color: #f6be39;">Pending</span>
+                {% elif assignment.outcome == 'mining_confirmed' %}
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider" style="background: rgba(255,180,171,0.1); color: #ffb4ab;">Mining Confirmed</span>
+                {% elif assignment.outcome == 'false_positive' %}
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider" style="background: rgba(103,223,112,0.1); color: #67df70;">False Positive</span>
+                {% elif assignment.outcome == 'inconclusive' %}
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider" style="background: rgba(155,143,122,0.1); color: #9b8f7a;">Inconclusive</span>
                 {% endif %}
             </div>
+
+            <!-- Title -->
+            <h3 class="text-xl font-bold mb-2 leading-snug" style="color: #dfe2eb;">
+                {% if alert %}{{ alert.title }}{% else %}Assignment {{ assignment.id|truncatechars:8 }}{% endif %}
+            </h3>
+
+            <!-- Description -->
+            {% if alert and alert.description %}
+            <p class="text-sm mb-5 leading-relaxed" style="color: #9b8f7a;">{{ alert.description }}</p>
+            {% else %}
+            <p class="text-sm mb-5 leading-relaxed" style="color: #9b8f7a;">
+                Assigned {{ assignment.assigned_at|date:"M d, Y" }}{% if assignment.status == 'pending' and assignment.due_date %} · Due {{ assignment.due_date|date:"M d" }}{% endif %}
+                {% if assignment.sla_escalated %} · <span style="color:#ffb4ab;">SLA breached</span>{% endif %}
+            </p>
             {% endif %}
 
-            <!-- Mini-map -->
+            <!-- Dispatch notes -->
+            {% if assignment.notes and assignment.status == 'pending' %}
+            <div class="rounded-xl px-4 py-3 mb-4" style="background: rgba(170,199,255,0.06); border: 1px solid rgba(170,199,255,0.15);">
+                <p class="text-[10px] uppercase tracking-widest font-bold mb-1" style="color: #aac7ff;">Dispatcher Notes</p>
+                <p class="text-xs" style="color: #aac7ff;">{{ assignment.notes }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Metrics row -->
+        {% if site %}
+        <div class="grid grid-cols-3 gap-4">
             <div>
-                <div class="flex items-center justify-between mb-2">
-                    <h4 class="text-sm font-medium" style="color: var(--text-primary);">Site Location</h4>
-                    {% if d.centroid_lng %}
-                    <button onclick="(function(btn, lat, lng) {
-                            var text = parseFloat(lat).toFixed(6) + ', ' + parseFloat(lng).toFixed(6);
-                            navigator.clipboard.writeText(text).then(function() {
-                                var orig = btn.textContent;
-                                btn.textContent = 'Copied!';
-                                setTimeout(function() { btn.textContent = orig; }, 1500);
-                            }).catch(function() { prompt('Coordinates:', text); });
-                        })(this, '{{ d.centroid_lat|default:'' }}', '{{ d.centroid_lng|default:'' }}')"
-                        aria-label="Copy site coordinates to clipboard"
-                        class="print-hide btn-ghost text-[11px] px-2 py-0.5 flex items-center gap-1"
-                        style="color: var(--text-tertiary);">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                        </svg>
-                        Copy coords
-                    </button>
-                    {% endif %}
-                </div>
-                <div class="mini-map-wrap rounded-lg"
-                     onclick="openInLiveMap('{{ d.centroid_lng|default:'' }}', '{{ d.centroid_lat|default:'' }}')">
-                    <div class="mini-map"
-                         data-lng="{{ d.centroid_lng|default:'' }}"
-                         data-lat="{{ d.centroid_lat|default:'' }}"
-                         id="map-{{ assignment.id }}"
-                         style="border: 1px solid var(--border-subtle);">
-                    </div>
-                    {% if d.centroid_lng %}
-                    <div class="mini-map-overlay">
-                        <span>Open in Google Maps ↗</span>
-                    </div>
-                    {% endif %}
-                </div>
+                <div class="text-[10px] uppercase tracking-widest mb-1" style="color: rgba(223,226,235,0.35);">Confidence</div>
+                <div class="text-lg font-bold" style="color: #f6be39;">{% widthratio site.confidence_score 1 100 %}%</div>
             </div>
-        </div>
-
-        <!-- ML Analysis Images (collapsible) -->
-        {% if d.patch_images %}
-        <div>
-            <button type="button" onclick="toggleSection(this)"
-                    class="w-full flex items-center justify-between text-sm font-medium py-1"
-                    style="color: var(--text-primary);">
-                <span>ML Analysis</span>
-                <svg class="section-chevron w-4 h-4 transition-transform" style="color: var(--text-tertiary);"
-                     fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                </svg>
-            </button>
-            <div class="section-body hidden mt-2">
-                <div class="grid grid-cols-2 gap-2">
-                    {% if d.patch_images.false_color %}
-                    <div>
-                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">False Colour</p>
-                        <a href="{{ d.patch_images.false_color }}" target="_blank" rel="noopener"
-                           style="display:block;background:var(--surface-3);border:1px solid var(--border-subtle);border-radius:0.375rem;overflow:hidden;">
-                            <img src="{{ d.patch_images.false_color }}" alt="False Colour"
-                                 class="w-full" style="display:block;object-fit:contain;">
-                        </a>
-                    </div>
-                    {% endif %}
-                    {% if d.patch_images.prediction_mask %}
-                    <div>
-                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Prediction Mask</p>
-                        <a href="{{ d.patch_images.prediction_mask }}" target="_blank" rel="noopener"
-                           style="display:block;background:var(--surface-3);border:1px solid var(--border-subtle);border-radius:0.375rem;overflow:hidden;">
-                            <img src="{{ d.patch_images.prediction_mask }}" alt="Prediction Mask"
-                                 class="w-full" style="display:block;object-fit:contain;">
-                        </a>
-                    </div>
-                    {% endif %}
-                    {% if d.patch_images.probability_heatmap %}
-                    <div>
-                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Probability Heatmap</p>
-                        <a href="{{ d.patch_images.probability_heatmap }}" target="_blank" rel="noopener"
-                           style="display:block;background:var(--surface-3);border:1px solid var(--border-subtle);border-radius:0.375rem;overflow:hidden;">
-                            <img src="{{ d.patch_images.probability_heatmap }}" alt="Probability Heatmap"
-                                 class="w-full" style="display:block;object-fit:contain;">
-                        </a>
-                    </div>
-                    {% endif %}
-                    {% if d.patch_images.overlay %}
-                    <div>
-                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Overlay</p>
-                        <a href="{{ d.patch_images.overlay }}" target="_blank" rel="noopener"
-                           style="display:block;background:var(--surface-3);border:1px solid var(--border-subtle);border-radius:0.375rem;overflow:hidden;">
-                            <img src="{{ d.patch_images.overlay }}" alt="Overlay"
-                                 class="w-full" style="display:block;object-fit:contain;">
-                        </a>
-                    </div>
-                    {% endif %}
-                </div>
-                <p class="text-xs mt-1.5" style="color: var(--text-tertiary);">Click any image to open full-size.</p>
+            <div>
+                <div class="text-[10px] uppercase tracking-widest mb-1" style="color: rgba(223,226,235,0.35);">Impact Area</div>
+                <div class="text-lg font-bold" style="color: #dfe2eb;">{{ site.area_hectares|floatformat:1 }} ha</div>
+            </div>
+            <div>
+                <div class="text-[10px] uppercase tracking-widest mb-1" style="color: rgba(223,226,235,0.35);">Detected</div>
+                <div class="text-lg font-bold" style="color: #dfe2eb;">{{ site.detection_date|date:"M d" }}</div>
             </div>
         </div>
         {% endif %}
+    </div>
 
-        <!-- Timelapse frames (collapsible) -->
-        {% if d.timelapse_frames %}
-        <div>
-            <button type="button" onclick="toggleSection(this)"
-                    class="w-full flex items-center justify-between text-sm font-medium py-1"
-                    style="color: var(--text-primary);">
-                <span>Satellite Timelapse</span>
-                <svg class="section-chevron w-4 h-4 transition-transform" style="color: var(--text-tertiary);"
-                     fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                </svg>
-            </button>
-            <div class="section-body hidden mt-2" data-tl-assignment="{{ assignment.id }}">
-                <div class="flex items-center justify-between mb-2">
-                    <span id="tl-year-{{ assignment.id }}" class="text-xs font-semibold" style="color: var(--text-secondary);">
-                        {{ d.timelapse_frames.0.year }}
-                    </span>
-                    <button id="tl-play-{{ assignment.id }}" type="button"
-                            aria-label="Play timelapse"
-                            class="btn-ghost px-2.5 py-1 text-xs font-medium rounded-lg transition-colors">
-                        ▶ Play
-                    </button>
-                </div>
+    <!-- ── Right: Action / details ───────────────────────────── -->
+    <div class="col-span-4 p-4 flex flex-col" style="background: rgba(38,42,49,0.3);">
 
-            {% if d.timelapse_frames.0.thumbnail_url %}
-            <!-- Side-by-side: featured image on left, year thumbnails on right -->
-            <div class="flex gap-2" style="height: 210px;">
-
-                <!-- Featured image: fills all remaining space, no black bars -->
-                <div class="flex-1 min-w-0 overflow-hidden rounded-lg"
-                     style="border: 1px solid var(--border-subtle);">
-                    <img id="tl-featured-{{ assignment.id }}"
-                         src="{{ d.timelapse_frames.0.thumbnail_url }}"
-                         alt="Timelapse frame"
-                         class="w-full h-full object-cover">
-                </div>
-
-                <!-- Vertical thumbnail strip -->
-                <div class="flex flex-col gap-1.5" style="width: 88px;">
-                    {% for frame in d.timelapse_frames %}
-                    <div class="flex-1 min-h-0 flex flex-col">
-                        {% if frame.thumbnail_url %}
-                        <div class="flex-1 min-h-0 overflow-hidden rounded-lg"
-                             style="border: 1px solid var(--border-subtle); {% if forloop.first %}outline: 2px solid var(--accent); outline-offset: 1px;{% endif %}">
-                            <img src="{{ frame.thumbnail_url }}"
-                                 data-src="{{ frame.thumbnail_url }}"
-                                 data-year="{{ frame.year }}"
-                                 alt="{{ frame.year }}"
-                                 class="tl-thumb{% if forloop.first %} active{% endif %} w-full h-full object-cover cursor-pointer">
-                        </div>
-                        {% else %}
-                        <div class="flex-1 min-h-0 rounded-lg flex items-center justify-center"
-                             style="border: 1px dashed var(--border-default); background: var(--surface-3);">
-                            <span class="text-xs" style="color: var(--text-tertiary);">—</span>
-                        </div>
-                        {% endif %}
-                        <p class="text-center leading-tight mt-0.5 flex-shrink-0"
-                           style="font-size: 10px; color: var(--text-tertiary);">{{ frame.year }}</p>
-                    </div>
-                    {% endfor %}
-                </div>
-
-            </div>
-            {% endif %}
-            </div>{# /.section-body #}
-        </div>
-        {% endif %}
-
-        <!-- Dispatch notes from admin -->
-        {% if assignment.notes and assignment.status == 'pending' %}
-        <div class="rounded-lg p-3"
-             style="background: var(--status-info-bg); border: 1px solid var(--status-info-border);">
-            <p class="text-xs font-medium mb-1" style="color: var(--status-info);">Notes from dispatcher</p>
-            <p class="text-sm" style="color: var(--status-info);">{{ assignment.notes }}</p>
-        </div>
-        {% endif %}
-
-        <!-- ---- PENDING: field report form ---- -->
         {% if assignment.status == 'pending' %}
-        <form id="report-form-{{ assignment.id }}" enctype="multipart/form-data" onsubmit="return false;">
+        <!-- PENDING: field report form -->
+        <div class="text-[10px] uppercase tracking-[0.2em] mb-4 font-bold" style="color: rgba(223,226,235,0.3);">Field Verification Report</div>
+
+        <form id="report-form-{{ assignment.id }}" enctype="multipart/form-data" onsubmit="return false;" class="flex flex-col gap-4 flex-1">
             {% csrf_token %}
             <input type="hidden" id="outcome-input-{{ assignment.id }}" name="outcome" value="">
 
-            <h4 class="text-sm font-medium mb-3" style="color: var(--text-primary);">Submit Field Report</h4>
-
             {% if assignment.outcome == 'inconclusive' %}
-            <div class="mb-4 flex items-start gap-2 rounded-lg px-4 py-3"
-                 style="background: var(--status-moderate-bg); border: 1px solid var(--status-moderate-border);">
-                <svg class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--status-moderate);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-                </svg>
-                <div>
-                    <p class="text-xs font-semibold" style="color: var(--status-moderate);">Previous submission: Inconclusive</p>
-                    <p class="text-xs mt-0.5" style="color: var(--status-moderate);">You can update your report below when you have more information.</p>
-                </div>
+            <div class="rounded-xl px-4 py-3" style="background: rgba(246,190,57,0.06); border: 1px solid rgba(246,190,57,0.15);">
+                <p class="text-[10px] uppercase tracking-widest font-bold mb-1" style="color: #f6be39;">Previous: Inconclusive</p>
+                <p class="text-xs" style="color: rgba(246,190,57,0.7);">Update your report when you have more information.</p>
             </div>
             {% endif %}
 
-            <!-- Outcome + Visit date (inline row) -->
-            <div class="mb-3">
-                <p class="gw-label mb-1.5" id="outcome-label-{{ assignment.id }}">What did you find at the site?</p>
-                <div class="flex flex-wrap items-center gap-2" role="group" aria-labelledby="outcome-label-{{ assignment.id }}">
-                    <button type="button"
-                            data-outcome="mining_confirmed"
+            <!-- Outcome buttons -->
+            <div>
+                <p class="text-[10px] uppercase tracking-widest mb-2 font-bold" style="color: rgba(223,226,235,0.35);">What did you find?</p>
+                <div class="flex flex-col gap-2">
+                    <button type="button" data-outcome="mining_confirmed"
                             onclick="selectOutcome('{{ assignment.id }}', 'mining_confirmed')"
-                            class="outcome-btn btn-secondary flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                            style="border-color: var(--status-critical-border); background: var(--status-critical-bg); color: var(--status-critical);">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-                        </svg>
-                        Mining Confirmed
+                            class="outcome-btn w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest text-left px-4 transition-all"
+                            style="background: rgba(255,180,171,0.08); border: 1px solid rgba(255,180,171,0.2); color: #ffb4ab;">
+                        ⚠ Mining Confirmed
                     </button>
-                    <button type="button"
-                            data-outcome="false_positive"
+                    <button type="button" data-outcome="false_positive"
                             onclick="selectOutcome('{{ assignment.id }}', 'false_positive')"
-                            class="outcome-btn btn-secondary flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                            style="border-color: var(--status-resolved-border); background: var(--status-resolved-bg); color: var(--status-resolved);">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M5 13l4 4L19 7"/>
-                        </svg>
-                        False Positive
+                            class="outcome-btn w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest text-left px-4 transition-all"
+                            style="background: rgba(103,223,112,0.08); border: 1px solid rgba(103,223,112,0.2); color: #67df70;">
+                        ✓ False Positive
                     </button>
-                    <button type="button"
-                            data-outcome="inconclusive"
+                    <button type="button" data-outcome="inconclusive"
                             onclick="selectOutcome('{{ assignment.id }}', 'inconclusive')"
-                            class="outcome-btn btn-secondary flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        Inconclusive
+                            class="outcome-btn w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest text-left px-4 transition-all"
+                            style="background: rgba(155,143,122,0.08); border: 1px solid rgba(155,143,122,0.2); color: #9b8f7a;">
+                        ? Inconclusive
                     </button>
-                    <div class="flex items-center gap-1.5 ml-auto">
-                        <label for="visit-date-{{ assignment.id }}" class="text-xs whitespace-nowrap" style="color: var(--text-secondary);">Visit date</label>
-                        <input type="date" id="visit-date-{{ assignment.id }}" name="visit_date"
-                               class="gw-input text-xs py-1" style="width: 140px;"
-                               value="{% now 'Y-m-d' %}">
-                    </div>
                 </div>
             </div>
 
-            <!-- Field notes -->
-            <div class="mb-3">
-                <label for="notes-{{ assignment.id }}" class="gw-label mb-1">
-                    Field Notes
-                </label>
-                <textarea id="notes-{{ assignment.id }}" name="notes" rows="2"
-                          placeholder="Describe what you observed at the site..."
-                          class="gw-input block w-full"></textarea>
+            <!-- Observer notes -->
+            <div class="relative flex-1">
+                <label class="absolute -top-2 left-3 px-1 text-[9px] uppercase tracking-widest font-bold" style="background: #262a31; color: #f6be39;">Observer Notes</label>
+                <textarea id="notes-{{ assignment.id }}" name="notes" rows="3"
+                          placeholder="Describe site conditions, active machinery, or observations..."
+                          class="sentinel-textarea" style="min-height: 80px;">{% if assignment.notes %}{{ assignment.notes }}{% endif %}</textarea>
             </div>
 
-            <!-- Evidence photos — drag-and-drop zone -->
-            <div class="mb-3">
-                <p class="gw-label mb-1">Evidence Photos <span class="font-normal" style="color:var(--text-tertiary);">(optional)</span></p>
+            <!-- Visit date + photo drop zone -->
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
+                    <label class="text-[10px] uppercase tracking-widest font-bold whitespace-nowrap" style="color: rgba(223,226,235,0.35);">Visit</label>
+                    <input type="date" id="visit-date-{{ assignment.id }}" name="visit_date"
+                           class="sentinel-input" value="{% now 'Y-m-d' %}">
+                </div>
+
+                <!-- Photo upload -->
                 <div id="drop-zone-{{ assignment.id }}"
-                     class="gw-drop-zone drop-zone rounded-lg p-3 text-center cursor-pointer transition-colors"
-                     data-assignment="{{ assignment.id }}">
-                    <p class="text-xs" style="color: var(--text-secondary);">
-                        <svg class="w-4 h-4 inline-block mr-1 -mt-0.5" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-                        </svg>
-                        Drag photos here or <span class="font-medium underline" style="color: var(--accent);">click to browse</span>
-                        <span style="color: var(--text-tertiary);"> · JPG, PNG · max 10 MB</span>
-                    </p>
-                    <input type="file" name="evidence_photos" id="file-input-{{ assignment.id }}"
-                           multiple accept="image/*" class="hidden">
+                     class="drop-zone flex-1 rounded-xl py-2 px-3 text-center cursor-pointer transition-all"
+                     data-assignment="{{ assignment.id }}"
+                     style="background: rgba(10,14,20,0.5);">
+                    <p class="text-[10px]" style="color: rgba(223,226,235,0.3);">+ Photos</p>
+                    <input type="file" name="evidence_photos" id="file-input-{{ assignment.id }}" multiple accept="image/*" class="hidden">
                 </div>
-                <div id="photo-preview-{{ assignment.id }}" class="flex flex-wrap gap-2 mt-1.5"></div>
             </div>
+            <div id="photo-preview-{{ assignment.id }}" class="flex flex-wrap gap-2"></div>
 
-            <!-- Submit -->
-            <button type="button" onclick="submitReport('{{ assignment.id }}')"
-                    class="btn-primary px-5 py-2 rounded-lg text-sm font-semibold focus:outline-none transition-colors">
-                Submit Report
-            </button>
+            <!-- Submit row -->
+            <div class="flex items-center gap-3 mt-auto print-hide">
+                <button type="button" onclick="submitReport('{{ assignment.id }}')"
+                        class="flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
+                        style="background: linear-gradient(135deg, #f6be39, #d4a017); color: #402d00;">
+                    Submit Report
+                </button>
+                <button onclick="deleteAssignment('{{ assignment.id }}')" type="button"
+                        class="w-11 h-11 flex items-center justify-center rounded-xl transition-all"
+                        style="border: 1px solid rgba(79,70,52,0.3); color: rgba(223,226,235,0.3);"
+                        onmouseover="this.style.borderColor='rgba(255,180,171,0.4)';this.style.color='#ffb4ab';"
+                        onmouseout="this.style.borderColor='rgba(79,70,52,0.3)';this.style.color='rgba(223,226,235,0.3)';"
+                        title="Remove assignment">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"/>
+                    </svg>
+                </button>
+                <button onclick="printDetectionCard(this)" type="button"
+                        class="print-hide w-11 h-11 flex items-center justify-center rounded-xl transition-all"
+                        style="border: 1px solid rgba(79,70,52,0.3); color: rgba(223,226,235,0.3);"
+                        onmouseover="this.style.borderColor='rgba(155,143,122,0.4)';this.style.color='#9b8f7a';"
+                        onmouseout="this.style.borderColor='rgba(79,70,52,0.3)';this.style.color='rgba(223,226,235,0.3)';"
+                        title="Print">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                    </svg>
+                </button>
+            </div>
         </form>
 
-        <!-- ---- RESOLVED: show outcome + report details ---- -->
         {% else %}
-        <div class="pt-4 space-y-3" style="border-top: 1px solid var(--border-subtle);">
-            <h4 class="text-sm font-medium" style="color: var(--text-primary);">Field Report</h4>
+        <!-- RESOLVED: site detail metadata -->
+        <div class="text-[10px] uppercase tracking-[0.2em] mb-4 font-bold" style="color: rgba(223,226,235,0.3);">Site Intelligence</div>
 
-            <!-- Outcome banner -->
-            {% if assignment.outcome == 'mining_confirmed' %}
-            <div class="flex items-center space-x-2 rounded-lg px-4 py-3"
-                 style="background: var(--status-critical-bg); border: 1px solid var(--status-critical-border);">
-                <svg class="w-5 h-5 flex-shrink-0" style="color: var(--status-critical);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-                </svg>
-                <span class="text-sm font-semibold" style="color: var(--status-critical);">Mining Confirmed — Illegal activity verified on the ground</span>
+        <!-- Outcome banner -->
+        {% if assignment.outcome == 'mining_confirmed' %}
+        <div class="rounded-xl px-4 py-3 mb-5" style="background: rgba(255,180,171,0.08); border: 1px solid rgba(255,180,171,0.2);">
+            <p class="text-xs font-bold" style="color: #ffb4ab;">⚠ Mining Confirmed</p>
+            <p class="text-[10px] mt-0.5" style="color: rgba(255,180,171,0.6);">Illegal activity verified on the ground.</p>
+        </div>
+        {% elif assignment.outcome == 'false_positive' %}
+        <div class="rounded-xl px-4 py-3 mb-5" style="background: rgba(103,223,112,0.08); border: 1px solid rgba(103,223,112,0.2);">
+            <p class="text-xs font-bold" style="color: #67df70;">✓ False Positive</p>
+            <p class="text-[10px] mt-0.5" style="color: rgba(103,223,112,0.6);">No mining activity found at this site.</p>
+        </div>
+        {% elif assignment.outcome == 'inconclusive' %}
+        <div class="rounded-xl px-4 py-3 mb-5" style="background: rgba(155,143,122,0.08); border: 1px solid rgba(155,143,122,0.2);">
+            <p class="text-xs font-bold" style="color: #9b8f7a;">? Inconclusive</p>
+            <p class="text-[10px] mt-0.5" style="color: rgba(155,143,122,0.6);">Could not determine outcome.</p>
+        </div>
+        {% endif %}
+
+        <!-- Metadata rows -->
+        <div class="space-y-3 flex-1">
+            {% if site %}
+            <div class="flex justify-between items-center pb-2.5" style="border-bottom: 1px solid rgba(79,70,52,0.12);">
+                <span class="text-[10px] uppercase tracking-widest" style="color: rgba(223,226,235,0.3);">Legal Status</span>
+                <span class="text-xs font-bold" style="color: {% if site.legal_status == 'illegal' %}#ffb4ab{% elif site.legal_status == 'legal' %}#67df70{% else %}#9b8f7a{% endif %};">
+                    {{ site.get_legal_status_display|upper }}
+                </span>
             </div>
-            {% elif assignment.outcome == 'false_positive' %}
-            <div class="flex items-center space-x-2 rounded-lg px-4 py-3"
-                 style="background: var(--status-resolved-bg); border: 1px solid var(--status-resolved-border);">
-                <svg class="w-5 h-5 flex-shrink-0" style="color: var(--status-resolved);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="text-sm font-semibold" style="color: var(--status-resolved);">False Positive — No mining activity found</span>
+            <div class="flex justify-between items-center pb-2.5" style="border-bottom: 1px solid rgba(79,70,52,0.12);">
+                <span class="text-[10px] uppercase tracking-widest" style="color: rgba(223,226,235,0.3);">Region</span>
+                <span class="text-xs font-bold" style="color: #dfe2eb;">{% if site.region %}{% if site.region.district %}{{ site.region.district }}{% else %}{{ site.region.name }}{% endif %}{% else %}—{% endif %}</span>
             </div>
-            {% elif assignment.outcome == 'inconclusive' %}
-            <div class="flex items-center space-x-2 rounded-lg px-4 py-3"
-                 style="background: var(--surface-3); border: 1px solid var(--border-default);">
-                <svg class="w-5 h-5 flex-shrink-0" style="color: var(--text-secondary);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                <span class="text-sm font-semibold" style="color: var(--text-secondary);">Inconclusive — Could not determine outcome</span>
+            {% if d.centroid_lat %}
+            <div class="flex justify-between items-center pb-2.5" style="border-bottom: 1px solid rgba(79,70,52,0.12);">
+                <span class="text-[10px] uppercase tracking-widest" style="color: rgba(223,226,235,0.3);">Coord</span>
+                <span class="text-[11px] font-mono" style="color: #dfe2eb;">{{ d.centroid_lat|floatformat:3 }}°, {{ d.centroid_lng|floatformat:3 }}°</span>
             </div>
             {% endif %}
-
-            <!-- Visit date + notes -->
-            <div class="grid grid-cols-2 gap-4 text-sm">
-                {% if assignment.visit_date %}
-                <div>
-                    <span style="color: var(--text-secondary);">Visit Date:</span>
-                    <span class="ml-1 font-medium" style="color: var(--text-primary);">{{ assignment.visit_date|date:"M d, Y" }}</span>
-                </div>
-                {% endif %}
-                <div>
-                    <span style="color: var(--text-secondary);">Completed:</span>
-                    <span class="ml-1 font-medium" style="color: var(--text-primary);">{{ assignment.completed_at|date:"M d, Y"|default:"—" }}</span>
-                </div>
+            {% if site.recurrence_count > 1 %}
+            <div class="flex justify-between items-center pb-2.5" style="border-bottom: 1px solid rgba(79,70,52,0.12);">
+                <span class="text-[10px] uppercase tracking-widest" style="color: rgba(223,226,235,0.3);">Recurrences</span>
+                <span class="text-xs font-bold" style="color: #ffb4ab;">{{ site.recurrence_count }}×</span>
             </div>
+            {% endif %}
+            {% endif %}
+            {% if assignment.visit_date %}
+            <div class="flex justify-between items-center pb-2.5" style="border-bottom: 1px solid rgba(79,70,52,0.12);">
+                <span class="text-[10px] uppercase tracking-widest" style="color: rgba(223,226,235,0.3);">Visit Date</span>
+                <span class="text-xs font-bold" style="color: #dfe2eb;">{{ assignment.visit_date|date:"M d, Y" }}</span>
+            </div>
+            {% endif %}
             {% if assignment.notes %}
-            <p class="text-sm rounded-lg p-3" style="color: var(--text-primary); background: var(--surface-3);">{{ assignment.notes }}</p>
+            <p class="text-xs rounded-xl px-4 py-3" style="color: #9b8f7a; background: rgba(10,14,20,0.5);">{{ assignment.notes }}</p>
             {% endif %}
-
-            <!-- Evidence photos -->
             {% if d.photo_urls %}
             <div>
-                <p class="text-xs mb-2" style="color: var(--text-secondary);">Evidence Photos</p>
+                <p class="text-[10px] uppercase tracking-widest mb-2" style="color: rgba(223,226,235,0.3);">Evidence Photos</p>
                 <div class="flex flex-wrap gap-2">
                     {% for url in d.photo_urls %}
                     <a href="{{ url }}" target="_blank">
-                        <img src="{{ url }}" alt="Evidence photo"
-                             class="w-24 h-16 object-cover rounded-lg hover:opacity-80 transition-opacity"
-                             style="border: 1px solid var(--border-subtle);">
+                        <img src="{{ url }}" alt="Evidence" class="w-20 h-14 object-cover rounded-lg" style="border: 1px solid rgba(79,70,52,0.3);">
                     </a>
                     {% endfor %}
                 </div>
             </div>
             {% endif %}
         </div>
+
+        <!-- Actions row -->
+        <div class="flex items-center gap-3 mt-5 print-hide">
+            <button onclick="deleteAssignment('{{ assignment.id }}')" type="button"
+                    class="flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
+                    style="background: rgba(10,14,20,0.5); border: 1px solid rgba(79,70,52,0.3); color: rgba(223,226,235,0.4);"
+                    onmouseover="this.style.borderColor='rgba(255,180,171,0.3)';this.style.color='#ffb4ab';"
+                    onmouseout="this.style.borderColor='rgba(79,70,52,0.3)';this.style.color='rgba(223,226,235,0.4)';">
+                Remove
+            </button>
+            <button onclick="printDetectionCard(this)" type="button"
+                    class="flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
+                    style="background: rgba(10,14,20,0.5); border: 1px solid rgba(79,70,52,0.3); color: rgba(223,226,235,0.4);"
+                    onmouseover="this.style.borderColor='rgba(155,143,122,0.3)';this.style.color='#9b8f7a';"
+                    onmouseout="this.style.borderColor='rgba(79,70,52,0.3)';this.style.color='rgba(223,226,235,0.4)';">
+                Print
+            </button>
+        </div>
         {% endif %}
 
+        <!-- ML images (collapsible, full-width below the right col — appended after the grid) -->
     </div>
 </div>
+
+<!-- Timelapse + ML images (full-width, below the card) -->
+{% if d.patch_images and assignment.status != 'pending' %}
+{# patch images already shown for pending in left col; for resolved show collapsible #}
+{% endif %}
+{% if d.timelapse_frames %}
+<div class="assignment-tl" data-tab="{{ card_tab }}" style="margin-top: -1rem;">
+<div class="rounded-2xl overflow-hidden" style="background: #181c22; border: 1px solid rgba(79,70,52,0.08);">
+    <button type="button" onclick="toggleSection(this)"
+            class="w-full flex items-center justify-between px-8 py-4 text-sm font-semibold"
+            style="color: rgba(223,226,235,0.6); border-bottom: 1px solid rgba(79,70,52,0.1);">
+        <span class="text-[10px] uppercase tracking-[0.2em] font-bold" style="color: rgba(223,226,235,0.3);">Satellite Timelapse</span>
+        <svg class="section-chevron w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+        </svg>
+    </button>
+    <div class="section-body hidden px-8 py-5" data-tl-assignment="{{ assignment.id }}">
+        <div class="flex gap-3">
+            {% for frame in d.timelapse_frames %}
+            <div class="flex-1 flex flex-col gap-1.5 min-w-0">
+                {% if frame.thumbnail_url %}
+                <div class="overflow-hidden rounded-xl" style="border: 1px solid rgba(79,70,52,0.2);">
+                    <img src="{{ frame.thumbnail_url }}" alt="{{ frame.year }}" class="w-full object-contain" style="display:block;">
+                </div>
+                {% else %}
+                <div class="rounded-xl flex items-center justify-center" style="aspect-ratio:1; border: 1px dashed rgba(79,70,52,0.3); background: rgba(10,14,20,0.5);">
+                    <span class="text-xs" style="color: #9b8f7a;">—</span>
+                </div>
+                {% endif %}
+                <p class="text-center" style="font-size: 9px; color: #9b8f7a;">{{ frame.year }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+</div>
+{% endif %}
