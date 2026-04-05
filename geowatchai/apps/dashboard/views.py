@@ -234,8 +234,11 @@ class CustomLoginView(LoginView):
         # Increment rate-limit counter for this IP
         ip = _get_client_ip(self.request)
         key = f'login_fail_{ip}'
-        attempts = cache.get(key, 0) + 1
-        cache.set(key, attempts, timeout=_LOGIN_LOCKOUT_SECONDS)
+        try:
+            attempts = cache.get(key, 0) + 1
+            cache.set(key, attempts, timeout=_LOGIN_LOCKOUT_SECONDS)
+        except Exception:
+            attempts = 1
         remaining = _LOGIN_MAX_ATTEMPTS - attempts
         if remaining > 0:
             form.add_error(
@@ -2282,6 +2285,71 @@ def system_admin_dashboard(request):
         'profile', 'profile__organisation'
     ).order_by('-date_joined')[:10]
 
+    # ── Ghana region alert density — SVG map ─────────────────────────
+    import os
+    from django.contrib.gis.geos import GEOSGeometry
+
+    _geojson_path = os.path.normpath(os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        '..', '..', 'static', 'data', 'ghana_regions.geojson'
+    ))
+
+    # SVG viewport — landscape 800×560, Ghana centered with 180px H padding
+    _SVG_VB_W, _SVG_H = 800, 560
+    _SVG_MAP_W = 440       # Ghana projected width (unchanged)
+    _X_OFF = 180           # (800 - 440) / 2
+    _MIN_LNG, _MAX_LNG = -3.35, 1.30
+    _MIN_LAT, _MAX_LAT = 4.60, 11.30
+    _LNG_SPAN = _MAX_LNG - _MIN_LNG
+    _LAT_SPAN = _MAX_LAT - _MIN_LAT
+
+    def _proj(lng, lat):
+        x = round((lng - _MIN_LNG) / _LNG_SPAN * _SVG_MAP_W + _X_OFF, 1)
+        y = round((_MAX_LAT - lat) / _LAT_SPAN * _SVG_H, 1)
+        return x, y
+
+    def _fill(open_c):
+        if open_c == 0:   return 'rgba(246,190,57,0.05)'
+        if open_c < 10:   return 'rgba(246,190,57,0.18)'
+        if open_c < 50:   return 'rgba(246,190,57,0.32)'
+        if open_c < 150:  return 'rgba(255,140,100,0.44)'
+        return 'rgba(255,70,70,0.55)'
+
+    svg_features = []
+    try:
+        with open(_geojson_path, encoding='utf-8') as _f:
+            _ghana = json.loads(_f.read())
+        for _feat in _ghana['features']:
+            _poly = GEOSGeometry(json.dumps(_feat['geometry']), srid=4326)
+            _counts = Alert.objects.filter(
+                detected_site__centroid__isnull=False,
+                detected_site__centroid__within=_poly,
+            ).aggregate(
+                total=Count('id'),
+                open_count=Count('id', filter=Q(status='open')),
+                critical_count=Count('id', filter=Q(status='open', severity='critical')),
+            )
+            _p = _feat['properties']
+            _open = _counts['open_count'] or 0
+            _crit = _counts['critical_count'] or 0
+            _pts = ' '.join('{},{}'.format(*_proj(c[0], c[1]))
+                            for c in _feat['geometry']['coordinates'][0])
+            _cx, _cy = _proj(_p['cx'], _p['cy'])
+            svg_features.append({
+                'name':          _p['name'],
+                'points':        _pts,
+                'cx':            _cx,
+                'cy':            _cy,
+                'fill':          _fill(_open),
+                'open_count':    _open,
+                'alert_count':   _counts['total'] or 0,
+                'critical_count': _crit,
+                'bubble_r':      max(13, min(26, int(8 + (_open ** 0.5) * 1.9))) if _open else 0,
+                'bubble_fill':   '#ffb4ab' if _crit else '#f6be39',
+            })
+    except Exception:
+        svg_features = []
+
     return render(request, 'dashboard/system_admin.html', {
         'total_users':      total_users,
         'total_orgs':       total_orgs,
@@ -2301,6 +2369,7 @@ def system_admin_dashboard(request):
         'recent_users':     recent_users,
         'spark_users':      spark_users,
         'spark_jobs':       spark_jobs,
+        'svg_features':     svg_features,
     })
 
 

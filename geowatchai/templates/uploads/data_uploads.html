@@ -5,133 +5,240 @@
 
 {% block extra_css %}
 <style>
-    .drop-zone { transition: border-color 200ms, background 200ms; }
-    .drop-zone.dragover {
-        border-color: var(--accent) !important;
-        background: var(--accent-muted) !important;
+    .drop-zone {
+        border: 2px dashed rgba(79,70,52,0.35);
+        border-radius: 4px;
+        transition: border-color 200ms, background 200ms;
+        cursor: pointer;
     }
-    .tab-btn.active {
-        background: var(--accent);
-        color: #0d1117;
-        border-color: var(--accent);
-        font-weight: 600;
+    .drop-zone:hover, .drop-zone.dragover {
+        border-color: rgba(246,190,57,0.5);
+        background: rgba(246,190,57,0.03);
     }
+    .upload-input-underline {
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid rgba(79,70,52,0.3);
+        border-radius: 0;
+        outline: none;
+        width: 100%;
+        padding: 8px 0;
+        color: #dfe2eb;
+        font-size: 13px;
+        transition: border-color 150ms;
+    }
+    .upload-input-underline:focus { border-bottom-color: #f6be39; }
+    @keyframes pulse-glow {
+        0%, 100% { opacity: 0.4; transform: scale(1); }
+        50% { opacity: 0.8; transform: scale(1.08); }
+    }
+    .upload-icon-pulse { animation: pulse-glow 2.5s ease-in-out infinite; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="p-6 space-y-6" data-animate-cards>
+<div class="sentinel-dot-grid min-h-screen" style="background: #0a0e14;">
+<div class="px-8 py-8" style="max-width: 1100px;">
 
-    <!-- Header -->
-    <div>
-        <h1 class="text-[22px] font-semibold tracking-tight" style="color: var(--text-primary);">Data Uploads</h1>
-        <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">Import spatial reference data used to classify and monitor detections</p>
-    </div>
-
-    <!-- Summary cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-1 gap-4" style="max-width: 280px;">
-        <div class="gw-card p-4 flex items-center gap-4">
-            <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                 style="background: var(--status-resolved-bg); border: 1px solid var(--status-resolved-border);">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                     style="color: var(--status-resolved);" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-                </svg>
-            </div>
+    <!-- Page header -->
+    <div class="mb-8">
+        <div class="flex items-center gap-2 mb-2">
+            <div class="w-0.5 h-4 rounded-full" style="background: #f6be39;"></div>
+            <span class="text-[9px] uppercase tracking-[0.2em] font-bold" style="color: #9b8f7a;">Administrative Console</span>
+        </div>
+        <div class="flex items-start justify-between gap-4">
             <div>
-                <div class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);" data-countup="{{ concession_count }}">{{ concession_count }}</div>
-                <div class="text-[12px]" style="color: var(--text-secondary);">Legal Concessions</div>
+                <h1 class="text-xl font-bold tracking-tight" style="color: #dfe2eb;">Ingestion Control</h1>
+                <p class="text-[12px] mt-1" style="color: #9b8f7a;">Import spatial reference data used to classify and monitor detections</p>
             </div>
         </div>
     </div>
 
-    <!-- ===== CONCESSIONS PANEL ===== -->
-    <div id="panel-concessions" class="upload-panel">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-2 space-y-4">
-                <div class="gw-card overflow-hidden">
-                    <div class="px-6 py-4" style="border-bottom: 1px solid var(--border-subtle);">
-                        <h2 class="text-[14px] font-semibold" style="color: var(--text-primary);">Legal Concessions — GeoJSON Upload</h2>
-                        <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">
-                            Boundaries of licensed mining concessions from the Minerals Commission.
-                            Uploading replaces all existing concessions and automatically reclassifies every detection.
-                        </p>
+    <!-- Bento layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left: stat + upload zone + activity (8 cols) -->
+        <div class="lg:col-span-8 space-y-5">
+
+            <!-- Stat card -->
+            <div class="flex items-center gap-5 p-4 rounded"
+                 style="background: #181c22; border: 1px solid rgba(79,70,52,0.15); border-left: 3px solid #f6be39;">
+                <div class="w-9 h-9 flex items-center justify-center rounded flex-shrink-0"
+                     style="background: rgba(246,190,57,0.08);">
+                    <i class="ph ph-map-trifold" style="font-size: 18px; color: #f6be39;" aria-hidden="true"></i>
+                </div>
+                <div>
+                    <p class="text-2xl font-bold tabular-nums leading-none" style="color: #dfe2eb;" data-countup="{{ concession_count }}">{{ concession_count }}</p>
+                    <p class="text-[11px] mt-1 uppercase tracking-widest" style="color: #9b8f7a;">Legal Concessions</p>
+                </div>
+                <div class="ml-auto text-right">
+                    <p class="text-[10px] uppercase tracking-widest" style="color: rgba(155,143,122,0.5);">Last import</p>
+                    <p class="text-[11px] mt-0.5" style="color: #9b8f7a;">Spatial Coverage</p>
+                </div>
+            </div>
+
+            <!-- Upload zone -->
+            <div class="rounded" style="background: #181c22; border: 1px solid rgba(79,70,52,0.15);">
+                <div class="px-6 py-4" style="border-bottom: 1px solid rgba(79,70,52,0.12);">
+                    <h2 class="text-[13px] font-semibold" style="color: #dfe2eb;">Legal Concessions — GeoJSON Upload</h2>
+                    <p class="text-[11px] mt-1 leading-relaxed" style="color: #9b8f7a;">
+                        Boundaries of licensed mining concessions from the Minerals Commission.
+                        Uploading replaces all existing concessions and automatically reclassifies every detection.
+                    </p>
+                </div>
+
+                <div class="p-6">
+                    <!-- Drop zone -->
+                    <div id="dz-concessions"
+                         class="drop-zone p-10 text-center"
+                         onclick="document.getElementById('fi-concessions').click()"
+                         ondragover="handleDragOver(event, this)"
+                         ondragleave="handleDragLeave(this)"
+                         ondrop="handleDrop(event, 'fi-concessions', this)">
+
+                        <div class="relative inline-block mb-4">
+                            <div class="absolute inset-0 rounded-full upload-icon-pulse"
+                                 style="background: rgba(246,190,57,0.15); filter: blur(12px);"></div>
+                            <i class="ph ph-cloud-arrow-up relative" style="font-size: 44px; color: rgba(155,143,122,0.5);" aria-hidden="true"></i>
+                        </div>
+
+                        <p class="text-[13px] font-semibold mb-1" style="color: #dfe2eb;">Drop GeoJSON file here</p>
+                        <p class="text-[11px] mb-4" style="color: #9b8f7a;">or click to browse from your computer</p>
+
+                        <div class="flex items-center justify-center gap-4 text-[10px] uppercase tracking-widest" style="color: rgba(155,143,122,0.5);">
+                            <span class="flex items-center gap-1">
+                                <i class="ph ph-check-circle" style="color: #67df70;" aria-hidden="true"></i>
+                                .geojson
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <i class="ph ph-check-circle" style="color: #67df70;" aria-hidden="true"></i>
+                                .json
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <i class="ph ph-check-circle" style="color: #67df70;" aria-hidden="true"></i>
+                                Polygon / MultiPolygon
+                            </span>
+                        </div>
                     </div>
-                    <div class="p-6">
-                        <div id="dz-concessions"
-                             class="drop-zone border-2 border-dashed rounded-lg p-10 text-center cursor-pointer"
-                             style="border-color: var(--border-default);"
-                             onclick="document.getElementById('fi-concessions').click()"
-                             ondragover="handleDragOver(event, this)" ondragleave="handleDragLeave(this)"
-                             ondrop="handleDrop(event, 'fi-concessions', this)">
-                            <svg class="w-10 h-10 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                 style="color: var(--text-tertiary);" aria-hidden="true" focusable="false">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                            </svg>
-                            <p class="text-[13px] font-medium mb-1" style="color: var(--text-secondary);">Drop GeoJSON file here or click to browse</p>
-                            <p class="text-[12px]" style="color: var(--text-tertiary);">Accepted: .geojson, .json &nbsp;·&nbsp; Polygon or MultiPolygon features</p>
-                        </div>
-                        <input type="file" id="fi-concessions" class="hidden" accept=".geojson,.json"
-                               onchange="previewFile(this, 'preview-concessions')">
 
-                        <div id="preview-concessions" class="hidden mt-4 rounded-lg p-4 text-[13px]"
-                             style="background: var(--surface-3); border: 1px solid var(--border-default);">
-                            <p class="font-medium mb-1" style="color: var(--text-primary);" id="preview-concessions-name"></p>
-                            <p style="color: var(--text-secondary);" id="preview-concessions-info"></p>
-                        </div>
+                    <input type="file" id="fi-concessions" class="hidden" accept=".geojson,.json"
+                           onchange="previewFile(this, 'preview-concessions')">
 
+                    <!-- Preview -->
+                    <div id="preview-concessions" class="hidden mt-4 rounded px-4 py-3 flex items-center gap-3"
+                         style="background: rgba(246,190,57,0.05); border: 1px solid rgba(246,190,57,0.15);">
+                        <i class="ph ph-file-text flex-shrink-0" style="font-size:18px; color: #f6be39;" aria-hidden="true"></i>
+                        <div class="min-w-0">
+                            <p class="text-[12px] font-semibold truncate" style="color: #dfe2eb;" id="preview-concessions-name"></p>
+                            <p class="text-[11px] mt-0.5" style="color: #9b8f7a;" id="preview-concessions-info"></p>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex items-center gap-3 mt-5">
                         <button onclick="uploadFile('fi-concessions', '/uploads/upload/concessions/', 'result-concessions')"
-                                class="btn-primary mt-4 px-5 py-2 text-[13px]">
+                                class="px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.15em] rounded transition-all active:scale-95"
+                                style="background: linear-gradient(135deg, #f6be39 0%, #d4a017 100%); color: #402d00;">
                             Import Concessions
                         </button>
+                        <span class="text-[10px] uppercase tracking-widest" style="color: rgba(155,143,122,0.4);">
+                            Existing data will be replaced
+                        </span>
                     </div>
+
+                    <div id="result-concessions" class="hidden mt-4"></div>
                 </div>
-                <div id="result-concessions" class="hidden"></div>
             </div>
 
-            <div class="lg:col-span-1">
-                <div class="gw-card p-5 space-y-4 text-[13px]">
-                    <h3 class="font-semibold" style="color: var(--text-primary);">What happens on upload</h3>
-                    <ol class="space-y-3" style="color: var(--text-secondary);">
-                        <li class="flex gap-3">
-                            <span class="w-5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5"
-                                  style="background: var(--accent); color: #0d1117;">1</span>
-                            <span>All existing concession boundaries are replaced with the new file</span>
-                        </li>
-                        <li class="flex gap-3">
-                            <span class="w-5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5"
-                                  style="background: var(--accent); color: #0d1117;">2</span>
-                            <span>Every detection is checked against the new boundaries using a spatial intersection</span>
-                        </li>
-                        <li class="flex gap-3">
-                            <span class="w-5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5"
-                                  style="background: var(--accent); color: #0d1117;">3</span>
-                            <span>Detections inside a concession → <strong style="color: var(--text-primary);">Legal</strong>. Outside → <strong style="color: var(--text-primary);">Illegal</strong></span>
-                        </li>
-                        <li class="flex gap-3">
-                            <span class="w-5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5"
-                                  style="background: var(--accent); color: #0d1117;">4</span>
-                            <span>The live map updates immediately to reflect the new classification</span>
-                        </li>
-                    </ol>
-                    <div class="pt-3" style="border-top: 1px solid var(--border-subtle);">
-                        <p class="text-[11px]" style="color: var(--text-tertiary);">Expected GeoJSON properties: <code>license_number</code>, <code>name</code>, <code>holder_name</code>, <code>license_type</code>. Missing fields use sensible defaults.</p>
+        </div>
+
+        <!-- Right: process guide (4 cols, sticky) -->
+        <div class="lg:col-span-4">
+            <div class="sticky top-24 space-y-4">
+
+                <!-- Process steps -->
+                <div class="rounded p-5" style="background: #181c22; border: 1px solid rgba(79,70,52,0.15);">
+                    <p class="text-[10px] uppercase tracking-[0.15em] font-bold mb-5" style="color: #9b8f7a;">What happens on upload</p>
+
+                    <div class="space-y-0">
+                        {% for step, text in steps %}
+                        <div class="flex gap-3 relative">
+                            <!-- Connector line -->
+                            {% if not forloop.last %}
+                            <div class="absolute left-[14px] top-7 bottom-0 w-px" style="background: rgba(79,70,52,0.3);"></div>
+                            {% endif %}
+                            <!-- Step circle -->
+                            <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold z-10"
+                                 style="background: linear-gradient(135deg, #f6be39 0%, #d4a017 100%); color: #402d00;">
+                                {{ forloop.counter }}
+                            </div>
+                            <div class="pb-5 min-w-0">
+                                <p class="text-[12px] leading-relaxed" style="color: #d3c5ae;">{{ text }}</p>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="flex gap-3 relative">
+                            <div class="absolute left-[14px] top-7 bottom-0 w-px" style="background: rgba(79,70,52,0.3);"></div>
+                            <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold z-10"
+                                 style="background: linear-gradient(135deg, #f6be39 0%, #d4a017 100%); color: #402d00;">1</div>
+                            <div class="pb-5">
+                                <p class="text-[12px] leading-relaxed" style="color: #d3c5ae;">All existing concession boundaries are replaced with the new file</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3 relative">
+                            <div class="absolute left-[14px] top-7 bottom-0 w-px" style="background: rgba(79,70,52,0.3);"></div>
+                            <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold z-10"
+                                 style="background: linear-gradient(135deg, #f6be39 0%, #d4a017 100%); color: #402d00;">2</div>
+                            <div class="pb-5">
+                                <p class="text-[12px] leading-relaxed" style="color: #d3c5ae;">Every detection is checked against the new boundaries using spatial intersection</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3 relative">
+                            <div class="absolute left-[14px] top-7 bottom-0 w-px" style="background: rgba(79,70,52,0.3);"></div>
+                            <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold z-10"
+                                 style="background: linear-gradient(135deg, #f6be39 0%, #d4a017 100%); color: #402d00;">3</div>
+                            <div class="pb-5">
+                                <p class="text-[12px] leading-relaxed" style="color: #d3c5ae;">Detections inside a concession → <strong style="color: #dfe2eb;">Legal</strong>. Outside → <strong style="color: #dfe2eb;">Illegal</strong></p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold z-10"
+                                 style="background: linear-gradient(135deg, #f6be39 0%, #d4a017 100%); color: #402d00;">4</div>
+                            <div class="pb-2">
+                                <p class="text-[12px] leading-relaxed" style="color: #d3c5ae;">The live map updates immediately to reflect the new classification</p>
+                            </div>
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
+
+                <!-- Format spec -->
+                <div class="rounded p-4" style="background: rgba(246,190,57,0.04); border: 1px solid rgba(246,190,57,0.12);">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="ph ph-info" style="font-size:14px; color: #f6be39;" aria-hidden="true"></i>
+                        <p class="text-[10px] uppercase tracking-widest font-bold" style="color: #f6be39;">Expected GeoJSON fields</p>
+                    </div>
+                    <p class="text-[11px] leading-relaxed" style="color: rgba(155,143,122,0.7);">
+                        <code style="color: #d3c5ae; font-size: 10px;">license_number</code>,
+                        <code style="color: #d3c5ae; font-size: 10px;">name</code>,
+                        <code style="color: #d3c5ae; font-size: 10px;">holder_name</code>,
+                        <code style="color: #d3c5ae; font-size: 10px;">license_type</code>.
+                        Missing fields use sensible defaults.
+                    </p>
+                </div>
+
             </div>
         </div>
+
     </div>
-
-
+</div>
 </div>
 
 <div id="upload-toast-container" class="fixed top-4 right-4 space-y-2 z-50"></div>
-
 {% endblock %}
 
 {% block extra_js %}
 <script>
-
 function handleDragOver(e, el) { e.preventDefault(); el.classList.add('dragover'); }
 function handleDragLeave(el) { el.classList.remove('dragover'); }
 function handleDrop(e, inputId, dropEl) {
@@ -177,11 +284,11 @@ function uploadFile(inputId, url, resultId) {
     const resultEl = document.getElementById(resultId);
     resultEl.classList.remove('hidden');
     resultEl.innerHTML = `
-        <div class="rounded-lg p-4 text-[13px] flex items-center gap-3"
-             style="background: var(--status-info-bg); border: 1px solid var(--status-info-border); color: var(--status-info);">
-            <div class="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin flex-shrink-0"
-                 style="border-color: var(--status-info); border-top-color: transparent;"></div>
-            <span>Uploading and processing <strong>${file.name}</strong>…</span>
+        <div class="rounded px-4 py-3 text-[12px] flex items-center gap-3"
+             style="background: rgba(246,190,57,0.06); border: 1px solid rgba(246,190,57,0.15); color: #d3c5ae;">
+            <div class="w-3.5 h-3.5 border-2 border-t-transparent rounded-full animate-spin flex-shrink-0"
+                 style="border-color: #f6be39; border-top-color: transparent;"></div>
+            <span>Uploading and processing <strong style="color:#dfe2eb;">${file.name}</strong>…</span>
         </div>`;
 
     fetch(url, {
@@ -193,29 +300,29 @@ function uploadFile(inputId, url, resultId) {
     .then(data => {
         if (data.success) {
             resultEl.innerHTML = `
-                <div class="rounded-lg p-4 text-[13px]"
-                     style="background: var(--status-resolved-bg); border: 1px solid var(--status-resolved-border); color: var(--status-resolved);">
-                    <p class="font-semibold mb-1">Import complete</p>
-                    <p>${data.message}</p>
+                <div class="rounded px-4 py-3 text-[12px]"
+                     style="background: rgba(103,223,112,0.06); border: 1px solid rgba(103,223,112,0.2); color: #67df70;">
+                    <p class="font-semibold mb-0.5">Import complete</p>
+                    <p style="color: rgba(103,223,112,0.7);">${data.message}</p>
                 </div>`;
             showToast('Import successful.', 'success');
             setTimeout(() => location.reload(), 2000);
         } else {
             resultEl.innerHTML = `
-                <div class="rounded-lg p-4 text-[13px]"
-                     style="background: var(--status-critical-bg); border: 1px solid var(--status-critical-border); color: var(--status-critical);">
-                    <p class="font-semibold mb-1">Import failed</p>
-                    <p>${data.error}</p>
+                <div class="rounded px-4 py-3 text-[12px]"
+                     style="background: rgba(255,180,171,0.06); border: 1px solid rgba(255,180,171,0.2); color: #ffb4ab;">
+                    <p class="font-semibold mb-0.5">Import failed</p>
+                    <p style="color: rgba(255,180,171,0.7);">${data.error}</p>
                 </div>`;
             showToast('Import failed. See details below.', 'error');
         }
     })
     .catch(err => {
         resultEl.innerHTML = `
-            <div class="rounded-lg p-4 text-[13px]"
-                 style="background: var(--status-critical-bg); border: 1px solid var(--status-critical-border); color: var(--status-critical);">
-                <p class="font-semibold mb-1">Network error</p>
-                <p>${err.message}</p>
+            <div class="rounded px-4 py-3 text-[12px]"
+                 style="background: rgba(255,180,171,0.06); border: 1px solid rgba(255,180,171,0.2); color: #ffb4ab;">
+                <p class="font-semibold mb-0.5">Network error</p>
+                <p style="color: rgba(255,180,171,0.7);">${err.message}</p>
             </div>`;
         showToast('Network error.', 'error');
     });
@@ -223,10 +330,12 @@ function uploadFile(inputId, url, resultId) {
 
 function showToast(msg, type) {
     const el = document.createElement('div');
-    el.style.cssText = type === 'success'
-        ? `background: var(--status-resolved-bg); border: 1px solid var(--status-resolved-border); color: var(--status-resolved);`
-        : `background: var(--status-critical-bg); border: 1px solid var(--status-critical-border); color: var(--status-critical);`;
-    el.className = 'px-4 py-3 rounded-lg text-[13px] shadow-lg';
+    const styles = {
+        success: 'background: rgba(103,223,112,0.1); border: 1px solid rgba(103,223,112,0.25); color: #67df70;',
+        error:   'background: rgba(255,180,171,0.1); border: 1px solid rgba(255,180,171,0.25); color: #ffb4ab;',
+    };
+    el.style.cssText = (styles[type] || styles.error) + 'border-radius: 4px;';
+    el.className = 'px-4 py-3 text-[12px] shadow-lg';
     el.textContent = msg;
     document.getElementById('upload-toast-container').appendChild(el);
     setTimeout(() => el.remove(), 4000);

@@ -3,186 +3,281 @@
 
 {% block title %}Auto Scan Control — SankofaWatch{% endblock %}
 
-{% block content %}
-<div class="px-6 py-6 space-y-5" style="max-width:1100px;margin:0 auto;">
+{% block extra_css %}
+<style>
+    /* ── Sentinel shared ── */
+    .s-input-underline {
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid rgba(155,143,122,0.3);
+        color: #e2d5c0;
+        padding: 5px 2px;
+        font-size: 12px;
+        transition: border-color 0.15s;
+    }
+    .s-input-underline:focus { outline: none; border-bottom-color: #f6be39; }
+    .s-input-underline option { background: #262a31; color: #e2d5c0; }
 
-    <!-- Header -->
-    <div class="gw-page-header">
-        <div>
-            <h1 class="text-xl font-bold" style="color:var(--text-primary);">Auto Scan Control</h1>
-            <p class="text-sm mt-0.5" style="color:var(--text-secondary);">
-                Configure automated scanning for each organisation independently.
-            </p>
+    .s-btn-primary {
+        background: linear-gradient(135deg, #f6be39 0%, #d4a017 100%);
+        color: #402d00;
+        font-weight: 700;
+        font-size: 13px;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 18px;
+        cursor: pointer;
+        transition: opacity 0.15s, box-shadow 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .s-btn-primary:hover { opacity: 0.92; box-shadow: 0 0 10px rgba(246,190,57,0.3); }
+    .s-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .s-btn-outlined {
+        background: transparent;
+        color: #f6be39;
+        border: 1px solid rgba(246,190,57,0.25);
+        font-size: 13px;
+        font-weight: 600;
+        border-radius: 6px;
+        padding: 8px 18px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: background 0.15s;
+    }
+    .s-btn-outlined:hover { background: rgba(246,190,57,0.08); }
+    .s-btn-outlined:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Stat card ── */
+    .s-stat-card {
+        background: #181c22;
+        border: 1px solid rgba(79,70,52,0.15);
+        border-radius: 8px;
+        padding: 16px;
+        text-align: center;
+    }
+    .s-stat-num {
+        font-size: 28px;
+        font-weight: 700;
+        font-family: monospace;
+        color: #e2d5c0;
+        line-height: 1;
+        margin: 0 0 6px;
+    }
+    .s-stat-label {
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: #9b8f7a;
+        margin: 0;
+    }
+
+    /* ── Control cards ── */
+    .s-control-card {
+        background: #181c22;
+        border: 1px solid rgba(79,70,52,0.15);
+        border-radius: 8px;
+        padding: 20px;
+    }
+
+    /* ── Status badge variants ── */
+    .badge-active  { background: rgba(103,223,112,0.1); color: #67df70; border: 1px solid rgba(103,223,112,0.3); }
+    .badge-paused  { background: rgba(155,143,122,0.08); color: #9b8f7a; border: 1px solid rgba(155,143,122,0.2); }
+    .badge-waiting { background: rgba(246,190,57,0.1); color: #f6be39; border: 1px solid rgba(246,190,57,0.25); }
+    .badge-done    { background: rgba(96,165,250,0.1); color: #60a5fa; border: 1px solid rgba(96,165,250,0.25); }
+    .badge-limited { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+
+    /* ── Org row ── */
+    .org-row:last-child { border-bottom: none !important; }
+    .org-toggle-btn:disabled, #pause-all-btn:disabled, #resume-all-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+    /* ── Small select for org rows ── */
+    .s-select-sm {
+        background: #262a31;
+        border: 1px solid rgba(79,70,52,0.2);
+        color: #e2d5c0;
+        font-size: 11px;
+        border-radius: 4px;
+        padding: 4px 6px;
+    }
+    .s-select-sm:focus { outline: none; border-color: rgba(246,190,57,0.4); }
+    .s-select-sm option { background: #262a31; }
+
+    .s-save-sm {
+        background: transparent;
+        border: 1px solid rgba(246,190,57,0.2);
+        color: #f6be39;
+        font-size: 11px;
+        font-weight: 600;
+        border-radius: 4px;
+        padding: 4px 10px;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    .s-save-sm:hover { background: rgba(246,190,57,0.08); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sentinel-dot-grid" style="min-height:100vh; padding: 28px 28px 40px;">
+
+    <!-- ── Page header ── -->
+    <div style="margin-bottom: 28px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+        <div style="display: flex; gap: 14px; align-items: flex-start;">
+            <div style="width: 2px; height: 52px; background: #f6be39; border-radius: 2px; flex-shrink: 0; margin-top: 2px;"></div>
+            <div>
+                <p style="font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #f6be39; margin: 0 0 4px;">Sentinel Control</p>
+                <h1 style="font-size: 22px; font-weight: 700; color: #e2d5c0; margin: 0 0 3px; letter-spacing: -0.01em;">Auto Scan</h1>
+                <p style="font-size: 13px; color: #9b8f7a; margin: 0;">Configure automated scanning for each organisation independently.</p>
+            </div>
         </div>
-        <div id="status-badge" class="px-3 py-1 rounded-full text-xs font-semibold"
-             style="background:rgba(255,255,255,0.06);color:var(--text-secondary);border:1px solid var(--border-default);">
+        <div id="status-badge" style="margin-top: 10px; padding: 5px 14px; border-radius: 9999px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; background: rgba(155,143,122,0.08); color: #9b8f7a; border: 1px solid rgba(155,143,122,0.2);">
             Loading…
         </div>
     </div>
 
-    <div class="kente-bar"></div>
-
-    <!-- Stats row -->
-    <div class="grid grid-cols-4 gap-4">
-        <div class="rounded-xl p-4 text-center" style="background:var(--surface-1);border:1px solid var(--border-default);">
-            <p class="text-2xl font-bold tabular-nums" id="stat-scanned" style="color:var(--text-primary);">—</p>
-            <p class="text-xs mt-1" style="color:var(--text-tertiary);">Tiles scanned today</p>
+    <!-- ── Stats row ── -->
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px;">
+        <div class="s-stat-card">
+            <p class="s-stat-label" style="margin-bottom: 8px;">Tiles Scanned Today</p>
+            <p class="s-stat-num" id="stat-scanned">—</p>
         </div>
-        <div class="rounded-xl p-4 text-center" style="background:var(--surface-1);border:1px solid var(--border-default);">
-            <p class="text-2xl font-bold tabular-nums" id="stat-detections" style="color:var(--text-primary);">—</p>
-            <p class="text-xs mt-1" style="color:var(--text-tertiary);">Detections today</p>
+        <div class="s-stat-card">
+            <p class="s-stat-label" style="margin-bottom: 8px;">Detections Today</p>
+            <p class="s-stat-num" id="stat-detections">—</p>
         </div>
-        <div class="rounded-xl p-4 text-center" style="background:var(--surface-1);border:1px solid var(--border-default);">
-            <p class="text-2xl font-bold tabular-nums" id="stat-total" style="color:var(--text-primary);">—</p>
-            <p class="text-xs mt-1" style="color:var(--text-tertiary);">Total tiles</p>
+        <div class="s-stat-card">
+            <p class="s-stat-label" style="margin-bottom: 8px;">Total Tiles</p>
+            <p class="s-stat-num" id="stat-total">—</p>
         </div>
-        <div class="rounded-xl p-4 text-center" style="background:var(--surface-1);border:1px solid var(--border-default);">
-            <p class="text-xl font-semibold tabular-nums" id="stat-time" style="color:var(--text-primary);">—</p>
-            <p class="text-xs mt-1" style="color:var(--text-tertiary);">Server time</p>
+        <div class="s-stat-card">
+            <p class="s-stat-label" style="margin-bottom: 8px;">Server Time</p>
+            <p class="s-stat-num" id="stat-time" style="font-size: 20px;">—</p>
         </div>
     </div>
 
-    <!-- Control row: system window + bulk actions -->
-    <div class="grid gap-4" style="grid-template-columns:1fr 1fr;">
+    <!-- ── Control row ── -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
 
         <!-- System scanning window -->
-        <div class="rounded-xl p-5" style="background:var(--surface-1);border:1px solid var(--border-default);">
-            <p class="text-sm font-semibold" style="color:var(--text-primary);">System Scanning Window</p>
-            <p class="text-xs mt-1 mb-4" style="color:var(--text-tertiary);">
-                Hours during which the automated scanner runs. Organisations can override this individually below.
+        <div class="s-control-card">
+            <p style="font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #9b8f7a; margin: 0 0 6px;">System Scanning Window</p>
+            <p style="font-size: 12px; color: #9b8f7a; margin: 0 0 16px; line-height: 1.5;">
+                Hours during which the automated scanner runs. Organisations can override individually.
             </p>
-            <div class="flex items-center gap-3 flex-wrap">
-                <select id="global-start-hour" class="rounded-lg px-3 py-2 text-sm"
-                        style="background:var(--surface-2);border:1px solid var(--border-default);color:var(--text-primary);">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <select id="global-start-hour" class="s-input-underline" style="width: 70px;">
                     {% for h in hours %}
                     <option value="{{ h }}" {% if h == config.window_start_hour %}selected{% endif %}>{{ h }}:00</option>
                     {% endfor %}
                 </select>
-                <span class="text-xs" style="color:var(--text-tertiary);">to</span>
-                <select id="global-end-hour" class="rounded-lg px-3 py-2 text-sm"
-                        style="background:var(--surface-2);border:1px solid var(--border-default);color:var(--text-primary);">
+                <span style="font-size: 12px; color: #9b8f7a;">to</span>
+                <select id="global-end-hour" class="s-input-underline" style="width: 70px;">
                     {% for h in hours %}
                     <option value="{{ h }}" {% if h == config.window_end_hour %}selected{% endif %}>{{ h }}:00</option>
                     {% endfor %}
                 </select>
-                <button id="global-save-btn" class="btn-secondary px-4 py-2 text-sm">Save</button>
-                <span id="global-save-msg" class="text-xs hidden" style="color:#4ade80;">✓ Saved</span>
+                <button id="global-save-btn" class="s-btn-outlined" style="padding: 6px 14px; font-size: 12px;">Save</button>
+                <span id="global-save-msg" class="hidden" style="font-size: 12px; color: #67df70;">&#10003; Saved</span>
             </div>
         </div>
 
         <!-- Bulk actions -->
-        <div class="rounded-xl p-5 flex flex-col" style="background:var(--surface-1);border:1px solid var(--border-default);">
-            <p class="text-sm font-semibold" style="color:var(--text-primary);">Bulk Actions</p>
-            <p class="text-xs mt-1 mb-4" style="color:var(--text-tertiary);">
-                Apply the same state to all organisations at once. Individual settings can still be changed after.
+        <div class="s-control-card" style="display: flex; flex-direction: column;">
+            <p style="font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #9b8f7a; margin: 0 0 6px;">Bulk Actions</p>
+            <p style="font-size: 12px; color: #9b8f7a; margin: 0 0 auto; line-height: 1.5; padding-bottom: 16px;">
+                Apply the same state to all organisations at once.
             </p>
-            <div class="flex gap-3 mt-auto">
-                <button id="pause-all-btn"
-                        class="flex-1 py-2 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-opacity"
-                        style="background:var(--surface-2);border:1px solid var(--border-default);color:var(--text-primary);">
-                    ⏸ Pause All
+            <div style="display: flex; gap: 12px;">
+                <button id="pause-all-btn" class="s-btn-outlined" style="flex: 1; justify-content: center;">
+                    <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                    Pause All
                 </button>
-                <button id="resume-all-btn"
-                        class="btn-primary flex-1 py-2 text-sm font-medium flex items-center justify-center gap-2">
-                    ▶ Resume All
+                <button id="resume-all-btn" class="s-btn-primary" style="flex: 1; justify-content: center;">
+                    <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    Resume All
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Per-organisation table -->
+    <!-- ── Per-org table ── -->
     {% if org_configs %}
-    <div class="rounded-xl overflow-hidden" style="background:var(--surface-1);border:1px solid var(--border-default);">
+    <div style="background: #181c22; border: 1px solid rgba(79,70,52,0.15); border-radius: 8px; overflow: hidden;">
 
         <!-- Table header -->
-        <div class="px-5 py-3 flex items-center gap-4 text-xs font-medium"
-             style="border-bottom:1px solid var(--border-default);color:var(--text-tertiary);background:var(--surface-2);">
-            <span style="flex:1 1 0%;min-width:0;">Organisation</span>
-            <span style="width:90px;flex-shrink:0;">Status</span>
-            <span style="width:260px;flex-shrink:0;">Scanning Window</span>
-            <span style="width:90px;flex-shrink:0;"></span>
+        <div style="display: flex; align-items: center; gap: 16px; padding: 11px 20px; background: #262a31; border-bottom: 1px solid rgba(79,70,52,0.15);">
+            <span style="flex: 1 1 0%; min-width: 0; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #9b8f7a;">Organisation</span>
+            <span style="width: 90px; flex-shrink: 0; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #9b8f7a;">Status</span>
+            <span style="width: 280px; flex-shrink: 0; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #9b8f7a;">Scanning Window</span>
+            <span style="width: 100px; flex-shrink: 0;"></span>
         </div>
 
-        <!-- Rows -->
+        <!-- Org rows -->
         {% for item in org_configs %}
-        <div class="org-row px-5 py-3 flex items-center gap-4"
-             data-org-id="{{ item.org.pk }}"
-             style="border-bottom:1px solid var(--border-subtle);">
+        <div class="org-row" data-org-id="{{ item.org.pk }}"
+             style="display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid rgba(79,70,52,0.1);transition:background 0.1s;"
+             onmouseover="this.style.background='#1c2026'" onmouseout="this.style.background=''">
 
-            <!-- Name + dot -->
-            <div class="flex items-center gap-2" style="flex:1 1 0%;min-width:0;">
-                <div class="w-2 h-2 rounded-full flex-shrink-0 org-status-dot
-                            {% if item.cfg.is_enabled %}bg-green-400{% else %}bg-gray-500{% endif %}"></div>
-                <span class="text-sm font-medium truncate" style="color:var(--text-primary);">{{ item.org.name }}</span>
+            <!-- Name + dot indicator -->
+            <div style="display:flex;align-items:center;gap:10px;flex:1 1 0%;min-width:0;">
+                <div style="width:32px;height:32px;border-radius:6px;background:rgba(246,190,57,0.1);color:#f6be39;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;border:1px solid rgba(246,190,57,0.15);">
+                    {{ item.org.name|first|upper }}
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+                    <span class="org-status-dot" style="width:7px;height:7px;border-radius:50%;flex-shrink:0;{% if item.cfg.is_enabled %}background:#67df70;box-shadow:0 0 6px rgba(103,223,112,0.5);{% else %}background:rgba(155,143,122,0.4);{% endif %}"></span>
+                    <span style="font-size:13px;font-weight:600;color:#e2d5c0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ item.org.name }}</span>
+                </div>
             </div>
 
-            <!-- Status pill -->
+            <!-- Status label -->
             <div style="width:90px;flex-shrink:0;">
-                <span class="org-status-label text-xs px-2 py-0.5 rounded-full
-                             {% if item.cfg.is_enabled %}text-green-400{% else %}text-gray-400{% endif %}"
-                      style="background:var(--surface-2);">
+                <span class="org-status-label" style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:9999px;{% if item.cfg.is_enabled %}background:rgba(103,223,112,0.1);color:#67df70;border:1px solid rgba(103,223,112,0.25);{% else %}background:rgba(155,143,122,0.08);color:#9b8f7a;border:1px solid rgba(155,143,122,0.2);{% endif %}">
                     {% if item.cfg.is_enabled %}Active{% else %}Paused{% endif %}
                 </span>
             </div>
 
             <!-- Window dropdowns -->
-            <div class="flex items-center gap-2" style="width:260px;flex-shrink:0;">
-                <select class="org-start-hour rounded px-2 py-1 text-xs"
-                        style="background:var(--surface-2);border:1px solid var(--border-subtle);color:var(--text-primary);">
+            <div style="width:280px;flex-shrink:0;display:flex;align-items:center;gap:8px;">
+                <select class="org-start-hour s-select-sm">
                     {% for h in hours %}
                     <option value="{{ h }}" {% if h == item.cfg.window_start_hour %}selected{% endif %}>{{ h }}:00</option>
                     {% endfor %}
                 </select>
-                <span class="text-xs" style="color:var(--text-tertiary);">–</span>
-                <select class="org-end-hour rounded px-2 py-1 text-xs"
-                        style="background:var(--surface-2);border:1px solid var(--border-subtle);color:var(--text-primary);">
+                <span style="font-size:11px;color:#9b8f7a;">–</span>
+                <select class="org-end-hour s-select-sm">
                     {% for h in hours %}
                     <option value="{{ h }}" {% if h == item.cfg.window_end_hour %}selected{% endif %}>{{ h }}:00</option>
                     {% endfor %}
                 </select>
-                <button class="org-save-btn text-xs px-2.5 py-1 rounded"
-                        data-org-id="{{ item.org.pk }}"
-                        style="background:var(--surface-2);border:1px solid var(--border-subtle);color:var(--text-primary);">
-                    Save
-                </button>
-                <span class="org-save-msg text-xs hidden" style="color:#4ade80;">✓</span>
+                <button class="org-save-btn s-save-sm" data-org-id="{{ item.org.pk }}">Save</button>
+                <span class="org-save-msg hidden" style="font-size:11px;color:#67df70;">&#10003;</span>
             </div>
 
             <!-- Toggle button -->
-            <div style="width:90px;flex-shrink:0;">
-                <button class="org-toggle-btn w-full text-xs px-3 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1.5"
-                        data-org-id="{{ item.org.pk }}"
+            <div style="width:100px;flex-shrink:0;">
+                <button class="org-toggle-btn" data-org-id="{{ item.org.pk }}"
                         data-enabled="{{ item.cfg.is_enabled|yesno:'true,false' }}"
-                        style="background:var(--surface-2);border:1px solid var(--border-default);color:var(--text-primary);">
-                    <span class="org-btn-icon">{% if item.cfg.is_enabled %}⏸{% else %}▶{% endif %}</span>
+                        style="width:100%;font-size:11px;font-weight:600;padding:6px 10px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;{% if item.cfg.is_enabled %}background:transparent;border:1px solid rgba(239,68,68,0.25);color:#f87171;{% else %}background:linear-gradient(135deg,#f6be39 0%,#d4a017 100%);border:none;color:#402d00;{% endif %}">
+                    <span class="org-btn-icon" style="font-size:10px;">{% if item.cfg.is_enabled %}⏸{% else %}▶{% endif %}</span>
                     <span class="org-btn-label">{% if item.cfg.is_enabled %}Pause{% else %}Resume{% endif %}</span>
                 </button>
             </div>
 
         </div>
         {% endfor %}
-
     </div>
     {% endif %}
 
-</div>
-
-<style>
-/* Last org row — no bottom border */
-.org-row:last-child { border-bottom: none !important; }
-
-/* Status badge variants */
-.badge-active  { background:rgba(50,200,100,0.12); color:#3cc878; border:1px solid rgba(50,200,100,0.3); }
-.badge-paused  { background:rgba(240,246,252,0.06); color:var(--text-secondary); border:1px solid var(--border-default); }
-.badge-waiting { background:rgba(212,160,23,0.12); color:var(--accent); border:1px solid rgba(212,160,23,0.3); }
-.badge-done    { background:rgba(88,166,255,0.1); color:#58a6ff; border:1px solid rgba(88,166,255,0.25); }
-.badge-limited { background:rgba(248,81,73,0.1); color:#f85149; border:1px solid rgba(248,81,73,0.25); }
-
-.org-toggle-btn:disabled, #pause-all-btn:disabled, #resume-all-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-</style>
+</div><!-- /sentinel-dot-grid -->
 
 <script>
 function getCookie(name) {
@@ -196,7 +291,7 @@ function getCookie(name) {
 
 const CSRF = getCookie('csrftoken');
 
-// ── Update a single org row (dot, status pill, button) ────────────────────
+// ── Update a single org row (dot, status label, button) ──
 function updateOrgRow(orgId, isEnabled) {
     const row = document.querySelector(`.org-row[data-org-id="${orgId}"]`);
     if (!row) return;
@@ -208,48 +303,55 @@ function updateOrgRow(orgId, isEnabled) {
     btn.dataset.enabled = isEnabled ? 'true' : 'false';
     btn.querySelector('.org-btn-icon').textContent  = isEnabled ? '⏸' : '▶';
     btn.querySelector('.org-btn-label').textContent = isEnabled ? 'Pause' : 'Resume';
+    if (isEnabled) {
+        btn.style.cssText = 'width:100%;font-size:11px;font-weight:600;padding:6px 10px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;background:transparent;border:1px solid rgba(239,68,68,0.25);color:#f87171;';
+    } else {
+        btn.style.cssText = 'width:100%;font-size:11px;font-weight:600;padding:6px 10px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;background:linear-gradient(135deg,#f6be39 0%,#d4a017 100%);border:none;color:#402d00;';
+    }
 
-    dot.className = `w-2 h-2 rounded-full flex-shrink-0 org-status-dot ${isEnabled ? 'bg-green-400' : 'bg-gray-500'}`;
-
-    lbl.textContent = isEnabled ? 'Active' : 'Paused';
-    lbl.className   = `org-status-label text-xs px-2 py-0.5 rounded-full ${isEnabled ? 'text-green-400' : 'text-gray-400'}`;
-    lbl.style.background = 'var(--surface-2)';
+    if (isEnabled) {
+        dot.style.cssText = 'width:7px;height:7px;border-radius:50%;flex-shrink:0;background:#67df70;box-shadow:0 0 6px rgba(103,223,112,0.5);';
+        lbl.textContent = 'Active';
+        lbl.style.cssText = 'font-size:11px;font-weight:600;padding:3px 8px;border-radius:9999px;background:rgba(103,223,112,0.1);color:#67df70;border:1px solid rgba(103,223,112,0.25);';
+    } else {
+        dot.style.cssText = 'width:7px;height:7px;border-radius:50%;flex-shrink:0;background:rgba(155,143,122,0.4);';
+        lbl.textContent = 'Paused';
+        lbl.style.cssText = 'font-size:11px;font-weight:600;padding:3px 8px;border-radius:9999px;background:rgba(155,143,122,0.08);color:#9b8f7a;border:1px solid rgba(155,143,122,0.2);';
+    }
 }
 
-// ── Fetch status and repaint everything ───────────────────────────────────
+// ── Fetch status and repaint everything ──
 async function fetchStatus() {
     try {
         const r    = await fetch('/scanning/api/status/', { credentials: 'include' });
         const data = await r.json();
 
-        // Status badge
         const active = data.active_orgs ?? 0;
         const total  = data.total_orgs  ?? 0;
         const badge  = document.getElementById('status-badge');
         badge.textContent = `${active} / ${total} orgs active`;
+        badge.className = '';
         if (active === 0) {
-            badge.className = 'px-3 py-1 rounded-full text-xs font-semibold badge-paused';
+            badge.style.cssText = 'margin-top:10px;padding:5px 14px;border-radius:9999px;font-size:11px;font-weight:700;letter-spacing:0.05em;background:rgba(155,143,122,0.08);color:#9b8f7a;border:1px solid rgba(155,143,122,0.2);';
         } else if (active === total) {
-            badge.className = 'px-3 py-1 rounded-full text-xs font-semibold badge-active';
+            badge.style.cssText = 'margin-top:10px;padding:5px 14px;border-radius:9999px;font-size:11px;font-weight:700;letter-spacing:0.05em;background:rgba(103,223,112,0.1);color:#67df70;border:1px solid rgba(103,223,112,0.3);';
         } else {
-            badge.className = 'px-3 py-1 rounded-full text-xs font-semibold badge-waiting';
+            badge.style.cssText = 'margin-top:10px;padding:5px 14px;border-radius:9999px;font-size:11px;font-weight:700;letter-spacing:0.05em;background:rgba(246,190,57,0.1);color:#f6be39;border:1px solid rgba(246,190,57,0.25);';
         }
 
-        // Stats
         const s = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ?? '—'; };
         s('stat-scanned',    data.tiles_scanned_today);
         s('stat-detections', data.detections_today);
         s('stat-total',      data.total_tiles);
         s('stat-time',       data.server_time || '--:--');
 
-        // Sync all org rows
         if (data.org_statuses) {
             data.org_statuses.forEach(o => updateOrgRow(o.id, o.is_enabled));
         }
     } catch (e) {}
 }
 
-// ── Bulk actions ──────────────────────────────────────────────────────────
+// ── Bulk actions ──
 async function bulkToggle(action) {
     const pauseBtn  = document.getElementById('pause-all-btn');
     const resumeBtn = document.getElementById('resume-all-btn');
@@ -270,7 +372,7 @@ async function bulkToggle(action) {
 document.getElementById('pause-all-btn').addEventListener('click',  () => bulkToggle('pause'));
 document.getElementById('resume-all-btn').addEventListener('click', () => bulkToggle('resume'));
 
-// ── Global window save ────────────────────────────────────────────────────
+// ── Global window save ──
 document.getElementById('global-save-btn').addEventListener('click', async () => {
     const start = parseInt(document.getElementById('global-start-hour').value, 10);
     const end   = parseInt(document.getElementById('global-end-hour').value, 10);
@@ -286,7 +388,7 @@ document.getElementById('global-save-btn').addEventListener('click', async () =>
     }
 });
 
-// ── Per-org toggle ────────────────────────────────────────────────────────
+// ── Per-org toggle ──
 document.querySelectorAll('.org-toggle-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
         const orgId   = btn.dataset.orgId;
@@ -303,12 +405,11 @@ document.querySelectorAll('.org-toggle-btn').forEach(btn => {
 
         const data = await r.json();
         updateOrgRow(orgId, data.is_enabled);
-        // Refresh badge counts
         fetchStatus();
     });
 });
 
-// ── Per-org window save ───────────────────────────────────────────────────
+// ── Per-org window save ──
 document.querySelectorAll('.org-save-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
         const orgId = btn.dataset.orgId;

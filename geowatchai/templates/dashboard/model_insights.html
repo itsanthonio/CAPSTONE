@@ -6,109 +6,134 @@
 <style>
 @keyframes barGrowW { from { width: 0 !important; } }
 .metric-bar { animation: barGrowW 0.8s cubic-bezier(0.4,0,0.2,1) both; }
+
+@keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.live-dot { animation: pulse-dot 2s ease-in-out infinite; }
+
+/* ── Metric card hover lift ── */
+.s-metric-card { transition: transform 0.15s; }
+.s-metric-card:hover { transform: scale(1.02); }
+
+/* ── Section card ── */
+.s-card {
+    background: #181c22;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.s-card-elevated {
+    background: #1c2026;
+    border-radius: 10px;
+    overflow: hidden;
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="p-6 space-y-6" data-animate-cards>
+<div class="sentinel-dot-grid" style="min-height:100vh; padding: 28px 28px 40px;">
 
-    <!-- Page Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <!-- ── Page Header ── -->
+    <div style="margin-bottom: 28px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
         <div>
-            <h1 class="text-[22px] font-semibold tracking-tight" style="color: var(--text-primary);">Model Insights</h1>
-            <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">FPN-ResNet50 v1.0 &middot; HLS Optical Imagery &middot; Ghana Mining Belt</p>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                <span style="padding: 3px 10px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; background: rgba(212,160,23,0.2); color: #f6be39; border: 1px solid rgba(246,190,57,0.2);">Production</span>
+                <span style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #67df70;">
+                    <span class="live-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #67df70; display: inline-block; box-shadow: 0 0 6px rgba(103,223,112,0.5);"></span>
+                    Live
+                </span>
+            </div>
+            <h1 style="font-size: 28px; font-weight: 800; color: #dfe2eb; margin: 0 0 4px; letter-spacing: -0.02em;">Model Insights</h1>
+            <p style="font-size: 13px; color: #9b8f7a; margin: 0;">Core Intelligence Engine: <span style="color: #f6be39; font-weight: 600;">FPN-ResNet50 v1.0</span> &middot; HLS Optical Imagery &middot; Ghana Mining Belt</p>
         </div>
-        <div class="flex items-center gap-2 flex-wrap">
-            <span class="gw-badge--info">Best Precision Model</span>
-            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium"
-                  style="background: var(--surface-3); color: var(--text-secondary); border: 1px solid var(--border-default);">Test Set Results</span>
-            <span class="gw-badge--resolved">
-                <span class="w-1.5 h-1.5 rounded-full inline-block mr-1" style="background: var(--status-resolved);"></span>
-                Production
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px;">
+            {% if has_field_data %}
+            <span style="font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 4px; background: rgba(103,223,112,0.1); color: #67df70; border: 1px solid rgba(103,223,112,0.25);">
+                <span class="live-dot" style="width:6px;height:6px;border-radius:50%;background:#67df70;display:inline-block;margin-right:5px;"></span>
+                Field-adjusted
             </span>
+            {% endif %}
+            <span style="font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 4px; background: rgba(246,190,57,0.08); color: #f6be39; border: 1px solid rgba(246,190,57,0.2);">Best Precision Model</span>
+            <span style="font-size: 11px; color: #9b8f7a; padding: 4px 10px; border-radius: 4px; background: rgba(155,143,122,0.08);">Test Set Results</span>
         </div>
     </div>
 
-    <!-- 6 Metric Cards -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
+    <!-- ── 6 Metric Cards ── -->
+    <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 24px;">
 
-        <div class="gw-card p-4 text-center relative overflow-hidden">
+        <div class="s-card s-metric-card" style="padding: 18px 16px; text-align: center; position: relative;">
             {% if has_field_data %}
-            <span class="absolute top-2 right-2 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded"
-                  style="background: var(--status-resolved-bg); color: var(--status-resolved); border: 1px solid var(--status-resolved-border);">
-                <span class="w-1.5 h-1.5 rounded-full inline-block" style="background: var(--status-resolved);"></span>Live
+            <span style="position:absolute;top:8px;right:8px;font-size:9px;font-weight:700;padding:2px 6px;border-radius:9999px;background:rgba(103,223,112,0.1);color:#67df70;border:1px solid rgba(103,223,112,0.25);">
+                <span class="live-dot" style="width:5px;height:5px;border-radius:50%;background:#67df70;display:inline-block;margin-right:3px;"></span>Live
             </span>
             {% endif %}
-            <p class="text-[10px] font-medium uppercase tracking-[0.07em] mb-2" style="color: var(--text-tertiary);">Accuracy</p>
-            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);" data-countup="{{ live_accuracy }}">{{ live_accuracy }}</p>
-            <div class="mt-2 w-full rounded-full h-1" style="background: var(--border-subtle);">
-                <div class="h-1 rounded-full metric-bar" style="width:{{ live_accuracy }}%; background: var(--status-resolved); animation-delay: 0ms;"></div>
+            <p style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:#9b8f7a;margin:0 0 8px;">Accuracy</p>
+            <p style="font-size:26px;font-weight:800;color:#f6be39;margin:0;" data-countup="{{ live_accuracy }}">{{ live_accuracy }}</p>
+            <div style="width:100%;background:#31353c;height:3px;border-radius:9999px;margin:8px 0 6px;overflow:hidden;">
+                <div class="metric-bar" style="width:{{ live_accuracy }}%;height:100%;background:#f6be39;animation-delay:0ms;"></div>
             </div>
-            <p class="text-[11px] font-medium mt-1.5" style="color: var(--status-resolved);">{% if has_field_data %}Field-adjusted{% else %}Test set{% endif %}</p>
+            <p style="font-size:10px;font-weight:600;color:#67df70;margin:0;">{% if has_field_data %}Field-adjusted{% else %}Test set{% endif %}</p>
         </div>
 
-        <div class="gw-card p-4 text-center relative overflow-hidden">
+        <div class="s-card s-metric-card" style="padding: 18px 16px; text-align: center; position: relative;">
             {% if has_field_data %}
-            <span class="absolute top-2 right-2 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded"
-                  style="background: var(--status-resolved-bg); color: var(--status-resolved); border: 1px solid var(--status-resolved-border);">
-                <span class="w-1.5 h-1.5 rounded-full inline-block" style="background: var(--status-resolved);"></span>Live
+            <span style="position:absolute;top:8px;right:8px;font-size:9px;font-weight:700;padding:2px 6px;border-radius:9999px;background:rgba(103,223,112,0.1);color:#67df70;border:1px solid rgba(103,223,112,0.25);">
+                <span class="live-dot" style="width:5px;height:5px;border-radius:50%;background:#67df70;display:inline-block;margin-right:3px;"></span>Live
             </span>
             {% endif %}
-            <p class="text-[10px] font-medium uppercase tracking-[0.07em] mb-2" style="color: var(--text-tertiary);">Precision</p>
-            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);" data-countup="{{ live_precision }}">{{ live_precision }}</p>
-            <div class="mt-2 w-full rounded-full h-1" style="background: var(--border-subtle);">
-                <div class="h-1 rounded-full metric-bar" style="width:{{ live_precision }}%; background: var(--status-info); animation-delay: 100ms;"></div>
+            <p style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:#9b8f7a;margin:0 0 8px;">Precision</p>
+            <p style="font-size:26px;font-weight:800;color:#f6be39;margin:0;" data-countup="{{ live_precision }}">{{ live_precision }}</p>
+            <div style="width:100%;background:#31353c;height:3px;border-radius:9999px;margin:8px 0 6px;overflow:hidden;">
+                <div class="metric-bar" style="width:{{ live_precision }}%;height:100%;background:#f6be39;animation-delay:100ms;"></div>
             </div>
-            <p class="text-[11px] font-medium mt-1.5" style="color: var(--status-info);">{% if has_field_data %}Last {{ total_verified|default:50 }} verified{% else %}Test set{% endif %}</p>
+            <p style="font-size:10px;font-weight:600;color:#60a5fa;margin:0;">{% if has_field_data %}Last {{ total_verified|default:50 }} verified{% else %}Test set{% endif %}</p>
         </div>
 
-        <div class="gw-card p-4 text-center">
-            <p class="text-[10px] font-medium uppercase tracking-[0.07em] mb-2" style="color: var(--text-tertiary);">Recall</p>
-            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);" data-countup="{{ model_metrics.recall }}">{{ model_metrics.recall }}</p>
-            <div class="mt-2 w-full rounded-full h-1" style="background: var(--border-subtle);">
-                <div class="h-1 rounded-full metric-bar" style="width:{{ model_metrics.recall }}%; background: var(--status-info); animation-delay: 200ms;"></div>
+        <div class="s-card s-metric-card" style="padding: 18px 16px; text-align: center;">
+            <p style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:#9b8f7a;margin:0 0 8px;">Recall</p>
+            <p style="font-size:26px;font-weight:800;color:#dfe2eb;margin:0;" data-countup="{{ model_metrics.recall }}">{{ model_metrics.recall }}</p>
+            <div style="width:100%;background:#31353c;height:3px;border-radius:9999px;margin:8px 0 6px;overflow:hidden;">
+                <div class="metric-bar" style="width:{{ model_metrics.recall }}%;height:100%;background:#d3c5ae;animation-delay:200ms;"></div>
             </div>
-            <p class="text-[11px] font-medium mt-1.5" style="color: var(--status-info);">Coverage</p>
+            <p style="font-size:10px;font-weight:600;color:#9b8f7a;margin:0;">Coverage</p>
         </div>
 
-        <div class="gw-card p-4 text-center">
-            <p class="text-[10px] font-medium uppercase tracking-[0.07em] mb-2" style="color: var(--text-tertiary);">F1 / Dice</p>
-            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);" data-countup="{{ model_metrics.f1 }}">{{ model_metrics.f1 }}</p>
-            <div class="mt-2 w-full rounded-full h-1" style="background: var(--border-subtle);">
-                <div class="h-1 rounded-full metric-bar" style="width:{{ model_metrics.f1 }}%; background: var(--status-dispatched); animation-delay: 300ms;"></div>
+        <div class="s-card s-metric-card" style="padding: 18px 16px; text-align: center;">
+            <p style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:#9b8f7a;margin:0 0 8px;">F1 / Dice</p>
+            <p style="font-size:26px;font-weight:800;color:#dfe2eb;margin:0;" data-countup="{{ model_metrics.f1 }}">{{ model_metrics.f1 }}</p>
+            <div style="width:100%;background:#31353c;height:3px;border-radius:9999px;margin:8px 0 6px;overflow:hidden;">
+                <div class="metric-bar" style="width:{{ model_metrics.f1 }}%;height:100%;background:#d3c5ae;animation-delay:300ms;"></div>
             </div>
-            <p class="text-[11px] font-medium mt-1.5" style="color: var(--status-dispatched);">Balance</p>
+            <p style="font-size:10px;font-weight:600;color:#9b8f7a;margin:0;">Balance</p>
         </div>
 
-        <div class="gw-card p-4 text-center">
-            <p class="text-[10px] font-medium uppercase tracking-[0.07em] mb-2" style="color: var(--text-tertiary);">IoU</p>
-            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);" data-countup="{{ model_metrics.iou }}">{{ model_metrics.iou }}</p>
-            <div class="mt-2 w-full rounded-full h-1" style="background: var(--border-subtle);">
-                <div class="h-1 rounded-full metric-bar" style="width:{{ model_metrics.iou }}%; background: var(--status-high); animation-delay: 400ms;"></div>
+        <div class="s-card s-metric-card" style="padding: 18px 16px; text-align: center;">
+            <p style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:#9b8f7a;margin:0 0 8px;">IoU</p>
+            <p style="font-size:26px;font-weight:800;color:#dfe2eb;margin:0;" data-countup="{{ model_metrics.iou }}">{{ model_metrics.iou }}</p>
+            <div style="width:100%;background:#31353c;height:3px;border-radius:9999px;margin:8px 0 6px;overflow:hidden;">
+                <div class="metric-bar" style="width:{{ model_metrics.iou }}%;height:100%;background:#d3c5ae;animation-delay:400ms;"></div>
             </div>
-            <p class="text-[11px] font-medium mt-1.5" style="color: var(--status-high);">Overlap</p>
+            <p style="font-size:10px;font-weight:600;color:#9b8f7a;margin:0;">Overlap</p>
         </div>
 
-        <div class="gw-card p-4 text-center">
-            <p class="text-[10px] font-medium uppercase tracking-[0.07em] mb-2" style="color: var(--text-tertiary);">Test Loss</p>
-            <p class="text-[24px] font-bold tabular-nums" style="color: var(--text-primary);">{{ model_metrics.loss }}</p>
-            <div class="mt-2 w-full rounded-full h-1" style="background: var(--border-subtle);">
-                <div class="h-1 rounded-full metric-bar" style="width:12.46%;max-width:25%; background: var(--status-resolved); animation-delay: 500ms;"></div>
+        <div class="s-card s-metric-card" style="padding: 18px 16px; text-align: center;">
+            <p style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:#9b8f7a;margin:0 0 8px;">Test Loss</p>
+            <p style="font-size:26px;font-weight:800;color:#67df70;margin:0;">{{ model_metrics.loss }}</p>
+            <div style="width:100%;background:#31353c;height:3px;border-radius:9999px;margin:8px 0 6px;overflow:hidden;">
+                <div class="metric-bar" style="width:12.46%;max-width:25%;height:100%;background:#67df70;animation-delay:500ms;"></div>
             </div>
-            <p class="text-[11px] font-medium mt-1.5" style="color: var(--status-resolved);">Low &darr;</p>
+            <p style="font-size:10px;font-weight:600;color:#67df70;margin:0;">Optimal range</p>
         </div>
 
     </div>
 
-    <!-- Charts Row -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- ── Charts Row ── -->
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 20px;">
 
         <!-- Performance Over Time -->
-        <div class="lg:col-span-2 gw-card overflow-hidden">
-            <div class="px-5 py-4 flex items-center justify-between" style="border-bottom: 1px solid var(--border-subtle);">
+        <div class="s-card-elevated">
+            <div style="padding: 18px 22px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
                 <div>
-                    <h2 class="text-[14px] font-semibold" style="color: var(--text-primary);">Performance Over Time</h2>
-                    <p class="text-[12px] mt-0.5" style="color: var(--text-tertiary);">
+                    <h3 style="font-size: 16px; font-weight: 700; color: #dfe2eb; margin: 0 0 4px;">Performance Over Time</h3>
+                    <p style="font-size: 12px; color: #9b8f7a; margin: 0;">
                         {% if has_field_data %}
                             Field-verified Accuracy &amp; Precision &mdash; last 12 months
                         {% else %}
@@ -116,25 +141,30 @@
                         {% endif %}
                     </p>
                 </div>
-                {% if has_field_data %}
-                <span class="gw-badge--resolved">
-                    <span class="w-1.5 h-1.5 rounded-full inline-block mr-1" style="background: var(--status-resolved);"></span>Live data
-                </span>
-                {% else %}
-                <span class="inline-flex items-center text-[11px] px-2 py-1 rounded"
-                      style="background: var(--surface-3); color: var(--text-tertiary); border: 1px solid var(--border-subtle);">Test set &middot; v0.3 &rarr; v1.0</span>
-                {% endif %}
+                <div style="display: flex; gap: 14px; flex-shrink: 0; align-items: center;">
+                    <span style="display:flex;align-items:center;gap:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#9b8f7a;">
+                        <span style="width:10px;height:10px;border-radius:50%;background:#f6be39;display:inline-block;"></span>Accuracy
+                    </span>
+                    <span style="display:flex;align-items:center;gap:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#9b8f7a;">
+                        <span style="width:10px;height:10px;border-radius:50%;background:rgba(223,226,235,0.5);display:inline-block;"></span>Precision
+                    </span>
+                    {% if has_field_data %}
+                    <span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:9999px;background:rgba(103,223,112,0.1);color:#67df70;border:1px solid rgba(103,223,112,0.25);">Live data</span>
+                    {% else %}
+                    <span style="font-size:10px;color:#9b8f7a;padding:3px 8px;border-radius:4px;background:rgba(155,143,122,0.08);">Test set · v0.3 → v1.0</span>
+                    {% endif %}
+                </div>
             </div>
-            <div class="p-5" style="height:300px;">
+            <div style="padding: 0 22px 20px; height: 280px;">
                 <canvas id="performance-chart"></canvas>
             </div>
         </div>
 
         <!-- Confidence Distribution -->
-        <div class="gw-card flex flex-col overflow-hidden">
-            <div class="px-5 py-4" style="border-bottom: 1px solid var(--border-subtle);">
-                <h2 class="text-[14px] font-semibold" style="color: var(--text-primary);">Confidence Distribution</h2>
-                <p class="text-[12px] mt-0.5" style="color: var(--text-tertiary);">
+        <div class="s-card" style="display:flex;flex-direction:column;">
+            <div style="padding:18px 22px;">
+                <h3 style="font-size:16px;font-weight:700;color:#dfe2eb;margin:0 0 4px;">Confidence Distribution</h3>
+                <p style="font-size:12px;color:#9b8f7a;margin:0;">
                     {% if conf_total > 0 %}
                         {{ conf_total }} active detection{{ conf_total|pluralize }}
                     {% else %}
@@ -142,21 +172,20 @@
                     {% endif %}
                 </p>
             </div>
-            <div class="p-5 flex-1" style="height:240px;">
+            <div style="padding: 0 22px 20px; flex:1; height:220px;">
                 {% if conf_total > 0 %}
                     <canvas id="confidence-chart"></canvas>
                 {% else %}
-                    <div class="flex flex-col items-center justify-center h-full gap-2" style="color: var(--border-default);">
-                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;color:rgba(155,143,122,0.4);">
+                        <svg width="36" height="36" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                         </svg>
-                        <p class="text-[13px]" style="color: var(--text-secondary);">No predictions yet</p>
+                        <p style="font-size:12px;color:#9b8f7a;">No predictions yet</p>
                     </div>
                 {% endif %}
             </div>
             {% if conf_total > 0 %}
-            <div class="px-5 pb-4 pt-3 flex justify-between text-[11px]"
-                 style="border-top: 1px solid var(--border-subtle); color: var(--text-tertiary);">
+            <div style="padding:10px 22px;border-top:1px solid rgba(79,70,52,0.1);display:flex;justify-content:space-between;font-size:10px;color:#9b8f7a;">
                 <span>Lower confidence</span>
                 <span>Higher confidence</span>
             </div>
@@ -165,100 +194,96 @@
 
     </div>
 
-    <!-- Field Verification Summary -->
+    <!-- ── Field Verification Summary ── -->
     {% if has_field_data %}
-    <div class="gw-card overflow-hidden">
-        <div class="px-5 py-4 flex items-center justify-between" style="border-bottom: 1px solid var(--border-subtle);">
+    <div class="s-card" style="margin-bottom: 20px;">
+        <div style="padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; background: #262a31;">
             <div>
-                <h2 class="text-[14px] font-semibold" style="color: var(--text-primary);">Field Verification Summary</h2>
-                <p class="text-[12px] mt-0.5" style="color: var(--text-tertiary);">Inspector-confirmed outcomes driving live metrics</p>
+                <h3 style="font-size:15px;font-weight:700;color:#dfe2eb;margin:0 0 3px;">Field Verification Summary</h3>
+                <p style="font-size:12px;color:#9b8f7a;margin:0;">Inspector-confirmed outcomes driving live metrics</p>
             </div>
-            <span class="gw-badge--resolved">
-                <span class="w-1.5 h-1.5 rounded-full inline-block mr-1" style="background: var(--status-resolved);"></span>{{ total_verified }} verified
+            <span style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:9999px;background:rgba(103,223,112,0.1);color:#67df70;border:1px solid rgba(103,223,112,0.25);">
+                <span class="live-dot" style="width:6px;height:6px;border-radius:50%;background:#67df70;display:inline-block;margin-right:5px;"></span>
+                {{ total_verified }} verified
             </span>
         </div>
-        <div class="p-5 grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div class="flex flex-col justify-center">
-                <p class="text-[28px] font-bold tabular-nums" style="color: var(--text-primary);">{{ total_verified }}</p>
-                <p class="text-[13px] mt-1" style="color: var(--text-secondary);">Sites field-verified</p>
-                <p class="text-[12px] mt-2 leading-relaxed" style="color: var(--text-tertiary);">Each inspector report updates the live Accuracy &amp; Precision metrics shown above.</p>
+        <div style="padding: 22px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 28px;">
+            <!-- Total sites -->
+            <div style="display:flex;flex-direction:column;justify-content:center;">
+                <p style="font-size:36px;font-weight:800;color:#dfe2eb;margin:0 0 4px;font-family:monospace;">{{ total_verified }}</p>
+                <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:#9b8f7a;margin:0 0 8px;">Sites field-verified</p>
+                <p style="font-size:12px;color:#9b8f7a;line-height:1.5;margin:0;">Each inspector report updates the live Accuracy &amp; Precision metrics shown above.</p>
             </div>
+            <!-- Confirmed TP -->
             <div>
-                <div class="flex items-baseline gap-2 mb-1">
-                    <p class="text-[28px] font-bold tabular-nums" style="color: var(--text-primary);">{{ total_tp }}</p>
-                    <p class="text-[13px]" style="color: var(--text-tertiary);">confirmed</p>
+                <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">
+                    <p style="font-size:36px;font-weight:800;color:#f6be39;margin:0;font-family:monospace;">{{ total_tp }}</p>
+                    <p style="font-size:12px;color:#9b8f7a;margin:0;">confirmed</p>
                 </div>
-                <p class="text-[12px] mb-2" style="color: var(--text-secondary);">Illegal mining sites confirmed by inspector</p>
-                <div class="w-full rounded-full h-2" style="background: var(--border-subtle);">
-                    <div class="h-2 rounded-full" style="width:{% if total_verified %}{% widthratio total_tp total_verified 100 %}{% else %}0{% endif %}%; background: var(--status-critical); transition: width 0.3s;"></div>
+                <p style="font-size:12px;color:#9b8f7a;margin:0 0 10px;">Illegal mining sites confirmed by inspector</p>
+                <div style="width:100%;background:#262a31;border-radius:9999px;height:6px;overflow:hidden;">
+                    <div style="height:100%;background:#f6be39;width:{% if total_verified %}{% widthratio total_tp total_verified 100 %}{% else %}0{% endif %}%;transition:width 0.3s;"></div>
                 </div>
-                <p class="text-[11px] mt-1 tabular-nums" style="color: var(--text-tertiary);">{% if total_verified %}{% widthratio total_tp total_verified 100 %}{% else %}0{% endif %}% of verified sites</p>
+                <p style="font-size:10px;color:#9b8f7a;margin:4px 0 0;">{% if total_verified %}{% widthratio total_tp total_verified 100 %}{% else %}0{% endif %}% of verified sites</p>
             </div>
+            <!-- False positives -->
             <div>
-                <div class="flex items-baseline gap-2 mb-1">
-                    <p class="text-[28px] font-bold tabular-nums" style="color: var(--text-primary);">{{ total_fp }}</p>
-                    <p class="text-[13px]" style="color: var(--text-tertiary);">false positives</p>
+                <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">
+                    <p style="font-size:36px;font-weight:800;color:#dfe2eb;margin:0;font-family:monospace;">{{ total_fp }}</p>
+                    <p style="font-size:12px;color:#9b8f7a;margin:0;">false positives</p>
                 </div>
-                <p class="text-[12px] mb-2" style="color: var(--text-secondary);">Sites flagged by model but cleared on the ground</p>
-                <div class="w-full rounded-full h-2" style="background: var(--border-subtle);">
-                    <div class="h-2 rounded-full" style="width:{% if total_verified %}{% widthratio total_fp total_verified 100 %}{% else %}0{% endif %}%; background: var(--border-strong); transition: width 0.3s;"></div>
+                <p style="font-size:12px;color:#9b8f7a;margin:0 0 10px;">Sites flagged by model but cleared on the ground</p>
+                <div style="width:100%;background:#262a31;border-radius:9999px;height:6px;overflow:hidden;">
+                    <div style="height:100%;background:rgba(155,143,122,0.4);width:{% if total_verified %}{% widthratio total_fp total_verified 100 %}{% else %}0{% endif %}%;transition:width 0.3s;"></div>
                 </div>
-                <p class="text-[11px] mt-1 tabular-nums" style="color: var(--text-tertiary);">{% if total_verified %}{% widthratio total_fp total_verified 100 %}{% else %}0{% endif %}% false positive rate</p>
+                <p style="font-size:10px;color:#9b8f7a;margin:4px 0 0;">{% if total_verified %}{% widthratio total_fp total_verified 100 %}{% else %}0{% endif %}% false positive rate</p>
             </div>
         </div>
     </div>
     {% endif %}
 
-    <!-- Model Interpretation -->
-    <div class="gw-card overflow-hidden">
-        <div class="px-5 py-4" style="border-bottom: 1px solid var(--border-subtle);">
-            <h2 class="text-[14px] font-semibold" style="color: var(--text-primary);">What these numbers mean in practice</h2>
-            <p class="text-[12px] mt-0.5" style="color: var(--text-tertiary);">Plain-language interpretation of model behaviour</p>
+    <!-- ── Model Interpretation ── -->
+    <div class="s-card">
+        <div style="padding:18px 22px;background:#262a31;">
+            <h3 style="font-size:15px;font-weight:700;color:#dfe2eb;margin:0 0 3px;">What these numbers mean in practice</h3>
+            <p style="font-size:12px;color:#9b8f7a;margin:0;">Plain-language interpretation of model behaviour</p>
         </div>
-        <div class="p-5 grid grid-cols-1 sm:grid-cols-3 gap-5">
-            <div class="flex gap-3">
-                <div class="mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                     style="background: var(--status-info-bg); border: 1px solid var(--status-info-border);">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                         style="color: var(--status-info);" aria-hidden="true" focusable="false">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
+        <div style="padding:22px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;">
+
+            <div style="display:flex;gap:14px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <svg width="16" height="16" fill="none" stroke="#60a5fa" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
                 <div>
-                    <p class="text-[13px] font-semibold" style="color: var(--text-primary);">{{ live_precision }}% Precision</p>
-                    <p class="text-[12px] mt-0.5 leading-relaxed" style="color: var(--text-secondary);">When the model flags a site as illegal mining, it is correct roughly <strong style="color: var(--text-primary);">{{ live_precision|floatformat:0 }} times out of 100</strong>. Every false dispatch wastes inspector time.</p>
+                    <p style="font-size:13px;font-weight:700;color:#e2d5c0;margin:0 0 5px;">{{ live_precision }}% Precision</p>
+                    <p style="font-size:12px;color:#9b8f7a;line-height:1.55;margin:0;">When the model flags a site as illegal mining, it is correct roughly <strong style="color:#e2d5c0;">{{ live_precision|floatformat:0 }} times out of 100</strong>. Every false dispatch wastes inspector time.</p>
                 </div>
             </div>
-            <div class="flex gap-3">
-                <div class="mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                     style="background: var(--status-moderate-bg); border: 1px solid var(--status-moderate-border);">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                         style="color: var(--status-moderate);" aria-hidden="true" focusable="false">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                    </svg>
+
+            <div style="display:flex;gap:14px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:rgba(251,146,60,0.1);border:1px solid rgba(251,146,60,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <svg width="16" height="16" fill="none" stroke="#fb923c" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                 </div>
                 <div>
-                    <p class="text-[13px] font-semibold" style="color: var(--text-primary);">{{ model_metrics.recall }}% Recall</p>
-                    <p class="text-[12px] mt-0.5 leading-relaxed" style="color: var(--text-secondary);">The model detects <strong style="color: var(--text-primary);">~3 in 4 actual mining sites</strong>. Roughly 1 in 4 real sites may be missed in any given scan — human review of borderline zones matters.</p>
+                    <p style="font-size:13px;font-weight:700;color:#e2d5c0;margin:0 0 5px;">{{ model_metrics.recall }}% Recall</p>
+                    <p style="font-size:12px;color:#9b8f7a;line-height:1.55;margin:0;">The model detects <strong style="color:#e2d5c0;">~3 in 4 actual mining sites</strong>. Roughly 1 in 4 real sites may be missed in any given scan — human review of borderline zones matters.</p>
                 </div>
             </div>
-            <div class="flex gap-3">
-                <div class="mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                     style="background: var(--status-resolved-bg); border: 1px solid var(--status-resolved-border);">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                         style="color: var(--status-resolved);" aria-hidden="true" focusable="false">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                    </svg>
+
+            <div style="display:flex;gap:14px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:rgba(103,223,112,0.1);border:1px solid rgba(103,223,112,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <svg width="16" height="16" fill="none" stroke="#67df70" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                 </div>
                 <div>
-                    <p class="text-[13px] font-semibold" style="color: var(--text-primary);">{{ model_metrics.iou }}% IoU</p>
-                    <p class="text-[12px] mt-0.5 leading-relaxed" style="color: var(--text-secondary);">On average, the model's predicted mining boundary overlaps <strong style="color: var(--text-primary);">{{ model_metrics.iou }}% with the actual site footprint</strong>. Useful for area estimates but not precise enough for legal boundary demarcation.</p>
+                    <p style="font-size:13px;font-weight:700;color:#e2d5c0;margin:0 0 5px;">{{ model_metrics.iou }}% IoU</p>
+                    <p style="font-size:12px;color:#9b8f7a;line-height:1.55;margin:0;">On average, the model's predicted mining boundary overlaps <strong style="color:#e2d5c0;">{{ model_metrics.iou }}% with the actual site footprint</strong>. Useful for area estimates but not precise enough for legal boundary demarcation.</p>
                 </div>
             </div>
+
         </div>
     </div>
 
-</div>
+</div><!-- /sentinel-dot-grid -->
 {% endblock %}
 
 {% block extra_js %}
@@ -280,15 +305,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 {
                     label: 'Accuracy (EMA)',
                     data: monthlyAccuracy,
-                    borderColor: '#3fb950',
-                    backgroundColor: 'rgba(63,185,80,0.08)',
+                    borderColor: '#f6be39',
+                    backgroundColor: 'rgba(246,190,57,0.06)',
                     borderWidth: 2, pointRadius: 4, tension: 0.35, fill: false,
                 },
                 {
                     label: 'Precision (rolling)',
                     data: monthlyPrecision,
-                    borderColor: '#388bfd',
-                    backgroundColor: 'rgba(56,139,253,0.08)',
+                    borderColor: 'rgba(223,226,235,0.5)',
+                    backgroundColor: 'rgba(223,226,235,0.04)',
                     borderWidth: 2, pointRadius: 4, tension: 0.35, fill: false, spanGaps: true,
                 },
             ];
@@ -301,22 +326,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 {
                     label: 'IoU',
                     data: [42, 50, 55, 58, iouFinal],
-                    borderColor: '#e8833a',
-                    backgroundColor: 'rgba(232,131,58,0.08)',
+                    borderColor: '#fb923c',
+                    backgroundColor: 'rgba(251,146,60,0.06)',
                     borderWidth: 2, pointRadius: 4, tension: 0.35, fill: false,
                 },
                 {
                     label: 'Precision',
                     data: [55, 63, 68, 71, precisionFinal],
-                    borderColor: '#388bfd',
-                    backgroundColor: 'rgba(56,139,253,0.08)',
+                    borderColor: '#f6be39',
+                    backgroundColor: 'rgba(246,190,57,0.06)',
                     borderWidth: 2, pointRadius: 4, tension: 0.35, fill: false,
                 },
                 {
                     label: 'Recall',
                     data: [60, 67, 72, 75, recallFinal],
-                    borderColor: '#a371f7',
-                    backgroundColor: 'rgba(163,113,247,0.08)',
+                    borderColor: '#a78bfa',
+                    backgroundColor: 'rgba(167,139,250,0.06)',
                     borderWidth: 2, pointRadius: 4, tension: 0.35, fill: false,
                 },
             ];
@@ -331,11 +356,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 plugins: {
                     legend: {
                         position: 'bottom',
-                        labels: { font: { size: 11 }, color: '#8b949e', boxWidth: 14, padding: 16 }
+                        labels: { font: { size: 11 }, color: '#9b8f7a', boxWidth: 14, padding: 16 }
                     },
                     tooltip: {
                         mode: 'index',
                         intersect: false,
+                        backgroundColor: 'rgba(10,14,20,0.9)',
+                        borderColor: 'rgba(79,70,52,0.2)',
+                        borderWidth: 1,
+                        titleColor: '#e2d5c0',
+                        bodyColor: '#9b8f7a',
                         callbacks: {
                             label: ctx => ctx.raw !== null
                                 ? ` ${ctx.dataset.label}: ${ctx.raw}%`
@@ -346,15 +376,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 scales: {
                     x: {
                         grid: { display: false },
-                        ticks: { font: { size: 11 }, color: '#8b949e' }
+                        ticks: { font: { size: 11 }, color: '#9b8f7a' }
                     },
                     y: {
                         min: 30,
                         max: 100,
-                        grid: { color: 'rgba(240,246,252,0.06)' },
+                        grid: { color: 'rgba(79,70,52,0.1)' },
                         ticks: {
                             font: { size: 11 },
-                            color: '#8b949e',
+                            color: '#9b8f7a',
                             callback: v => v + '%'
                         }
                     }
@@ -374,11 +404,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     label: 'Detections',
                     data: confBins,
                     backgroundColor: [
-                        'rgba(56,139,253,0.20)',
-                        'rgba(56,139,253,0.35)',
-                        'rgba(56,139,253,0.50)',
-                        'rgba(56,139,253,0.68)',
-                        'rgba(56,139,253,0.85)',
+                        'rgba(246,190,57,0.15)',
+                        'rgba(246,190,57,0.28)',
+                        'rgba(246,190,57,0.45)',
+                        'rgba(246,190,57,0.65)',
+                        'rgba(246,190,57,0.85)',
                     ],
                     borderWidth: 0,
                     borderRadius: 4,
@@ -390,6 +420,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 plugins: {
                     legend: { display: false },
                     tooltip: {
+                        backgroundColor: 'rgba(10,14,20,0.9)',
+                        borderColor: 'rgba(79,70,52,0.2)',
+                        borderWidth: 1,
+                        titleColor: '#e2d5c0',
+                        bodyColor: '#9b8f7a',
                         callbacks: {
                             label: ctx => ` ${ctx.raw} detection${ctx.raw !== 1 ? 's' : ''}`,
                             title: ctx => `Confidence ${ctx[0].label}`,
@@ -399,12 +434,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 scales: {
                     x: {
                         grid: { display: false },
-                        ticks: { font: { size: 10 }, color: '#8b949e' }
+                        ticks: { font: { size: 10 }, color: '#9b8f7a' }
                     },
                     y: {
                         beginAtZero: true,
-                        grid: { color: 'rgba(240,246,252,0.06)' },
-                        ticks: { font: { size: 10 }, color: '#8b949e', stepSize: 1 }
+                        grid: { color: 'rgba(79,70,52,0.1)' },
+                        ticks: { font: { size: 10 }, color: '#9b8f7a', stepSize: 1 }
                     }
                 }
             }

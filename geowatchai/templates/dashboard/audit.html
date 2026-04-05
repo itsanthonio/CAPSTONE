@@ -3,25 +3,115 @@
 
 {% block title %}Audit Trail — SankofaWatch{% endblock %}
 
-{% block content %}
-<div class="p-6 space-y-5" data-animate-cards>
+{% block extra_css %}
+<style>
+    /* ── Sentinel shared ── */
+    .s-label {
+        display: block;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #9b8f7a;
+        margin-bottom: 4px;
+    }
+    .s-input {
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid rgba(155,143,122,0.3);
+        color: #e2d5c0;
+        padding: 5px 2px;
+        font-size: 12px;
+        transition: border-color 0.15s;
+    }
+    .s-input:focus { outline: none; border-bottom-color: #f6be39; }
+    .s-input option { background: #262a31; color: #e2d5c0; }
 
-    <!-- Header -->
-    <div class="gw-page-header">
-        <div>
-            <h1 class="text-[22px] font-semibold tracking-tight" style="color: var(--text-primary);">Audit Trail</h1>
-            <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">Complete record of system actions for compliance and accountability</p>
+    .s-btn-primary {
+        background: linear-gradient(135deg, #f6be39 0%, #d4a017 100%);
+        color: #402d00;
+        font-weight: 700;
+        font-size: 12px;
+        border: none;
+        border-radius: 6px;
+        padding: 7px 16px;
+        cursor: pointer;
+        transition: opacity 0.15s;
+        display: inline-flex;
+        align-items: center;
+    }
+    .s-btn-primary:hover { opacity: 0.9; }
+
+    .s-btn-secondary {
+        background: transparent;
+        color: #f6be39;
+        border: 1px solid rgba(246,190,57,0.25);
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 6px;
+        padding: 6px 14px;
+        cursor: pointer;
+        transition: background 0.15s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+    }
+    .s-btn-secondary:hover { background: rgba(246,190,57,0.08); }
+
+    /* ── Sentinel action badges (override gw-badge for sentinel look) ── */
+    .gw-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 9999px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .gw-badge--info       { background: rgba(96,165,250,0.1);  color: #60a5fa; border: 1px solid rgba(96,165,250,0.25); }
+    .gw-badge--dispatched { background: rgba(246,190,57,0.1);  color: #f6be39; border: 1px solid rgba(246,190,57,0.25); }
+    .gw-badge--resolved   { background: rgba(103,223,112,0.1); color: #67df70; border: 1px solid rgba(103,223,112,0.25); }
+    .gw-badge--neutral    { background: rgba(155,143,122,0.1); color: #9b8f7a; border: 1px solid rgba(155,143,122,0.2); }
+    .gw-badge--critical   { background: rgba(239,68,68,0.1);   color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+    .gw-badge--moderate   { background: rgba(251,146,60,0.1);  color: #fb923c; border: 1px solid rgba(251,146,60,0.25); }
+    .gw-badge--accent     { background: rgba(246,190,57,0.1);  color: #f6be39; border: 1px solid rgba(246,190,57,0.25); }
+
+    /* ── Date input sentinel style ── */
+    input[type="date"].s-input::-webkit-calendar-picker-indicator {
+        filter: invert(0.6);
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sentinel-dot-grid" style="min-height:100vh; padding: 28px 28px 40px;">
+
+    <!-- ── Page header ── -->
+    <div style="margin-bottom: 24px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+        <div style="display: flex; gap: 14px; align-items: flex-start;">
+            <div style="width: 2px; height: 52px; background: #f6be39; border-radius: 2px; flex-shrink: 0; margin-top: 2px;"></div>
+            <div>
+                <p style="font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #f6be39; margin: 0 0 4px;">Governance Layer</p>
+                <h1 style="font-size: 22px; font-weight: 700; color: #e2d5c0; margin: 0 0 3px; letter-spacing: -0.01em;">Audit Trail</h1>
+                <p style="font-size: 13px; color: #9b8f7a; margin: 0;">Complete record of system actions for compliance and accountability</p>
+            </div>
         </div>
-        <span id="audit-count" class="text-[12px] tabular-nums" style="color: var(--text-tertiary);" aria-live="polite" aria-atomic="true">{{ page_obj.paginator.count }} record{{ page_obj.paginator.count|pluralize }}</span>
+        <div style="margin-top: 10px; display: flex; align-items: center; gap: 12px;">
+            <span id="audit-count" style="font-size: 13px; color: #9b8f7a;" aria-live="polite" aria-atomic="true">
+                {{ page_obj.paginator.count }} record{{ page_obj.paginator.count|pluralize }}
+            </span>
+        </div>
     </div>
 
-    <!-- Filters -->
-    <form method="get" class="gw-card p-4" role="search" aria-label="Filter audit records">
-        <div class="flex flex-wrap items-end gap-3">
+    <!-- ── Filters ── -->
+    <form method="get" style="background: #181c22; border: 1px solid rgba(79,70,52,0.15); border-radius: 8px; padding: 16px 20px; margin-bottom: 20px;" role="search" aria-label="Filter audit records">
+        <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 20px;">
 
-            <div class="flex flex-col gap-1 min-w-[180px]">
-                <label for="audit-filter-action" class="gw-label">Action</label>
-                <select id="audit-filter-action" name="action" class="gw-select">
+            <div style="min-width: 160px;">
+                <label for="audit-filter-action" class="s-label">Action</label>
+                <select id="audit-filter-action" name="action" class="s-input" style="min-width: 140px;">
                     <option value="">All actions</option>
                     {% for ac_val, ac_label in action_choices %}
                     <option value="{{ ac_val }}" {% if filters.action == ac_val %}selected{% endif %}>{{ ac_label }}</option>
@@ -29,9 +119,9 @@
                 </select>
             </div>
 
-            <div class="flex flex-col gap-1 min-w-[160px]">
-                <label for="audit-filter-user" class="gw-label">User</label>
-                <select id="audit-filter-user" name="user" class="gw-select">
+            <div style="min-width: 140px;">
+                <label for="audit-filter-user" class="s-label">User</label>
+                <select id="audit-filter-user" name="user" class="s-input" style="min-width: 130px;">
                     <option value="">All users</option>
                     <option value="__system__" {% if filters.user == '__system__' %}selected{% endif %}>System (auto)</option>
                     {% for username in user_choices %}
@@ -40,63 +130,64 @@
                 </select>
             </div>
 
-            <div class="flex flex-col gap-1">
-                <label for="audit-filter-from" class="gw-label">From</label>
-                <input id="audit-filter-from" type="date" name="date_from" value="{{ filters.date_from }}" class="gw-input">
+            <div>
+                <label for="audit-filter-from" class="s-label">From</label>
+                <input id="audit-filter-from" type="date" name="date_from" value="{{ filters.date_from }}" class="s-input" style="min-width: 120px;">
             </div>
 
-            <div class="flex flex-col gap-1">
-                <label for="audit-filter-to" class="gw-label">To</label>
-                <input id="audit-filter-to" type="date" name="date_to" value="{{ filters.date_to }}" class="gw-input">
+            <div>
+                <label for="audit-filter-to" class="s-label">To</label>
+                <input id="audit-filter-to" type="date" name="date_to" value="{{ filters.date_to }}" class="s-input" style="min-width: 120px;">
             </div>
 
-            <div class="flex gap-2 pb-0.5">
-                <button type="submit" class="btn-primary px-4 py-2 text-[13px]">Apply</button>
-                <a href="{% url 'dashboard:audit' %}" class="btn-secondary px-4 py-2 text-[13px]">Reset</a>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <button type="submit" class="s-btn-primary">Apply</button>
+                <a href="{% url 'dashboard:audit' %}" class="s-btn-secondary">Reset</a>
             </div>
         </div>
     </form>
 
-    <!-- Table -->
-    <div class="gw-card overflow-hidden">
-        <div class="kente-bar"></div>
+    <!-- ── Table ── -->
+    <div style="background: #181c22; border: 1px solid rgba(79,70,52,0.15); border-radius: 8px; overflow: hidden;">
         {% if page_obj %}
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                 <thead>
-                    <tr style="background: var(--surface-3); border-bottom: 1px solid var(--border-default);">
-                        <th class="text-left text-[10px] font-semibold uppercase tracking-[0.07em] px-5 py-3" style="color: var(--text-secondary);">Timestamp</th>
-                        <th class="text-left text-[10px] font-semibold uppercase tracking-[0.07em] px-5 py-3" style="color: var(--text-secondary);">User</th>
-                        <th class="text-left text-[10px] font-semibold uppercase tracking-[0.07em] px-5 py-3" style="color: var(--text-secondary);">Action</th>
-                        <th class="text-left text-[10px] font-semibold uppercase tracking-[0.07em] px-5 py-3" style="color: var(--text-secondary);">Object</th>
-                        <th class="text-left text-[10px] font-semibold uppercase tracking-[0.07em] px-5 py-3" style="color: var(--text-secondary);">Details</th>
+                    <tr style="background: #262a31; border-bottom: 1px solid rgba(79,70,52,0.15);">
+                        <th style="text-align:left; padding: 11px 20px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.15em; color:#9b8f7a; white-space:nowrap;">Timestamp</th>
+                        <th style="text-align:left; padding: 11px 20px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.15em; color:#9b8f7a;">User</th>
+                        <th style="text-align:left; padding: 11px 20px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.15em; color:#9b8f7a;">Action</th>
+                        <th style="text-align:left; padding: 11px 20px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.15em; color:#9b8f7a;">Object</th>
+                        <th style="text-align:left; padding: 11px 20px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.15em; color:#9b8f7a;">Details</th>
                     </tr>
                 </thead>
                 <tbody id="audit-tbody">
                     {% for entry in page_obj %}
-                    <tr style="border-bottom: 1px solid var(--border-subtle); transition: background 150ms;"
-                        onmouseover="this.style.background='var(--surface-3)'" onmouseout="this.style.background=''">
+                    <tr style="border-bottom: 1px solid rgba(79,70,52,0.1); transition: background 0.1s;"
+                        onmouseover="this.style.background='#1c2026'" onmouseout="this.style.background=''">
 
-                        <td class="px-5 py-3 whitespace-nowrap">
-                            <span class="text-[13px] font-medium tabular-nums" style="color: var(--text-primary);">{{ entry.timestamp|date:"d M Y" }}</span>
-                            <span class="text-[11px] tabular-nums ml-1" style="color: var(--text-tertiary);">{{ entry.timestamp|time:"H:i:s" }}</span>
+                        <!-- Timestamp -->
+                        <td style="padding: 12px 20px; white-space: nowrap;">
+                            <span style="font-weight: 600; color: #e2d5c0; font-size: 12px;">{{ entry.timestamp|date:"d M Y" }}</span>
+                            <span style="font-size: 11px; color: #9b8f7a; font-family: monospace; margin-left: 4px;">{{ entry.timestamp|time:"H:i:s" }}</span>
                         </td>
 
-                        <td class="px-5 py-3 whitespace-nowrap">
+                        <!-- User -->
+                        <td style="padding: 12px 20px; white-space: nowrap;">
                             {% if entry.user %}
-                            <span class="inline-flex items-center gap-1.5">
-                                <span class="w-6 h-6 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0"
-                                      style="background: var(--accent-muted); color: var(--accent); border: 1px solid var(--accent-border);">
+                            <span style="display:inline-flex;align-items:center;gap:8px;">
+                                <span style="width:24px;height:24px;border-radius:50%;background:rgba(246,190,57,0.12);color:#f6be39;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(246,190,57,0.18);">
                                     {{ entry.user.username|first|upper }}
                                 </span>
-                                <span class="text-[13px] font-medium" style="color: var(--text-primary);">{{ entry.user.username }}</span>
+                                <span style="font-size:13px;font-weight:600;color:#e2d5c0;">{{ entry.user.username }}</span>
                             </span>
                             {% else %}
-                            <span class="text-[12px] italic" style="color: var(--text-tertiary);">system</span>
+                            <span style="font-size:12px;font-style:italic;color:#9b8f7a;">system</span>
                             {% endif %}
                         </td>
 
-                        <td class="px-5 py-3 whitespace-nowrap">
+                        <!-- Action -->
+                        <td style="padding: 12px 20px; white-space: nowrap;">
                             {% with action=entry.action %}
                             {% if action == 'alert.acknowledged' %}
                                 <span class="gw-badge gw-badge--info"><i class="ph ph-check-circle" style="font-size:10px;"></i> Acknowledged</span>
@@ -142,42 +233,41 @@
                             {% endwith %}
                         </td>
 
-                        <td class="px-5 py-3">
+                        <!-- Object ID -->
+                        <td style="padding: 12px 20px;">
                             {% if entry.object_id %}
-                            <span class="font-mono text-[11px] px-1.5 py-0.5 rounded"
-                                  style="background: var(--surface-3); color: var(--text-secondary);">
+                            <span style="font-family:monospace;font-size:11px;padding:2px 7px;border-radius:4px;background:#262a31;color:#9b8f7a;border:1px solid rgba(79,70,52,0.15);">
                                 {{ entry.object_id|slice:":8"|upper }}
                             </span>
                             {% else %}
-                            <span class="text-[12px]" style="color: var(--text-tertiary);">—</span>
+                            <span style="font-size:12px;color:rgba(155,143,122,0.5);">—</span>
                             {% endif %}
                         </td>
 
-                        <td class="px-5 py-3 max-w-xs">
+                        <!-- Details -->
+                        <td style="padding: 12px 20px; max-width: 280px;">
                             {% if entry.detail %}
-                            <div class="flex flex-wrap gap-1">
+                            <div style="display:flex;flex-wrap:wrap;gap:4px;">
                                 {% for k, v in entry.detail.items %}
-                                <span class="text-[11px] px-1.5 py-0.5 rounded"
-                                      style="background: var(--surface-3); border: 1px solid var(--border-subtle); color: var(--text-secondary);">
-                                    <span style="color: var(--text-tertiary);">{{ k }}:</span> {{ v }}
+                                <span style="font-size:11px;padding:2px 7px;border-radius:4px;background:rgba(38,42,49,0.8);border:1px solid rgba(79,70,52,0.15);color:#9b8f7a;">
+                                    <span style="color:rgba(155,143,122,0.6);">{{ k }}:</span> {{ v }}
                                 </span>
                                 {% endfor %}
                             </div>
                             {% else %}
-                            <span class="text-[12px]" style="color: var(--text-tertiary);">—</span>
+                            <span style="font-size:12px;color:rgba(155,143,122,0.5);">—</span>
                             {% endif %}
                         </td>
 
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="px-5 py-12 text-center">
-                            <svg class="w-10 h-10 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                 style="color: var(--border-default);" aria-hidden="true" focusable="false">
+                        <td colspan="5" style="padding: 48px 20px; text-align: center;">
+                            <svg width="36" height="36" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:rgba(155,143,122,0.3);margin:0 auto 12px;display:block;">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                             </svg>
-                            <p class="text-[13px] font-medium" style="color: var(--text-secondary);">No audit records match your filters.</p>
-                            <a href="{% url 'dashboard:audit' %}" class="text-[12px] hover:underline mt-1 inline-block" style="color: var(--accent);">Clear filters</a>
+                            <p style="font-size:13px;font-weight:600;color:#e2d5c0;margin:0 0 6px;">No audit records match your filters.</p>
+                            <a href="{% url 'dashboard:audit' %}" style="font-size:12px;color:#f6be39;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Clear filters</a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -185,28 +275,35 @@
             </table>
         </div>
 
-        <div id="audit-pagination" class="{% if page_obj.paginator.num_pages <= 1 %}hidden{% endif %} px-5 py-3 flex items-center justify-between text-[12px]"
-             style="border-top: 1px solid var(--border-subtle);">
-            <span id="audit-page-info" style="color: var(--text-tertiary);">
+        <!-- Pagination footer -->
+        <div id="audit-pagination" class="{% if page_obj.paginator.num_pages <= 1 %}hidden{% endif %}"
+             style="background: #262a31; border-top: 1px solid rgba(79,70,52,0.15); padding: 10px 20px; display: flex; align-items: center; justify-content: space-between;">
+            <span id="audit-page-info" style="font-size: 12px; color: #9b8f7a;">
                 Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
                 &nbsp;·&nbsp; {{ page_obj.paginator.count }} records
             </span>
-            <div class="flex gap-1">
-                <button id="audit-prev-btn" class="btn-secondary px-3 py-1.5 text-[12px] {% if not page_obj.has_previous %}hidden{% endif %}"
-                        data-page="{% if page_obj.has_previous %}{{ page_obj.previous_page_number }}{% endif %}">← Prev</button>
-                <button id="audit-next-btn" class="btn-secondary px-3 py-1.5 text-[12px] {% if not page_obj.has_next %}hidden{% endif %}"
-                        data-page="{% if page_obj.has_next %}{{ page_obj.next_page_number }}{% endif %}">Next →</button>
+            <div style="display: flex; gap: 8px;">
+                <button id="audit-prev-btn"
+                        class="{% if not page_obj.has_previous %}hidden{% endif %} s-btn-secondary"
+                        data-page="{% if page_obj.has_previous %}{{ page_obj.previous_page_number }}{% endif %}">
+                    ← Prev
+                </button>
+                <button id="audit-next-btn"
+                        class="{% if not page_obj.has_next %}hidden{% endif %} s-btn-secondary"
+                        data-page="{% if page_obj.has_next %}{{ page_obj.next_page_number }}{% endif %}">
+                    Next →
+                </button>
             </div>
         </div>
 
         {% else %}
-        <div class="px-5 py-12 text-center">
-            <p class="text-[13px]" style="color: var(--text-secondary);">No audit records yet.</p>
+        <div style="padding: 48px 20px; text-align: center;">
+            <p style="font-size: 13px; color: #9b8f7a;">No audit records yet.</p>
         </div>
         {% endif %}
     </div>
 
-</div>
+</div><!-- /sentinel-dot-grid -->
 {% endblock %}
 
 {% block extra_js %}
@@ -214,7 +311,6 @@
 (function () {
     // ── Action badge map ──
     var ACTION_MAP = {
-        // Alert actions
         'alert.acknowledged':      { label: 'Acknowledged',       cls: 'gw-badge gw-badge--info',       icon: 'ph-check-circle' },
         'alert.dispatched':        { label: 'Dispatched',         cls: 'gw-badge gw-badge--dispatched', icon: 'ph-broadcast' },
         'alert.resolved':          { label: 'Resolved',           cls: 'gw-badge gw-badge--resolved',   icon: 'ph-check-circle' },
@@ -228,14 +324,11 @@
         'alert.bulk_acknowledged': { label: 'Bulk Acknowledged',  cls: 'gw-badge gw-badge--info',       icon: 'ph-check-circle' },
         'alert.bulk_dispatched':   { label: 'Bulk Dispatched',    cls: 'gw-badge gw-badge--dispatched', icon: 'ph-broadcast' },
         'alert.bulk_dismissed':    { label: 'Bulk Dismissed',     cls: 'gw-badge gw-badge--neutral',    icon: 'ph-x-circle' },
-        // Scan / job actions
         'job.created':             { label: 'Scan Initiated',     cls: 'gw-badge gw-badge--accent',     icon: 'ph-broadcast' },
         'job.completed':           { label: 'Scan Completed',     cls: 'gw-badge gw-badge--resolved',   icon: 'ph-check-circle' },
         'job.failed':              { label: 'Scan Failed',        cls: 'gw-badge gw-badge--critical',   icon: 'ph-x-circle' },
-        // User actions
         'user.created':            { label: 'User Created',       cls: 'gw-badge gw-badge--info',       icon: 'ph-user-plus' },
         'user.edited':             { label: 'User Updated',       cls: 'gw-badge gw-badge--neutral',    icon: 'ph-pencil-simple' },
-        // Assignment actions
         'assignment.field_report': { label: 'Field Report',       cls: 'gw-badge gw-badge--moderate',   icon: 'ph-clipboard-text' },
         'assignment.sla_escalated':{ label: 'SLA Escalated',      cls: 'gw-badge gw-badge--critical',   icon: 'ph-warning' },
     };
@@ -249,7 +342,6 @@
         if (m) {
             return '<span class="' + m.cls + '"><i class="ph ' + m.icon + '" style="font-size:10px;"></i> ' + m.label + '</span>';
         }
-        // Fallback: format 'job.some_thing' → 'Job · Some Thing'
         var parts = action.split('.');
         var formatted = parts.map(function(p) {
             return p.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
@@ -259,38 +351,38 @@
 
     function _renderRow(e) {
         var userHtml = e.user
-            ? '<span class="inline-flex items-center gap-1.5">'
-              + '<span class="w-6 h-6 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0" style="background:var(--accent-muted);color:var(--accent);border:1px solid var(--accent-border);">' + _esc(e.user[0].toUpperCase()) + '</span>'
-              + '<span class="text-[13px] font-medium" style="color:var(--text-primary);">' + _esc(e.user) + '</span>'
+            ? '<span style="display:inline-flex;align-items:center;gap:8px;">'
+              + '<span style="width:24px;height:24px;border-radius:50%;background:rgba(246,190,57,0.12);color:#f6be39;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(246,190,57,0.18);">' + _esc(e.user[0].toUpperCase()) + '</span>'
+              + '<span style="font-size:13px;font-weight:600;color:#e2d5c0;">' + _esc(e.user) + '</span>'
               + '</span>'
-            : '<span class="text-[12px] italic" style="color:var(--text-tertiary);">system</span>';
+            : '<span style="font-size:12px;font-style:italic;color:#9b8f7a;">system</span>';
 
         var objHtml = e.object_id
-            ? '<span class="font-mono text-[11px] px-1.5 py-0.5 rounded" style="background:var(--surface-3);color:var(--text-secondary);">' + _esc(e.object_id.slice(0,8).toUpperCase()) + '</span>'
-            : '<span class="text-[12px]" style="color:var(--text-tertiary);">—</span>';
+            ? '<span style="font-family:monospace;font-size:11px;padding:2px 7px;border-radius:4px;background:#262a31;color:#9b8f7a;border:1px solid rgba(79,70,52,0.15);">' + _esc(e.object_id.slice(0,8).toUpperCase()) + '</span>'
+            : '<span style="font-size:12px;color:rgba(155,143,122,0.5);">—</span>';
 
-        var detailHtml = '<span class="text-[12px]" style="color:var(--text-tertiary);">—</span>';
+        var detailHtml = '<span style="font-size:12px;color:rgba(155,143,122,0.5);">—</span>';
         if (e.detail && Object.keys(e.detail).length > 0) {
-            detailHtml = '<div class="flex flex-wrap gap-1">'
+            detailHtml = '<div style="display:flex;flex-wrap:wrap;gap:4px;">'
                 + Object.entries(e.detail).map(function(kv) {
-                    return '<span class="text-[11px] px-1.5 py-0.5 rounded" style="background:var(--surface-3);border:1px solid var(--border-subtle);color:var(--text-secondary);">'
-                        + '<span style="color:var(--text-tertiary);">' + _esc(kv[0]) + ':</span> ' + _esc(kv[1])
+                    return '<span style="font-size:11px;padding:2px 7px;border-radius:4px;background:rgba(38,42,49,0.8);border:1px solid rgba(79,70,52,0.15);color:#9b8f7a;">'
+                        + '<span style="color:rgba(155,143,122,0.6);">' + _esc(kv[0]) + ':</span> ' + _esc(kv[1])
                         + '</span>';
                 }).join('') + '</div>';
         }
 
-        return '<tr style="border-bottom:1px solid var(--border-subtle);transition:background 150ms;" onmouseover="this.style.background=\'var(--surface-3)\'" onmouseout="this.style.background=\'\'"><td class="px-5 py-3 whitespace-nowrap"><span class="text-[13px] font-medium tabular-nums" style="color:var(--text-primary);">' + _esc(e.timestamp_date) + '</span><span class="text-[11px] tabular-nums ml-1" style="color:var(--text-tertiary);">' + _esc(e.timestamp_time) + '</span></td>'
-            + '<td class="px-5 py-3 whitespace-nowrap">' + userHtml + '</td>'
-            + '<td class="px-5 py-3 whitespace-nowrap">' + _actionBadge(e.action) + '</td>'
-            + '<td class="px-5 py-3">' + objHtml + '</td>'
-            + '<td class="px-5 py-3 max-w-xs">' + detailHtml + '</td></tr>';
+        return '<tr style="border-bottom:1px solid rgba(79,70,52,0.1);transition:background 0.1s;" onmouseover="this.style.background=\'#1c2026\'" onmouseout="this.style.background=\'\'"><td style="padding:12px 20px;white-space:nowrap;"><span style="font-weight:600;color:#e2d5c0;font-size:12px;">' + _esc(e.timestamp_date) + '</span><span style="font-size:11px;color:#9b8f7a;font-family:monospace;margin-left:4px;">' + _esc(e.timestamp_time) + '</span></td>'
+            + '<td style="padding:12px 20px;white-space:nowrap;">' + userHtml + '</td>'
+            + '<td style="padding:12px 20px;white-space:nowrap;">' + _actionBadge(e.action) + '</td>'
+            + '<td style="padding:12px 20px;">' + objHtml + '</td>'
+            + '<td style="padding:12px 20px;max-width:280px;">' + detailHtml + '</td></tr>';
     }
 
     function _renderEmpty() {
-        return '<tr><td colspan="5" class="px-5 py-12 text-center">'
-            + '<svg class="w-10 h-10 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--border-default);"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>'
-            + '<p class="text-[13px] font-medium" style="color:var(--text-secondary);">No audit records match your filters.</p>'
-            + '<a href="/dashboard/audit/" class="text-[12px] hover:underline mt-1 inline-block" style="color:var(--accent);">Clear filters</a>'
+        return '<tr><td colspan="5" style="padding:48px 20px;text-align:center;">'
+            + '<svg width="36" height="36" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:rgba(155,143,122,0.3);margin:0 auto 12px;display:block;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>'
+            + '<p style="font-size:13px;font-weight:600;color:#e2d5c0;margin:0 0 6px;">No audit records match your filters.</p>'
+            + '<a href="/dashboard/audit/" style="font-size:12px;color:#f6be39;text-decoration:none;">Clear filters</a>'
             + '</td></tr>';
     }
 

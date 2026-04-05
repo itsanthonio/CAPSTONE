@@ -5,169 +5,293 @@
 
 {% block extra_css %}
 <style>
-    .status-pill-active   { background: var(--status-resolved-bg);  color: var(--status-resolved);  border: 1px solid var(--status-resolved-border); }
-    .status-pill-inactive { background: var(--status-critical-bg);  color: var(--status-critical);  border: 1px solid var(--status-critical-border); }
-    .role-pill-admin      { background: rgba(212,160,23,0.12);       color: var(--accent);           border: 1px solid rgba(212,160,23,0.3); }
-    .role-pill-inspector  { background: var(--status-info-bg);       color: var(--status-info);      border: 1px solid var(--status-info-border); }
-    /* Row entrance */
-    @keyframes rowSlideIn { from { opacity:0; transform:translateX(-5px); } to { opacity:1; transform:translateX(0); } }
+    /* ── Sentinel role / status badges ── */
+    .role-pill-admin {
+        background: rgba(246,190,57,0.1);
+        border: 1px solid rgba(246,190,57,0.25);
+        color: #f6be39;
+        padding: 2px 8px;
+        border-radius: 9999px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    .role-pill-inspector {
+        background: rgba(59,130,246,0.1);
+        border: 1px solid rgba(59,130,246,0.25);
+        color: #60a5fa;
+        padding: 2px 8px;
+        border-radius: 9999px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    .s-status-dot {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        margin-right: 6px;
+        flex-shrink: 0;
+    }
+    .s-status-dot.active  { background: #67df70; box-shadow: 0 0 6px rgba(103,223,112,0.5); }
+    .s-status-dot.inactive { background: rgba(155,143,122,0.4); }
+
+    /* ── Sentinel table inputs ── */
+    .s-input {
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid rgba(155,143,122,0.3);
+        color: #e2d5c0;
+        padding: 5px 2px;
+        font-size: 13px;
+        width: 100%;
+        transition: border-color 0.15s;
+    }
+    .s-input:focus { outline: none; border-bottom-color: #f6be39; }
+    .s-input option { background: #262a31; color: #e2d5c0; }
+
+    /* ── Row animation ── */
+    @keyframes rowSlideIn { from { opacity:0; transform:translateX(-6px); } to { opacity:1; transform:translateX(0); } }
     .trow-enter { animation: rowSlideIn 0.22s ease-out both; }
+
+    /* ── Sentinel action ghost btn ── */
+    .s-action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 5px;
+        border-radius: 4px;
+        color: #9b8f7a;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        transition: color 0.15s, background 0.15s;
+    }
+    .s-action-btn:hover { color: #f6be39; background: rgba(246,190,57,0.08); }
+    .s-action-btn.danger:hover { color: #ef4444; background: rgba(239,68,68,0.08); }
+    .s-action-btn.success:hover { color: #67df70; background: rgba(103,223,112,0.08); }
+
+    /* ── Gold gradient primary button ── */
+    .s-btn-primary {
+        background: linear-gradient(135deg, #f6be39 0%, #d4a017 100%);
+        color: #402d00;
+        font-weight: 700;
+        font-size: 13px;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 18px;
+        cursor: pointer;
+        transition: opacity 0.15s, box-shadow 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .s-btn-primary:hover { opacity: 0.92; box-shadow: 0 0 12px rgba(246,190,57,0.3); }
+    .s-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Secondary outlined button ── */
+    .s-btn-secondary {
+        background: transparent;
+        color: #f6be39;
+        border: 1px solid rgba(246,190,57,0.25);
+        font-size: 13px;
+        font-weight: 600;
+        border-radius: 6px;
+        padding: 7px 16px;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+    }
+    .s-btn-secondary:hover { background: rgba(246,190,57,0.08); border-color: rgba(246,190,57,0.4); }
+
+    /* ── Sentinel label ── */
+    .s-label {
+        display: block;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #9b8f7a;
+        margin-bottom: 4px;
+    }
+
+    /* ── Modal overlay ── */
+    .s-modal-panel {
+        background: #181c22;
+        border: 1px solid rgba(79,70,52,0.2);
+        border-radius: 10px;
+        width: 100%;
+        max-width: 480px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    .s-modal-divider { border-top: 1px solid rgba(79,70,52,0.15); }
+
+    /* ── Filter clear link ── */
+    .s-clear-link {
+        color: #9b8f7a;
+        font-size: 12px;
+        text-decoration: none;
+        padding: 7px 12px;
+        border-radius: 5px;
+        display: inline-block;
+        transition: color 0.15s;
+    }
+    .s-clear-link:hover { color: #f6be39; }
+
+    /* ── Empty state ── */
+    .s-empty { padding: 48px 24px; text-align: center; }
+    .s-empty svg { color: rgba(155,143,122,0.4); margin: 0 auto 12px; display: block; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="p-6 space-y-5" data-animate-cards>
+<div class="sentinel-dot-grid" style="min-height:100vh; padding: 28px 28px 40px;">
 
-    <!-- Header -->
-    <div class="gw-page-header">
-        <div>
-            <h1 class="text-2xl font-bold" style="color: var(--text-primary);">User Management</h1>
-            <p class="text-sm mt-0.5" style="color: var(--text-secondary);">
-                <span id="user-count">{{ total_count }}</span> account{{ total_count|pluralize }} total
-            </p>
+    <!-- ── Page header ── -->
+    <div style="margin-bottom: 24px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
+        <div style="display: flex; gap: 14px; align-items: flex-start;">
+            <div style="width: 2px; height: 52px; background: #f6be39; border-radius: 2px; flex-shrink: 0; margin-top: 2px;"></div>
+            <div>
+                <p style="font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #f6be39; margin: 0 0 4px;">Administrative Console</p>
+                <h1 style="font-size: 22px; font-weight: 700; color: #e2d5c0; margin: 0 0 3px; letter-spacing: -0.01em;">User Management</h1>
+                <p style="font-size: 13px; color: #9b8f7a; margin: 0;">
+                    <span id="user-count">{{ total_count }}</span> account{{ total_count|pluralize }} registered
+                </p>
+            </div>
         </div>
-        <button onclick="openCreateModal()"
-                class="btn-primary flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold">
-            <i class="ph ph-user-plus" style="font-size:16px;" aria-hidden="true"></i>
+        <button onclick="openCreateModal()" class="s-btn-primary" style="margin-top: 6px;">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
             Create User
         </button>
     </div>
 
-    <!-- Filters -->
-    <form method="get" class="flex flex-wrap gap-3 items-end" role="search" aria-label="Filter users">
-        <div class="flex-1 min-w-[200px]">
-            <label for="user-search-input" class="gw-label mb-1">Search</label>
+    <!-- ── Filter strip ── -->
+    <form method="get" style="background: #181c22; border: 1px solid rgba(79,70,52,0.15); border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end;">
+        <div style="flex: 1; min-width: 180px;">
+            <label for="user-search-input" class="s-label">Search</label>
             <input type="text" id="user-search-input" name="q" value="{{ search }}"
-                   placeholder="Username, email, or name…"
-                   class="gw-input block w-full">
+                   placeholder="Username, email or name…"
+                   class="s-input">
         </div>
-        <div>
-            <label for="role-filter-select" class="gw-label mb-1">Role</label>
-            <select id="role-filter-select" name="role" class="gw-input">
+        <div style="min-width: 140px;">
+            <label for="role-filter-select" class="s-label">Role</label>
+            <select id="role-filter-select" name="role" class="s-input">
                 <option value="">All roles</option>
                 {% for val, label in role_choices %}
                 <option value="{{ val }}" {% if role_filter == val %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
             </select>
         </div>
-        <div>
-            <label for="org-filter-select" class="gw-label mb-1">Organisation</label>
-            <select id="org-filter-select" name="org" class="gw-input">
+        <div style="min-width: 160px;">
+            <label for="org-filter-select" class="s-label">Organisation</label>
+            <select id="org-filter-select" name="org" class="s-input">
                 <option value="">All organisations</option>
                 {% for val, label in org_choices %}
                 <option value="{{ val }}" {% if org_filter == val|stringformat:'s' %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
             </select>
         </div>
-        <button type="submit" class="btn-primary px-4 py-2 rounded-lg text-sm font-semibold">Filter</button>
-        {% if search or role_filter or org_filter %}
-        <a href="{% url 'dashboard:user_management' %}"
-           class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium">Clear</a>
-        {% endif %}
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <button type="submit" class="s-btn-primary">Filter</button>
+            {% if search or role_filter or org_filter %}
+            <a href="{% url 'dashboard:user_management' %}" class="s-clear-link">Clear</a>
+            {% endif %}
+        </div>
     </form>
 
-    <!-- Table -->
-    <div class="gw-card overflow-hidden">
-        <div class="kente-bar"></div>
+    <!-- ── Users table ── -->
+    <div style="background: #181c22; border: 1px solid rgba(79,70,52,0.15); border-radius: 8px; overflow: hidden;">
         {% if users %}
-        <div class="overflow-x-auto">
-            <table id="users-table" class="w-full text-sm">
+        <div style="overflow-x: auto;">
+            <table id="users-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
                 <thead>
-                    <tr style="border-bottom: 1px solid var(--border-subtle);">
-                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">User</th>
-                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">Role</th>
-                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">Organisation</th>
-                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">Phone</th>
-                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">Status</th>
-                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">Joined</th>
-                        <th class="px-4 py-3"></th>
+                    <tr style="background: #262a31;">
+                        <th style="text-align:left; padding: 11px 16px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #9b8f7a;">User</th>
+                        <th style="text-align:left; padding: 11px 16px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #9b8f7a;">Role</th>
+                        <th style="text-align:left; padding: 11px 16px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #9b8f7a;">Organisation</th>
+                        <th style="text-align:left; padding: 11px 16px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #9b8f7a;">Phone</th>
+                        <th style="text-align:left; padding: 11px 16px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #9b8f7a;">Status</th>
+                        <th style="text-align:left; padding: 11px 16px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #9b8f7a;">Joined</th>
+                        <th style="padding: 11px 16px;"></th>
                     </tr>
                 </thead>
-                <tbody class="divide-y" style="divide-color: var(--border-subtle);">
+                <tbody>
                     {% for u in users %}
-                    <tr id="user-row-{{ u.id }}" class="hover:bg-surface-3 transition-colors trow-enter" style="transition-duration:100ms; animation-delay: {{ forloop.counter0 }}0ms;">
+                    <tr id="user-row-{{ u.id }}" class="trow-enter"
+                        style="border-bottom: 1px solid rgba(79,70,52,0.1); transition: background 0.1s; animation-delay: {{ forloop.counter0 }}0ms;"
+                        onmouseover="this.style.background='#1c2026'" onmouseout="this.style.background=''">
                         <!-- User -->
-                        <td class="px-4 py-3">
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-semibold"
-                                     style="background: var(--surface-3); color: var(--text-secondary); border: 1px solid var(--border-subtle);">
+                        <td style="padding: 12px 16px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 32px; height: 32px; border-radius: 50%; background: rgba(246,190,57,0.15); color: #f6be39; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; border: 1px solid rgba(246,190,57,0.2);">
                                     {{ u.username|first|upper }}
                                 </div>
                                 <div>
-                                    <p class="font-medium" style="color: var(--text-primary);">{{ u.username }}</p>
-                                    <p class="text-xs" style="color: var(--text-tertiary);">{{ u.email|default:"—" }}</p>
+                                    <p style="font-weight: 600; color: #e2d5c0; margin: 0;">{{ u.username }}</p>
+                                    <p style="font-size: 11px; color: #9b8f7a; margin: 1px 0 0;">{{ u.email|default:"—" }}</p>
                                     {% if u.first_name or u.last_name %}
-                                    <p class="text-xs" style="color: var(--text-tertiary);">{{ u.get_full_name }}</p>
+                                    <p style="font-size: 11px; color: #9b8f7a; margin: 1px 0 0;">{{ u.get_full_name }}</p>
                                     {% endif %}
                                 </div>
                             </div>
                         </td>
                         <!-- Role -->
-                        <td class="px-4 py-3">
+                        <td style="padding: 12px 16px;">
                             {% if u.profile.role == 'system_admin' or u.profile.role == 'agency_admin' %}
-                            <span class="role-pill-admin px-2 py-0.5 text-xs font-semibold rounded-full">{{ u.profile.get_role_display }}</span>
+                            <span class="role-pill-admin">{{ u.profile.get_role_display }}</span>
                             {% else %}
-                            <span class="role-pill-inspector px-2 py-0.5 text-xs font-semibold rounded-full">{{ u.profile.get_role_display }}</span>
+                            <span class="role-pill-inspector">{{ u.profile.get_role_display }}</span>
                             {% endif %}
                         </td>
                         <!-- Organisation -->
-                        <td class="px-4 py-3" style="color: var(--text-secondary);">
-                            {{ u.profile.organisation.name|default:"—" }}
-                        </td>
+                        <td style="padding: 12px 16px; color: #9b8f7a;">{{ u.profile.organisation.name|default:"—" }}</td>
                         <!-- Phone -->
-                        <td class="px-4 py-3" style="color: var(--text-secondary);">
-                            {{ u.profile.phone_number|default:"—" }}
-                        </td>
+                        <td style="padding: 12px 16px; color: #9b8f7a; font-family: monospace; font-size: 12px;">{{ u.profile.phone_number|default:"—" }}</td>
                         <!-- Status -->
-                        <td class="px-4 py-3">
-                            <span id="status-pill-{{ u.id }}"
-                                  class="px-2 py-0.5 text-xs font-semibold rounded-full
-                                  {% if u.is_active %}status-pill-active{% else %}status-pill-inactive{% endif %}">
-                                {% if u.is_active %}Active{% else %}Inactive{% endif %}
+                        <td style="padding: 12px 16px;">
+                            <span id="status-pill-{{ u.id }}" style="display: inline-flex; align-items: center;">
+                                <span class="s-status-dot {% if u.is_active %}active{% else %}inactive{% endif %}"></span>
+                                <span style="font-size: 12px; color: {% if u.is_active %}#67df70{% else %}#9b8f7a{% endif %};">
+                                    {% if u.is_active %}Active{% else %}Inactive{% endif %}
+                                </span>
                             </span>
                         </td>
                         <!-- Joined -->
-                        <td class="px-4 py-3 text-xs" style="color: var(--text-tertiary);">
-                            {{ u.date_joined|date:"M d, Y" }}
-                        </td>
+                        <td style="padding: 12px 16px; font-size: 12px; color: #9b8f7a;">{{ u.date_joined|date:"M d, Y" }}</td>
                         <!-- Actions -->
-                        <td class="px-4 py-3">
-                            <div class="flex items-center gap-1 justify-end">
+                        <td style="padding: 12px 16px;">
+                            <div style="display: flex; align-items: center; gap: 4px; justify-content: flex-end;">
                                 <!-- Edit -->
                                 <button onclick="openEditModal({{ u.id }}, '{{ u.username|escapejs }}', '{{ u.email|escapejs }}', '{{ u.first_name|escapejs }}', '{{ u.last_name|escapejs }}', '{{ u.profile.role }}', '{{ u.profile.organisation_id|default:'' }}', '{{ u.profile.phone_number|escapejs }}')"
-                                        class="btn-ghost p-1.5 rounded"
+                                        class="s-action-btn"
                                         aria-label="Edit {{ u.username }}"
-                                        style="color: var(--text-tertiary);">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                        title="Edit user">
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                     </svg>
                                 </button>
                                 <!-- Reset password -->
                                 <button onclick="resetPassword({{ u.id }}, '{{ u.username|escapejs }}', '{{ u.email|escapejs }}')"
-                                        class="btn-ghost p-1.5 rounded"
+                                        class="s-action-btn"
                                         aria-label="Send password reset email to {{ u.username }}"
-                                        style="color: var(--text-tertiary);">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                                        title="Send password reset email">
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
                                     </svg>
                                 </button>
                                 <!-- Toggle active -->
                                 <button onclick="toggleActive({{ u.id }}, '{{ u.username|escapejs }}', {{ u.is_active|yesno:'true,false' }})"
                                         id="toggle-btn-{{ u.id }}"
-                                        class="btn-ghost p-1.5 rounded"
+                                        class="s-action-btn {% if u.is_active %}danger{% else %}success{% endif %}"
                                         aria-label="{% if u.is_active %}Deactivate{% else %}Activate{% endif %} {{ u.username }}"
-                                        style="color: {% if u.is_active %}var(--status-critical){% else %}var(--status-resolved){% endif %};">
+                                        title="{% if u.is_active %}Deactivate{% else %}Activate{% endif %} account"
+                                        style="color: {% if u.is_active %}#ef4444{% else %}#67df70{% endif %};">
                                     {% if u.is_active %}
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
                                     </svg>
                                     {% else %}
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                     </svg>
                                     {% endif %}
                                 </button>
@@ -179,76 +303,76 @@
             </table>
         </div>
         {% else %}
-        <div class="p-12 text-center">
-            <svg class="w-10 h-10 mx-auto mb-3" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+        <div class="s-empty">
+            <svg width="40" height="40" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
-            <p class="text-sm font-medium" style="color: var(--text-primary);">No users found</p>
-            <p class="text-xs mt-1" style="color: var(--text-secondary);">Try adjusting your search or filters.</p>
+            <p style="font-weight: 600; color: #e2d5c0; margin: 0 0 4px;">No users found</p>
+            <p style="font-size: 12px; color: #9b8f7a; margin: 0;">Adjust your search or filters to find users.</p>
         </div>
         {% endif %}
     </div>
 
-</div>
+</div><!-- /sentinel-dot-grid -->
 
 <!-- ─── Create User Modal ──────────────────────────────── -->
-<div id="create-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
-     style="background: rgba(0,0,0,0.6);"
+<div id="create-modal" class="hidden" style="position: fixed; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,0.72);"
      role="dialog" aria-modal="true" aria-labelledby="create-modal-title">
-    <div class="w-full max-w-lg gw-card overflow-hidden" style="max-height: 90vh; overflow-y: auto;">
-        <div class="px-5 py-4 flex items-center justify-between" style="border-bottom: 1px solid var(--border-subtle);">
-            <h2 id="create-modal-title" class="text-base font-semibold" style="color: var(--text-primary);">Create User</h2>
-            <button onclick="closeModal('create-modal')" class="btn-ghost p-1 rounded" aria-label="Close Create User dialog" style="color: var(--text-tertiary);">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
+    <div class="s-modal-panel">
+        <!-- Header -->
+        <div style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(79,70,52,0.15);">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 2px; height: 20px; background: #f6be39; border-radius: 2px;"></div>
+                <h2 id="create-modal-title" style="font-size: 14px; font-weight: 700; color: #e2d5c0; margin: 0;">Create User</h2>
+            </div>
+            <button onclick="closeModal('create-modal')" class="s-action-btn" aria-label="Close" title="Close">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
-        <div class="p-5 space-y-4">
-            <div id="create-errors" class="hidden rounded-lg px-4 py-3 text-sm"
-                 style="background: var(--status-critical-bg); border: 1px solid var(--status-critical-border); color: var(--status-critical);"></div>
+        <!-- Body -->
+        <div style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+            <div id="create-errors" class="hidden" style="background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); color: #f87171; border-radius: 6px; padding: 10px 14px; font-size: 13px;"></div>
 
-            <div class="grid grid-cols-2 gap-3">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                 <div>
-                    <label class="gw-label mb-1">First Name</label>
-                    <input type="text" id="c-first-name" class="gw-input block w-full" placeholder="Optional">
+                    <label class="s-label">First Name</label>
+                    <input type="text" id="c-first-name" class="s-input" placeholder="Optional">
                 </div>
                 <div>
-                    <label class="gw-label mb-1">Last Name</label>
-                    <input type="text" id="c-last-name" class="gw-input block w-full" placeholder="Optional">
+                    <label class="s-label">Last Name</label>
+                    <input type="text" id="c-last-name" class="s-input" placeholder="Optional">
                 </div>
             </div>
 
             <div>
-                <label class="gw-label mb-1">Username <span style="color:var(--status-critical)">*</span></label>
-                <input type="text" id="c-username" class="gw-input block w-full" placeholder="e.g. john_doe" autocomplete="off">
-                <p id="c-err-username" class="hidden text-xs mt-1" style="color: var(--status-critical);"></p>
+                <label class="s-label">Username <span style="color:#ef4444">*</span></label>
+                <input type="text" id="c-username" class="s-input" placeholder="e.g. john_doe" autocomplete="off">
+                <p id="c-err-username" class="hidden" style="color:#f87171; font-size:11px; margin:4px 0 0;"></p>
             </div>
             <div>
-                <label class="gw-label mb-1">Email <span style="color:var(--status-critical)">*</span></label>
-                <input type="email" id="c-email" class="gw-input block w-full" placeholder="user@agency.gov.gh" autocomplete="off">
-                <p id="c-err-email" class="hidden text-xs mt-1" style="color: var(--status-critical);"></p>
+                <label class="s-label">Email <span style="color:#ef4444">*</span></label>
+                <input type="email" id="c-email" class="s-input" placeholder="user@agency.gov.gh" autocomplete="off">
+                <p id="c-err-email" class="hidden" style="color:#f87171; font-size:11px; margin:4px 0 0;"></p>
             </div>
             <div>
-                <label class="gw-label mb-1">Password <span style="color:var(--status-critical)">*</span></label>
-                <input type="password" id="c-password" class="gw-input block w-full" placeholder="Min. 8 characters" autocomplete="new-password">
-                <p id="c-err-password" class="hidden text-xs mt-1" style="color: var(--status-critical);"></p>
+                <label class="s-label">Password <span style="color:#ef4444">*</span></label>
+                <input type="password" id="c-password" class="s-input" placeholder="Min. 8 characters" autocomplete="new-password">
+                <p id="c-err-password" class="hidden" style="color:#f87171; font-size:11px; margin:4px 0 0;"></p>
             </div>
-            <div class="grid grid-cols-2 gap-3">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                 <div>
-                    <label class="gw-label mb-1">Role <span style="color:var(--status-critical)">*</span></label>
-                    <select id="c-role" class="gw-input block w-full">
+                    <label class="s-label">Role <span style="color:#ef4444">*</span></label>
+                    <select id="c-role" class="s-input">
                         <option value="">Select role…</option>
                         {% for val, label in role_choices %}
                         <option value="{{ val }}">{{ label }}</option>
                         {% endfor %}
                     </select>
-                    <p id="c-err-role" class="hidden text-xs mt-1" style="color: var(--status-critical);"></p>
+                    <p id="c-err-role" class="hidden" style="color:#f87171; font-size:11px; margin:4px 0 0;"></p>
                 </div>
                 <div>
-                    <label class="gw-label mb-1">Organisation</label>
-                    <select id="c-org" class="gw-input block w-full">
+                    <label class="s-label">Organisation</label>
+                    <select id="c-org" class="s-input">
                         <option value="">Select…</option>
                         {% for val, label in org_choices %}
                         <option value="{{ val }}">{{ label }}</option>
@@ -257,64 +381,67 @@
                 </div>
             </div>
             <div>
-                <label class="gw-label mb-1">Phone Number</label>
-                <input type="tel" id="c-phone" class="gw-input block w-full" placeholder="+233 …">
+                <label class="s-label">Phone Number</label>
+                <input type="tel" id="c-phone" class="s-input" placeholder="+233 …">
             </div>
         </div>
-        <div class="px-5 py-4 flex justify-end gap-3" style="border-top: 1px solid var(--border-subtle);">
-            <button onclick="closeModal('create-modal')" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium">Cancel</button>
-            <button onclick="submitCreate()" id="create-submit-btn"
-                    class="btn-primary px-5 py-2 rounded-lg text-sm font-semibold">Create User</button>
+        <!-- Footer -->
+        <div style="padding: 14px 20px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid rgba(79,70,52,0.15);">
+            <button onclick="closeModal('create-modal')" class="s-btn-secondary">Cancel</button>
+            <button onclick="submitCreate()" id="create-submit-btn" class="s-btn-primary">Create User</button>
         </div>
     </div>
 </div>
 
 <!-- ─── Edit User Modal ────────────────────────────────── -->
-<div id="edit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
-     style="background: rgba(0,0,0,0.6);"
+<div id="edit-modal" class="hidden" style="position: fixed; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,0.72);"
      role="dialog" aria-modal="true" aria-labelledby="edit-modal-heading">
-    <div class="w-full max-w-lg gw-card overflow-hidden" style="max-height: 90vh; overflow-y: auto;">
-        <div class="px-5 py-4 flex items-center justify-between" style="border-bottom: 1px solid var(--border-subtle);">
-            <h2 id="edit-modal-heading" class="text-base font-semibold" style="color: var(--text-primary);">Edit User: <span id="edit-modal-title" class="font-normal"></span></h2>
-            <button onclick="closeModal('edit-modal')" class="btn-ghost p-1 rounded" aria-label="Close Edit User dialog" style="color: var(--text-tertiary);">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
+    <div class="s-modal-panel">
+        <!-- Header -->
+        <div style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(79,70,52,0.15);">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 2px; height: 20px; background: #f6be39; border-radius: 2px;"></div>
+                <h2 id="edit-modal-heading" style="font-size: 14px; font-weight: 700; color: #e2d5c0; margin: 0;">
+                    Edit User: <span id="edit-modal-title" style="font-weight: 400; color: #9b8f7a;"></span>
+                </h2>
+            </div>
+            <button onclick="closeModal('edit-modal')" class="s-action-btn" aria-label="Close" title="Close">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
-        <div class="p-5 space-y-4">
+        <!-- Body -->
+        <div style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
             <input type="hidden" id="e-user-id">
-            <div id="edit-errors" class="hidden rounded-lg px-4 py-3 text-sm"
-                 style="background: var(--status-critical-bg); border: 1px solid var(--status-critical-border); color: var(--status-critical);"></div>
+            <div id="edit-errors" class="hidden" style="background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); color: #f87171; border-radius: 6px; padding: 10px 14px; font-size: 13px;"></div>
 
-            <div class="grid grid-cols-2 gap-3">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                 <div>
-                    <label class="gw-label mb-1">First Name</label>
-                    <input type="text" id="e-first-name" class="gw-input block w-full">
+                    <label class="s-label">First Name</label>
+                    <input type="text" id="e-first-name" class="s-input">
                 </div>
                 <div>
-                    <label class="gw-label mb-1">Last Name</label>
-                    <input type="text" id="e-last-name" class="gw-input block w-full">
+                    <label class="s-label">Last Name</label>
+                    <input type="text" id="e-last-name" class="s-input">
                 </div>
             </div>
             <div>
-                <label class="gw-label mb-1">Email</label>
-                <input type="email" id="e-email" class="gw-input block w-full">
-                <p id="e-err-email" class="hidden text-xs mt-1" style="color: var(--status-critical);"></p>
+                <label class="s-label">Email</label>
+                <input type="email" id="e-email" class="s-input">
+                <p id="e-err-email" class="hidden" style="color:#f87171; font-size:11px; margin:4px 0 0;"></p>
             </div>
-            <div class="grid grid-cols-2 gap-3">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                 <div>
-                    <label class="gw-label mb-1">Role</label>
-                    <select id="e-role" class="gw-input block w-full">
+                    <label class="s-label">Role</label>
+                    <select id="e-role" class="s-input">
                         {% for val, label in role_choices %}
                         <option value="{{ val }}">{{ label }}</option>
                         {% endfor %}
                     </select>
-                    <p id="e-err-role" class="hidden text-xs mt-1" style="color: var(--status-critical);"></p>
+                    <p id="e-err-role" class="hidden" style="color:#f87171; font-size:11px; margin:4px 0 0;"></p>
                 </div>
                 <div>
-                    <label class="gw-label mb-1">Organisation</label>
-                    <select id="e-org" class="gw-input block w-full">
+                    <label class="s-label">Organisation</label>
+                    <select id="e-org" class="s-input">
                         <option value="">Select…</option>
                         {% for val, label in org_choices %}
                         <option value="{{ val }}">{{ label }}</option>
@@ -323,23 +450,35 @@
                 </div>
             </div>
             <div>
-                <label class="gw-label mb-1">Phone Number</label>
-                <input type="tel" id="e-phone" class="gw-input block w-full">
+                <label class="s-label">Phone Number</label>
+                <input type="tel" id="e-phone" class="s-input">
             </div>
         </div>
-        <div class="px-5 py-4 flex justify-end gap-3" style="border-top: 1px solid var(--border-subtle);">
-            <button onclick="closeModal('edit-modal')" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium">Cancel</button>
-            <button onclick="submitEdit()" id="edit-submit-btn"
-                    class="btn-primary px-5 py-2 rounded-lg text-sm font-semibold">Save Changes</button>
+        <!-- Footer -->
+        <div style="padding: 14px 20px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid rgba(79,70,52,0.15);">
+            <button onclick="closeModal('edit-modal')" class="s-btn-secondary">Cancel</button>
+            <button onclick="submitEdit()" id="edit-submit-btn" class="s-btn-primary">Save Changes</button>
         </div>
     </div>
 </div>
 
 <!-- Toast container -->
-<div id="toast-container" class="fixed top-4 right-4 space-y-2 z-[60]"></div>
+<div id="toast-container" style="position:fixed; top:16px; right:16px; display:flex; flex-direction:column; gap:8px; z-index:60;"></div>
 
 <script>
 const CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+/* ── Modal show/hide helpers ── */
+function _showModal(id) {
+    const el = document.getElementById(id);
+    el.classList.remove('hidden');
+    el.style.display = 'flex';
+}
+function _hideModal(id) {
+    const el = document.getElementById(id);
+    el.classList.add('hidden');
+    el.style.display = 'none';
+}
 
 /* ── Row builder (mirrors the Django template) ── */
 function esc(s) {
@@ -347,56 +486,61 @@ function esc(s) {
 }
 function rolePill(role, roleDisplay) {
     return (role === 'system_admin' || role === 'agency_admin')
-        ? `<span class="role-pill-admin px-2 py-0.5 text-xs font-semibold rounded-full">${roleDisplay}</span>`
-        : `<span class="role-pill-inspector px-2 py-0.5 text-xs font-semibold rounded-full">${roleDisplay}</span>`;
+        ? `<span class="role-pill-admin">${roleDisplay}</span>`
+        : `<span class="role-pill-inspector">${roleDisplay}</span>`;
 }
 function statusPill(id, isActive) {
-    return `<span id="status-pill-${id}" class="px-2 py-0.5 text-xs font-semibold rounded-full ${isActive ? 'status-pill-active' : 'status-pill-inactive'}">${isActive ? 'Active' : 'Inactive'}</span>`;
+    const dotClass = isActive ? 'active' : 'inactive';
+    const color    = isActive ? '#67df70' : '#9b8f7a';
+    const label    = isActive ? 'Active' : 'Inactive';
+    return `<span id="status-pill-${id}" style="display:inline-flex;align-items:center;">
+        <span class="s-status-dot ${dotClass}"></span>
+        <span style="font-size:12px;color:${color};">${label}</span>
+    </span>`;
 }
 function toggleBtnHTML(id, username, isActive) {
     const icon = isActive
-        ? `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>`
-        : `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+        ? `<svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>`
+        : `<svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+    const color = isActive ? '#ef4444' : '#67df70';
+    const cls   = isActive ? 's-action-btn danger' : 's-action-btn success';
     return `<button onclick="toggleActive(${id}, '${esc(username)}', ${isActive})"
                     id="toggle-btn-${id}"
-                    class="btn-ghost p-1.5 rounded"
+                    class="${cls}"
                     title="${isActive ? 'Deactivate' : 'Activate'} account"
-                    style="color:${isActive ? 'var(--status-critical)' : 'var(--status-resolved)'};">${icon}</button>`;
+                    style="color:${color};">${icon}</button>`;
 }
 function buildRowHTML(u) {
     const initial  = u.username.charAt(0).toUpperCase();
-    const fullName = u.full_name ? `<p class="text-xs" style="color:var(--text-tertiary);">${u.full_name}</p>` : '';
+    const fullName = u.full_name ? `<p style="font-size:11px;color:#9b8f7a;margin:1px 0 0;">${u.full_name}</p>` : '';
     return `
-        <td class="px-4 py-3">
-            <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-semibold"
-                     style="background:var(--surface-3);color:var(--text-secondary);border:1px solid var(--border-subtle);">${initial}</div>
+        <td style="padding:12px 16px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:50%;background:rgba(246,190,57,0.15);color:#f6be39;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;border:1px solid rgba(246,190,57,0.2);">${initial}</div>
                 <div>
-                    <p class="font-medium" style="color:var(--text-primary);">${u.username}</p>
-                    <p class="text-xs" style="color:var(--text-tertiary);">${u.email || '—'}</p>
+                    <p style="font-weight:600;color:#e2d5c0;margin:0;">${u.username}</p>
+                    <p style="font-size:11px;color:#9b8f7a;margin:1px 0 0;">${u.email || '—'}</p>
                     ${fullName}
                 </div>
             </div>
         </td>
-        <td class="px-4 py-3">${rolePill(u.role, u.role_display)}</td>
-        <td class="px-4 py-3" style="color:var(--text-secondary);">${u.organisation_display || '—'}</td>
-        <td class="px-4 py-3" style="color:var(--text-secondary);">${u.phone_number || '—'}</td>
-        <td class="px-4 py-3">${statusPill(u.id, u.is_active)}</td>
-        <td class="px-4 py-3 text-xs" style="color:var(--text-tertiary);">${u.date_joined}</td>
-        <td class="px-4 py-3">
-            <div class="flex items-center gap-1 justify-end">
+        <td style="padding:12px 16px;">${rolePill(u.role, u.role_display)}</td>
+        <td style="padding:12px 16px;color:#9b8f7a;">${u.organisation_display || '—'}</td>
+        <td style="padding:12px 16px;color:#9b8f7a;font-family:monospace;font-size:12px;">${u.phone_number || '—'}</td>
+        <td style="padding:12px 16px;">${statusPill(u.id, u.is_active)}</td>
+        <td style="padding:12px 16px;font-size:12px;color:#9b8f7a;">${u.date_joined}</td>
+        <td style="padding:12px 16px;">
+            <div style="display:flex;align-items:center;gap:4px;justify-content:flex-end;">
                 <button onclick="openEditModal(${u.id},'${esc(u.username)}','${esc(u.email)}','${esc(u.first_name)}','${esc(u.last_name)}','${u.role}','${u.organisation}','${esc(u.phone_number)}')"
-                        class="btn-ghost p-1.5 rounded" title="Edit user" style="color:var(--text-tertiary);">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        class="s-action-btn" title="Edit user">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                     </svg>
                 </button>
                 <button onclick="resetPassword(${u.id},'${esc(u.username)}','${esc(u.email)}')"
-                        class="btn-ghost p-1.5 rounded" title="Send password reset email" style="color:var(--text-tertiary);">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                        class="s-action-btn" title="Send password reset email">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
                     </svg>
                 </button>
                 ${toggleBtnHTML(u.id, u.username, u.is_active)}
@@ -412,9 +556,7 @@ function openCreateModal() {
     document.getElementById('c-role').value = '';
     document.getElementById('c-org').value  = '';
     clearErrors('create');
-    const cm = document.getElementById('create-modal');
-    cm.classList.remove('hidden');
-    window.trapFocus && window.trapFocus(cm, document.activeElement);
+    _showModal('create-modal');
 }
 
 function openEditModal(userId, username, email, firstName, lastName, role, org, phone) {
@@ -427,15 +569,11 @@ function openEditModal(userId, username, email, firstName, lastName, role, org, 
     document.getElementById('e-phone').value       = phone;
     document.getElementById('edit-modal-title').textContent = username;
     clearErrors('edit');
-    const em = document.getElementById('edit-modal');
-    em.classList.remove('hidden');
-    window.trapFocus && window.trapFocus(em, document.activeElement);
+    _showModal('edit-modal');
 }
 
 function closeModal(id) {
-    const modal = document.getElementById(id);
-    modal.classList.add('hidden');
-    window.releaseFocus && window.releaseFocus(modal);
+    _hideModal(id);
 }
 
 ['create-modal','edit-modal'].forEach(id => {
@@ -492,15 +630,14 @@ function submitCreate() {
             if (d.success) {
                 showToast(d.message, 'success');
                 closeModal('create-modal');
-                // Insert new row at top of table
                 const tbody = document.querySelector('#users-table tbody');
                 const tr = document.createElement('tr');
                 tr.id = `user-row-${d.user.id}`;
-                tr.className = 'hover:bg-surface-3 transition-colors';
-                tr.style.cssText = 'transition-duration:100ms;border-bottom:1px solid var(--border-subtle);';
+                tr.style.cssText = 'border-bottom:1px solid rgba(79,70,52,0.1); transition:background 0.1s;';
+                tr.onmouseover = function() { this.style.background = '#1c2026'; };
+                tr.onmouseout  = function() { this.style.background = ''; };
                 tr.innerHTML = buildRowHTML(d.user);
                 tbody.prepend(tr);
-                // Update total count
                 const counter = document.getElementById('user-count');
                 if (counter) counter.textContent = parseInt(counter.textContent) + 1;
             } else {
@@ -535,7 +672,6 @@ function submitEdit() {
             if (d.success) {
                 showToast(d.message, 'success');
                 closeModal('edit-modal');
-                // Update existing row in-place
                 const tr = document.getElementById(`user-row-${userId}`);
                 if (tr) tr.innerHTML = buildRowHTML(d.user);
             } else {
@@ -562,16 +698,19 @@ function toggleActive(userId, username, currentlyActive) {
                 showToast(d.message, d.is_active ? 'success' : 'info');
                 const pill = document.getElementById(`status-pill-${userId}`);
                 if (pill) {
-                    pill.textContent = d.is_active ? 'Active' : 'Inactive';
-                    pill.className = `px-2 py-0.5 text-xs font-semibold rounded-full ${d.is_active ? 'status-pill-active' : 'status-pill-inactive'}`;
+                    const dotClass = d.is_active ? 'active' : 'inactive';
+                    const color    = d.is_active ? '#67df70' : '#9b8f7a';
+                    const label    = d.is_active ? 'Active' : 'Inactive';
+                    pill.innerHTML = `<span class="s-status-dot ${dotClass}"></span><span style="font-size:12px;color:${color};">${label}</span>`;
                 }
                 const btn = document.getElementById(`toggle-btn-${userId}`);
                 if (btn) {
                     btn.title = `${d.is_active ? 'Deactivate' : 'Activate'} account`;
-                    btn.style.color = d.is_active ? 'var(--status-critical)' : 'var(--status-resolved)';
+                    btn.style.color = d.is_active ? '#ef4444' : '#67df70';
+                    btn.className = d.is_active ? 's-action-btn danger' : 's-action-btn success';
                     btn.innerHTML = d.is_active
-                        ? `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>`
-                        : `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+                        ? `<svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>`
+                        : `<svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
                     btn.setAttribute('onclick', `toggleActive(${userId}, '${esc(username)}', ${d.is_active})`);
                 }
             } else {
@@ -598,14 +737,13 @@ function resetPassword(userId, username, email) {
 /* ── Toast ────────────────────────────────────── */
 function showToast(msg, type) {
     const t = document.createElement('div');
-    t.className = 'border px-4 py-3 rounded text-sm shadow-lg';
     const styles = {
-        success: ['var(--status-resolved-bg)',  'var(--status-resolved-border)',  'var(--status-resolved)'],
-        error:   ['var(--status-critical-bg)',  'var(--status-critical-border)',  'var(--status-critical)'],
-        info:    ['var(--status-info-bg)',       'var(--status-info-border)',       'var(--status-info)'],
+        success: { bg: 'rgba(103,223,112,0.1)', border: 'rgba(103,223,112,0.3)', color: '#67df70' },
+        error:   { bg: 'rgba(239,68,68,0.1)',   border: 'rgba(239,68,68,0.3)',   color: '#f87171' },
+        info:    { bg: 'rgba(246,190,57,0.1)',   border: 'rgba(246,190,57,0.25)', color: '#f6be39' },
     };
-    const [bg, border, color] = styles[type] || styles.info;
-    t.style.cssText = `background:${bg};border-color:${border};color:${color};`;
+    const s = styles[type] || styles.info;
+    t.style.cssText = `background:${s.bg};border:1px solid ${s.border};color:${s.color};padding:10px 16px;border-radius:6px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,0.4);min-width:220px;`;
     t.textContent = msg;
     document.getElementById('toast-container').appendChild(t);
     setTimeout(() => t.remove(), 4000);

@@ -3,94 +3,229 @@
 
 {% block title %}Settings — SankofaWatch{% endblock %}
 
-{% block content %}
-<div class="p-6" data-animate-cards>
+{% block extra_css %}
+<style>
+    /* ── Sentinel settings shared ── */
+    .s-label {
+        display: block;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #9b8f7a;
+        margin-bottom: 6px;
+    }
+    .s-input {
+        background: #0a0e14;
+        border: none;
+        border-bottom: 1px solid rgba(155,143,122,0.25);
+        color: #e2d5c0;
+        padding: 8px 4px;
+        font-size: 13px;
+        width: 100%;
+        transition: border-color 0.15s;
+    }
+    .s-input:focus { outline: none; border-bottom-color: #f6be39; }
+    .s-input option { background: #181c22; }
 
-    <!-- Page header -->
-    <div class="gw-page-header mb-6">
-        <div>
-            <h1 class="text-[22px] font-semibold tracking-tight" style="color: var(--text-primary);">Settings</h1>
-            <p class="text-[13px] mt-1" style="color: var(--text-secondary);">Manage your account and notification preferences</p>
+    .s-select {
+        background: #0a0e14;
+        border: none;
+        border-bottom: 1px solid rgba(155,143,122,0.25);
+        color: #e2d5c0;
+        padding: 8px 4px;
+        font-size: 13px;
+        width: 100%;
+        transition: border-color 0.15s;
+        appearance: none;
+        -webkit-appearance: none;
+        cursor: pointer;
+    }
+    .s-select:focus { outline: none; border-bottom-color: #f6be39; }
+    .s-select option { background: #181c22; }
+
+    .s-btn-primary {
+        background: linear-gradient(135deg, #f6be39 0%, #d4a017 100%);
+        color: #402d00;
+        font-weight: 700;
+        font-size: 13px;
+        border: none;
+        border-radius: 6px;
+        padding: 9px 20px;
+        cursor: pointer;
+        transition: opacity 0.15s, box-shadow 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .s-btn-primary:hover { opacity: 0.92; box-shadow: 0 0 12px rgba(246,190,57,0.3); }
+    .s-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .s-btn-outlined {
+        background: transparent;
+        color: #f6be39;
+        border: 1px solid rgba(246,190,57,0.25);
+        font-size: 13px;
+        font-weight: 600;
+        border-radius: 6px;
+        padding: 8px 16px;
+        cursor: pointer;
+        width: 100%;
+        text-align: center;
+        display: block;
+        text-decoration: none;
+        transition: background 0.15s;
+        box-sizing: border-box;
+    }
+    .s-btn-outlined:hover { background: rgba(246,190,57,0.08); }
+
+    /* ── Toggle switch ── */
+    .s-toggle { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
+    .s-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .s-toggle-track {
+        width: 42px; height: 24px; background: #262a31; border-radius: 12px;
+        transition: background 0.2s; flex-shrink: 0;
+        border: 1px solid rgba(79,70,52,0.2);
+    }
+    .s-toggle input:checked ~ .s-toggle-track { background: linear-gradient(135deg, #f6be39, #d4a017); border-color: transparent; }
+    .s-toggle-thumb {
+        position: absolute; left: 3px; top: 50%; transform: translateY(-50%);
+        width: 18px; height: 18px; background: #9b8f7a; border-radius: 50%;
+        transition: left 0.2s, background 0.2s; pointer-events: none;
+    }
+    .s-toggle input:checked ~ .s-toggle-track .s-toggle-thumb { left: 21px; background: #402d00; }
+
+    /* ── Sentinel card ── */
+    .s-card {
+        background: #181c22;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .s-card-section {
+        padding: 18px 22px;
+        background: #181c22;
+    }
+    .s-card-section + .s-card-section {
+        background: #1a1e24;
+    }
+
+    /* ── Number input large ── */
+    .s-num-input-wrap {
+        background: #0a0e14;
+        border-radius: 6px;
+        padding: 12px 14px;
+        border-bottom: 2px solid transparent;
+        transition: border-color 0.15s;
+    }
+    .s-num-input-wrap:focus-within { border-bottom-color: #f6be39; }
+    .s-num-input {
+        background: transparent;
+        border: none;
+        color: #e2d5c0;
+        font-size: 22px;
+        font-weight: 700;
+        width: 100%;
+        font-family: monospace;
+    }
+    .s-num-input:focus { outline: none; }
+    input[type=number].s-num-input::-webkit-inner-spin-button,
+    input[type=number].s-num-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sentinel-dot-grid" style="min-height:100vh; padding: 28px 28px 40px;">
+
+    <!-- ── Page header ── -->
+    <div style="margin-bottom: 28px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+        <div style="display: flex; gap: 14px; align-items: flex-start;">
+            <div style="width: 2px; height: 52px; background: #f6be39; border-radius: 2px; flex-shrink: 0; margin-top: 2px;"></div>
+            <div>
+                <p style="font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #f6be39; margin: 0 0 4px;">System</p>
+                <h1 style="font-size: 22px; font-weight: 700; color: #e2d5c0; margin: 0 0 3px; letter-spacing: -0.01em;">Sentinel Configuration</h1>
+                <p style="font-size: 13px; color: #9b8f7a; margin: 0;">Manage global system parameters and administrative preferences.</p>
+            </div>
         </div>
-        <div class="flex items-center gap-3">
-            <p id="save-status" class="text-[13px]" style="min-width:0;"></p>
-            <button id="save-settings-btn" class="btn-primary px-5 py-2 text-[13px]">Save Settings</button>
+        <div style="display: flex; align-items: center; gap: 12px; margin-top: 6px;">
+            <p id="save-status" style="font-size: 13px; min-width: 0;"></p>
+            <button id="save-settings-btn" class="s-btn-primary">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                Save Settings
+            </button>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div style="display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start;">
 
-        <!-- ── Left column (2/3) ───────────────────────────────────── -->
-        <div class="lg:col-span-2 space-y-6">
+        <!-- ── Left column ── -->
+        <div style="display: flex; flex-direction: column; gap: 20px;">
 
             <!-- Notifications -->
-            <div class="gw-card overflow-hidden">
-                <div class="kente-bar"></div>
-                <div class="px-6 py-4" style="border-bottom: 1px solid var(--border-subtle);">
-                    <h2 class="text-[15px] font-semibold gw-section-title" style="color: var(--text-primary);">Notifications</h2>
-                    <p class="text-[13px] mt-0.5" style="color: var(--text-secondary);">Control when and how you receive email alerts</p>
+            <div class="s-card">
+                <div style="padding: 18px 22px; background: #262a31; display: flex; align-items: center; gap: 10px;">
+                    <svg width="18" height="18" fill="none" stroke="#f6be39" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                    <h3 style="font-size: 14px; font-weight: 700; color: #e2d5c0; margin: 0;">Notifications</h3>
                 </div>
 
                 <!-- Email on/off -->
-                <div class="px-6 py-4 flex items-center justify-between gap-4"
-                     style="border-bottom: 1px solid var(--border-subtle);">
+                <div style="padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: #181c22;">
                     <div>
-                        <p class="text-[13px] font-medium" style="color: var(--text-primary);">Email Notifications</p>
-                        <p class="text-[12px] mt-0.5" style="color: var(--text-tertiary);">Receive emails for detections assigned to your organisation</p>
+                        <p style="font-size: 13px; font-weight: 600; color: #e2d5c0; margin: 0 0 3px;">Email Alerts</p>
+                        <p style="font-size: 12px; color: #9b8f7a; margin: 0;">Receive system-wide event logs via email</p>
                     </div>
-                    <label class="flex items-center gap-2 cursor-pointer shrink-0">
+                    <label class="s-toggle">
                         <input type="checkbox" id="email-notifications-checkbox"
-                               {% if preferences.email_notifications %}checked{% endif %}
-                               class="w-4 h-4 rounded" style="accent-color: var(--accent);">
-                        <span class="text-[12px]" style="color: var(--text-tertiary);">Enabled</span>
+                               {% if preferences.email_notifications %}checked{% endif %}>
+                        <div class="s-toggle-track">
+                            <span class="s-toggle-thumb"></span>
+                        </div>
                     </label>
                 </div>
 
                 <!-- Minimum severity -->
-                <div class="px-6 py-4" style="border-bottom: 1px solid var(--border-subtle);">
-                    <label for="alert-min-severity" class="gw-label">Minimum Severity for Emails</label>
-                    <select id="alert-min-severity" class="gw-select mt-2" style="max-width: 280px;">
+                <div style="padding: 18px 22px; background: #1a1e24;">
+                    <label for="alert-min-severity" class="s-label">Severity Filter</label>
+                    <select id="alert-min-severity" class="s-select" style="max-width: 280px;">
                         <option value="critical" {% if preferences.alert_min_severity == 'critical' %}selected{% endif %}>Critical only</option>
                         <option value="high"     {% if preferences.alert_min_severity == 'high'     %}selected{% endif %}>High &amp; Critical</option>
                         <option value="medium"   {% if preferences.alert_min_severity == 'medium'   %}selected{% endif %}>Medium, High &amp; Critical</option>
                         <option value="all"      {% if preferences.alert_min_severity == 'all'      %}selected{% endif %}>All alerts</option>
                     </select>
-                    <p class="text-[12px] mt-1.5" style="color: var(--text-tertiary);">Alerts below this level won't trigger an email</p>
+                    <p style="font-size: 11px; color: #9b8f7a; margin: 6px 0 0;">Alerts below this level won't trigger an email</p>
                 </div>
 
                 <!-- Critical override -->
-                <div class="px-6 py-4 flex items-start gap-3"
-                     style="border-bottom: 1px solid var(--border-subtle);">
+                <div style="padding: 18px 22px; background: #181c22; display: flex; align-items: flex-start; gap: 12px;">
                     <input type="checkbox" id="critical-alerts-checkbox"
                            {% if preferences.critical_alerts_override %}checked{% endif %}
-                           class="w-4 h-4 mt-0.5 shrink-0 rounded" style="accent-color: var(--accent);">
+                           style="width:15px;height:15px;margin-top:2px;flex-shrink:0;accent-color:#f6be39;cursor:pointer;">
                     <div>
-                        <label for="critical-alerts-checkbox" class="text-[13px] font-medium cursor-pointer" style="color: var(--text-primary);">Always send critical alerts</label>
-                        <p class="text-[12px] mt-0.5" style="color: var(--text-tertiary);">Critical alerts bypass the severity filter and quiet hours</p>
+                        <label for="critical-alerts-checkbox" style="font-size:13px;font-weight:600;color:#e2d5c0;cursor:pointer;">Always send critical alerts</label>
+                        <p style="font-size:12px;color:#9b8f7a;margin:3px 0 0;">Critical alerts bypass the severity filter and quiet hours</p>
                     </div>
                 </div>
 
                 <!-- Quiet hours -->
-                <div class="px-6 py-4">
-                    <div class="flex items-start gap-3">
+                <div style="padding: 18px 22px; background: #1a1e24;">
+                    <div style="display:flex;align-items:flex-start;gap:12px;">
                         <input type="checkbox" id="quiet-hours-checkbox"
                                {% if preferences.quiet_hours_enabled %}checked{% endif %}
-                               class="w-4 h-4 mt-0.5 shrink-0 rounded" style="accent-color: var(--accent);">
-                        <div class="flex-1">
-                            <label for="quiet-hours-checkbox" class="text-[13px] font-medium cursor-pointer" style="color: var(--text-primary);">Quiet Hours</label>
-                            <p class="text-[12px] mt-0.5" style="color: var(--text-tertiary);">Pause non-critical emails during a set window</p>
-                            <div id="quiet-hours-fields" class="mt-3 grid grid-cols-2 gap-4 {% if not preferences.quiet_hours_enabled %}hidden{% endif %}" style="max-width: 320px;">
+                               style="width:15px;height:15px;margin-top:2px;flex-shrink:0;accent-color:#f6be39;cursor:pointer;">
+                        <div style="flex:1;">
+                            <label for="quiet-hours-checkbox" style="font-size:13px;font-weight:600;color:#e2d5c0;cursor:pointer;">Quiet Hours</label>
+                            <p style="font-size:12px;color:#9b8f7a;margin:3px 0 10px;">Pause non-critical emails during a set window</p>
+                            <div id="quiet-hours-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:300px;{% if not preferences.quiet_hours_enabled %}display:none;{% endif %}">
                                 <div>
-                                    <label for="quiet-hours-start" class="gw-label">From</label>
+                                    <label for="quiet-hours-start" class="s-label">From</label>
                                     <input type="time" id="quiet-hours-start"
                                            value="{{ preferences.quiet_hours_start|time:'H:i' }}"
-                                           class="gw-input mt-1">
+                                           class="s-input">
                                 </div>
                                 <div>
-                                    <label for="quiet-hours-end" class="gw-label">To</label>
+                                    <label for="quiet-hours-end" class="s-label">To</label>
                                     <input type="time" id="quiet-hours-end"
                                            value="{{ preferences.quiet_hours_end|time:'H:i' }}"
-                                           class="gw-input mt-1">
+                                           class="s-input">
                                 </div>
                             </div>
                         </div>
@@ -99,146 +234,163 @@
             </div>
 
             <!-- Theme & Report defaults — side by side -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
 
                 <!-- Theme & Display -->
-                <div class="gw-card overflow-hidden">
-                    <div class="px-6 py-4" style="border-bottom: 1px solid var(--border-subtle);">
-                        <h2 class="text-[15px] font-semibold gw-section-title" style="color: var(--text-primary);">Theme &amp; Display</h2>
+                <div class="s-card">
+                    <div style="padding:16px 22px;background:#262a31;">
+                        <h3 style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#f6be39;margin:0;">Interface Preference</h3>
                     </div>
-                    <div class="px-6 py-4" style="border-bottom: 1px solid var(--border-subtle);">
-                        <label for="theme-select" class="gw-label">Colour Theme</label>
-                        <select id="theme-select" class="gw-select mt-2">
+                    <div style="padding:18px 22px;background:#181c22;">
+                        <label for="theme-select" class="s-label">Colour Theme</label>
+                        <select id="theme-select" class="s-select">
                             <option value="dark"  {% if preferences.theme == 'dark'  %}selected{% endif %}>Dark</option>
                             <option value="light" {% if preferences.theme == 'light' %}selected{% endif %}>Light</option>
                             <option value="auto"  {% if preferences.theme == 'auto'  %}selected{% endif %}>Auto (system)</option>
                         </select>
                     </div>
-                    <div class="px-6 py-4 flex items-start gap-3">
-                        <input type="checkbox" id="high-contrast-checkbox"
-                               {% if preferences.high_contrast %}checked{% endif %}
-                               class="w-4 h-4 mt-0.5 shrink-0 rounded" style="accent-color: var(--accent);">
+                    <div style="padding:18px 22px;background:#1a1e24;display:flex;align-items:center;justify-content:space-between;gap:12px;">
                         <div>
-                            <label for="high-contrast-checkbox" class="text-[13px] font-medium cursor-pointer" style="color: var(--text-primary);">High Contrast</label>
-                            <p class="text-[12px] mt-0.5" style="color: var(--text-tertiary);">Stronger text contrast for readability</p>
+                            <label for="high-contrast-checkbox" style="font-size:13px;font-weight:600;color:#e2d5c0;cursor:pointer;display:block;">High Contrast Mode</label>
+                            <p style="font-size:11px;color:#9b8f7a;margin:2px 0 0;">Stronger text contrast for readability</p>
                         </div>
+                        <label class="s-toggle">
+                            <input type="checkbox" id="high-contrast-checkbox"
+                                   {% if preferences.high_contrast %}checked{% endif %}>
+                            <div class="s-toggle-track">
+                                <span class="s-toggle-thumb"></span>
+                            </div>
+                        </label>
                     </div>
                 </div>
 
                 <!-- Report Defaults -->
-                <div class="gw-card overflow-hidden">
-                    <div class="px-6 py-4" style="border-bottom: 1px solid var(--border-subtle);">
-                        <h2 class="text-[15px] font-semibold gw-section-title" style="color: var(--text-primary);">Report Defaults</h2>
+                <div class="s-card">
+                    <div style="padding:16px 22px;background:#262a31;">
+                        <h3 style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#f6be39;margin:0;">Report Defaults</h3>
                     </div>
-                    <div class="px-6 py-4">
-                        <label for="report-default-days" class="gw-label">Default Date Range</label>
-                        <select id="report-default-days" class="gw-select mt-2">
+                    <div style="padding:18px 22px;background:#181c22;">
+                        <label for="report-default-days" class="s-label">Default Date Range</label>
+                        <select id="report-default-days" class="s-select">
                             <option value="7"  {% if preferences.report_default_days == 7  %}selected{% endif %}>Last 7 days</option>
                             <option value="30" {% if preferences.report_default_days == 30 %}selected{% endif %}>Last 30 days</option>
                             <option value="90" {% if preferences.report_default_days == 90 %}selected{% endif %}>Last 90 days</option>
                         </select>
-                        <p class="text-[12px] mt-1.5" style="color: var(--text-tertiary);">Pre-filled date range when you open the report</p>
+                        <p style="font-size:11px;color:#9b8f7a;margin:8px 0 0;">Pre-filled date range when you open the report</p>
                     </div>
                 </div>
 
             </div>
         </div>
 
-        <!-- ── Right column (1/3) ─────────────────────────────────── -->
-        <div class="lg:col-span-1 space-y-6">
+        <!-- ── Right column ── -->
+        <div style="display:flex;flex-direction:column;gap:20px;">
 
             {% if system_cfg %}
             <!-- System Defaults (system admin only) -->
-            <div class="gw-card overflow-hidden">
-                <div class="px-5 py-4" style="border-bottom: 1px solid var(--border-subtle);">
-                    <h2 class="text-[15px] font-semibold gw-section-title" style="color: var(--text-primary);">System Defaults</h2>
-                    <p class="text-[12px] mt-0.5" style="color: var(--text-secondary);">Platform-wide operational defaults. Organisations can override these individually.</p>
+            <div class="s-card">
+                <div style="padding:16px 22px;background:#262a31;display:flex;align-items:center;gap:10px;">
+                    <svg width="16" height="16" fill="none" stroke="#f6be39" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    <div>
+                        <h3 style="font-size:13px;font-weight:700;color:#e2d5c0;margin:0;">System Defaults</h3>
+                        <p style="font-size:10px;color:#9b8f7a;margin:1px 0 0;">Platform-wide operational defaults</p>
+                    </div>
                 </div>
-                <div class="px-5 py-4 space-y-4">
+                <div style="padding:18px 22px;background:#181c22;display:flex;flex-direction:column;gap:14px;">
                     <div>
-                        <label for="sys-sla-days" class="gw-label">SLA Days</label>
-                        <input type="number" id="sys-sla-days" min="1" max="90"
-                               value="{{ system_cfg.sla_days }}"
-                               class="gw-input mt-1 w-full">
-                        <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">Days from assignment to deadline</p>
+                        <label class="s-label">SLA Days</label>
+                        <div class="s-num-input-wrap">
+                            <label style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#9b8f7a;margin-bottom:4px;display:block;">Days</label>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <input type="number" id="sys-sla-days" min="1" max="90"
+                                       value="{{ system_cfg.sla_days }}"
+                                       class="s-num-input">
+                                <span style="font-size:10px;color:#9b8f7a;font-weight:700;">DAYS</span>
+                            </div>
+                        </div>
                     </div>
                     <div>
-                        <label for="sys-max-pending" class="gw-label">Max Pending Assignments</label>
-                        <input type="number" id="sys-max-pending" min="1" max="100"
-                               value="{{ system_cfg.max_pending_assignments }}"
-                               class="gw-input mt-1 w-full">
-                        <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">Per-inspector limit before blocking new assignments</p>
+                        <label class="s-label">Max Pending Assignments</label>
+                        <div class="s-num-input-wrap">
+                            <label style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#9b8f7a;margin-bottom:4px;display:block;">Limit</label>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <input type="number" id="sys-max-pending" min="1" max="100"
+                                       value="{{ system_cfg.max_pending_assignments }}"
+                                       class="s-num-input">
+                                <span style="font-size:10px;color:#9b8f7a;font-weight:700;">LIMIT</span>
+                            </div>
+                        </div>
                     </div>
-                    <button id="save-sys-config-btn" class="btn-primary w-full py-2 text-[13px]">Save System Defaults</button>
-                    <p id="sys-config-status" class="text-[12px] text-center" style="min-height:1rem;"></p>
+                    <button id="save-sys-config-btn" class="s-btn-primary" style="width:100%;justify-content:center;">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                        Save System Defaults
+                    </button>
+                    <p id="sys-config-status" style="font-size:12px;text-align:center;min-height:16px;margin:0;"></p>
                 </div>
             </div>
             {% endif %}
 
             {% if org and request.user.profile.role == 'agency_admin' %}
             <!-- Organisation -->
-            <div class="gw-card overflow-hidden">
-                <div class="px-5 py-4" style="border-bottom: 1px solid var(--border-subtle);">
-                    <h2 class="text-[15px] font-semibold gw-section-title" style="color: var(--text-primary);">Organisation</h2>
+            <div class="s-card">
+                <div style="padding:16px 22px;background:#262a31;">
+                    <h3 style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#f6be39;margin:0;">Organisation</h3>
                 </div>
-                <div class="px-5 py-4 space-y-4">
+                <div style="padding:18px 22px;background:#181c22;display:flex;flex-direction:column;gap:12px;">
                     <div>
-                        <p class="text-[11px] uppercase tracking-[0.06em] font-semibold mb-0.5" style="color: var(--text-tertiary);">Name</p>
-                        <p class="text-[13px] font-semibold" style="color: var(--text-primary);">{{ org.name }}</p>
+                        <p class="s-label">Name</p>
+                        <p style="font-size:13px;font-weight:600;color:#e2d5c0;margin:0;">{{ org.name }}</p>
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                         <div>
-                            <p class="text-[11px] uppercase tracking-[0.06em] font-semibold mb-0.5" style="color: var(--text-tertiary);">Your Role</p>
-                            <p class="text-[13px]" style="color: var(--text-primary);">{{ request.user.profile.get_role_display }}</p>
+                            <p class="s-label">Your Role</p>
+                            <p style="font-size:13px;color:#e2d5c0;margin:0;">{{ request.user.profile.get_role_display }}</p>
                         </div>
                         <div>
-                            <p class="text-[11px] uppercase tracking-[0.06em] font-semibold mb-0.5" style="color: var(--text-tertiary);">Inspectors</p>
-                            <p class="text-[13px]" style="color: var(--text-primary);">{{ inspector_count }}</p>
+                            <p class="s-label">Inspectors</p>
+                            <p style="font-size:13px;color:#e2d5c0;margin:0;">{{ inspector_count }}</p>
                         </div>
                     </div>
                     <div>
-                        <p class="text-[11px] uppercase tracking-[0.06em] font-semibold mb-0.5" style="color: var(--text-tertiary);">Member Since</p>
-                        <p class="text-[13px]" style="color: var(--text-primary);">{{ org.created_at|date:"N j, Y" }}</p>
+                        <p class="s-label">Member Since</p>
+                        <p style="font-size:13px;color:#e2d5c0;margin:0;">{{ org.created_at|date:"N j, Y" }}</p>
                     </div>
                 </div>
             </div>
             {% endif %}
 
             <!-- Account -->
-            <div class="gw-card overflow-hidden">
-                <div class="px-5 py-4" style="border-bottom: 1px solid var(--border-subtle);">
-                    <h2 class="text-[15px] font-semibold gw-section-title" style="color: var(--text-primary);">Account</h2>
+            <div class="s-card">
+                <div style="padding:16px 22px;background:#262a31;text-align:center;">
+                    <!-- Avatar initials -->
+                    <div style="width:64px;height:64px;border-radius:50%;background:rgba(246,190,57,0.12);color:#f6be39;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;margin:0 auto 10px;border:2px solid rgba(246,190,57,0.2);">
+                        {{ request.user.username|first|upper }}
+                    </div>
+                    <h3 style="font-size:14px;font-weight:700;color:#e2d5c0;margin:0 0 2px;">{{ request.user.get_full_name|default:request.user.username }}</h3>
+                    <p style="font-size:11px;color:#9b8f7a;margin:0;">{{ request.user.email|default:"—" }}</p>
                 </div>
-                <div class="px-5 py-4 space-y-4">
+                <div style="padding:18px 22px;background:#181c22;display:flex;flex-direction:column;gap:12px;">
                     <div>
-                        <p class="text-[11px] uppercase tracking-[0.06em] font-semibold mb-0.5" style="color: var(--text-tertiary);">Name</p>
-                        <p class="text-[13px]" style="color: var(--text-primary);">{{ request.user.get_full_name|default:"—" }}</p>
-                    </div>
-                    <div>
-                        <p class="text-[11px] uppercase tracking-[0.06em] font-semibold mb-0.5" style="color: var(--text-tertiary);">Username</p>
-                        <p class="text-[13px] font-mono" style="color: var(--text-primary);">{{ request.user.username }}</p>
+                        <p class="s-label">Username</p>
+                        <p style="font-size:13px;font-family:monospace;color:#f6be39;margin:0;">{{ request.user.username }}</p>
                     </div>
                     <div>
-                        <p class="text-[11px] uppercase tracking-[0.06em] font-semibold mb-0.5" style="color: var(--text-tertiary);">Email</p>
-                        <p class="text-[13px]" style="color: var(--text-primary);">{{ request.user.email|default:"—" }}</p>
+                        <p class="s-label">Email</p>
+                        <p style="font-size:13px;color:#e2d5c0;margin:0;">{{ request.user.email|default:"—" }}</p>
                     </div>
-                    <div class="pt-1">
-                        <a href="{% url 'password_change' %}"
-                           class="btn-secondary w-full py-2 text-[13px] text-center block">Change Password</a>
-                    </div>
+                    <a href="{% url 'password_change' %}" class="s-btn-outlined">Change Password</a>
                 </div>
             </div>
 
         </div>
     </div>
 
-
-</div>
+</div><!-- /sentinel-dot-grid -->
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// Theme live preview — change theme immediately when dropdown changes
+// Theme live preview
 document.getElementById('theme-select').addEventListener('change', function () {
     const val = this.value;
     if (val === 'auto') {
@@ -251,7 +403,8 @@ document.getElementById('theme-select').addEventListener('change', function () {
 
 // Quiet hours toggle
 document.getElementById('quiet-hours-checkbox').addEventListener('change', function () {
-    document.getElementById('quiet-hours-fields').classList.toggle('hidden', !this.checked);
+    const fields = document.getElementById('quiet-hours-fields');
+    fields.style.display = this.checked ? 'grid' : 'none';
 });
 
 function getCookie(name) {
@@ -283,13 +436,13 @@ if (sysSaveBtn) {
             });
             const data = await res.json();
             statusEl.textContent = data.success ? 'System defaults saved.' : (data.error || 'Save failed.');
-            statusEl.style.color = data.success ? 'var(--status-resolved)' : 'var(--status-critical)';
+            statusEl.style.color = data.success ? '#67df70' : '#f87171';
         } catch {
             statusEl.textContent = 'Network error — please try again.';
-            statusEl.style.color = 'var(--status-critical)';
+            statusEl.style.color = '#f87171';
         } finally {
             btn.disabled = false;
-            btn.textContent = 'Save System Defaults';
+            btn.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg> Save System Defaults';
             setTimeout(() => { statusEl.textContent = ''; }, 5000);
         }
     });
@@ -322,17 +475,17 @@ document.getElementById('save-settings-btn').addEventListener('click', async fun
         });
         const data = await res.json();
         if (data.success) {
-            status.textContent = 'Settings saved successfully.';
-            status.style.color = 'var(--status-resolved)';
+            status.textContent = 'Settings saved.';
+            status.style.color = '#67df70';
         } else {
             status.textContent = data.error || 'Save failed.';
-            status.style.color = 'var(--status-critical)';
+            status.style.color = '#f87171';
         }
     } catch {
         status.textContent = 'Network error — please try again.';
-        status.style.color = 'var(--status-critical)';
+        status.style.color = '#f87171';
     } finally {
-        btn.textContent = 'Save Settings';
+        btn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg> Save Settings';
         btn.disabled = false;
         setTimeout(() => { status.textContent = ''; }, 5000);
     }

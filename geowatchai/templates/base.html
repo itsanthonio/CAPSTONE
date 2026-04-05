@@ -35,6 +35,21 @@
                         'gw-accent':       'var(--accent)',
                         'gw-accent-hover': 'var(--accent-hover)',
                         'gw-accent-muted': 'var(--accent-muted)',
+                        /* Sentinel design system — hardcoded dark tokens for redesigned pages */
+                        'surface':                    '#10141a',
+                        'surface-container-lowest':   '#0a0e14',
+                        'surface-container-low':      '#181c22',
+                        'surface-container':          '#1c2026',
+                        'surface-container-high':     '#262a31',
+                        'surface-container-highest':  '#31353c',
+                        'on-surface':                 '#dfe2eb',
+                        'on-surface-variant':         '#d3c5ae',
+                        'primary':                    '#f6be39',
+                        'primary-container':          '#d4a017',
+                        'on-primary':                 '#402d00',
+                        'tertiary':                   '#67df70',
+                        'outline':                    '#9b8f7a',
+                        'outline-variant':            '#4f4634',
                         /* Borders */
                         'edge-subtle':  'var(--border-subtle)',
                         'edge-default': 'var(--border-default)',
@@ -151,6 +166,56 @@
     }
     </style>
 
+    <!-- Sentinel design system overrides -->
+    <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #0a0e14; }
+    ::-webkit-scrollbar-thumb { background: #31353c; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #f6be39; }
+
+    /* Dot-grid utility */
+    .sentinel-dot-grid {
+        background-image: radial-gradient(circle, rgba(79,70,52,0.25) 1px, transparent 1px);
+        background-size: 28px 28px;
+    }
+
+    /* Sentinel nav overrides — right-border active, sharper, darker */
+    #main-sidebar .gw-nav-item {
+        border-left: none !important;
+        border-right: 2px solid transparent;
+        border-radius: 0 !important;
+        margin: 0 !important;
+        padding: 9px 16px;
+        font-size: 12px;
+        color: rgba(223,226,235,0.5);
+        letter-spacing: 0.01em;
+    }
+    #main-sidebar .gw-nav-item:hover {
+        background: rgba(24,28,34,0.7) !important;
+        color: #dfe2eb !important;
+    }
+    #main-sidebar .gw-nav-item.active {
+        background: #181c22 !important;
+        color: #f6be39 !important;
+        border-right-color: #f6be39;
+        font-weight: 600;
+    }
+    #main-sidebar .gw-nav-item.active i[class*="ph"] { color: #f6be39 !important; opacity: 1 !important; }
+    #main-sidebar .gw-nav-item:hover i[class*="ph"]  { color: #dfe2eb !important; opacity: 1 !important; }
+    #main-sidebar .gw-nav-item i[class*="ph"]         { color: rgba(155,143,122,0.6); opacity: 1 !important; }
+    #main-sidebar .gw-nav-group {
+        color: rgba(155,143,122,0.5) !important;
+        font-size: 9px !important;
+        letter-spacing: 0.12em !important;
+        padding: 16px 16px 4px !important;
+    }
+    #main-sidebar { scrollbar-width: thin; scrollbar-color: #31353c #0a0e14; }
+
+    /* Sentinel page header accent line */
+    .sentinel-page-header { }
+    </style>
+
     <!-- MapLibre GL JS -->
     <link href="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.js"></script>
@@ -201,7 +266,7 @@
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
     <!-- ── Top Navigation ──────────────────────────────────── -->
-    <header class="fixed top-0 left-0 right-0 h-12 bg-surface-1 border-b border-edge-subtle z-50">
+    <header class="fixed top-0 left-0 right-0 h-16 z-50" style="background: rgba(10,14,20,0.88); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(79,70,52,0.18); box-shadow: 0 2px 24px rgba(0,0,0,0.35);">
         <div class="flex items-center justify-between h-full px-4">
 
             <!-- Logo (hamburger toggle visible only on ≤768px) -->
@@ -368,13 +433,13 @@
         </div>
     </header>
 
-    <div class="flex pt-12">
+    <div class="flex pt-16">
 
         <!-- Mobile sidebar overlay (tap to close) -->
         <div id="sidebar-overlay" onclick="closeSidebar()" aria-hidden="true"></div>
 
         <!-- ── Sidebar ──────────────────────────────────────── -->
-        <aside id="main-sidebar" class="fixed left-0 top-12 bottom-0 w-55 bg-surface-1 border-r border-edge-subtle z-40 overflow-y-auto flex flex-col">
+        <aside id="main-sidebar" class="fixed left-0 top-16 bottom-0 w-64 z-40 overflow-y-auto flex flex-col" style="background: #0a0e14; border-right: 1px solid rgba(79,70,52,0.12);">
             <nav class="flex-1 py-2">
                 {% if user.is_authenticated and user.profile.role == 'inspector' %}
                 <!-- ── Inspector Navigation ───────────────────── -->
@@ -623,29 +688,25 @@
                 {% endif %}
             </nav>
 
-            <!-- Adinkra Sankofa mark at sidebar bottom -->
-            <div class="px-4 py-3" style="border-top: 1px solid var(--border-subtle); margin-top: auto;">
-                <!-- Collapse toggle -->
+            <!-- Sidebar bottom -->
+            <div class="px-4 py-4 mt-auto" style="border-top: 1px solid rgba(79,70,52,0.12);">
                 <button id="sidebar-collapse-btn"
                         onclick="toggleSidebarCollapse()"
                         title="Collapse sidebar"
-                        class="btn-ghost w-full justify-center mb-2 text-[12px] gap-1.5"
-                        style="opacity:0.55; height:28px;">
-                    <i class="ph ph-sidebar-simple" style="font-size:16px;" aria-hidden="true"></i>
-                    <span class="sidebar-bottom-text">Collapse</span>
+                        class="w-full flex items-center justify-center gap-1.5 sidebar-bottom-text"
+                        style="color: rgba(155,143,122,0.4); font-size:11px; background:none; border:none; cursor:pointer; padding:4px 0; transition: color 150ms;">
+                    <i class="ph ph-sidebar-simple" style="font-size:14px;" aria-hidden="true"></i>
+                    <span>Collapse</span>
                 </button>
-                <div class="adinkra-divider" title="Gye Nyame — Adinkra symbol">
-                    <span class="adinkra-divider__glyph"></span>
-                </div>
-                <p class="text-center mt-2 sidebar-bottom-text" style="font-size:9px; color:var(--text-tertiary); opacity:0.45;
-                          letter-spacing:0.04em; font-style:italic; line-height:1.5;">
+                <p class="text-center mt-2 sidebar-bottom-text" style="font-size:8px; color: rgba(79,70,52,0.5);
+                          letter-spacing:0.08em; font-style:italic; line-height:1.5;">
                     Sankofa &middot; Gye Nyame
                 </p>
             </div>
         </aside>
 
         <!-- ── Main Content ─────────────────────────────────── -->
-        <main class="flex-1 ml-55" id="main-content" tabindex="-1">
+        <main class="flex-1 ml-64" id="main-content" tabindex="-1">
             {% if messages %}
             <div id="base-messages" class="px-6 pt-4 space-y-2">
                 {% for msg in messages %}
@@ -731,7 +792,7 @@
     {% endif %}
 
     <!-- ── Footer ───────────────────────────────────────────── -->
-    <footer class="fixed bottom-0 left-55 right-0 bg-surface-1 border-t border-edge-subtle py-2 px-5">
+    <footer class="fixed bottom-0 left-64 right-0 py-2 px-5" style="background: #0a0e14; border-top: 1px solid rgba(79,70,52,0.12);">
         <div class="flex justify-between items-center">
             <span class="text-[11px] text-fg-muted">{{ settings.APP_NAME }} <span class="text-fg-muted opacity-60">v{{ settings.APP_VERSION }}</span></span>
             <span class="text-[11px] text-fg-muted opacity-60">&copy; 2025 Environmental Protection Agency</span>
