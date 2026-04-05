@@ -59,6 +59,7 @@ class JobViewSet(viewsets.ModelViewSet):
                 aoi_geometry=serializer.validated_data['aoi_geometry'],
                 start_date=serializer.validated_data['start_date'],
                 end_date=serializer.validated_data['end_date'],
+                name=serializer.validated_data.get('name', ''),
                 created_by=request.user,
                 organisation=org,
             )
@@ -102,6 +103,16 @@ class JobViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
     
+    @action(detail=False, methods=['get'])
+    def active(self, request):
+        """Return in-progress jobs created by the current user, for map restoration."""
+        terminal = {Job.Status.COMPLETED, Job.Status.FAILED, Job.Status.CANCELLED}
+        jobs = self.get_queryset().filter(
+            created_by=request.user,
+        ).exclude(status__in=terminal).order_by('created_at')
+        serializer = self.get_serializer(jobs, many=True)
+        return Response(serializer.data)
+
     @action(detail=False, methods=['get'])
     def statistics(self, request):
         """Get job statistics for dashboard"""

@@ -21,7 +21,8 @@ class JobService:
                   source: str = "manual",
                   scan_tile_id: Optional[str] = None,
                   organisation=None,
-                  created_by=None) -> Job:
+                  created_by=None,
+                  name: str = '') -> Job:
         """
         Create a new detection job with AOI deduplication
         
@@ -65,6 +66,7 @@ class JobService:
         # Create new job with concurrency lock
         with transaction.atomic():
             job = Job.objects.create(
+                name=name,
                 aoi_geometry=aoi_geometry,
                 aoi_hash=aoi_hash,
                 start_date=start_date,

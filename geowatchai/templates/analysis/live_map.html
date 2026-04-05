@@ -952,6 +952,22 @@ document.addEventListener('DOMContentLoaded', function () {
     // Start background polling — begins 5s after load so initial fetch settles first
     setTimeout(() => window.mapHandler.startSitePolling(60000), 5000);
 
+    // Restore any in-progress batch jobs from a previous session
+    (async function restoreActiveJobs() {
+        try {
+            const res = await fetch('/api/jobs/active/', { credentials: 'include' });
+            if (!res.ok) return;
+            const jobs = await res.json();
+            if (!jobs.length) return;
+            const toTrack = jobs.map((j, i) => ({
+                id: j.id,
+                name: j.name || `Area ${i + 1}`,
+                geometry: j.aoi_geometry,
+            }));
+            window.mapHandler.trackBatchJobs(toTrack);
+        } catch (_) {}
+    })();
+
     // draw-aoi-btn lives in base.html left sidebar
     const drawBtn = document.getElementById('draw-aoi-btn');
     const drawInstructions = document.getElementById('aoi-draw-instructions');
@@ -1144,6 +1160,7 @@ async function submitAOIBatch() {
                     'X-CSRFToken': getCsrfToken(),
                 },
                 body: JSON.stringify({
+                    name: feat.name || '',
                     aoi_geometry: feat.geometry,
                     start_date: startDate,
                     end_date: endDate,

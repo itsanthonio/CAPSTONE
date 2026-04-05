@@ -31,6 +31,7 @@ class Job(models.Model):
         default=Status.QUEUED,
         db_index=True
     )
+    name = models.CharField(max_length=255, blank=True, default='', help_text="Human-readable name for this job (from uploaded feature name)")
     aoi_geometry = models.PolygonField(help_text="Area of Interest geometry")
     aoi_hash = models.CharField(
         max_length=64,

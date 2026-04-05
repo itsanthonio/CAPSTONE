@@ -8,10 +8,9 @@ class JobSerializer(serializers.ModelSerializer):
     class Meta:
         model = Job
         fields = [
-            'id', 'status', 'aoi_geometry', 'aoi_hash', 'start_date', 'end_date',
+            'id', 'name', 'status', 'aoi_geometry', 'aoi_hash', 'start_date', 'end_date',
             'model_version', 'preprocessing_version', 'created_at', 'started_at',
             'completed_at', 'failure_reason',
-            # Add detection result fields
             'total_detections', 'illegal_count', 'result_id', 'detection_data'
         ]
         read_only_fields = ['id', 'aoi_hash', 'created_at', 'started_at', 'completed_at']
@@ -22,7 +21,9 @@ class JobCreateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Job
-        fields = ['aoi_geometry', 'start_date', 'end_date']
+        fields = ['name', 'aoi_geometry', 'start_date', 'end_date']
+
+    name = serializers.CharField(required=False, allow_blank=True, default='')
     
     def validate_aoi_geometry(self, value):
         """Validate AOI geometry (Anti-Vibe 31.1.1)"""
