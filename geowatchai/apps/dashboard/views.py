@@ -452,8 +452,8 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30, org=None):
         # --- Top regions by detection count (all-time) ---
         top_regions = list(
             DetectedSite.objects
-            .filter(site_q, region__isnull=False)
-            .values('region__district', 'region__name')
+            .filter(site_q, region__isnull=False, region__district__gt='')
+            .values('region__district')
             .annotate(
                 total=Count('id'),
                 illegal=Count('id', filter=Q(legal_status='illegal')),
@@ -465,7 +465,7 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30, org=None):
             for r in top_regions:
                 r['illegal_pct'] = round((r['illegal'] / r['total']) * 100) if r['total'] > 0 else 0
                 r['bar_pct'] = round((r['total'] / max_total) * 100) if max_total > 0 else 0
-                r['region_display'] = r['region__district'] or r['region__name'] or ''
+                r['region_display'] = r['region__district']
 
         # --- Recent sites for activity feed (last 5 by scan time) ---
         from django.db.models import OuterRef, Subquery
@@ -969,8 +969,8 @@ def _build_report_context(request):
 
     # Top regions for the period
     top_regions = list(
-        sites_qs.filter(region__isnull=False)
-        .values('region__district', 'region__name')
+        sites_qs.filter(region__isnull=False, region__district__gt='')
+        .values('region__district')
         .annotate(total=Count('id'), illegal=Count('id', filter=Q(legal_status='illegal')))
         .order_by('-total')[:6]
     )
@@ -979,7 +979,7 @@ def _build_report_context(request):
         for r in top_regions:
             r['illegal_pct'] = round((r['illegal'] / r['total']) * 100) if r['total'] else 0
             r['bar_pct'] = round((r['total'] / max_total) * 100) if max_total else 0
-            r['region_display'] = r['region__district'] or r['region__name'] or ''
+            r['region_display'] = r['region__district']
 
     # Recent sites in period
     recent_sites = list(
