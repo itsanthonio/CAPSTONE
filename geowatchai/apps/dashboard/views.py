@@ -452,8 +452,8 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30, org=None):
         # --- Top regions by detection count (all-time) ---
         top_regions = list(
             DetectedSite.objects
-            .filter(site_q, region__isnull=False)
-            .values('region__id', 'region__name')
+            .filter(site_q, region__isnull=False, region__district__isnull=False)
+            .values('region__district')
             .annotate(
                 total=Count('id'),
                 illegal=Count('id', filter=Q(legal_status='illegal')),
@@ -465,6 +465,7 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30, org=None):
             for r in top_regions:
                 r['illegal_pct'] = round((r['illegal'] / r['total']) * 100) if r['total'] > 0 else 0
                 r['bar_pct'] = round((r['total'] / max_total) * 100) if max_total > 0 else 0
+                r['region_display'] = r['region__district']
 
         # --- Recent sites for activity feed (last 5 by scan time) ---
         recent_sites = list(
@@ -473,13 +474,14 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30, org=None):
             .values(
                 'id', 'detection_date', 'created_at', 'legal_status',
                 'confidence_score', 'area_hectares',
-                'region__name', 'recurrence_count',
+                'region__name', 'region__district', 'recurrence_count',
                 'job__created_by__username',
             )
         )
         for s in recent_sites:
             s['confidence_pct'] = round(s['confidence_score'] * 100, 1)
             s['id'] = str(s['id'])
+            s['region_display'] = s['region__district'] or s['region__name'] or ''
 
         # --- Average confidence of illegal detections ---
         from django.db.models import Avg
@@ -962,8 +964,8 @@ def _build_report_context(request):
 
     # Top regions for the period
     top_regions = list(
-        sites_qs.filter(region__isnull=False)
-        .values('region__id', 'region__name')
+        sites_qs.filter(region__isnull=False, region__district__isnull=False)
+        .values('region__district')
         .annotate(total=Count('id'), illegal=Count('id', filter=Q(legal_status='illegal')))
         .order_by('-total')[:6]
     )
@@ -972,6 +974,7 @@ def _build_report_context(request):
         for r in top_regions:
             r['illegal_pct'] = round((r['illegal'] / r['total']) * 100) if r['total'] else 0
             r['bar_pct'] = round((r['total'] / max_total) * 100) if max_total else 0
+            r['region_display'] = r['region__district']
 
     # Recent sites in period
     recent_sites = list(
@@ -980,12 +983,13 @@ def _build_report_context(request):
         .values(
             'id', 'detection_date', 'legal_status',
             'confidence_score', 'area_hectares',
-            'region__name', 'recurrence_count',
+            'region__name', 'region__district', 'recurrence_count',
         )
     )
     for s in recent_sites:
         s['confidence_pct'] = round(s['confidence_score'] * 100, 1)
         s['id'] = str(s['id'])
+        s['region_display'] = s['region__district'] or s['region__name'] or ''
 
     # ── Period-scoped alert stats ────────────────────────────────────────────
     alerts_qs = Alert.objects.filter(

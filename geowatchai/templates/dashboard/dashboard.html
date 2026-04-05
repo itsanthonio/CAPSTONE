@@ -397,7 +397,7 @@
                     {% for r in stats.top_regions %}
                     <div>
                         <div class="flex items-center justify-between text-xs mb-1.5">
-                            <a href="{% url 'dashboard:region_detail' r.region__id %}" class="font-medium truncate hover:underline" style="color: var(--text-primary);">{{ r.region__name }}</a>
+                            <span class="font-medium truncate" style="color: var(--text-primary);">{{ r.region_display }}</span>
                             <span class="shrink-0 ml-3 flex items-center gap-1.5">
                                 <span style="color: var(--text-secondary);">{{ r.total }}</span>
                                 {% if r.illegal > 0 %}
@@ -442,7 +442,7 @@
                          style="border-bottom: 1px solid var(--border-subtle);">
                         <div class="min-w-0">
                             <p class="text-xs font-medium truncate" style="color: var(--text-primary);">
-                                {% if site.region__name %}{{ site.region__name }}{% else %}Outside monitored zones{% endif %}
+                                {% if site.region_display %}{{ site.region_display }}{% else %}Outside monitored zones{% endif %}
                             </p>
                             <p class="text-xs mt-0.5" style="color: var(--text-tertiary);">{{ site.created_at|date:"d M Y" }} · {{ site.area_hectares|floatformat:1 }} ha · {{ site.confidence_pct }}% conf</p>
                             {% if site.job__created_by__username %}

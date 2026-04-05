@@ -271,7 +271,7 @@ body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #1f293
 <div class="section">Top Regions by Detection Count</div>
 {% for region in stats.top_regions %}
 <div class="bar-row">
-    <span class="bar-label">{{ region.region__name|default:"Unknown" }}</span>
+    <span class="bar-label">{{ region.region_display|default:"Unknown" }}</span>
     <span class="bar-outer"><div class="bar-track"><div class="bar-fill" style="width:{{ region.bar_pct }}%;"></div></div></span>
     <span class="bar-count">{{ region.total }}</span>
     <span class="bar-pct">{{ region.illegal_pct }}%</span>
@@ -297,7 +297,7 @@ body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #1f293
         {% for site in stats.recent_sites %}
         <tr>
             <td>{{ site.detection_date }}</td>
-            <td>{{ site.region__name|default:"—" }}</td>
+            <td>{{ site.region_display|default:"—" }}</td>
             <td>{% if site.legal_status == 'illegal' %}<span class="badge badge-red">Illegal</span>
             {% else %}<span class="badge badge-green">Legal</span>{% endif %}</td>
             <td>{{ site.confidence_pct }}%</td>

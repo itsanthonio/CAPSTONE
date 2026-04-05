@@ -325,10 +325,8 @@
     <div class="gw-card p-5 space-y-2">
         {% for region in stats.top_regions %}
         <div class="bar-row">
-            <div class="bar-label" title="{{ region.region__name }}">
-                {% if region.region__id %}
-                <a href="{% url 'dashboard:region_detail' region.region__id %}" style="color: var(--text-secondary); text-decoration: underline dotted;">{{ region.region__name|default:"Unknown" }}</a>
-                {% else %}{{ region.region__name|default:"Unknown" }}{% endif %}
+            <div class="bar-label" title="{{ region.region_display }}">
+                {{ region.region_display|default:"Unknown" }}
             </div>
             <div class="bar-track">
                 <div class="bar-fill" style="width: {{ region.bar_pct }}%;"></div>
@@ -388,7 +386,7 @@
                 {% for site in stats.recent_sites %}
                 <tr>
                     <td>{{ site.detection_date }}</td>
-                    <td>{{ site.region__name|default:"—" }}</td>
+                    <td>{{ site.region_display|default:"—" }}</td>
                     <td>
                         {% if site.legal_status == 'illegal' %}
                         <span class="rpt-badge rpt-badge-red">Illegal</span>
