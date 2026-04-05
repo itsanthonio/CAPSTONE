@@ -1214,16 +1214,16 @@ def dashboard_model_insights(request):
     total_fp = sum(1 for a in verified if a.outcome == 'false_positive')
     has_field_data = total_verified > 0
 
-    # ── Live Precision — rolling last N verified ──────────────────────────────
+    # ── Live Precision — prior-blended (Bayesian smoothing) ──────────────────
     PRECISION_WINDOW = django_settings.MODEL_PRECISION_WINDOW
     _precision_fallback = django_settings.MODEL_TEST_METRICS['precision_fallback']
+    PRIOR_WEIGHT = 20   # prior acts as 20 synthetic observations at test-set precision
+    prior_tp = (_precision_fallback / 100) * PRIOR_WEIGHT
+    prior_total = PRIOR_WEIGHT
     recent = verified[-PRECISION_WINDOW:]
-    if recent:
-        w_tp = sum(1 for a in recent if a.outcome == 'mining_confirmed')
-        w_fp = sum(1 for a in recent if a.outcome == 'false_positive')
-        live_precision = round(w_tp / (w_tp + w_fp) * 100, 1) if (w_tp + w_fp) else _precision_fallback
-    else:
-        live_precision = _precision_fallback   # test-set fallback
+    field_tp = sum(1 for a in recent if a.outcome == 'mining_confirmed')
+    field_total = len(recent)
+    live_precision = round((prior_tp + field_tp) / (prior_total + field_total) * 100, 1)
 
     # ── Live Accuracy — EMA starting from test-set baseline ──────────────────
     ALPHA = 0.05            # each report carries ~5% weight
