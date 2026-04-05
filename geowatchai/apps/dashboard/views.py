@@ -1941,7 +1941,7 @@ def _send_activation_email(request, user):
     link = request.build_absolute_uri(relative_url)
     subject = "Confirm your SankofaWatch account"
     plain_body = f"Hi {user.username},\n\nClick the link to activate your account:\n{link}\n\nThis link expires in 24 hours."
-    html_body = render_to_string('registration/activation_email.html', {'link': link, 'user': user})
+    html_body = render_to_string('registration/activation_email.html', {'link': link, 'user': user, 'site_url': django_settings.SITE_URL})
     send_mail(
         subject=subject,
         message=plain_body,
@@ -1960,7 +1960,7 @@ def _send_activation_pin_email(user, pin):
     """Send a 6-digit activation PIN to a newly registered user."""
     subject = "Your SankofaWatch account activation code"
     plain_body = f"Hi {user.username},\n\nYour activation code is: {pin}\n\nThis code expires in 24 hours."
-    html_body = render_to_string('registration/activation_pin_email.html', {'pin': pin, 'user': user})
+    html_body = render_to_string('registration/activation_pin_email.html', {'pin': pin, 'user': user, 'site_url': django_settings.SITE_URL})
     send_mail(
         subject=subject,
         message=plain_body,
@@ -2061,7 +2061,7 @@ def _send_pin_email(user, pin):
     """Send a 6-digit PIN to the user for password reset."""
     subject = "Your SankofaWatch password reset code"
     plain_body = f"Hi {user.username},\n\nYour password reset code is: {pin}\n\nThis code expires in 10 minutes.\n\nIf you didn't request this, ignore this email."
-    html_body = render_to_string('registration/pin_email.html', {'pin': pin, 'user': user})
+    html_body = render_to_string('registration/pin_email.html', {'pin': pin, 'user': user, 'site_url': django_settings.SITE_URL})
     send_mail(
         subject=subject,
         message=plain_body,
