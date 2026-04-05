@@ -1254,26 +1254,35 @@ def dashboard_model_insights(request):
         else:
             monthly_buckets[key]['fp'] += 1
 
-    monthly_labels     = []
-    monthly_precision  = []
-    monthly_accuracy   = []
-    running_ema        = BASE_ACCURACY  # already read from settings above
+    monthly_labels       = []
+    monthly_precision    = []
+    monthly_accuracy     = []
+    running_ema          = BASE_ACCURACY  # already read from settings above
+    running_prior_tp     = prior_tp       # carry the same prior forward
+    running_prior_total  = prior_total
+    running_field_tp     = 0
+    running_field_total  = 0
 
     for y, m in months:
         monthly_labels.append(f"{calendar.month_abbr[m]} '{str(y)[2:]}")
         bucket = monthly_buckets.get((y, m), {'tp': 0, 'fp': 0})
         m_tp, m_fp = bucket['tp'], bucket['fp']
 
-        # Apply EMA for every outcome in this month (chronological nudges)
+        # Accumulate field data up to and including this month
+        running_field_tp    += m_tp
+        running_field_total += m_tp + m_fp
+
+        # Apply EMA for accuracy (chronological nudges)
         for _ in range(m_tp):
             running_ema = ALPHA * 1.0 + (1 - ALPHA) * running_ema
         for _ in range(m_fp):
             running_ema = ALPHA * 0.0 + (1 - ALPHA) * running_ema
 
         monthly_accuracy.append(round(running_ema * 100, 1))
-        monthly_precision.append(
-            round(m_tp / (m_tp + m_fp) * 100, 1) if (m_tp + m_fp) else None
-        )
+
+        # Precision: same prior blending, using cumulative field data up to this month
+        blended = (running_prior_tp + running_field_tp) / (running_prior_total + running_field_total)
+        monthly_precision.append(round(blended * 100, 1))
 
     return render(request, 'dashboard/model_insights.html', {
         # Live metrics
