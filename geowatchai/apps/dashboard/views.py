@@ -468,20 +468,25 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30, org=None):
                 r['region_display'] = r['region__district'] or r['region__name'] or ''
 
         # --- Recent sites for activity feed (last 5 by scan time) ---
+        from django.db.models import OuterRef, Subquery
+        _alert_title_sq = Alert.objects.filter(
+            detected_site=OuterRef('pk')
+        ).order_by('-created_at').values('title')[:1]
         recent_sites = list(
-            DetectedSite.objects.filter(site_q).select_related('region', 'job__created_by')
+            DetectedSite.objects.filter(site_q)
+            .annotate(alert_title=Subquery(_alert_title_sq))
             .order_by('-created_at')[:5]
             .values(
                 'id', 'detection_date', 'created_at', 'legal_status',
                 'confidence_score', 'area_hectares',
-                'region__name', 'region__district', 'recurrence_count',
-                'job__created_by__username',
+                'area_hectares', 'recurrence_count',
+                'alert_title', 'job__created_by__username',
             )
         )
         for s in recent_sites:
             s['confidence_pct'] = round(s['confidence_score'] * 100, 1)
             s['id'] = str(s['id'])
-            s['region_display'] = s['region__district'] or s['region__name'] or ''
+            s['site_label'] = s['alert_title'] or f"Detection {s['id'][:8]}"
 
         # --- Average confidence of illegal detections ---
         from django.db.models import Avg
