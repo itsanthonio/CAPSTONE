@@ -7,113 +7,175 @@
 <style>
 /* ── Reset ─────────────────────────────────────────────────────────── */
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #1f2937; background: #fff; }
+body {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 11px;
+    color: #1a1a1a;
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
 
-@page { margin: 14mm; }
+@page { margin: 14mm 16mm; }
 
 /* ── Header ─────────────────────────────────────────────────────────── */
-.pdf-header { border-bottom: 2px solid #1c4532; padding-bottom: 10px; margin-bottom: 16px; }
-.pdf-title  { font-size: 18px; font-weight: bold; color: #1c4532; }
-.pdf-meta   { font-size: 10px; color: #6b7280; margin-top: 3px; }
+.pdf-header {
+    border-bottom: 3px solid #f6be39;
+    padding-bottom: 12px;
+    margin-bottom: 18px;
+    display: table;
+    width: 100%;
+}
+.pdf-header-left  { display: table-cell; vertical-align: bottom; }
+.pdf-header-right { display: table-cell; vertical-align: bottom; text-align: right; }
+.pdf-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #10141a;
+    letter-spacing: -0.02em;
+}
+.pdf-subtitle {
+    font-size: 10px;
+    color: #9b8f7a;
+    margin-top: 3px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.pdf-org {
+    font-size: 11px;
+    font-weight: 700;
+    color: #f6be39;
+    margin-bottom: 2px;
+}
+.pdf-meta { font-size: 9px; color: #9b8f7a; }
 
 /* ── Section heading ──────────────────────────────────────────────── */
 .section {
-    font-size: 9px;
+    font-size: 8px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #6b7280;
-    border-bottom: 1px solid #e5e7eb;
+    letter-spacing: 0.12em;
+    color: #f6be39;
+    border-bottom: 1px solid #f0e8d0;
     padding-bottom: 5px;
-    margin-top: 18px;
+    margin-top: 20px;
     margin-bottom: 10px;
 }
 
 /* ── Stat grid ───────────────────────────────────────────────────── */
 .stat-grid { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-.stat-grid td { width: 25%; vertical-align: top; padding: 8px 8px 8px 0; }
+.stat-grid td { width: 25%; vertical-align: top; padding: 0 6px 0 0; }
+.stat-grid td:last-child { padding-right: 0; }
 .stat-card {
-    border: 1px solid #e5e7eb;
     border-radius: 4px;
     padding: 10px 12px;
-    background: #f9fafb;
+    background: #f9f6f0;
+    border-left: 3px solid #d3c5ae;
 }
-.stat-label { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; }
-.stat-value { font-size: 22px; font-weight: bold; margin: 4px 0 2px; color: #1f2937; }
-.stat-sub   { font-size: 9px; color: #9ca3af; }
-.stat-red    .stat-value { color: #b91c1c; }
-.stat-amber  .stat-value { color: #b45309; }
-.stat-green  .stat-value { color: #15803d; }
+.stat-label {
+    font-size: 7px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: #9b8f7a;
+}
+.stat-value { font-size: 22px; font-weight: bold; margin: 4px 0 2px; color: #10141a; }
+.stat-sub   { font-size: 8px; color: #9b8f7a; }
+.stat-red   { border-left-color: #c0392b; }
+.stat-red   .stat-value { color: #c0392b; }
+.stat-amber { border-left-color: #f6be39; }
+.stat-amber .stat-value { color: #b8891a; }
+.stat-green { border-left-color: #27ae60; }
+.stat-green .stat-value { color: #27ae60; }
 
 /* ── Tables ─────────────────────────────────────────────────────────── */
 .pdf-table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 6px; }
 .pdf-table thead th {
     text-align: left;
-    font-size: 8px;
+    font-size: 7px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: .05em;
-    color: #6b7280;
+    letter-spacing: .1em;
+    color: #9b8f7a;
     padding: 5px 8px;
-    border-bottom: 1px solid #d1d5db;
-    background: #f9fafb;
+    border-bottom: 2px solid #f6be39;
+    background: #fdfaf4;
 }
 .pdf-table tbody td {
     padding: 6px 8px;
-    border-bottom: 1px solid #f3f4f6;
-    color: #374151;
+    border-bottom: 1px solid #f0ebe0;
+    color: #1a1a1a;
     vertical-align: middle;
 }
 .pdf-table tbody tr:last-child td { border-bottom: none; }
+.pdf-table tbody tr:nth-child(even) td { background: #fdfaf4; }
 
 /* ── Badges ─────────────────────────────────────────────────────────── */
 .badge {
     display: inline-block;
     padding: 1px 6px;
-    border-radius: 999px;
+    border-radius: 3px;
     font-size: 8px;
     font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
-.badge-red    { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
-.badge-amber  { background: #fffbeb; color: #b45309; border: 1px solid #fcd34d; }
+.badge-red    { background: #fdf0ef; color: #c0392b; border: 1px solid #e8b4b0; }
+.badge-amber  { background: #fdf8ec; color: #b8891a; border: 1px solid #f0d88a; }
 .badge-blue   { background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; }
 .badge-green  { background: #f0fdf4; color: #15803d; border: 1px solid #86efac; }
-.badge-gray   { background: #f9fafb; color: #374151; border: 1px solid #d1d5db; }
+.badge-gray   { background: #f5f3ef; color: #6b6560; border: 1px solid #d3c5ae; }
 .badge-purple { background: #f5f3ff; color: #6d28d9; border: 1px solid #c4b5fd; }
 
 /* ── Bar chart ──────────────────────────────────────────────────────── */
 .bar-row    { display: table; width: 100%; margin-bottom: 5px; }
-.bar-label  { display: table-cell; width: 140px; font-size: 10px; color: #374151; white-space: nowrap; overflow: hidden; vertical-align: middle; padding-right: 8px; }
+.bar-label  { display: table-cell; width: 140px; font-size: 10px; color: #1a1a1a; white-space: nowrap; overflow: hidden; vertical-align: middle; padding-right: 8px; }
 .bar-outer  { display: table-cell; vertical-align: middle; }
-.bar-track  { height: 7px; background: #e5e7eb; border-radius: 3px; overflow: hidden; }
-.bar-fill   { height: 7px; background: #d97706; border-radius: 3px; }
-.bar-count  { display: table-cell; width: 32px; text-align: right; font-size: 10px; font-weight: 700; color: #374151; vertical-align: middle; padding-left: 6px; }
-.bar-pct    { display: table-cell; width: 42px; text-align: right; font-size: 9px; font-weight: 700; color: #b91c1c; vertical-align: middle; padding-left: 6px; }
+.bar-track  { height: 7px; background: #f0ebe0; border-radius: 3px; overflow: hidden; }
+.bar-fill   { height: 7px; background: #f6be39; border-radius: 3px; }
+.bar-count  { display: table-cell; width: 32px; text-align: right; font-size: 10px; font-weight: 700; color: #1a1a1a; vertical-align: middle; padding-left: 6px; }
+.bar-pct    { display: table-cell; width: 42px; text-align: right; font-size: 9px; font-weight: 700; color: #c0392b; vertical-align: middle; padding-left: 6px; }
 
 /* ── Footer ─────────────────────────────────────────────────────────── */
-.pdf-footer { border-top: 1px solid #e5e7eb; margin-top: 20px; padding-top: 8px; font-size: 9px; color: #9ca3af; text-align: right; }
+.pdf-footer {
+    border-top: 2px solid #f6be39;
+    margin-top: 24px;
+    padding-top: 8px;
+    font-size: 8px;
+    color: #9b8f7a;
+    display: table;
+    width: 100%;
+}
+.pdf-footer-left  { display: table-cell; text-align: left; }
+.pdf-footer-right { display: table-cell; text-align: right; }
 
 /* ── Two-column layout ───────────────────────────────────────────── */
 .two-col { width: 100%; border-collapse: collapse; }
-.two-col td { width: 50%; vertical-align: top; padding-right: 10px; }
-.two-col td:last-child { padding-right: 0; padding-left: 10px; }
+.two-col td { width: 50%; vertical-align: top; padding-right: 12px; }
+.two-col td:last-child { padding-right: 0; padding-left: 12px; }
+
+/* ── Section note ────────────────────────────────────────────────── */
+.section-note { font-size: 9px; color: #9b8f7a; margin: 0 0 8px; }
 </style>
 </head>
 <body>
 
 <!-- Header -->
 <div class="pdf-header">
-    <div class="pdf-title">SankofaWatch — Detection Report</div>
-    <div class="pdf-meta">
-        {% if org_name %}{{ org_name }} &nbsp;·&nbsp; {% endif %}
-        {{ period_start|date:"N j, Y" }} — {{ period_end|date:"N j, Y" }}
-        &nbsp;·&nbsp; Generated {{ report_date|date:"N j, Y \a\t g:i A" }}
+    <div class="pdf-header-left">
+        <div class="pdf-title">SankofaWatch</div>
+        <div class="pdf-subtitle">Illegal Mining Detection Report</div>
+    </div>
+    <div class="pdf-header-right">
+        {% if org_name %}<div class="pdf-org">{{ org_name }}</div>{% endif %}
+        <div class="pdf-meta">{{ period_start|date:"j N Y" }} — {{ period_end|date:"j N Y" }}</div>
+        <div class="pdf-meta">Generated {{ report_date|date:"j N Y \a\t g:i A" }}</div>
     </div>
 </div>
 
-<!-- 1. Executive Summary (all-time cumulative) -->
+<!-- 1. Executive Summary -->
 <div class="section">Executive Summary</div>
-<p style="font-size:9px;color:#6e7681;margin:0 0 8px;">Cumulative totals as of {{ report_date|date:"j N Y" }} — matches dashboard figures.</p>
+<p class="section-note">Cumulative totals as of {{ report_date|date:"j N Y" }} — matches dashboard figures.</p>
 <table class="stat-grid">
     <tr>
         <td><div class="stat-card stat-red">
@@ -186,7 +248,7 @@ body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #1f293
                         <td style="font-weight:700;">{{ cnt }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="2" style="color:#9ca3af;">No data</td></tr>
+                    <tr><td colspan="2" style="color:#9b8f7a;">No data</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -205,7 +267,7 @@ body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #1f293
                         <td style="font-weight:700;">{{ cnt }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="2" style="color:#9ca3af;">No data</td></tr>
+                    <tr><td colspan="2" style="color:#9b8f7a;">No data</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -363,7 +425,8 @@ body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #1f293
 
 <!-- Footer -->
 <div class="pdf-footer">
-    Generated {{ report_date|date:"N j, Y \a\t g:i A" }} &mdash; SankofaWatch &mdash; Confidential
+    <div class="pdf-footer-left">SankofaWatch &mdash; Confidential</div>
+    <div class="pdf-footer-right">Generated {{ report_date|date:"j N Y \a\t g:i A" }}</div>
 </div>
 
 </body>

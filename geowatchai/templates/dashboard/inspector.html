@@ -61,8 +61,10 @@
     /* Print */
     #print-overlay { display: none; }
     @media print {
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         body.is-printing > *:not(#print-overlay) { display: none !important; }
         body.is-printing #print-overlay { display: block !important; }
+        body.is-printing { background: #0a0e14 !important; }
         .print-hide { display: none !important; }
     }
 
