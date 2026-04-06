@@ -210,7 +210,7 @@ class MapHandler {
             source: 'admin-regions',
             layout: {
                 visibility: 'none',
-                'text-field': ['get', 'name'],
+                'text-field': ['coalesce', ['get', 'REGION'], ['get', 'name'], ''],
                 'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
                 'text-size': 13,
                 'text-anchor': 'center',
