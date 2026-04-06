@@ -224,7 +224,7 @@ class MapHandler {
             }
         });
 
-        fetch('/api/regions/?type=district', { credentials: 'include' })
+        fetch('/static/data/Ghana_Regions.geojson')
             .then(r => r.ok ? r.json() : null)
             .then(data => {
                 if (data && data.features)
@@ -272,7 +272,7 @@ class MapHandler {
             }
         });
 
-        fetch('/api/regions/?type=admin_district', { credentials: 'include' })
+        fetch('/static/data/Ghana_District.geojson')
             .then(r => r.ok ? r.json() : null)
             .then(data => {
                 if (data && data.features)
