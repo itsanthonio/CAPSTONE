@@ -233,6 +233,28 @@ class JobViewSet(OrgScopedMixin, viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @action(detail=False, methods=['get'])
+    def active(self, request):
+        """
+        Return all in-progress jobs for the current user so the live map
+        can resume polling after the user navigates away and comes back.
+        """
+        terminal = {Job.Status.COMPLETED, Job.Status.FAILED, Job.Status.CANCELLED}
+        qs = Job.objects.filter(
+            created_by=request.user,
+            source=Job.Source.MANUAL,
+        ).exclude(status__in=terminal).order_by('-created_at')
+        data = [
+            {
+                'id': str(j.id),
+                'name': j.name,
+                'status': j.status,
+                'aoi_geometry': j.aoi_geometry.geojson,
+            }
+            for j in qs
+        ]
+        return Response(data)
+
 
 class ResultViewSet(OrgScopedMixin, viewsets.ModelViewSet):
     org_field = 'job__organisation'
