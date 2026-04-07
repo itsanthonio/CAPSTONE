@@ -1257,8 +1257,6 @@ function showConfirm(title, message) {
         const f = _tlFrames[idx];
         if (!f) return;
         document.getElementById('modal-tl-year').textContent = f.year;
-        document.getElementById('modal-tl-ndvi').textContent = f.mean_ndvi != null ? f.mean_ndvi.toFixed(3) : '—';
-        document.getElementById('modal-tl-bsi').textContent  = f.mean_bsi  != null ? f.mean_bsi.toFixed(3)  : '—';
         const img = document.getElementById('modal-tl-img');
         const fb  = document.getElementById('modal-tl-img-fallback');
         if (f.thumbnail_url) { img.src = f.thumbnail_url; img.classList.remove('hidden'); fb.classList.add('hidden'); }

@@ -526,8 +526,6 @@ function renderSiteTlFrame(idx) {
     const f = _siteTlFrames[idx];
     if (!f) return;
     document.getElementById('site-tl-year').textContent = f.year;
-    document.getElementById('site-tl-ndvi').textContent = f.mean_ndvi != null ? f.mean_ndvi.toFixed(3) : '—';
-    document.getElementById('site-tl-bsi').textContent  = f.mean_bsi  != null ? f.mean_bsi.toFixed(3)  : '—';
     const img = document.getElementById('site-tl-img');
     const fb  = document.getElementById('site-tl-fallback');
     if (f.thumbnail_url) {

@@ -688,8 +688,6 @@ document.addEventListener('DOMContentLoaded', function () {
         function renderFrame(idx) {
             const f = _frames[idx]; if (!f) return;
             document.getElementById('sp-timelapse-year-label').textContent = f.year;
-            document.getElementById('sp-timelapse-ndvi').textContent = f.mean_ndvi != null ? f.mean_ndvi.toFixed(3) : '—';
-            document.getElementById('sp-timelapse-bsi').textContent  = f.mean_bsi  != null ? f.mean_bsi.toFixed(3)  : '—';
             const img = document.getElementById('sp-timelapse-img');
             const fb  = document.getElementById('sp-timelapse-img-fallback');
             if (f.thumbnail_url) { img.src = f.thumbnail_url; img.classList.remove('hidden'); fb.classList.add('hidden'); }
