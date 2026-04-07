@@ -34,7 +34,9 @@ def _get_site_region(site):
 #   Tier 2 — hotspot tiles not scanned in the last HOTSPOT_COOLDOWN_HOURS hours
 #   Tier 3 — normal tiles not scanned in the last NORMAL_COOLDOWN_DAYS days
 # Max TILES_PER_TICK tiles queued per 5-minute tick.
-TILES_PER_TICK          = 5
+# Max MAX_IN_FLIGHT automated jobs running at once — skip tick if exceeded.
+TILES_PER_TICK          = 3
+MAX_IN_FLIGHT           = 6
 HOTSPOT_COOLDOWN_HOURS  = 20
 NORMAL_COOLDOWN_DAYS    = 7
 
@@ -77,6 +79,17 @@ def auto_scan_tick():
     normal_cutoff  = now - timedelta(days=NORMAL_COOLDOWN_DAYS)
     end_date       = today
     start_date     = today.replace(year=today.year - 2)
+
+    # Guard: too many jobs already in flight — wait for them to drain
+    from apps.jobs.models import Job as _Job
+    in_flight_statuses = [
+        'queued', 'validating', 'exporting',
+        'preprocessing', 'inferring', 'postprocessing', 'storing',
+    ]
+    in_flight = _Job.objects.filter(source='automated', status__in=in_flight_statuses).count()
+    if in_flight >= MAX_IN_FLIGHT:
+        logger.info(f'auto_scan_tick: {in_flight} jobs in flight (max {MAX_IN_FLIGHT}), waiting.')
+        return {'skipped': 'max_in_flight', 'in_flight': in_flight}
 
     queued = 0
     failed = 0
