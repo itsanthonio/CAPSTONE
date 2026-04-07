@@ -2353,9 +2353,15 @@ def system_admin_dashboard(request):
             _crit = _counts['critical_count'] or 0
             _pts = ' '.join('{},{}'.format(*_proj(c[0], c[1]))
                             for c in _feat['geometry']['coordinates'][0])
-            _cx, _cy = _proj(_p['cx'], _p['cy'])
+            # Support both old hand-drawn GeoJSON (has cx/cy/name) and new real boundary data (has REGION)
+            _name = _p.get('REGION') or _p.get('name') or _p.get('region') or 'Unknown'
+            if 'cx' in _p and 'cy' in _p:
+                _cx, _cy = _proj(_p['cx'], _p['cy'])
+            else:
+                _centroid = _poly.centroid
+                _cx, _cy = _proj(_centroid.x, _centroid.y)
             svg_features.append({
-                'name':          _p['name'],
+                'name':          _name,
                 'points':        _pts,
                 'cx':            _cx,
                 'cy':            _cy,
