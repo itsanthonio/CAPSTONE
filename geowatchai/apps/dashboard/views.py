@@ -63,10 +63,11 @@ def impact_page(request):
         }
 
         # Top 2 largest illegal detections that have real satellite imagery
+        # Check both DetectedSite.img_overlay and job.img_overlay
         impact_sites = list(
             DetectedSite.objects
             .filter(legal_status='illegal')
-            .exclude(img_overlay='')
+            .filter(Q(img_overlay__gt='') | Q(img_false_color__gt='') | Q(job__img_overlay__gt='') | Q(job__img_false_color__gt=''))
             .select_related('region', 'job')
             .order_by('-area_hectares')[:2]
         )

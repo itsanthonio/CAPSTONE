@@ -459,14 +459,29 @@
                     <img src="{{ MEDIA_URL }}{{ site.img_false_color }}" alt="Satellite false colour"
                          class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                          style="opacity: 0.85;">
-                    {% elif forloop.first %}
-                    <img src="{% static 'images/mining_detection.jpg' %}" alt="Satellite detection"
+                    {% elif site.job and site.job.img_overlay %}
+                    <img src="{{ MEDIA_URL }}{{ site.job.img_overlay }}" alt="Satellite detection overlay"
+                         class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                         style="opacity: 0.85;">
+                    {% elif site.job and site.job.img_false_color %}
+                    <img src="{{ MEDIA_URL }}{{ site.job.img_false_color }}" alt="Satellite false colour"
                          class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                          style="opacity: 0.85;">
                     {% else %}
-                    <img src="{% static 'images/forest_protected.jpg' %}" alt="Satellite detection"
-                         class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                         style="opacity: 0.85;">
+                    <div class="w-full h-full flex items-center justify-center"
+                         style="background: radial-gradient(ellipse at 30% 40%, rgba(246,190,57,0.08) 0%, transparent 60%),
+                                linear-gradient(135deg, #0d1117 0%, #181c22 50%, #0f1318 100%);
+                                background-image: repeating-linear-gradient(0deg, transparent, transparent 23px, rgba(246,190,57,0.04) 24px),
+                                                  repeating-linear-gradient(90deg, transparent, transparent 23px, rgba(246,190,57,0.04) 24px),
+                                                  radial-gradient(ellipse at 30% 40%, rgba(246,190,57,0.08) 0%, transparent 60%),
+                                                  linear-gradient(135deg, #0d1117 0%, #181c22 50%, #0f1318 100%);">
+                        <div class="text-center">
+                            <svg class="w-10 h-10 mx-auto mb-2" style="color: rgba(246,190,57,0.25);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/>
+                            </svg>
+                            <p class="text-[10px] uppercase tracking-widest" style="color: rgba(246,190,57,0.3);">Satellite Imagery</p>
+                        </div>
+                    </div>
                     {% endif %}
                     <div class="absolute inset-0" style="background: linear-gradient(to top, rgba(24,28,34,0.9) 0%, transparent 55%);"></div>
                     <div class="absolute top-4 left-4">
