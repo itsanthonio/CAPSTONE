@@ -258,7 +258,7 @@ class MapHandler {
             minzoom: 8,
             layout: {
                 visibility: 'none',
-                'text-field': ['get', 'name'],
+                'text-field': ['get', 'DISTRICT'],
                 'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
                 'text-size': 11,
                 'text-anchor': 'center',

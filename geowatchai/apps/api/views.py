@@ -7,6 +7,7 @@ This module provides DRF ViewSets for:
 - Result retrieval in GeoJSON format
 """
 
+import json
 import logging
 from django.db import transaction
 from django.shortcuts import get_object_or_404
@@ -249,7 +250,7 @@ class JobViewSet(OrgScopedMixin, viewsets.ModelViewSet):
                 'id': str(j.id),
                 'name': j.name,
                 'status': j.status,
-                'aoi_geometry': j.aoi_geometry.geojson,
+                'aoi_geometry': json.loads(j.aoi_geometry.geojson),
             }
             for j in qs
         ]
