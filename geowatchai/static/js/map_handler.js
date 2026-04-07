@@ -224,7 +224,7 @@ class MapHandler {
             }
         });
 
-        fetch('/static/data/Ghana_Regions.geojson')
+        fetch('/static/data/ghana_regions.geojson')
             .then(r => r.ok ? r.json() : null)
             .then(data => {
                 if (data && data.features)
