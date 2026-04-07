@@ -289,6 +289,11 @@ class ScanningToggleAPI(View):
         from apps.accounts.models import Organisation
         enabled = (action == 'resume')
 
+        # Also toggle the global AutoScanConfig so the task guard is in sync
+        global_cfg = AutoScanConfig.get()
+        global_cfg.is_enabled = enabled
+        global_cfg.save(update_fields=['is_enabled'])
+
         # Bulk-update all existing OrgScanConfig records.
         OrgScanConfig.objects.all().update(is_enabled=enabled)
 
