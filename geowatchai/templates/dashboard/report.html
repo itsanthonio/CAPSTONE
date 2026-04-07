@@ -66,7 +66,7 @@
 .rpt-section:first-child { margin-top: 0; }
 
 @media print {
-    @page { margin: 14mm; }
+    @page { margin: 14mm; size: A4; }
 
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 
@@ -76,24 +76,52 @@
     #sidebar-overlay,
     .print-hide { display: none !important; }
 
-    /* Remove sidebar offset */
+    /* Remove sidebar offset and padding */
     body > div.flex { padding-top: 0 !important; }
-    #main-content   { margin-left: 0 !important; }
+    #main-content   { margin-left: 0 !important; width: 100% !important; }
+    body > div.flex > main { padding: 0 !important; }
 
-    /* Preserve Sentinel dark theme */
-    body { background: #0a0e14 !important; color: #dfe2eb !important; }
+    /* Light theme — works regardless of browser B&W or background settings */
+    body { background: #fff !important; color: #111 !important; }
 
     .gw-card {
         box-shadow: none !important;
-        background: #181c22 !important;
+        background: #f5f5f5 !important;
+        border: 1px solid #ddd !important;
         break-inside: avoid;
     }
 
-    .bar-fill  { background: #f6be39 !important; }
+    /* Force 4-column stat grids regardless of viewport breakpoint */
+    .grid.grid-cols-2.lg\\:grid-cols-4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    }
 
-    .rpt-section { color: #f6be39 !important; border-color: rgba(246,190,57,0.2) !important; }
+    /* Text colour overrides for light background */
+    [style*="color: var(--text-primary)"],
+    [style*="color: var(--text-secondary)"],
+    [style*="color: var(--text-tertiary)"] { color: #444 !important; }
+    [style*="color: var(--status-critical)"] { color: #c0392b !important; }
+    [style*="color: var(--status-high)"]     { color: #d35400 !important; }
+    [style*="color: var(--accent)"]          { color: #b8860b !important; }
 
+    /* Bar chart */
+    .bar-track { background: #e0e0e0 !important; }
+    .bar-fill  { background: #b8860b !important; }
+
+    /* Section dividers */
+    .rpt-section { color: #555 !important; border-color: #ccc !important; }
+
+    /* Badges — keep colours but ensure readable on light bg */
+    .rpt-badge { border-width: 1px !important; }
+
+    /* Tables */
+    .report-table thead th { color: #555 !important; border-color: #ccc !important; }
+    .report-table tbody td { color: #222 !important; border-color: #eee !important; }
     .report-table tbody tr:hover td { background: transparent !important; }
+
+    /* Section header text */
+    h1, h2, h3 { color: #111 !important; }
+    p { color: #444 !important; }
 }
 </style>
 {% endblock %}
