@@ -292,6 +292,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const perfCtx = document.getElementById('performance-chart');
     if (perfCtx) {
+        const isLight = document.body.dataset.theme === 'light';
         const hasFieldData = {{ has_field_data|yesno:"true,false" }};
         const monthlyLabels    = {{ monthly_labels|safe }};
         const monthlyPrecision = {{ monthly_precision|safe }};
@@ -312,8 +313,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 {
                     label: 'Precision (rolling)',
                     data: monthlyPrecision,
-                    borderColor: 'rgba(223,226,235,0.5)',
-                    backgroundColor: 'rgba(223,226,235,0.04)',
+                    borderColor: isLight ? '#3f6653' : 'rgba(223,226,235,0.5)',
+                    backgroundColor: isLight ? 'rgba(63,102,83,0.06)' : 'rgba(223,226,235,0.04)',
                     borderWidth: 2, pointRadius: 4, tension: 0.35, fill: false, spanGaps: true,
                 },
             ];
@@ -356,16 +357,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 plugins: {
                     legend: {
                         position: 'bottom',
-                        labels: { font: { size: 11 }, color: '#9b8f7a', boxWidth: 14, padding: 16 }
+                        labels: { font: { size: 11 }, color: isLight ? '#6b7280' : '#9b8f7a', boxWidth: 14, padding: 16 }
                     },
                     tooltip: {
                         mode: 'index',
                         intersect: false,
-                        backgroundColor: 'rgba(10,14,20,0.9)',
-                        borderColor: 'rgba(79,70,52,0.2)',
+                        backgroundColor: isLight ? 'rgba(255,255,255,0.97)' : 'rgba(10,14,20,0.9)',
+                        borderColor: isLight ? 'rgba(0,0,0,0.12)' : 'rgba(79,70,52,0.2)',
                         borderWidth: 1,
-                        titleColor: '#e2d5c0',
-                        bodyColor: '#9b8f7a',
+                        titleColor: isLight ? '#1a1c1b' : '#e2d5c0',
+                        bodyColor: isLight ? '#6b7280' : '#9b8f7a',
                         callbacks: {
                             label: ctx => ctx.raw !== null
                                 ? ` ${ctx.dataset.label}: ${ctx.raw}%`
@@ -376,15 +377,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 scales: {
                     x: {
                         grid: { display: false },
-                        ticks: { font: { size: 11 }, color: '#9b8f7a' }
+                        ticks: { font: { size: 11 }, color: isLight ? '#6b7280' : '#9b8f7a' }
                     },
                     y: {
                         min: 30,
                         max: 100,
-                        grid: { color: 'rgba(79,70,52,0.1)' },
+                        grid: { color: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(79,70,52,0.1)' },
                         ticks: {
                             font: { size: 11 },
-                            color: '#9b8f7a',
+                            color: isLight ? '#6b7280' : '#9b8f7a',
                             callback: v => v + '%'
                         }
                     }

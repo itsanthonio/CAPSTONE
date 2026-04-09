@@ -90,32 +90,32 @@ html:has(body[data-theme="light"]) { color-scheme: light; }
 body[data-theme="light"] {
   color-scheme: light;
 
-  /* Surfaces — warm cream base, white cards */
-  --surface-base:    #f7f4ec;
+  /* Surfaces — warm off-white base, layered cards */
+  --surface-base:    #f9f9f7;
   --surface-1:       #ffffff;
-  --surface-2:       #ffffff;
-  --surface-3:       #faf7f0;
-  --surface-4:       #ede9de;
+  --surface-2:       #f4f4f2;
+  --surface-3:       #eeeeec;
+  --surface-4:       #e5e5e3;
   --surface-overlay: rgba(0, 0, 0, 0.35);
 
-  /* Borders */
-  --border-subtle:   rgba(0, 0, 0, 0.07);
-  --border-default:  rgba(0, 0, 0, 0.13);
-  --border-strong:   rgba(0, 0, 0, 0.24);
-  --border-focus:    #15803d;
+  /* Borders — defined by tonal shift, not lines */
+  --border-subtle:   rgba(0, 0, 0, 0.06);
+  --border-default:  rgba(0, 0, 0, 0.10);
+  --border-strong:   rgba(0, 0, 0, 0.20);
+  --border-focus:    #3f6653;
 
   /* Text */
-  --text-primary:    #111827;
-  --text-secondary:  #374151;
+  --text-primary:    #1a1c1b;
+  --text-secondary:  #4f4634;
   --text-tertiary:   #6b7280;
   --text-inverse:    #ffffff;
-  --text-link:       #15803d;
+  --text-link:       #3f6653;
 
-  /* Brand accent — slightly brighter gold for light backgrounds */
-  --accent:          #c8900e;
-  --accent-hover:    #a87208;
-  --accent-muted:    rgba(200, 144, 14, 0.12);
-  --accent-border:   rgba(200, 144, 14, 0.40);
+  /* Brand accent — forest gold */
+  --accent:          #d4a017;
+  --accent-hover:    #b88910;
+  --accent-muted:    rgba(212, 160, 23, 0.12);
+  --accent-border:   rgba(212, 160, 23, 0.40);
 
   /* Status: Critical */
   --status-critical:         #dc2626;
@@ -133,9 +133,9 @@ body[data-theme="light"] {
   --status-moderate-border:  rgba(146, 64, 14, 0.25);
 
   /* Status: Resolved / OK */
-  --status-resolved:         #15803d;
-  --status-resolved-bg:      rgba(21, 128, 61, 0.08);
-  --status-resolved-border:  rgba(21, 128, 61, 0.25);
+  --status-resolved:         #3f6653;
+  --status-resolved-bg:      rgba(63, 102, 83, 0.08);
+  --status-resolved-border:  rgba(63, 102, 83, 0.25);
 
   /* Status: Info */
   --status-info:             #1d4ed8;
@@ -149,24 +149,24 @@ body[data-theme="light"] {
 }
 
 /* Component fixes for light mode */
+/* Header matches sidebar — forest green, light text */
 body[data-theme="light"] header {
-  background: #1a3d2b !important;   /* keep topbar dark green in light mode */
+  background: #3f6653 !important;
   border-bottom-color: rgba(255,255,255,0.08) !important;
 }
-/* Header toolbar — light text on dark green */
-body[data-theme="light"] header { color: #e2f5e9 !important; }
+body[data-theme="light"] header { color: #c1ecd4 !important; }
 body[data-theme="light"] header > div > div span,
 body[data-theme="light"] header > div > div a,
-body[data-theme="light"] header > div > div > div > button { color: #e2f5e9 !important; }
-body[data-theme="light"] header > div > div svg { stroke: #e2f5e9 !important; }
+body[data-theme="light"] header > div > div > div > button { color: #c1ecd4 !important; }
+body[data-theme="light"] header > div > div svg { stroke: #c1ecd4 !important; }
 body[data-theme="light"] header > div > div > button:hover,
 body[data-theme="light"] header > div > div > a:hover { background: rgba(255,255,255,0.08) !important; }
 
-/* "Development" environment badge — dark overlay so text stays readable */
+/* Environment badge */
 body[data-theme="light"] header .bg-surface-3 {
-  background: rgba(0, 0, 0, 0.28) !important;
+  background: rgba(0, 0, 0, 0.20) !important;
   border-color: rgba(255,255,255,0.15) !important;
-  color: #e2f5e9 !important;
+  color: #c1ecd4 !important;
 }
 
 /* User avatar circle */
@@ -186,51 +186,55 @@ body[data-theme="light"] #notif-dropdown {
   box-shadow: 0 12px 32px rgba(0,0,0,0.18) !important;
 }
 body[data-theme="light"] #userMenu *,
-body[data-theme="light"] #notif-dropdown * { color: #111827 !important; }
+body[data-theme="light"] #notif-dropdown * { color: #1a1c1b !important; }
 body[data-theme="light"] #userMenu svg,
 body[data-theme="light"] #notif-dropdown svg { stroke: #6b7280 !important; }
 body[data-theme="light"] #userMenu a:hover,
-body[data-theme="light"] #notif-dropdown a:hover { background: #f3f4f6 !important; }
+body[data-theme="light"] #notif-dropdown a:hover { background: #f4f4f2 !important; }
 body[data-theme="light"] #userMenu .border-b,
 body[data-theme="light"] #userMenu .border-t,
 body[data-theme="light"] #notif-dropdown .border-b,
 body[data-theme="light"] #notif-dropdown .border-t { border-color: rgba(0,0,0,0.08) !important; }
 
-body[data-theme="light"] #main-sidebar {
-  background: #1a3d2b !important;
+/* Sidebar — forest green. [style] selector beats the broad attribute selectors below */
+body[data-theme="light"] #main-sidebar,
+body[data-theme="light"] #main-sidebar[style] {
+  background: #3f6653 !important;
   border-right-color: rgba(255,255,255,0.08) !important;
 }
 body[data-theme="light"] #main-sidebar .gw-nav-item {
-  color: #a7d9b8 !important;
+  color: rgba(193, 236, 212, 0.70) !important;
 }
 body[data-theme="light"] #main-sidebar .gw-nav-item:hover {
-  background: rgba(255,255,255,0.07) !important;
-  color: #e2f5e9 !important;
+  background: #4a7a63 !important;
+  color: #ffffff !important;
 }
 body[data-theme="light"] #main-sidebar .gw-nav-item.active {
-  background: rgba(212,160,23,0.18) !important;
+  background: #345545 !important;
   color: #ffffff !important;
-  border-left-color: var(--accent) !important;
+  border-left-color: #d4a017 !important;
 }
 body[data-theme="light"] #main-sidebar .gw-nav-item svg {
-  color: #a7d9b8 !important;
+  color: rgba(193, 236, 212, 0.70) !important;
   stroke: currentColor !important;
 }
 body[data-theme="light"] #main-sidebar .gw-nav-item:hover svg,
 body[data-theme="light"] #main-sidebar .gw-nav-item.active svg {
-  color: #e2f5e9 !important;
+  color: #ffffff !important;
 }
 body[data-theme="light"] #main-sidebar .gw-nav-group {
-  color: #6db88a !important;
+  color: rgba(193, 236, 212, 0.50) !important;
 }
-/* Cards get a subtle gold top accent line */
+
+/* Cards — subtle tonal lift, no harsh borders */
 body[data-theme="light"] .gw-card {
-  border-top: 2px solid rgba(200, 144, 14, 0.35) !important;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  background: #ffffff !important;
+  border-top: 2px solid rgba(212, 160, 23, 0.30) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
-/* Page header gets a gold bottom rule */
+/* Page header — gold bottom rule */
 body[data-theme="light"] .gw-page-header {
-  border-bottom: 2px solid rgba(200, 144, 14, 0.30);
+  border-bottom: 2px solid rgba(212, 160, 23, 0.30);
   padding-bottom: 12px;
   margin-bottom: 20px;
 }
@@ -241,14 +245,324 @@ body[data-theme="light"] input,
 body[data-theme="light"] select,
 body[data-theme="light"] textarea {
   background-color: #ffffff !important;
-  color: #111827 !important;
+  color: #1a1c1b !important;
   border-color: rgba(0,0,0,0.15) !important;
 }
 body[data-theme="light"] .gw-select,
 body[data-theme="light"] .gw-input {
   background-color: #ffffff;
-  color: #111827;
+  color: #1a1c1b;
   border-color: rgba(0,0,0,0.15);
+}
+
+/* Footer matches sidebar in light mode — [style] raises specificity above attribute selectors */
+body[data-theme="light"] footer[style] {
+  background: #3f6653 !important;
+  border-top-color: rgba(255,255,255,0.08) !important;
+}
+body[data-theme="light"] footer[style],
+body[data-theme="light"] footer[style] * { color: rgba(193,236,212,0.70) !important; }
+
+/* Sentinel dot-grid — faint green dots on light canvas */
+body[data-theme="light"] .sentinel-dot-grid {
+  background-image: radial-gradient(circle, rgba(63,102,83,0.12) 1px, transparent 1px) !important;
+}
+/* Inspector .dot-grid wrapper */
+body[data-theme="light"] .dot-grid { background: #f9f9f7 !important; }
+
+/* Inspector tab bar */
+body[data-theme="light"] #tab-bar {
+  background: #eeeeec !important;
+  border-color: rgba(0,0,0,0.10) !important;
+}
+
+/* ── Inline style overrides — hardcoded dark colors in templates ──
+   !important in a stylesheet overrides inline styles.                */
+
+/* Dark background panels (#0a0e14 / #10141a = darkest base) */
+body[data-theme="light"] [style*="background: #0a0e14"],
+body[data-theme="light"] [style*="background:#0a0e14"],
+body[data-theme="light"] [style*="background: #10141a"],
+body[data-theme="light"] [style*="background:#10141a"] {
+  background: #f9f9f7 !important;
+}
+/* Card/panel surfaces (#181c22 / #1c2026 / #1a1e24) */
+body[data-theme="light"] [style*="background: #181c22"],
+body[data-theme="light"] [style*="background:#181c22"],
+body[data-theme="light"] [style*="background: #1c2026"],
+body[data-theme="light"] [style*="background:#1c2026"],
+body[data-theme="light"] [style*="background: #1a1e24"],
+body[data-theme="light"] [style*="background:#1a1e24"] {
+  background: #ffffff !important;
+}
+/* Elevated/hover surfaces (#262a31) */
+body[data-theme="light"] [style*="background: #262a31"],
+body[data-theme="light"] [style*="background:#262a31"] {
+  background: #f4f4f2 !important;
+}
+/* rgba dark bg (header, overlays) */
+body[data-theme="light"] [style*="background: rgba(10,14,20"],
+body[data-theme="light"] [style*="background:rgba(10,14,20"] {
+  background: #3f6653 !important;
+}
+
+/* Primary body text (#dfe2eb / #e2d5c0 → near-black) */
+body[data-theme="light"] [style*="color: #dfe2eb"],
+body[data-theme="light"] [style*="color:#dfe2eb"],
+body[data-theme="light"] [style*="color: #e2d5c0"],
+body[data-theme="light"] [style*="color:#e2d5c0"] {
+  color: #1a1c1b !important;
+}
+/* Muted text (#9b8f7a → warm grey) */
+body[data-theme="light"] [style*="color: #9b8f7a"],
+body[data-theme="light"] [style*="color:#9b8f7a"] {
+  color: #6b7280 !important;
+}
+/* Variant/secondary text (#d3c5ae) */
+body[data-theme="light"] [style*="color: #d3c5ae"],
+body[data-theme="light"] [style*="color:#d3c5ae"] {
+  color: #4f4634 !important;
+}
+/* Faint muted rgba text variants */
+body[data-theme="light"] [style*="color: rgba(155,143,122"],
+body[data-theme="light"] [style*="color: rgba(223,226,235"] {
+  color: #9ca3af !important;
+}
+/* Dark error/warning text (#ffb4ab = red tint) — keep but darken */
+body[data-theme="light"] [style*="color: #ffb4ab"],
+body[data-theme="light"] [style*="color:#ffb4ab"] {
+  color: #dc2626 !important;
+}
+
+/* Border colors using the warm dark palette — soften for light */
+body[data-theme="light"] [style*="border: 1px solid rgba(79,70,52"],
+body[data-theme="light"] [style*="border:1px solid rgba(79,70,52"] {
+  border-color: rgba(0,0,0,0.10) !important;
+}
+body[data-theme="light"] [style*="border-bottom: 1px solid rgba(79,70,52"],
+body[data-theme="light"] [style*="border-top: 1px solid rgba(79,70,52"] {
+  border-color: rgba(0,0,0,0.08) !important;
+}
+
+/* Sidebar bottom branding text ("Sankofa · Gye Nyame") */
+body[data-theme="light"] #main-sidebar [style*="color: rgba(79,70,52"],
+body[data-theme="light"] #main-sidebar [style*="color: rgba(79, 70, 52"] {
+  color: rgba(193,236,212,0.45) !important;
+}
+
+/* Inline page-level <style> nav overrides in base.html */
+body[data-theme="light"] #main-sidebar .gw-nav-item {
+  color: rgba(193,236,212,0.70) !important;
+}
+body[data-theme="light"] #main-sidebar .gw-nav-item.active {
+  background: #345545 !important;
+  color: #ffffff !important;
+  border-right-color: #d4a017 !important;
+  border-left-color: #d4a017 !important;
+}
+body[data-theme="light"] #main-sidebar .gw-nav-item:hover {
+  background: #4a7a63 !important;
+  color: #ffffff !important;
+}
+
+/* ── User management specific overrides ───────────────────────── */
+
+/* Create / Edit modal panel */
+body[data-theme="light"] .s-modal-panel {
+  background: #ffffff !important;
+  border-color: rgba(0,0,0,0.12) !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.18) !important;
+}
+body[data-theme="light"] .s-modal-divider {
+  border-top-color: rgba(0,0,0,0.08) !important;
+}
+/* Row hover — JS sets inline style so target :hover with !important */
+body[data-theme="light"] #users-table tbody tr:hover,
+body[data-theme="light"] #audit-table tbody tr:hover,
+body[data-theme="light"] table tbody tr:hover {
+  background: #f4f4f2 !important;
+}
+
+/* ── Settings page specific overrides ─────────────────────────── */
+body[data-theme="light"] .s-card-section,
+body[data-theme="light"] .s-card-section + .s-card-section {
+  background: #ffffff !important;
+}
+/* Toggle track — unchecked state */
+body[data-theme="light"] .s-toggle-track {
+  background: #e5e5e3 !important;
+  border-color: rgba(0,0,0,0.12) !important;
+}
+/* Toggle thumb — unchecked */
+body[data-theme="light"] .s-toggle-thumb {
+  background: #9ca3af !important;
+}
+/* Number input wrapper (SLA Days, Max Pending) */
+body[data-theme="light"] .s-num-input-wrap {
+  background: #f4f4f2 !important;
+}
+body[data-theme="light"] .s-num-input {
+  color: #1a1c1b !important;
+}
+
+/* ── Model insights specific overrides ────────────────────────── */
+/* Progress bar tracks (#31353c) inside metric cards */
+body[data-theme="light"] [style*="background:#31353c"],
+body[data-theme="light"] [style*="background: #31353c"] {
+  background: #e5e5e3 !important;
+}
+
+/* ── System admin page specific overrides ─────────────────────── */
+
+/* KPI stat cards */
+body[data-theme="light"] .s-kpi-card {
+  background: #ffffff !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+/* Inspector row within Field Inspector Status card */
+body[data-theme="light"] .s-inspector-row {
+  background: #f4f4f2 !important;
+}
+/* Org table row hover */
+body[data-theme="light"] .s-org-row:hover {
+  background: #f4f4f2 !important;
+}
+/* Personnel row dividers */
+body[data-theme="light"] .s-personnel-row {
+  border-bottom-color: rgba(0,0,0,0.06) !important;
+}
+/* Region popup tooltip */
+body[data-theme="light"] #region-popup {
+  background: #ffffff !important;
+  border-color: rgba(0,0,0,0.12) !important;
+  color: #1a1c1b !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
+}
+/* SVG map background rect */
+body[data-theme="light"] #ghana-map rect { fill: #f4f4f2 !important; }
+/* Sub-header panel overlays using rgba(24,28,34,...) */
+body[data-theme="light"] [style*="background:rgba(24,28,34"],
+body[data-theme="light"] [style*="background: rgba(24,28,34"] {
+  background: rgba(0,0,0,0.04) !important;
+}
+/* Audit detail tag chips — rgba(38,42,49,...) */
+body[data-theme="light"] [style*="background:rgba(38,42,49"],
+body[data-theme="light"] [style*="background: rgba(38,42,49"] {
+  background: #eeeeec !important;
+  border-color: rgba(0,0,0,0.10) !important;
+}
+
+/* ── Per-page Sentinel component class overrides ──────────────
+   Each template has its own <style> block loaded after custom.css.
+   These !important rules override those per-page dark defaults.   */
+
+/* Labels */
+body[data-theme="light"] .s-label { color: #6b7280 !important; }
+
+/* Inputs & selects */
+body[data-theme="light"] .s-input,
+body[data-theme="light"] .s-select,
+body[data-theme="light"] .s-input-underline {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #1a1c1b !important;
+  border-bottom-color: rgba(0,0,0,0.15) !important;
+}
+body[data-theme="light"] .s-input option,
+body[data-theme="light"] .s-select option,
+body[data-theme="light"] .s-input-underline option {
+  background: #ffffff !important;
+  color: #1a1c1b !important;
+}
+body[data-theme="light"] .s-input:focus,
+body[data-theme="light"] .s-select:focus,
+body[data-theme="light"] .s-input-underline:focus {
+  border-bottom-color: #d4a017 !important;
+}
+
+/* Sentinel card surfaces */
+body[data-theme="light"] .s-card,
+body[data-theme="light"] .s-org-card,
+body[data-theme="light"] .s-stat-card,
+body[data-theme="light"] .s-metric-card,
+body[data-theme="light"] .s-control-card {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: rgba(0,0,0,0.08) !important;
+}
+
+/* Small select in org rows */
+body[data-theme="light"] .s-select-sm {
+  background: #f4f4f2 !important;
+  border-color: rgba(0,0,0,0.12) !important;
+  color: #1a1c1b !important;
+}
+body[data-theme="light"] .s-select-sm option {
+  background: #ffffff !important;
+  color: #1a1c1b !important;
+}
+/* Org row hover in auto scan */
+body[data-theme="light"] .org-row:hover {
+  background: #f4f4f2 !important;
+}
+/* Org management stat cells (background: #262a31) */
+body[data-theme="light"] .s-stat-cell {
+  background: #eeeeec !important;
+}
+body[data-theme="light"] .s-stat-num { color: #1a1c1b !important; }
+body[data-theme="light"] .s-stat-label { color: #6b7280 !important; }
+body[data-theme="light"] .s-card-elevated {
+  background: #f4f4f2 !important;
+  background-color: #f4f4f2 !important;
+}
+
+/* Stat numbers and labels (auto scan control, model insights) */
+body[data-theme="light"] .s-stat-num { color: #1a1c1b !important; }
+body[data-theme="light"] .s-stat-label { color: #6b7280 !important; }
+
+/* Secondary action buttons — keep gold outline readable on light bg */
+body[data-theme="light"] .s-btn-secondary,
+body[data-theme="light"] .s-btn-outlined {
+  color: #795900 !important;
+  border-color: rgba(121,89,0,0.30) !important;
+}
+body[data-theme="light"] .s-btn-secondary:hover,
+body[data-theme="light"] .s-btn-outlined:hover {
+  background: rgba(121,89,0,0.06) !important;
+}
+
+/* Action ghost buttons */
+body[data-theme="light"] .s-action-btn {
+  color: #6b7280 !important;
+}
+body[data-theme="light"] .s-action-btn:hover {
+  background: #f4f4f2 !important;
+  color: #1a1c1b !important;
+}
+
+/* ── Inspector assignment page ───────────────────────────── */
+/* Inactive tab pills: dark text invisible on light bg */
+body[data-theme="light"] .tab-pill:not(.active) {
+  color: #6b7280 !important;
+}
+body[data-theme="light"] .tab-pill:not(.active):hover {
+  color: #1a1c1b !important;
+}
+/* Tab bar container */
+body[data-theme="light"] #tab-bar {
+  background: #eeeeec !important;
+  border-color: rgba(0,0,0,0.10) !important;
+}
+/* Assignment cards: JS hover mutates inline style causing #181c22 to
+   re-serialize as rgb() — attribute selector stops matching. Fix with
+   class-level hover that always wins. */
+body[data-theme="light"] .assignment-card {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+}
+body[data-theme="light"] .assignment-card:hover {
+  background: #f4f4f2 !important;
+  background-color: #f4f4f2 !important;
 }
 
 /* ── 3. BASE RESET ─────────────────────────────────────────── */
