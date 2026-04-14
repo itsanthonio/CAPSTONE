@@ -266,6 +266,7 @@
             <div style="width:100px;flex-shrink:0;">
                 <button class="org-toggle-btn" data-org-id="{{ item.org.pk }}"
                         data-enabled="{{ item.cfg.is_enabled|yesno:'true,false' }}"
+                        {% if not item.cfg.is_enabled and not global_enabled %}disabled{% endif %}
                         style="width:100%;font-size:11px;font-weight:600;padding:6px 10px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;{% if item.cfg.is_enabled %}background:transparent;border:1px solid rgba(239,68,68,0.25);color:#f87171;{% else %}background:linear-gradient(135deg,#f6be39 0%,#d4a017 100%);border:none;color:#402d00;{% endif %}">
                     <span class="org-btn-icon" style="font-size:10px;">{% if item.cfg.is_enabled %}⏸{% else %}▶{% endif %}</span>
                     <span class="org-btn-label">{% if item.cfg.is_enabled %}Pause{% else %}Resume{% endif %}</span>
@@ -290,6 +291,9 @@ function getCookie(name) {
 }
 
 const CSRF = getCookie('csrftoken');
+// Track whether the global scanner is on — Resume buttons for paused orgs are
+// disabled while this is false.
+let globalEnabled = {{ global_enabled|lower }};
 
 // ── Update a single org row (dot, status label, button) ──
 function updateOrgRow(orgId, isEnabled) {
@@ -303,6 +307,8 @@ function updateOrgRow(orgId, isEnabled) {
     btn.dataset.enabled = isEnabled ? 'true' : 'false';
     btn.querySelector('.org-btn-icon').textContent  = isEnabled ? '⏸' : '▶';
     btn.querySelector('.org-btn-label').textContent = isEnabled ? 'Pause' : 'Resume';
+    // Resume is only allowed while global scanning is on
+    btn.disabled = !isEnabled && !globalEnabled;
     if (isEnabled) {
         btn.style.cssText = 'width:100%;font-size:11px;font-weight:600;padding:6px 10px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;background:transparent;border:1px solid rgba(239,68,68,0.25);color:#f87171;';
     } else {
@@ -344,6 +350,9 @@ async function fetchStatus() {
         s('stat-detections', data.detections_today);
         s('stat-total',      data.total_tiles);
         s('stat-time',       data.server_time || '--:--');
+
+        // Sync global enabled state so Resume buttons update correctly
+        globalEnabled = data.global_enabled ?? true;
 
         if (data.org_statuses) {
             data.org_statuses.forEach(o => updateOrgRow(o.id, o.is_enabled));

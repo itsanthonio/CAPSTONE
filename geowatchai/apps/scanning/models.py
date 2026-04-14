@@ -102,6 +102,7 @@ class OrgScanConfig(models.Model):
     is_enabled        = models.BooleanField(default=True)
     window_start_hour = models.IntegerField(default=6)
     window_end_hour   = models.IntegerField(default=18)
+    paused_at         = models.DateTimeField(null=True, blank=True)
     updated_at        = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -111,6 +112,27 @@ class OrgScanConfig(models.Model):
     def get_for_org(cls, org):
         obj, _ = cls.objects.get_or_create(organisation=org)
         return obj
+
+    def automated_alert_cutoff(self):
+        """Return paused_at if this org is currently paused, else None.
+        Used to filter automated alerts/detections: only show ones created
+        before the pause started; new ones during the pause are hidden."""
+        if not self.is_enabled and self.paused_at:
+            return self.paused_at
+        return None
+
+    def automated_job_window_q(self, job_prefix=''):
+        """Q to restrict automated jobs to this org's scanning window.
+        job_prefix: path from the queryset model to the Job model, e.g.
+          ''                       for Job querysets
+          'job__'                  for DetectedSite querysets
+          'detected_site__job__'   for Alert querysets
+        Filters by hour of job__created_at against window_start/end_hour."""
+        from django.db.models import Q
+        return (
+            Q(**{f'{job_prefix}created_at__hour__gte': self.window_start_hour}) &
+            Q(**{f'{job_prefix}created_at__hour__lt':  self.window_end_hour})
+        )
 
     def __str__(self):
         status = 'enabled' if self.is_enabled else 'paused'

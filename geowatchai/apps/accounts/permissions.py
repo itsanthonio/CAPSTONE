@@ -72,10 +72,19 @@ class OrgScopedMixin:
             from django.db.models import Q
             # Derive the field prefix (e.g. 'job__organisation' → prefix='job__')
             prefix = self.org_field.rsplit('organisation', 1)[0]
-            return qs.filter(
-                Q(**{self.org_field: org}) |
-                Q(**{f'{prefix}organisation__isnull': True, f'{prefix}source': 'automated'})
-            )
+            # Apply pause cutoff + window filter to the automated branch
+            try:
+                from apps.scanning.models import OrgScanConfig
+                _mixin_cfg    = OrgScanConfig.get_for_org(org)
+                _mixin_cutoff = _mixin_cfg.automated_alert_cutoff()
+                auto_q = Q(**{f'{prefix}organisation__isnull': True, f'{prefix}source': 'automated'})
+                auto_q &= Q(**{f'{prefix}created_at__hour__gte': _mixin_cfg.window_start_hour})
+                auto_q &= Q(**{f'{prefix}created_at__hour__lt':  _mixin_cfg.window_end_hour})
+                if _mixin_cutoff:
+                    auto_q &= Q(**{f'{prefix}created_at__lt': _mixin_cutoff})
+            except Exception:
+                auto_q = Q(**{f'{prefix}organisation__isnull': True, f'{prefix}source': 'automated'})
+            return qs.filter(Q(**{self.org_field: org}) | auto_q)
         return qs  # system_admin and inspector see full set
 
 

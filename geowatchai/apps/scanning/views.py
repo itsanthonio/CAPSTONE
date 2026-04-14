@@ -243,6 +243,7 @@ class ScanningStatusAPI(View):
         return JsonResponse({
             'system_status':    system_status,
             'is_enabled':       active_orgs > 0,
+            'global_enabled':   config.is_enabled,
             'within_window':    within_window,
             'rate_limited':     rate_limited,
             'window_start':     config.window_start_hour,
@@ -367,11 +368,20 @@ class OrgScanToggleAPI(View):
         cfg = OrgScanConfig.get_for_org(org)
         if action == 'pause':
             cfg.is_enabled = False
+            cfg.paused_at  = timezone.now()
+            cfg.save(update_fields=['is_enabled', 'paused_at'])
         elif action == 'resume':
+            # Block per-org resume while global scanning is off
+            if not AutoScanConfig.get().is_enabled:
+                return JsonResponse(
+                    {'error': 'Global scanning is paused. Enable it before resuming individual organisations.'},
+                    status=400,
+                )
             cfg.is_enabled = True
+            cfg.paused_at  = None
+            cfg.save(update_fields=['is_enabled', 'paused_at'])
         else:
             return JsonResponse({'error': 'action must be pause or resume'}, status=400)
-        cfg.save(update_fields=['is_enabled'])
         return JsonResponse({'org_id': str(org.pk), 'is_enabled': cfg.is_enabled})
 
 
@@ -475,6 +485,20 @@ class ScanningDetectionsAPI(View):
 
         qs = DetectedSite.objects.filter(job__source='automated', centroid__isnull=False)
 
+        # If the requesting agency_admin's org is paused, hide detections from
+        # jobs that started after the pause (they appear again on resume).
+        try:
+            if request.user.profile.role == 'agency_admin':
+                org = request.user.profile.organisation
+                if org:
+                    _det_cfg = OrgScanConfig.get_for_org(org)
+                    cutoff   = _det_cfg.automated_alert_cutoff()
+                    if cutoff:
+                        qs = qs.filter(job__created_at__lt=cutoff)
+                    qs = qs.filter(_det_cfg.automated_job_window_q('job__'))
+        except Exception:
+            pass
+
         if date_str:
             try:
                 from datetime import date as date_cls
@@ -569,23 +593,42 @@ class ScanningTileDetailAPI(View):
             return JsonResponse({'error': 'No tile found at this location'}, status=404)
 
         # Last 20 automated jobs for this tile (via scan_tile FK)
-        jobs = (
+        jobs_qs = (
             Job.objects
             .filter(scan_tile=tile, source='automated')
             .order_by('-created_at')
-            [:20]
         )
 
         # Detections are queried spatially — centroid within the tile geometry.
         # This catches cases where the job's scan_tile FK may not be set but the
         # detection centroid still falls inside this tile's bounds.
-        det_sites = (
+        det_sites_qs = (
             DetectedSite.objects
             .filter(job__source='automated', centroid__within=tile.geometry)
             .select_related('job')
             .order_by('-detection_date', '-confidence_score')
-            [:30]
         )
+
+        # Agency_admin: apply pause cutoff + window filter before slicing
+        try:
+            if request.user.profile.role == 'agency_admin':
+                org = request.user.profile.organisation
+                if org is None:
+                    jobs_qs     = Job.objects.none()
+                    det_sites_qs = DetectedSite.objects.none()
+                else:
+                    _td_cfg    = OrgScanConfig.get_for_org(org)
+                    _td_cutoff = _td_cfg.automated_alert_cutoff()
+                    jobs_qs     = jobs_qs.filter(_td_cfg.automated_job_window_q(''))
+                    det_sites_qs = det_sites_qs.filter(_td_cfg.automated_job_window_q('job__'))
+                    if _td_cutoff:
+                        jobs_qs      = jobs_qs.filter(created_at__lt=_td_cutoff)
+                        det_sites_qs = det_sites_qs.filter(job__created_at__lt=_td_cutoff)
+        except Exception:
+            pass
+
+        jobs      = jobs_qs[:20]
+        det_sites = det_sites_qs[:30]
 
         scan_history = [
             {
@@ -700,6 +743,21 @@ class ScanningExportAPI(View):
             .annotate(_district_parent=_district_parent)
             .order_by('-detection_date', '-confidence_score')
         )
+
+        # Agency_admin: apply pause cutoff + window filter
+        try:
+            if request.user.profile.role == 'agency_admin':
+                org = request.user.profile.organisation
+                if org is None:
+                    sites = DetectedSite.objects.none()
+                else:
+                    _exp_cfg    = OrgScanConfig.get_for_org(org)
+                    _exp_cutoff = _exp_cfg.automated_alert_cutoff()
+                    sites = sites.filter(_exp_cfg.automated_job_window_q('job__'))
+                    if _exp_cutoff:
+                        sites = sites.filter(job__created_at__lt=_exp_cutoff)
+        except Exception:
+            pass
 
         filename_base = f'geowatch-detections-{today}'
 

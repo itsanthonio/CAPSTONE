@@ -313,8 +313,21 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30, org=None):
     """
     velocity_weeks = max(2, min(int(velocity_weeks), 52))
     trend_days = int(trend_days) if int(trend_days) in (7, 30, 90, 365) else 30
+    # Fetch org scan config before cache check — its state is part of the cache key
+    _gs_cfg = None
+    if org:
+        try:
+            from apps.scanning.models import OrgScanConfig as _OSCC_gs
+            _gs_cfg = _OSCC_gs.get_for_org(org)
+        except Exception:
+            pass
+    _gs_cfg_key = (
+        f'{_gs_cfg.window_start_hour}-{_gs_cfg.window_end_hour}-'
+        f'{int(_gs_cfg.paused_at.timestamp()) if (not _gs_cfg.is_enabled and _gs_cfg.paused_at) else 0}'
+    ) if _gs_cfg else '6-18-0'
+
     org_id = str(org.pk) if org else 'global'
-    cache_key = f'dashboard_stats_{velocity_weeks}_{trend_days}_{org_id}'
+    cache_key = f'dashboard_stats_{velocity_weeks}_{trend_days}_{org_id}_{_gs_cfg_key}'
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -330,11 +343,36 @@ def _get_dashboard_stats(velocity_weeks=8, trend_days=30, org=None):
         seven_days_ago  = now - timedelta(days=7)
         fourteen_days_ago = now - timedelta(days=14)
 
-        # Org-scoping filters (only automated scans with no creator are always included)
+        # Org-scoping filters — automated parts respect pause cutoff + window
         if org:
-            site_q  = Q(job__organisation=org) | Q(job__organisation__isnull=True, job__source='automated')
-            alert_q = Q(detected_site__job__organisation=org) | Q(detected_site__job__organisation__isnull=True, detected_site__job__source='automated')
-            job_q   = Q(organisation=org) | Q(organisation__isnull=True, source='automated')
+            _gs_cutoff = _gs_cfg.automated_alert_cutoff() if _gs_cfg else None
+            _gs_wsh    = _gs_cfg.window_start_hour if _gs_cfg else 0
+            _gs_weh    = _gs_cfg.window_end_hour   if _gs_cfg else 24
+
+            auto_site_q = (
+                Q(job__organisation__isnull=True, job__source='automated') &
+                Q(job__created_at__hour__gte=_gs_wsh) & Q(job__created_at__hour__lt=_gs_weh)
+            )
+            if _gs_cutoff:
+                auto_site_q &= Q(job__created_at__lt=_gs_cutoff)
+            site_q = Q(job__organisation=org) | auto_site_q
+
+            auto_alert_q = (
+                Q(detected_site__job__organisation__isnull=True, detected_site__job__source='automated') &
+                Q(detected_site__job__created_at__hour__gte=_gs_wsh) &
+                Q(detected_site__job__created_at__hour__lt=_gs_weh)
+            )
+            if _gs_cutoff:
+                auto_alert_q &= Q(created_at__lt=_gs_cutoff)
+            alert_q = Q(detected_site__job__organisation=org) | auto_alert_q
+
+            auto_job_q = (
+                Q(organisation__isnull=True, source='automated') &
+                Q(created_at__hour__gte=_gs_wsh) & Q(created_at__hour__lt=_gs_weh)
+            )
+            if _gs_cutoff:
+                auto_job_q &= Q(created_at__lt=_gs_cutoff)
+            job_q = Q(organisation=org) | auto_job_q
         else:
             site_q  = Q()
             alert_q = Q()
@@ -734,10 +772,14 @@ def dashboard_alerts(request):
     qs = Alert.objects.all()
     if request.user.profile.role == UserProfile.Role.AGENCY_ADMIN:
         org = request.user.profile.organisation
-        qs = qs.filter(
-            Q(detected_site__job__organisation=org) |
-            Q(detected_site__job__organisation__isnull=True, detected_site__job__source='automated')
-        )
+        from apps.scanning.models import OrgScanConfig
+        _da_cfg = OrgScanConfig.get_for_org(org)
+        auto_q  = Q(detected_site__job__organisation__isnull=True, detected_site__job__source='automated')
+        cutoff  = _da_cfg.automated_alert_cutoff()
+        if cutoff:
+            auto_q &= Q(created_at__lt=cutoff)
+        auto_q &= _da_cfg.automated_job_window_q('detected_site__job__')
+        qs = qs.filter(Q(detected_site__job__organisation=org) | auto_q)
 
     rows = qs.values('status', 'severity').annotate(cnt=Count('id'))
     by_status, by_severity = {}, {}
@@ -932,10 +974,46 @@ def _build_report_context(request):
     profile = request.user.profile
     org = profile.organisation if profile.role == 'agency_admin' else None
     if org:
-        site_org_q  = Q(job__organisation=org) | Q(job__organisation__isnull=True, job__source='automated')
-        alert_org_q = Q(detected_site__job__organisation=org) | Q(detected_site__job__organisation__isnull=True, detected_site__job__source='automated')
-        job_org_q   = Q(organisation=org) | Q(organisation__isnull=True, source='automated')
-        assign_org_q = Q(alert__detected_site__job__organisation=org) | Q(alert__detected_site__job__organisation__isnull=True, alert__detected_site__job__source='automated')
+        from apps.scanning.models import OrgScanConfig as _OSCC_rep
+        _rep_cfg    = _OSCC_rep.get_for_org(org)
+        _rep_cutoff = _rep_cfg.automated_alert_cutoff()
+        _rep_wsh    = _rep_cfg.window_start_hour
+        _rep_weh    = _rep_cfg.window_end_hour
+
+        _auto_site = (
+            Q(job__organisation__isnull=True, job__source='automated') &
+            Q(job__created_at__hour__gte=_rep_wsh) & Q(job__created_at__hour__lt=_rep_weh)
+        )
+        if _rep_cutoff:
+            _auto_site &= Q(job__created_at__lt=_rep_cutoff)
+        site_org_q = Q(job__organisation=org) | _auto_site
+
+        _auto_alert = (
+            Q(detected_site__job__organisation__isnull=True, detected_site__job__source='automated') &
+            Q(detected_site__job__created_at__hour__gte=_rep_wsh) &
+            Q(detected_site__job__created_at__hour__lt=_rep_weh)
+        )
+        if _rep_cutoff:
+            _auto_alert &= Q(created_at__lt=_rep_cutoff)
+        alert_org_q = Q(detected_site__job__organisation=org) | _auto_alert
+
+        _auto_job = (
+            Q(organisation__isnull=True, source='automated') &
+            Q(created_at__hour__gte=_rep_wsh) & Q(created_at__hour__lt=_rep_weh)
+        )
+        if _rep_cutoff:
+            _auto_job &= Q(created_at__lt=_rep_cutoff)
+        job_org_q = Q(organisation=org) | _auto_job
+
+        _auto_assign = (
+            Q(alert__detected_site__job__organisation__isnull=True,
+              alert__detected_site__job__source='automated') &
+            Q(alert__detected_site__job__created_at__hour__gte=_rep_wsh) &
+            Q(alert__detected_site__job__created_at__hour__lt=_rep_weh)
+        )
+        if _rep_cutoff:
+            _auto_assign &= Q(alert__detected_site__job__created_at__lt=_rep_cutoff)
+        assign_org_q = Q(alert__detected_site__job__organisation=org) | _auto_assign
     else:
         site_org_q = alert_org_q = job_org_q = assign_org_q = Q()
 
@@ -1680,14 +1758,32 @@ def region_list(request):
         _org  = None
 
     if _role == 'agency_admin' and _org:
-        _org_q = (
-            Q(detections__job__organisation=_org) |
-            Q(detections__job__organisation__isnull=True, detections__job__source='automated')
+        from apps.scanning.models import OrgScanConfig as _OSCC_ri
+        _ri_cfg    = _OSCC_ri.get_for_org(_org)
+        _ri_cutoff = _ri_cfg.automated_alert_cutoff()
+        _ri_wsh    = _ri_cfg.window_start_hour
+        _ri_weh    = _ri_cfg.window_end_hour
+
+        _auto_det = (
+            Q(detections__job__organisation__isnull=True, detections__job__source='automated') &
+            Q(detections__job__created_at__hour__gte=_ri_wsh) &
+            Q(detections__job__created_at__hour__lt=_ri_weh)
         )
+        if _ri_cutoff:
+            _auto_det &= Q(detections__job__created_at__lt=_ri_cutoff)
+        _org_q = Q(detections__job__organisation=_org) | _auto_det
+
+        _auto_alert_det = (
+            Q(detections__alerts__detected_site__job__organisation__isnull=True,
+              detections__alerts__detected_site__job__source='automated') &
+            Q(detections__alerts__detected_site__job__created_at__hour__gte=_ri_wsh) &
+            Q(detections__alerts__detected_site__job__created_at__hour__lt=_ri_weh)
+        )
+        if _ri_cutoff:
+            _auto_alert_det &= Q(detections__alerts__created_at__lt=_ri_cutoff)
         _alert_org_q = (
             Q(detections__alerts__detected_site__job__organisation=_org) |
-            Q(detections__alerts__detected_site__job__organisation__isnull=True,
-              detections__alerts__detected_site__job__source='automated')
+            _auto_alert_det
         )
     else:
         _org_q       = Q()
@@ -1797,10 +1893,17 @@ def region_detail(request, region_id):
                 base_qs = DetectedSite.objects.none()
             else:
                 from django.db.models import Q as _Q
-                base_qs = base_qs.filter(
-                    _Q(job__organisation=_org) |
-                    _Q(job__organisation__isnull=True, job__source='automated')
+                from apps.scanning.models import OrgScanConfig as _OSCC_rd
+                _rd_cfg    = _OSCC_rd.get_for_org(_org)
+                _rd_cutoff = _rd_cfg.automated_alert_cutoff()
+                _auto_base = (
+                    _Q(job__organisation__isnull=True, job__source='automated') &
+                    _Q(job__created_at__hour__gte=_rd_cfg.window_start_hour) &
+                    _Q(job__created_at__hour__lt=_rd_cfg.window_end_hour)
                 )
+                if _rd_cutoff:
+                    _auto_base &= _Q(job__created_at__lt=_rd_cutoff)
+                base_qs = base_qs.filter(_Q(job__organisation=_org) | _auto_base)
         sites_qs = base_qs
 
         # Single aggregate pass for all site-level stats
@@ -1883,10 +1986,17 @@ def region_detail(request, region_id):
             sites_qs = DetectedSite.objects.none()
         else:
             from django.db.models import Q as _Q
-            sites_qs = sites_qs.filter(
-                _Q(job__organisation=_org) |
-                _Q(job__organisation__isnull=True, job__source='automated')
+            from apps.scanning.models import OrgScanConfig as _OSCC_rdn
+            _rdn_cfg    = _OSCC_rdn.get_for_org(_org)
+            _rdn_cutoff = _rdn_cfg.automated_alert_cutoff()
+            _auto_rdn = (
+                _Q(job__organisation__isnull=True, job__source='automated') &
+                _Q(job__created_at__hour__gte=_rdn_cfg.window_start_hour) &
+                _Q(job__created_at__hour__lt=_rdn_cfg.window_end_hour)
             )
+            if _rdn_cutoff:
+                _auto_rdn &= _Q(job__created_at__lt=_rdn_cutoff)
+            sites_qs = sites_qs.filter(_Q(job__organisation=_org) | _auto_rdn)
 
     # Full detection cards — 20 most recent with all related data
     raw_sites = list(

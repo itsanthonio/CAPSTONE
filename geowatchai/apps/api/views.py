@@ -721,10 +721,14 @@ class AlertViewSet(viewsets.ViewSet):
                 org = self.request.user.profile.organisation
                 if org is None:
                     return qs.none()
-                qs = qs.filter(
-                    Q(detected_site__job__organisation=org) |
-                    Q(detected_site__job__organisation__isnull=True, detected_site__job__source='automated')
-                )
+                from apps.scanning.models import OrgScanConfig
+                _cfg   = OrgScanConfig.get_for_org(org)
+                auto_q = Q(detected_site__job__organisation__isnull=True, detected_site__job__source='automated')
+                cutoff = _cfg.automated_alert_cutoff()
+                if cutoff:
+                    auto_q &= Q(created_at__lt=cutoff)
+                auto_q &= _cfg.automated_job_window_q('detected_site__job__')
+                qs = qs.filter(Q(detected_site__job__organisation=org) | auto_q)
             elif role == 'inspector':
                 # Inspectors only see alerts assigned to them
                 qs = qs.filter(assigned_to=self.request.user)
@@ -1186,10 +1190,14 @@ class AlertViewSet(viewsets.ViewSet):
                 if org is None:
                     qs = Alert.objects.none()
                 else:
-                    qs = qs.filter(
-                        Q(detected_site__job__organisation=org) |
-                        Q(detected_site__job__organisation__isnull=True, detected_site__job__source='automated')
-                    )
+                    from apps.scanning.models import OrgScanConfig
+                    _sum_cfg = OrgScanConfig.get_for_org(org)
+                    _sum_cutoff = _sum_cfg.automated_alert_cutoff()
+                    auto_q = Q(detected_site__job__organisation__isnull=True, detected_site__job__source='automated')
+                    if _sum_cutoff:
+                        auto_q &= Q(created_at__lt=_sum_cutoff)
+                    auto_q &= _sum_cfg.automated_job_window_q('detected_site__job__')
+                    qs = qs.filter(Q(detected_site__job__organisation=org) | auto_q)
             elif role == 'inspector':
                 qs = qs.filter(assigned_to=request.user)
         except Exception:
