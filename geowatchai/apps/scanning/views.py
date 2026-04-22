@@ -258,17 +258,19 @@ class ScanningStatusAPI(View):
         else:
             system_status = 'running'
 
-        # For agency_admin: override status/window fields with their org's config.
-        org_is_enabled  = True
+        # For agency_admin: show org window if it differs from global, else show global.
+        org_is_enabled    = True
         resp_window_start = config.window_start_hour
         resp_window_end   = config.window_end_hour
         if is_agency and _aa_org_cfg:
-            org_is_enabled    = _aa_org_cfg.is_enabled
-            resp_window_start = _aa_org_cfg.window_start_hour
-            resp_window_end   = _aa_org_cfg.window_end_hour
+            org_is_enabled = _aa_org_cfg.is_enabled
             if not org_is_enabled:
                 system_status = 'paused'
                 within_window = False
+            if (_aa_org_cfg.window_start_hour != config.window_start_hour or
+                    _aa_org_cfg.window_end_hour != config.window_end_hour):
+                resp_window_start = _aa_org_cfg.window_start_hour
+                resp_window_end   = _aa_org_cfg.window_end_hour
 
         return JsonResponse({
             'system_status':    system_status,
