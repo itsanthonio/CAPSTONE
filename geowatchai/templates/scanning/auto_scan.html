@@ -416,7 +416,7 @@
                 </div>
                 <div id="activity-empty" class="hidden py-8 text-center">
                     <p class="text-xs" style="color:var(--text-tertiary);">No tiles scanned yet today.</p>
-                    <p class="text-xs mt-1" style="color:var(--text-tertiary);">Scanner runs 6am – 6pm.</p>
+                    <p id="activity-window-label" class="text-xs mt-1" style="color:var(--text-tertiary);">Scanner runs 6am – 6pm.</p>
                 </div>
                 <ul id="activity-list" class="list-none m-0 p-0 hidden"></ul>
             </div>
@@ -1191,8 +1191,11 @@
         badge.className   = `px-2.5 py-1 text-[11px] font-semibold rounded-full status-${data.system_status}`;
         badge.innerHTML   = (isRunning ? '<span class="status-run-dot"></span>' : '') +
                             (STATUS_LABEL[data.system_status] || data.system_status);
-        document.getElementById('window-label').textContent =
-            `${String(data.window_start).padStart(2,'0')}:00 – ${String(data.window_end).padStart(2,'0')}:00`;
+        const _wStart = String(data.window_start).padStart(2,'0');
+        const _wEnd   = String(data.window_end).padStart(2,'0');
+        document.getElementById('window-label').textContent = `${_wStart}:00 – ${_wEnd}:00`;
+        const _awl = document.getElementById('activity-window-label');
+        if (_awl) _awl.textContent = `Scanner runs ${_wStart}:00 – ${_wEnd}:00.`;
         _setStatAnimated('stat-tiles',      data.tiles_scanned_today ?? '—', _firstStatusUpdate);
         _setStatAnimated('stat-detections', data.detections_today    ?? '—', _firstStatusUpdate);
         _setStatAnimated('stat-jobs',       data.total_auto_today    ?? '—', _firstStatusUpdate);
