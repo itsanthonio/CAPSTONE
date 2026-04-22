@@ -90,8 +90,21 @@ class ScanningStatusAPI(View):
         # Reset daily counter if needed
         config.reset_daily_counter_if_needed()
 
+        # ── Per-org scoping for agency_admin ─────────────────────────────
+        is_agency = request.user.profile.role == 'agency_admin'
+        _aa_org_cfg = None
+        if is_agency:
+            _aa_org = getattr(request.user.profile, 'organisation', None)
+            _aa_org_cfg = OrgScanConfig.get_for_org(_aa_org) if _aa_org else None
+
         # ── Today's job stats ─────────────────────────────────────────────
         auto_jobs_today = Job.objects.filter(source='automated', created_at__date=today)
+        if is_agency and _aa_org_cfg:
+            auto_jobs_today = auto_jobs_today.filter(_aa_org_cfg.automated_job_window_q(''))
+            _aa_cutoff = _aa_org_cfg.automated_alert_cutoff()
+            if _aa_cutoff:
+                auto_jobs_today = auto_jobs_today.filter(created_at__lt=_aa_cutoff)
+
         total_auto_today     = auto_jobs_today.count()
         completed_auto_today = auto_jobs_today.filter(status='completed').count()
         failed_auto_today    = auto_jobs_today.filter(status='failed').count()
@@ -171,18 +184,24 @@ class ScanningStatusAPI(View):
         # Use detection_date (not job__created_at) because deduplication keeps
         # the original job FK but updates detection_date to the current scan's
         # end_date, so job__created_at__date misses deduped sites.
-        detections_today = DetectedSite.objects.filter(
-            job__source='automated',
-            detection_date=today,
-        ).count()
+        _det_today_qs = DetectedSite.objects.filter(job__source='automated', detection_date=today)
+        if is_agency and _aa_org_cfg:
+            _det_today_qs = _det_today_qs.filter(_aa_org_cfg.automated_job_window_q('job__'))
+            if _aa_org_cfg.automated_alert_cutoff():
+                _det_today_qs = _det_today_qs.filter(job__created_at__lt=_aa_org_cfg.automated_alert_cutoff())
+        detections_today = _det_today_qs.count()
 
         # ── 14-day daily detection counts (for sparkline) ─────────────────
+        _by_day_base = DetectedSite.objects.filter(
+            job__source='automated',
+            detection_date__gte=fourteen_days_ago,
+        )
+        if is_agency and _aa_org_cfg:
+            _by_day_base = _by_day_base.filter(_aa_org_cfg.automated_job_window_q('job__'))
+            if _aa_org_cfg.automated_alert_cutoff():
+                _by_day_base = _by_day_base.filter(job__created_at__lt=_aa_org_cfg.automated_alert_cutoff())
         by_day_qs = (
-            DetectedSite.objects
-            .filter(
-                job__source='automated',
-                detection_date__gte=fourteen_days_ago,
-            )
+            _by_day_base
             .values('detection_date')
             .annotate(count=Count('id'))
             .order_by('detection_date')
@@ -226,7 +245,6 @@ class ScanningStatusAPI(View):
         total_orgs   = len(org_statuses)
 
         # ── System status ─────────────────────────────────────────────────
-        # Derived from per-org active count rather than a single global flag.
         within_window = config.is_within_window()
         rate_limited  = config.is_rate_limited_today()
 
@@ -240,14 +258,26 @@ class ScanningStatusAPI(View):
         else:
             system_status = 'running'
 
+        # For agency_admin: override status/window fields with their org's config.
+        org_is_enabled  = True
+        resp_window_start = config.window_start_hour
+        resp_window_end   = config.window_end_hour
+        if is_agency and _aa_org_cfg:
+            org_is_enabled    = _aa_org_cfg.is_enabled
+            resp_window_start = _aa_org_cfg.window_start_hour
+            resp_window_end   = _aa_org_cfg.window_end_hour
+            if not org_is_enabled:
+                system_status = 'paused'
+                within_window = False
+
         return JsonResponse({
             'system_status':    system_status,
-            'is_enabled':       active_orgs > 0,
+            'is_enabled':       org_is_enabled if is_agency else (active_orgs > 0),
             'global_enabled':   config.is_enabled,
             'within_window':    within_window,
             'rate_limited':     rate_limited,
-            'window_start':     config.window_start_hour,
-            'window_end':       config.window_end_hour,
+            'window_start':     resp_window_start,
+            'window_end':       resp_window_end,
             'tiles_scanned_today':   config.tiles_scanned_today,
             'total_tiles':      total_tiles,
             'hotspot_tiles':    hotspot_tiles,

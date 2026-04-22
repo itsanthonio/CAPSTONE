@@ -699,8 +699,14 @@ def dashboard_home(request):
         stats = _get_dashboard_stats(velocity_weeks=_vw, trend_days=_td, org=_org)
         from apps.scanning.models import AutoScanConfig as _ASC, OrgScanConfig as _OSC
         _sc = _ASC.get()
-        stats['scan_enabled'] = _OSC.objects.filter(is_enabled=True).exists()
-        stats['scan_within_window'] = _sc.is_within_window()
+        if _org:
+            _org_cfg = _OSC.get_for_org(_org)
+            stats['scan_enabled'] = _org_cfg.is_enabled
+            _now_hour = timezone.localtime().hour
+            stats['scan_within_window'] = _org_cfg.window_start_hour <= _now_hour < _org_cfg.window_end_hour
+        else:
+            stats['scan_enabled'] = _OSC.objects.filter(is_enabled=True).exists()
+            stats['scan_within_window'] = _sc.is_within_window()
     except Exception as e:
         _vw = 8
         _td = 30
@@ -926,6 +932,14 @@ def dashboard_kpis(request):
     stats = _get_dashboard_stats(org=org)
     from apps.scanning.models import AutoScanConfig as _ASC, OrgScanConfig as _OSC
     _sc = _ASC.get()
+    if org:
+        _org_cfg = _OSC.get_for_org(org)
+        _scan_enabled = _org_cfg.is_enabled
+        _now_hour = timezone.localtime().hour
+        _scan_within_window = _org_cfg.window_start_hour <= _now_hour < _org_cfg.window_end_hour
+    else:
+        _scan_enabled = _OSC.objects.filter(is_enabled=True).exists()
+        _scan_within_window = _sc.is_within_window()
     return JsonResponse({
         'total_detected_sites':  stats.get('total_detected_sites', 0),
         'illegal_sites':         stats.get('illegal_sites', 0),
@@ -943,8 +957,8 @@ def dashboard_kpis(request):
         'auto_jobs_today':       stats.get('auto_jobs_today', 0),
         'auto_detections_today': stats.get('auto_detections_today', 0),
         'scan_coverage_pct':     stats.get('scan_coverage_pct', 0),
-        'scan_enabled':          _OSC.objects.filter(is_enabled=True).exists(),
-        'scan_within_window':    _sc.is_within_window(),
+        'scan_enabled':          _scan_enabled,
+        'scan_within_window':    _scan_within_window,
     })
 
 
