@@ -4,14 +4,36 @@ geowatchai/media/
 geowatchai/staticfiles/
 geowatchai/cookies.txt
 geowatchai/test.txt
+geowatchai/create_bucket.py
+geowatchai/apps/test.txt
+geowatchai/templates/analysis/live_map.html.backup
 *.pth
 *.docx
 *.png
 *.geojson
+*.qgz
+*.tif
+*.gpkg
+*.gpkg-shm
+*.gpkg-wal
 optical_training_data/
 celerybeat-schedule.*
 .DS_Store
+.idea/
 verify.py
+slicing.py
+clipping.py
+fetch_ghana_districts.py
+generate_api_docs.py
+generate_api_changes.py
+hls_patching
+illegal_mining_detector/
+Mining_Footprint/
+SAR-SENTINEL1/
+Screenshots/
+visualizations/
+visualizations-nir/
+ghana_admin_boundaries/
 
 # Allow Jupyter notebooks (training pipeline)
 # *.ipynb was previously excluded but notebooks are part of the project
@@ -9443,6 +9465,6 @@ __marimo__/
 /geowatchai/local_exports/jobs/f84c7309-4bbf-4e65-94ca-1bf1c3153a05/hls_imagery.tif
 /geowatchai/local_exports/jobs/f2857dc4-e362-4d2f-82a3-40061318dd7e/hls_imagery.tif
 /geowatchai/local_exports/jobs/fe6bf0a0-ccff-427c-8a33-86ed4519ece8/hls_imagery.tif
-/SYSTEM_OVERVIEW.md
+
 /Report.docx
 /geowatchai/media/timelapse/5bcc54fa-b0ea-413b-9d1f-70a9a8ae4412/2019.png
