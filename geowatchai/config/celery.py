@@ -1,5 +1,5 @@
 """
-Celery configuration for Geo Vigil Guard project.
+Celery configuration for SankofaWatch.
 
 This module configures Celery with Redis as broker and result backend.
 """
@@ -10,7 +10,7 @@ import multiprocessing
 
 # ── PROJ/GDAL path fix ──────────────────────────────────────────────────────
 # Celery workers are a separate process from manage.py, so they don't benefit
-# from the fix in manage.py.  Same logic must run here before any Django/GDAL
+# from the PROJ path override in manage.py.  Same logic must run here before any Django/GDAL
 # import so PROJ finds the QGIS proj.db instead of PostgreSQL's old one.
 if platform.system() == 'Windows':
     import pathlib as _pathlib
@@ -44,7 +44,7 @@ os.environ.setdefault('CELERYD_POOL', 'solo')
 os.environ.setdefault('CELERYD_POOL_RESTARTS', 'True')
 os.environ.setdefault('CELERY_WORKER_POOL', 'solo')
 
-app = Celery('geo-vigil-guard')
+app = Celery('sankofawatch')
 
 # Using a string here means the worker doesn't have to serialize
 # the configuration object to child processes.

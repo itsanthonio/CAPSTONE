@@ -37,8 +37,8 @@ def _to_gcs_uri(uri: str, meta: dict) -> str:
             path = uri[len(browser_prefix):].rstrip('/')
             # GEE always exports fileNamePrefix + ".tif"
             # The URI folder path IS the fileNamePrefix (without .tif)
-            # e.g. "geo-vigil-guard-exports/jobs/UUID/hls_imagery"
-            # But sometimes it's just the folder "geo-vigil-guard-exports/jobs/UUID/"
+            # e.g. "sankofawatch-exports/jobs/UUID/hls_imagery"
+            # But sometimes it's just the folder "sankofawatch-exports/jobs/UUID/"
             # In that case append the default filename
             if not path.endswith('.tif'):
                 # Check if it looks like a folder (ends with job UUID)
@@ -317,7 +317,6 @@ class GeeService:
             
             # 1. Get Download ID first
             try:
-                # Use getDownloadId instead of getDownloadURL
                 download_id = ee.data.getDownloadId({
                     'image': clipped,
                     'scale': config('MAX_RESOLUTION', default=30, cast=int),

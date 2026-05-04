@@ -60,7 +60,7 @@ def inspector_list(request):
 def create_assignment(request):
     """Create a new inspector assignment"""
     alert_id = request.data.get('alert_id')
-    inspector_username = request.data.get('inspector')  # Changed from inspector_id to inspector
+    inspector_username = request.data.get('inspector')
     notes = request.data.get('notes', '')
     
     if not alert_id or not inspector_username:
@@ -70,7 +70,6 @@ def create_assignment(request):
         }, status=status.HTTP_400_BAD_REQUEST)
     
     try:
-        # Get inspector by username instead of ID
         inspector = UserProfile.objects.get(
             user__username=inspector_username,
             role=UserProfile.Role.INSPECTOR
