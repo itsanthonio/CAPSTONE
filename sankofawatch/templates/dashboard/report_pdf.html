@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+<head>
+<meta charset="UTF-8"/>
+<title>SankofaWatch Detection Report</title>
+<style>
+/* ── Reset ─────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 11px;
+    color: #1a1a1a;
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+@page { margin: 14mm 16mm; }
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+.pdf-header {
+    border-bottom: 3px solid #f6be39;
+    padding-bottom: 12px;
+    margin-bottom: 18px;
+    display: table;
+    width: 100%;
+}
+.pdf-header-left  { display: table-cell; vertical-align: bottom; }
+.pdf-header-right { display: table-cell; vertical-align: bottom; text-align: right; }
+.pdf-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #10141a;
+    letter-spacing: -0.02em;
+}
+.pdf-subtitle {
+    font-size: 10px;
+    color: #9b8f7a;
+    margin-top: 3px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.pdf-org {
+    font-size: 11px;
+    font-weight: 700;
+    color: #7a5c00;
+    margin-bottom: 2px;
+}
+.pdf-meta { font-size: 9px; color: #9b8f7a; }
+
+/* ── Section heading ──────────────────────────────────────────────── */
+.section {
+    font-size: 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #7a5c00;
+    border-bottom: 2px solid #f6be39;
+    padding-bottom: 5px;
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+/* ── Stat grid ───────────────────────────────────────────────────── */
+.stat-grid { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+.stat-grid td { width: 25%; vertical-align: top; padding: 0 6px 0 0; }
+.stat-grid td:last-child { padding-right: 0; }
+.stat-card {
+    border-radius: 4px;
+    padding: 10px 12px;
+    background: #f9f6f0;
+    border-left: 3px solid #d3c5ae;
+}
+.stat-label {
+    font-size: 7px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: #9b8f7a;
+}
+.stat-value { font-size: 22px; font-weight: bold; margin: 4px 0 2px; color: #10141a; }
+.stat-sub   { font-size: 8px; color: #9b8f7a; }
+.stat-red   { border-left-color: #c0392b; }
+.stat-red   .stat-value { color: #c0392b; }
+.stat-amber { border-left-color: #f6be39; }
+.stat-amber .stat-value { color: #b8891a; }
+.stat-green { border-left-color: #27ae60; }
+.stat-green .stat-value { color: #27ae60; }
+
+/* ── Tables ─────────────────────────────────────────────────────────── */
+.pdf-table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 6px; }
+.pdf-table thead th {
+    text-align: left;
+    font-size: 7px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: #9b8f7a;
+    padding: 5px 8px;
+    border-bottom: 2px solid #f6be39;
+    background: #fdfaf4;
+}
+.pdf-table tbody td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #f0ebe0;
+    color: #1a1a1a;
+    vertical-align: middle;
+}
+.pdf-table tbody tr:last-child td { border-bottom: none; }
+.pdf-table tbody tr:nth-child(even) td { background: #fdfaf4; }
+
+/* ── Badges ─────────────────────────────────────────────────────────── */
+.badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.badge-red    { background: #fdf0ef; color: #c0392b; border: 1px solid #e8b4b0; }
+.badge-amber  { background: #fdf8ec; color: #b8891a; border: 1px solid #f0d88a; }
+.badge-blue   { background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; }
+.badge-green  { background: #f0fdf4; color: #15803d; border: 1px solid #86efac; }
+.badge-gray   { background: #f5f3ef; color: #6b6560; border: 1px solid #d3c5ae; }
+.badge-purple { background: #f5f3ff; color: #6d28d9; border: 1px solid #c4b5fd; }
+
+/* ── Bar chart ──────────────────────────────────────────────────────── */
+.bar-row    { display: table; width: 100%; margin-bottom: 5px; }
+.bar-label  { display: table-cell; width: 140px; font-size: 10px; color: #1a1a1a; white-space: nowrap; overflow: hidden; vertical-align: middle; padding-right: 8px; }
+.bar-outer  { display: table-cell; vertical-align: middle; }
+.bar-track  { height: 7px; background: #f0ebe0; border-radius: 3px; overflow: hidden; }
+.bar-fill   { height: 7px; background: #f6be39; border-radius: 3px; }
+.bar-count  { display: table-cell; width: 32px; text-align: right; font-size: 10px; font-weight: 700; color: #1a1a1a; vertical-align: middle; padding-left: 6px; }
+.bar-pct    { display: table-cell; width: 42px; text-align: right; font-size: 9px; font-weight: 700; color: #c0392b; vertical-align: middle; padding-left: 6px; }
+
+/* ── Footer ─────────────────────────────────────────────────────────── */
+.pdf-footer {
+    border-top: 2px solid #f6be39;
+    margin-top: 24px;
+    padding-top: 8px;
+    font-size: 8px;
+    color: #9b8f7a;
+    display: table;
+    width: 100%;
+}
+.pdf-footer-left  { display: table-cell; text-align: left; }
+.pdf-footer-right { display: table-cell; text-align: right; }
+
+/* ── Two-column layout ───────────────────────────────────────────── */
+.two-col { width: 100%; border-collapse: collapse; }
+.two-col td { width: 50%; vertical-align: top; padding-right: 12px; }
+.two-col td:last-child { padding-right: 0; padding-left: 12px; }
+
+/* ── Section note ────────────────────────────────────────────────── */
+.section-note { font-size: 9px; color: #9b8f7a; margin: 0 0 8px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="pdf-header">
+    <div class="pdf-header-left">
+        <div class="pdf-title">SankofaWatch</div>
+        <div class="pdf-subtitle">Illegal Mining Detection Report</div>
+    </div>
+    <div class="pdf-header-right">
+        {% if org_name %}<div class="pdf-org">{{ org_name }}</div>{% endif %}
+        <div class="pdf-meta">{{ period_start|date:"j N Y" }} — {{ period_end|date:"j N Y" }}</div>
+        <div class="pdf-meta">Generated {{ report_date|date:"j N Y \a\t g:i A" }}</div>
+    </div>
+</div>
+
+<!-- 1. Executive Summary -->
+<div class="section">Executive Summary</div>
+<p class="section-note">Cumulative totals as of {{ report_date|date:"j N Y" }} — matches dashboard figures.</p>
+<table class="stat-grid">
+    <tr>
+        <td><div class="stat-card stat-red">
+            <div class="stat-label">Illegal Sites</div>
+            <div class="stat-value">{{ all_time.illegal_sites }}</div>
+            <div class="stat-sub">of {{ all_time.total_detected_sites }} total detected</div>
+        </div></td>
+        <td><div class="stat-card stat-amber">
+            <div class="stat-label">Open Alerts</div>
+            <div class="stat-value">{{ all_time.open_alerts }}</div>
+            <div class="stat-sub">currently open, all time</div>
+        </div></td>
+        <td><div class="stat-card stat-amber">
+            <div class="stat-label">Area Affected (ha)</div>
+            <div class="stat-value">{{ all_time.total_area_ha }}</div>
+            <div class="stat-sub">hectares of degraded land</div>
+        </div></td>
+        <td><div class="stat-card">
+            <div class="stat-label">High-Risk Zones</div>
+            <div class="stat-value">{{ all_time.high_risk_zones }}</div>
+            <div class="stat-sub">recurring or critical</div>
+        </div></td>
+    </tr>
+</table>
+
+<!-- Period Activity -->
+<div class="section">Period Activity — {{ period_start|date:"j N Y" }} to {{ period_end|date:"j N Y" }}</div>
+<table class="stat-grid">
+    <tr>
+        <td><div class="stat-card stat-red">
+            <div class="stat-label">Illegal Sites</div>
+            <div class="stat-value">{{ stats.illegal_sites }}</div>
+            <div class="stat-sub">of {{ stats.total_detected_sites }} in period</div>
+        </div></td>
+        <td><div class="stat-card stat-amber">
+            <div class="stat-label">New Alerts</div>
+            <div class="stat-value">{{ stats.open_alerts }}</div>
+            <div class="stat-sub">{{ stats.critical_alerts }} critical · {{ stats.high_alerts }} high</div>
+        </div></td>
+        <td><div class="stat-card stat-amber">
+            <div class="stat-label">Area Detected (ha)</div>
+            <div class="stat-value">{{ stats.total_area_ha }}</div>
+            <div class="stat-sub">illegal sites in period</div>
+        </div></td>
+        <td><div class="stat-card">
+            <div class="stat-label">High-Risk in Period</div>
+            <div class="stat-value">{{ stats.high_risk_zones }}</div>
+            <div class="stat-sub">recurring or critical</div>
+        </div></td>
+    </tr>
+</table>
+
+<!-- 2. Alert Status & Severity -->
+<div class="section">Alert Status &amp; Severity</div>
+<table class="two-col">
+    <tr>
+        <td>
+            <table class="pdf-table">
+                <thead><tr><th>Status</th><th>Count</th></tr></thead>
+                <tbody>
+                    {% for status, cnt in alerts_by_status.items %}
+                    <tr>
+                        <td>{% if status == 'open' %}<span class="badge badge-red">Open</span>
+                        {% elif status == 'acknowledged' %}<span class="badge badge-amber">Acknowledged</span>
+                        {% elif status == 'dispatched' %}<span class="badge badge-purple">Dispatched</span>
+                        {% elif status == 'resolved' %}<span class="badge badge-green">Resolved</span>
+                        {% elif status == 'dismissed' %}<span class="badge badge-gray">Dismissed</span>
+                        {% else %}<span class="badge badge-gray">{{ status|capfirst }}</span>
+                        {% endif %}</td>
+                        <td style="font-weight:700;">{{ cnt }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="2" style="color:#9b8f7a;">No data</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </td>
+        <td>
+            <table class="pdf-table">
+                <thead><tr><th>Severity</th><th>Count</th></tr></thead>
+                <tbody>
+                    {% for sev, cnt in alerts_by_severity.items %}
+                    <tr>
+                        <td>{% if sev == 'critical' %}<span class="badge badge-red">Critical</span>
+                        {% elif sev == 'high' %}<span class="badge badge-amber">High</span>
+                        {% elif sev == 'medium' %}<span class="badge badge-blue">Medium</span>
+                        {% else %}<span class="badge badge-gray">{{ sev|capfirst }}</span>
+                        {% endif %}</td>
+                        <td style="font-weight:700;">{{ cnt }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="2" style="color:#9b8f7a;">No data</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </td>
+    </tr>
+</table>
+
+<!-- 3. Field Verification -->
+<div class="section">Field Verification Outcomes</div>
+<table class="stat-grid">
+    <tr>
+        <td><div class="stat-card">
+            <div class="stat-label">Assignments Resolved</div>
+            <div class="stat-value">{{ resolved_assignments }}</div>
+        </div></td>
+        <td><div class="stat-card stat-red">
+            <div class="stat-label">Mining Confirmed</div>
+            <div class="stat-value">{{ confirmed_mining }}</div>
+        </div></td>
+        <td><div class="stat-card stat-green">
+            <div class="stat-label">False Positives</div>
+            <div class="stat-value">{{ false_positives }}</div>
+        </div></td>
+        <td><div class="stat-card">
+            <div class="stat-label">Model Accuracy</div>
+            <div class="stat-value">{% if resolved_assignments > 0 %}{{ confirmed_mining }}/{{ resolved_assignments }}{% else %}—{% endif %}</div>
+            <div class="stat-sub">confirmed vs resolved</div>
+        </div></td>
+    </tr>
+</table>
+
+{% if inspector_stats %}
+<table class="pdf-table" style="margin-top:8px;">
+    <thead>
+        <tr>
+            <th>Inspector</th>
+            <th>Total</th>
+            <th>Confirmed</th>
+            <th>False Pos.</th>
+            <th>Inconclusive</th>
+            <th>Pending</th>
+            <th>Avg Days</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in inspector_stats %}
+        <tr>
+            <td>{{ row.inspector__user__username|default:"Unknown" }}</td>
+            <td>{{ row.total }}</td>
+            <td>{% if row.confirmed > 0 %}<span class="badge badge-red">{{ row.confirmed }}</span>{% else %}—{% endif %}</td>
+            <td>{% if row.fp > 0 %}<span class="badge badge-green">{{ row.fp }}</span>{% else %}—{% endif %}</td>
+            <td>{{ row.inconclusive|default:"—" }}</td>
+            <td>{{ row.pending }}</td>
+            <td>{% if row.avg_days %}{{ row.avg_days }}d{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<!-- 4. Top Regions -->
+{% if stats.top_regions %}
+<div class="section">Top Regions by Detection Count</div>
+{% for region in stats.top_regions %}
+<div class="bar-row">
+    <span class="bar-label">{{ region.region_display|default:"Unknown" }}</span>
+    <span class="bar-outer"><div class="bar-track"><div class="bar-fill" style="width:{{ region.bar_pct }}%;"></div></div></span>
+    <span class="bar-count">{{ region.total }}</span>
+    <span class="bar-pct">{{ region.illegal_pct }}%</span>
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- 5. Recent Detected Sites -->
+{% if stats.recent_sites %}
+<div class="section">Recent Detected Sites</div>
+<table class="pdf-table">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Region</th>
+            <th>Status</th>
+            <th>Confidence</th>
+            <th>Area (ha)</th>
+            <th>Recurrences</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for site in stats.recent_sites %}
+        <tr>
+            <td>{{ site.detection_date }}</td>
+            <td>{{ site.region_display|default:"—" }}</td>
+            <td>{% if site.legal_status == 'illegal' %}<span class="badge badge-red">Illegal</span>
+            {% else %}<span class="badge badge-green">Legal</span>{% endif %}</td>
+            <td>{{ site.confidence_pct }}%</td>
+            <td>{{ site.area_hectares|floatformat:1 }}</td>
+            <td>{{ site.recurrence_count }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<!-- 6. Scan Job Summary -->
+<div class="section">Scan Job Summary</div>
+<table class="stat-grid">
+    <tr>
+        <td><div class="stat-card">
+            <div class="stat-label">Total Jobs</div>
+            <div class="stat-value">{{ stats.total_jobs }}</div>
+        </div></td>
+        <td><div class="stat-card stat-green">
+            <div class="stat-label">Completed</div>
+            <div class="stat-value">{{ stats.completed_jobs }}</div>
+        </div></td>
+        <td><div class="stat-card stat-red">
+            <div class="stat-label">Failed</div>
+            <div class="stat-value">{{ stats.failed_jobs }}</div>
+        </div></td>
+        <td><div class="stat-card">
+            <div class="stat-label">Success Rate</div>
+            <div class="stat-value">{% if stats.total_jobs > 0 %}{% widthratio stats.completed_jobs stats.total_jobs 100 %}%{% else %}—{% endif %}</div>
+        </div></td>
+    </tr>
+</table>
+
+{% if recent_jobs %}
+<table class="pdf-table" style="margin-top:8px;">
+    <thead>
+        <tr>
+            <th>Job ID</th>
+            <th>Triggered By</th>
+            <th>Status</th>
+            <th>Started</th>
+            <th>Detections</th>
+            <th>Illegal</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for j in recent_jobs %}
+        <tr>
+            <td style="font-family:monospace;font-size:9px;">{{ j.id }}</td>
+            <td>{{ j.created_by__username|default:"Automated" }}</td>
+            <td>{% if j.status == 'completed' %}<span class="badge badge-green">Completed</span>
+            {% elif j.status == 'failed' %}<span class="badge badge-red">Failed</span>
+            {% else %}<span class="badge badge-gray">{{ j.status|capfirst }}</span>{% endif %}</td>
+            <td>{{ j.created_at|date:"d M Y H:i" }}</td>
+            <td>{{ j.total_detections }}</td>
+            <td>{{ j.illegal_count }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<!-- Footer -->
+<div class="pdf-footer">
+    <div class="pdf-footer-left">SankofaWatch &mdash; Confidential</div>
+    <div class="pdf-footer-right">Generated {{ report_date|date:"j N Y \a\t g:i A" }}</div>
+</div>
+
+</body>
+</html>

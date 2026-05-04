@@ -1,0 +1,1534 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SankofaWatch — AI-powered satellite detection of illegal galamsey mining in Ghana. Protecting forests, rivers, and communities.">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>{% block title %}{{ settings.APP_NAME }}{% endblock %}</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="{% static 'images/favicon.svg' %}">
+    <link rel="alternate icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        /* Surface scale */
+                        'surface-base': 'var(--surface-base)',
+                        'surface-1':    'var(--surface-1)',
+                        'surface-2':    'var(--surface-2)',
+                        'surface-3':    'var(--surface-3)',
+                        'surface-4':    'var(--surface-4)',
+                        /* Text */
+                        'fg-primary':   'var(--text-primary)',
+                        'fg-secondary': 'var(--text-secondary)',
+                        'fg-muted':     'var(--text-tertiary)',
+                        'fg-inverse':   'var(--text-inverse)',
+                        'fg-link':      'var(--text-link)',
+                        /* Accent */
+                        'gw-accent':       'var(--accent)',
+                        'gw-accent-hover': 'var(--accent-hover)',
+                        'gw-accent-muted': 'var(--accent-muted)',
+                        /* Sentinel design system — hardcoded dark tokens for redesigned pages */
+                        'surface':                    '#10141a',
+                        'surface-container-lowest':   '#0a0e14',
+                        'surface-container-low':      '#181c22',
+                        'surface-container':          '#1c2026',
+                        'surface-container-high':     '#262a31',
+                        'surface-container-highest':  '#31353c',
+                        'on-surface':                 '#dfe2eb',
+                        'on-surface-variant':         '#d3c5ae',
+                        'primary':                    '#f6be39',
+                        'primary-container':          '#d4a017',
+                        'on-primary':                 '#402d00',
+                        'tertiary':                   '#67df70',
+                        'outline':                    '#9b8f7a',
+                        'outline-variant':            '#4f4634',
+                        /* Borders */
+                        'edge-subtle':  'var(--border-subtle)',
+                        'edge-default': 'var(--border-default)',
+                        'edge-strong':  'var(--border-strong)',
+                        'edge-focus':   'var(--border-focus)',
+                        /* Status */
+                        'status-critical':        'var(--status-critical)',
+                        'status-critical-bg':     'var(--status-critical-bg)',
+                        'status-critical-border': 'var(--status-critical-border)',
+                        'status-high':            'var(--status-high)',
+                        'status-high-bg':         'var(--status-high-bg)',
+                        'status-moderate':        'var(--status-moderate)',
+                        'status-moderate-bg':     'var(--status-moderate-bg)',
+                        'status-resolved':        'var(--status-resolved)',
+                        'status-resolved-bg':     'var(--status-resolved-bg)',
+                        'status-info':            'var(--status-info)',
+                        'status-info-bg':         'var(--status-info-bg)',
+                        'status-dispatched':      'var(--status-dispatched)',
+                        'status-dispatched-bg':   'var(--status-dispatched-bg)',
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system'],
+                        'mono': ['"SF Mono"', '"Fira Code"', '"Fira Mono"', 'ui-monospace', 'monospace'],
+                    },
+                    spacing: {
+                        '55': '220px',
+                        '75': '300px',
+                    },
+                    borderRadius: {
+                        'DEFAULT': '6px',
+                    },
+                }
+            }
+        }
+    </script>
+
+    <!-- Inter + JetBrains Mono fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- NProgress top loading bar -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.min.js"></script>
+    <style>
+    /* NProgress — gold accent, no spinner */
+    #nprogress .bar { background: var(--accent, #d4a017) !important; height: 2px !important; }
+    #nprogress .peg { box-shadow: 0 0 8px var(--accent, #d4a017), 0 0 3px var(--accent, #d4a017) !important; }
+    #nprogress .spinner { display: none !important; }
+    </style>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/custom.css' %}">
+
+    <!-- Theme CSS -->
+    <style>
+    /* Theme variables – used by settings.html theme system */
+    :root {
+        --primary-color: #3b82f6;
+        --text-color: #1f2937;
+        --bg-color: #ffffff;
+        --border-color: #e5e7eb;
+        --card-bg: #ffffff;
+        --input-bg: #ffffff;
+        --input-border: #d1d5db;
+        --sidebar-bg: #ffffff;
+        --nav-bg: #ffffff;
+    }
+
+    [data-theme="dark"] {
+        --primary-color: #60a5fa;
+        --text-color: #f9fafb;
+        --bg-color: #111827;
+        --border-color: #374151;
+        --card-bg: #1f2937;
+        --input-bg: #374151;
+        --input-border: #4b5563;
+        --sidebar-bg: #1f2937;
+        --nav-bg: #1f2937;
+    }
+
+    /* Font size classes */
+    .font-small { font-size: 14px; }
+    .font-medium { font-size: 16px; }
+    .font-large { font-size: 18px; }
+    .font-extra-large { font-size: 20px; }
+
+    /* Layout classes */
+    .layout-compact { line-height: 1.4; }
+    .layout-spaced { line-height: 1.6; }
+    .layout-comfortable { line-height: 1.8; }
+
+    /* High contrast mode */
+    .high-contrast {
+        --primary-color: #000000;
+        --text-color: #000000;
+        --bg-color: #ffffff;
+        --border-color: #000000;
+        --input-bg: #ffffff;
+        --input-border: #000000;
+        --sidebar-bg: #ffffff;
+        --nav-bg: #ffffff;
+    }
+
+    [data-theme="dark"].high-contrast {
+        --primary-color: #ffffff;
+        --text-color: #ffffff;
+        --bg-color: #000000;
+        --border-color: #ffffff;
+        --input-bg: #000000;
+        --input-border: #ffffff;
+        --sidebar-bg: #000000;
+        --nav-bg: #000000;
+    }
+    </style>
+
+    <!-- Sentinel design system overrides -->
+    <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #0a0e14; }
+    ::-webkit-scrollbar-thumb { background: #31353c; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #f6be39; }
+
+    /* Dot-grid utility */
+    .sentinel-dot-grid {
+        background-image: radial-gradient(circle, rgba(79,70,52,0.25) 1px, transparent 1px);
+        background-size: 28px 28px;
+    }
+
+    /* Sentinel nav overrides — right-border active, sharper, darker */
+    #main-sidebar .gw-nav-item {
+        border-left: none !important;
+        border-right: 2px solid transparent;
+        border-radius: 0 !important;
+        margin: 0 !important;
+        padding: 9px 16px;
+        font-size: 12px;
+        color: rgba(223,226,235,0.5);
+        letter-spacing: 0.01em;
+    }
+    #main-sidebar .gw-nav-item:hover {
+        background: rgba(24,28,34,0.7) !important;
+        color: #dfe2eb !important;
+    }
+    #main-sidebar .gw-nav-item.active {
+        background: #181c22 !important;
+        color: #f6be39 !important;
+        border-right-color: #f6be39;
+        font-weight: 600;
+    }
+    #main-sidebar .gw-nav-item.active i[class*="ph"] { color: #f6be39 !important; opacity: 1 !important; }
+    #main-sidebar .gw-nav-item:hover i[class*="ph"]  { color: #dfe2eb !important; opacity: 1 !important; }
+    #main-sidebar .gw-nav-item i[class*="ph"]         { color: rgba(155,143,122,0.6); opacity: 1 !important; }
+    #main-sidebar .gw-nav-group {
+        color: rgba(155,143,122,0.5) !important;
+        font-size: 9px !important;
+        letter-spacing: 0.12em !important;
+        padding: 16px 16px 4px !important;
+    }
+    #main-sidebar { scrollbar-width: thin; scrollbar-color: #31353c #0a0e14; }
+
+    /* Sentinel page header accent line */
+    .sentinel-page-header { }
+    </style>
+
+    <!-- MapLibre GL JS -->
+    <link href="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.js"></script>
+
+    <!-- MapLibre Draw Plugin -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.0/mapbox-gl-draw.js"></script>
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.0/mapbox-gl-draw.css" type="text/css" />
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js global dark-theme defaults -->
+    <script>
+    (function () {
+        function _applyChartDefaults() {
+            if (typeof Chart === 'undefined') return;
+            Chart.defaults.animation.duration = 600;
+            Chart.defaults.animation.easing   = 'easeOutQuart';
+            Chart.defaults.color              = '#8b949e';
+            Chart.defaults.borderColor        = 'rgba(240,246,252,0.07)';
+            var tp = Chart.defaults.plugins.tooltip;
+            tp.backgroundColor  = 'rgba(13,17,23,0.96)';
+            tp.borderColor      = 'rgba(240,246,252,0.12)';
+            tp.borderWidth      = 1;
+            tp.titleColor       = '#e6edf3';
+            tp.bodyColor        = '#8b949e';
+            tp.padding          = 10;
+            tp.cornerRadius     = 6;
+            tp.displayColors    = false;
+        }
+        _applyChartDefaults();
+    })();
+    </script>
+
+    <!-- AOS — Animate on Scroll -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css"/>
+
+    <!-- Phosphor Icons (regular, bold, fill weights) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/bold/style.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css"/>
+    <!-- Notyf toast notifications -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css"/>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-surface-base text-fg-primary font-sans antialiased" data-user-role="{{ request.user.profile.role|default:'none' }}" data-theme="{% if request.user.preferences %}{{ request.user.preferences.theme }}{% else %}light{% endif %}" data-layout="{% if request.user.preferences %}{{ request.user.preferences.layout }}{% else %}comfortable{% endif %}" data-font-size="{% if request.user.preferences %}{{ request.user.preferences.font_size }}{% else %}medium{% endif %}">
+
+    <!-- Skip-to-content link for keyboard/screen-reader users -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <!-- ── Top Navigation ──────────────────────────────────── -->
+    <header class="fixed top-0 left-0 right-0 h-16 z-50" style="background: rgba(10,14,20,0.88); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(79,70,52,0.18); box-shadow: 0 2px 24px rgba(0,0,0,0.35);">
+        <div class="flex items-center justify-between h-full px-4">
+
+            <!-- Logo (hamburger toggle visible only on ≤768px) -->
+            <div class="flex items-center gap-3">
+                <button id="sidebar-toggle"
+                        aria-label="Toggle navigation menu"
+                        aria-controls="main-sidebar"
+                        aria-expanded="false"
+                        onclick="toggleSidebar()">
+                    <i class="ph ph-list" style="font-size:18px;" aria-hidden="true"></i>
+                </button>
+                <a href="{% url 'analysis:live_map' %}" class="flex items-center gap-2.5 group" aria-label="{{ settings.APP_NAME }} home">
+                    <!-- Sankofa bird mark (Akan/Ghanaian Adinkra: "go back and fetch it") -->
+                    <div class="w-7 h-7 flex items-center justify-center flex-shrink-0">
+                        <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" aria-hidden="true" focusable="false">
+                            <!-- Body facing right -->
+                            <ellipse cx="16" cy="18" rx="7" ry="4.5" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.5"/>
+                            <!-- Wing arc -->
+                            <path d="M12 16 Q16 11 21 15" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+                            <!-- Tail sweeping up -->
+                            <path d="M22 17 Q27 12 23.5 6" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+                            <!-- Neck curving back over body -->
+                            <path d="M11 14 Q7 11 8.5 7" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+                            <!-- Head turned backward -->
+                            <circle cx="8.5" cy="5.5" r="2.3" fill="var(--accent)"/>
+                            <!-- Eye -->
+                            <circle cx="7.6" cy="5" r="0.55" fill="#0d1117" fill-opacity="0.7"/>
+                            <!-- Beak pointing left -->
+                            <path d="M7.5 6.5 L5 8" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round"/>
+                            <!-- Egg on back (Sankofa carries the past forward) -->
+                            <ellipse cx="16" cy="14.5" rx="2.1" ry="1.5" fill="var(--accent)" fill-opacity="0.4" stroke="var(--accent)" stroke-width="1"/>
+                        </svg>
+                    </div>
+                    <span class="text-[14px] font-semibold text-fg-primary tracking-tight group-hover:text-gw-accent transition-colors" style="transition-duration:120ms">
+                        {{ settings.APP_NAME }}
+                    </span>
+                </a>
+                {% if settings.ENVIRONMENT and settings.ENVIRONMENT != 'Production' %}
+                <span class="px-2 py-0.5 text-[10px] font-semibold bg-surface-3 text-fg-muted rounded border border-edge-subtle uppercase tracking-widest">
+                    {{ settings.ENVIRONMENT }}
+                </span>
+                {% endif %}
+            </div>
+
+            <!-- Right controls -->
+            <div class="flex items-center gap-1">
+
+                <!-- Notifications -->
+                <div class="relative" id="notif-wrapper">
+                    <button id="notif-btn"
+                            class="btn-ghost relative w-8 h-8"
+                            aria-label="Notifications"
+                            aria-expanded="false"
+                            aria-haspopup="true">
+                        <i class="ph ph-bell" style="font-size:17px;" aria-hidden="true"></i>
+                        <span id="notif-badge"
+                              class="hidden absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-status-critical rounded-full text-fg-inverse text-[9px] font-bold flex items-center justify-center px-1 leading-none"
+                              aria-live="polite"
+                              aria-label="unread notifications">
+                        </span>
+                    </button>
+
+                    <!-- Notification dropdown -->
+                    <div id="notif-dropdown"
+                         class="hidden absolute right-0 top-full mt-2 w-80 z-50 overflow-hidden"
+                         role="dialog"
+                         aria-label="Notifications"
+                         style="background:#181c22; border:1px solid rgba(79,70,52,0.2); border-radius:10px; box-shadow:0 16px 40px rgba(0,0,0,0.55);">
+                        <div style="padding:12px 16px; border-bottom:1px solid rgba(79,70,52,0.12); display:flex; align-items:center; justify-content:space-between;">
+                            <span style="font-size:13px; font-weight:700; color:#dfe2eb; letter-spacing:-0.01em;">Notifications</span>
+                            <span id="notif-count-label" style="font-size:11px; color:#9b8f7a;"></span>
+                        </div>
+                        <div id="notif-list" style="max-height:288px; overflow-y:auto;"></div>
+                        <div style="padding:10px 16px; border-top:1px solid rgba(79,70,52,0.12);">
+                            {% if user.is_authenticated %}
+                                {% if user.profile.role == 'inspector' %}
+                                <a href="{% url 'dashboard:inspector' %}" style="font-size:12px; font-weight:600; color:#f6be39; text-decoration:none; opacity:0.85;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'">My assignments →</a>
+                                {% elif user.profile.role == 'system_admin' %}
+                                <a href="{% url 'dashboard:admin_home' %}" style="font-size:12px; font-weight:600; color:#f6be39; text-decoration:none; opacity:0.85;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'">System dashboard →</a>
+                                {% else %}
+                                <a href="{% url 'dashboard:alerts' %}" style="font-size:12px; font-weight:600; color:#f6be39; text-decoration:none; opacity:0.85;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'">View all alerts →</a>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Divider -->
+                <div class="w-px h-5 bg-edge-subtle mx-1"></div>
+
+                <!-- User menu -->
+                <div class="relative">
+                    <button onclick="toggleUserMenu()"
+                            class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-3 transition-colors"
+                            style="transition-duration: 120ms"
+                            aria-label="User menu"
+                            aria-expanded="false"
+                            aria-haspopup="true"
+                            id="user-menu-btn">
+                        <div class="w-6 h-6 bg-surface-3 border border-edge-default rounded-full flex items-center justify-center flex-shrink-0" aria-hidden="true">
+                            <span class="text-[11px] font-semibold text-fg-primary">
+                                {% if user.is_authenticated %}{{ user.username|first|upper }}{% else %}?{% endif %}
+                            </span>
+                        </div>
+                        <span class="text-[13px] text-fg-secondary hidden sm:block max-w-[100px] truncate">
+                            {% if user.is_authenticated %}{{ user.username }}{% endif %}
+                        </span>
+                        <i class="ph ph-caret-down" style="font-size:12px;" aria-hidden="true"></i>
+                    </button>
+
+                    <!-- User dropdown -->
+                    <div id="userMenu"
+                         class="hidden absolute right-0 mt-1.5 w-52 z-50 overflow-hidden"
+                         role="menu"
+                         aria-labelledby="user-menu-btn"
+                         style="background:#181c22; border:1px solid rgba(79,70,52,0.2); border-radius:10px; box-shadow:0 12px 32px rgba(0,0,0,0.55);">
+                        {% if user.is_authenticated %}
+                        <div style="padding:12px 16px; border-bottom:1px solid rgba(79,70,52,0.12);">
+                            <p style="font-size:13px; font-weight:600; color:#dfe2eb; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ user.username }}</p>
+                            <p style="font-size:11px; color:#9b8f7a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:2px;">{{ user.email }}</p>
+                        </div>
+                        <div style="padding:4px 0;">
+                            <a href="{% url 'dashboard:my_account' %}"
+                               style="display:flex; align-items:center; gap:10px; padding:8px 16px; font-size:13px; color:#9b8f7a; text-decoration:none; transition:background 0.12s, color 0.12s;"
+                               onmouseover="this.style.background='#262a31';this.style.color='#dfe2eb'" onmouseout="this.style.background='';this.style.color='#9b8f7a'">
+                                <i class="ph ph-user" style="font-size:14px;" aria-hidden="true"></i>
+                                My Account
+                            </a>
+                            <a href="{% url 'password_change' %}"
+                               style="display:flex; align-items:center; gap:10px; padding:8px 16px; font-size:13px; color:#9b8f7a; text-decoration:none; transition:background 0.12s, color 0.12s;"
+                               onmouseover="this.style.background='#262a31';this.style.color='#dfe2eb'" onmouseout="this.style.background='';this.style.color='#9b8f7a'">
+                                <i class="ph ph-key" style="font-size:14px;" aria-hidden="true"></i>
+                                Change Password
+                            </a>
+                            {% if user.profile.role == 'system_admin' %}
+                            <a href="{% url 'admin:index' %}"
+                               style="display:flex; align-items:center; gap:10px; padding:8px 16px; font-size:13px; color:#9b8f7a; text-decoration:none; transition:background 0.12s, color 0.12s;"
+                               onmouseover="this.style.background='#262a31';this.style.color='#dfe2eb'" onmouseout="this.style.background='';this.style.color='#9b8f7a'">
+                                <i class="ph ph-sliders" style="font-size:14px;" aria-hidden="true"></i>
+                                Admin Panel
+                            </a>
+                            {% endif %}
+                            <div style="margin:4px 0; border-top:1px solid rgba(79,70,52,0.12);"></div>
+                            <form method="post" action="{% url 'logout' %}">
+                                {% csrf_token %}
+                                <button type="submit"
+                                        style="width:100%; display:flex; align-items:center; gap:10px; padding:8px 16px; font-size:13px; color:#ffb4ab; background:transparent; border:none; cursor:pointer; text-align:left; transition:background 0.12s;"
+                                        onmouseover="this.style.background='rgba(255,180,171,0.07)'" onmouseout="this.style.background='transparent'">
+                                    <i class="ph ph-sign-out" style="font-size:14px;" aria-hidden="true"></i>
+                                    Sign out
+                                </button>
+                            </form>
+                        </div>
+                        {% else %}
+                        <div style="padding:4px 0;">
+                            <a href="{% url 'login' %}" style="display:flex; align-items:center; padding:8px 16px; font-size:13px; color:#9b8f7a; text-decoration:none; transition:background 0.12s;" onmouseover="this.style.background='#262a31'" onmouseout="this.style.background=''">Sign in</a>
+                            <a href="{% url 'signup' %}" style="display:flex; align-items:center; padding:8px 16px; font-size:13px; color:#9b8f7a; text-decoration:none; transition:background 0.12s;" onmouseover="this.style.background='#262a31'" onmouseout="this.style.background=''">Create account</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex pt-16">
+
+        <!-- Mobile sidebar overlay (tap to close) -->
+        <div id="sidebar-overlay" onclick="closeSidebar()" aria-hidden="true"></div>
+
+        <!-- ── Sidebar ──────────────────────────────────────── -->
+        <aside id="main-sidebar" class="fixed left-0 top-16 bottom-0 w-64 z-40 overflow-y-auto flex flex-col" style="background: #0a0e14; border-right: 1px solid rgba(79,70,52,0.12);">
+            <nav class="flex-1 py-2">
+                {% if user.is_authenticated and user.profile.role == 'inspector' %}
+                <!-- ── Inspector Navigation ───────────────────── -->
+                <p class="gw-nav-group">Navigation</p>
+                <ul class="list-none p-0 m-0">
+                    <li>
+                        <a href="{% url 'dashboard:inspector' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'inspector' %}active{% endif %}">
+                            <i class="ph ph-clipboard-text" aria-hidden="true"></i>
+                            <span>My Assignments</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard:settings' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+                            <i class="ph ph-gear" aria-hidden="true"></i>
+                            <span>Settings</span>
+                        </a>
+                    </li>
+                </ul>
+
+                {% elif user.is_authenticated and user.profile.role == 'system_admin' %}
+                <!-- ── System Administrator Navigation ───────── -->
+                <p class="gw-nav-group">Platform</p>
+                <ul class="list-none p-0 m-0 mb-1">
+                    <li>
+                        <a href="{% url 'dashboard:admin_home' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'admin_home' %}active{% endif %}">
+                            <i class="ph ph-house" aria-hidden="true"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard:user_management' %}"
+                           class="gw-nav-item {% if 'user_management' in request.resolver_match.url_name or 'user_create' in request.resolver_match.url_name or 'user_edit' in request.resolver_match.url_name %}active{% endif %}">
+                            <i class="ph ph-users-three" aria-hidden="true"></i>
+                            <span>Users</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard:organisation_management' %}"
+                           class="gw-nav-item {% if 'organisation' in request.resolver_match.url_name %}active{% endif %}">
+                            <i class="ph ph-buildings" aria-hidden="true"></i>
+                            <span>Organisations</span>
+                        </a>
+                    </li>
+                </ul>
+
+                <p class="gw-nav-group">Analysis</p>
+                <ul class="list-none p-0 m-0 mb-1">
+                    <li>
+                        <a href="{% url 'scanning:auto_scan_control' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'auto_scan_control' %}active{% endif %}">
+                            <i class="ph ph-broadcast" aria-hidden="true"></i>
+                            <span>Auto Scan</span>
+                        </a>
+                    </li>
+                </ul>
+
+                <p class="gw-nav-group">Administration</p>
+                <ul class="list-none p-0 m-0 mb-1">
+                    <li>
+                        <a href="{% url 'uploads:data_uploads' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'data_uploads' %}active{% endif %}">
+                            <i class="ph ph-cloud-arrow-up" aria-hidden="true"></i>
+                            <span>Data Uploads</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard:model_insights' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'model_insights' %}active{% endif %}">
+                            <i class="ph ph-chart-bar" aria-hidden="true"></i>
+                            <span>Model Insights</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard:audit' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'audit' %}active{% endif %}">
+                            <i class="ph ph-scroll" aria-hidden="true"></i>
+                            <span>Audit Trail</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard:settings' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+                            <i class="ph ph-gear" aria-hidden="true"></i>
+                            <span>Settings</span>
+                        </a>
+                    </li>
+                </ul>
+
+                {% else %}
+                <!-- ── Agency Administrator Navigation ────────── -->
+                <p class="gw-nav-group">Overview</p>
+                <ul class="list-none p-0 m-0 mb-1">
+                    <li>
+                        <a href="{% url 'dashboard:home' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+                            <i class="ph ph-house" aria-hidden="true"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'analysis:live_map' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'live_map' %}active{% endif %}">
+                            <i class="ph ph-map-trifold" aria-hidden="true"></i>
+                            <span>Live Map</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard:alerts' %}"
+                           class="gw-nav-item {% if 'alerts' in request.resolver_match.url_name %}active{% endif %}">
+                            <i class="ph ph-warning" aria-hidden="true"></i>
+                            <span>Alerts</span>
+                        </a>
+                    </li>
+                </ul>
+
+                <p class="gw-nav-group">Analysis</p>
+                <ul class="list-none p-0 m-0 mb-1">
+                    <li>
+                        <a href="{% url 'scanning:auto_scan' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'auto_scan' %}active{% endif %}">
+                            <i class="ph ph-broadcast" aria-hidden="true"></i>
+                            <span>Auto Scan</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard:region_list' %}"
+                           class="gw-nav-item {% if 'region' in request.resolver_match.url_name %}active{% endif %}">
+                            <i class="ph ph-globe-hemisphere-west" aria-hidden="true"></i>
+                            <span>Regions</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard:report' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'report' %}active{% endif %}">
+                            <i class="ph ph-file-text" aria-hidden="true"></i>
+                            <span>Reports</span>
+                        </a>
+                    </li>
+                </ul>
+
+                <p class="gw-nav-group">System</p>
+                <ul class="list-none p-0 m-0">
+                    <li>
+                        <a href="{% url 'dashboard:settings' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+                            <i class="ph ph-gear" aria-hidden="true"></i>
+                            <span>Settings</span>
+                        </a>
+                    </li>
+                </ul>
+                {% endif %}
+
+                <!-- ── Map Controls (live map page only) ─────── -->
+                {% if 'live_map' in request.path or 'analysis' in request.path %}
+                <div class="mt-3 pt-3 border-t border-edge-subtle mx-3">
+
+                    <!-- AOI Tools -->
+                    <p class="gw-nav-group px-1 pt-4 pb-2">AOI Tools</p>
+                    <div class="px-1 space-y-2">
+                        <button id="draw-aoi-btn" class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
+                            <i class="ph ph-pencil-simple" style="font-size:14px;" aria-hidden="true"></i>
+                            Draw Area
+                        </button>
+                        <button id="upload-aoi-btn" class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2"
+                                onclick="document.getElementById('aoi-file-input').click()">
+                            <i class="ph ph-upload-simple" style="font-size:14px;" aria-hidden="true"></i>
+                            Upload File
+                        </button>
+                        <input type="file" id="aoi-file-input" class="hidden" accept=".geojson,.json,.zip">
+
+                        <!-- Drawing mode hint -->
+                        <div id="aoi-draw-instructions"
+                             class="hidden rounded-lg border p-2.5 text-[11px] space-y-1"
+                             style="background:var(--surface-3);border-color:var(--accent-border)">
+                            <p class="font-semibold" style="color:var(--accent)">Drawing mode active</p>
+                            <p class="text-fg-secondary">Click to place vertices.</p>
+                            <p class="text-fg-secondary">Auto-closes after <strong class="text-fg-primary">4 clicks</strong>, or press
+                                <kbd class="px-1 rounded text-[10px]" style="background:var(--surface-4);color:var(--accent)">Enter</kbd> after 3.
+                            </p>
+                            <p style="color:var(--text-tertiary)" class="mt-1">Press "Stop Drawing" to cancel.</p>
+                        </div>
+
+                        <!-- AOI scan section -->
+                        <div id="aoi-scan-section" class="hidden">
+                            <div class="rounded-lg p-3 space-y-2" style="background:var(--surface-3);border:1px solid var(--border-default)">
+                                <p class="text-[11px] text-fg-secondary">
+                                    Area: <span id="aoi-area" class="text-fg-primary font-semibold tabular-nums">0.00</span> ha
+                                </p>
+                                <!-- Date range for scan -->
+                                <div class="space-y-1">
+                                    <label class="text-[11px]" style="color:var(--text-tertiary)">Start date</label>
+                                    <input id="scan-start-date" type="date"
+                                           class="w-full rounded px-2 py-1 text-[12px]"
+                                           style="background:var(--surface-2);border:1px solid var(--border-default);color:var(--text-primary);">
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-[11px]" style="color:var(--text-tertiary)">End date</label>
+                                    <input id="scan-end-date" type="date"
+                                           class="w-full rounded px-2 py-1 text-[12px]"
+                                           style="background:var(--surface-2);border:1px solid var(--border-default);color:var(--text-primary);">
+                                </div>
+                                <p id="aoi-warning" class="hidden text-[11px]" style="color:var(--status-critical)"></p>
+                                <button id="scan-aoi-btn"
+                                        onclick="if (window.mapHandler) window.mapHandler.scanAOI();"
+                                        class="btn-primary w-full text-[12px] py-1.5">
+                                    Scan AOI
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Layer toggles -->
+                    <p class="gw-nav-group px-1 pt-4 pb-2">Map Layers</p>
+                    <div class="px-1 space-y-1.5">
+                        <button id="toggle-satellite-layer"
+                                class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
+                            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#94a3b8"></span>
+                            Street Labels
+                        </button>
+                        <button id="toggle-regions-layer"
+                                class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
+                            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#f59e0b"></span>
+                            Regions
+                        </button>
+                        <button id="toggle-districts-layer"
+                                class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
+                            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#cbd5e1"></span>
+                            Districts
+                        </button>
+                        <button id="toggle-detection-layer"
+                                class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
+                            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:var(--viz-illegal)"></span>
+                            Detections
+                        </button>
+                        <button id="toggle-concession-layer"
+                                class="btn-secondary w-full text-[12px] py-1.5 justify-start gap-2">
+                            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:var(--viz-legal)"></span>
+                            Concessions
+                        </button>
+                    </div>
+
+                </div>
+                {% endif %}
+            </nav>
+
+            <!-- Sidebar bottom -->
+            <div class="px-4 py-4 mt-auto" style="border-top: 1px solid rgba(79,70,52,0.12);">
+                <button id="sidebar-collapse-btn"
+                        onclick="toggleSidebarCollapse()"
+                        title="Collapse sidebar"
+                        class="w-full flex items-center justify-center gap-1.5"
+                        style="color: rgba(155,143,122,0.4); font-size:11px; background:none; border:none; cursor:pointer; padding:4px 0; transition: color 150ms;">
+                    <i class="ph ph-sidebar-simple" style="font-size:14px;" aria-hidden="true"></i>
+                    <span class="sidebar-bottom-text">Collapse</span>
+                </button>
+                <p class="text-center mt-2 sidebar-bottom-text" style="font-size:8px; color: rgba(79,70,52,0.5);
+                          letter-spacing:0.08em; font-style:italic; line-height:1.5;">
+                    Sankofa &middot; Gye Nyame
+                </p>
+            </div>
+        </aside>
+
+        <!-- ── Main Content ─────────────────────────────────── -->
+        <main class="flex-1 ml-64" id="main-content" tabindex="-1">
+            {% if messages %}
+            <div id="base-messages" class="px-6 pt-4 space-y-2">
+                {% for msg in messages %}
+                <div class="flex items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm
+                            {% if msg.tags == 'error' %}base-msg-error{% elif msg.tags == 'success' %}base-msg-success{% else %}base-msg-info{% endif %}"
+                     style="{% if msg.tags == 'error' %}background:var(--status-critical-bg);border:1px solid var(--status-critical-border);color:var(--status-critical);{% elif msg.tags == 'success' %}background:var(--status-resolved-bg);border:1px solid var(--status-resolved-border);color:var(--status-resolved);{% else %}background:var(--status-info-bg);border:1px solid var(--status-info-border);color:var(--status-info);{% endif %}">
+                    <span>{{ msg }}</span>
+                    <button onclick="this.parentElement.remove()"
+                            class="shrink-0 opacity-60 hover:opacity-100 transition-opacity text-lg leading-none"
+                            aria-label="Dismiss">&times;</button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% block content %}
+            {% endblock %}
+        </main>
+    </div>
+
+    <!-- ── Mobile Bottom Navigation ────────────────────────── -->
+    {% if user.is_authenticated %}
+    <nav id="mobile-bottom-nav" aria-label="Mobile navigation">
+        {% if user.profile.role == 'inspector' %}
+        <a href="{% url 'dashboard:inspector' %}"
+           class="{% if request.resolver_match.url_name == 'inspector' %}active{% endif %}">
+            <i class="ph ph-clipboard-text" aria-hidden="true"></i>
+            <span>Tasks</span>
+        </a>
+        <a href="{% url 'analysis:live_map' %}"
+           class="{% if request.resolver_match.url_name == 'live_map' %}active{% endif %}">
+            <i class="ph ph-map-trifold" aria-hidden="true"></i>
+            <span>Map</span>
+        </a>
+        <a href="{% url 'dashboard:settings' %}"
+           class="{% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+            <i class="ph ph-gear" aria-hidden="true"></i>
+            <span>Settings</span>
+        </a>
+        {% elif user.profile.role == 'system_admin' %}
+        <a href="{% url 'dashboard:admin_home' %}"
+           class="{% if request.resolver_match.url_name == 'admin_home' %}active{% endif %}">
+            <i class="ph ph-house" aria-hidden="true"></i>
+            <span>Dashboard</span>
+        </a>
+        <a href="{% url 'dashboard:alerts' %}"
+           class="{% if 'alerts' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="ph ph-warning" aria-hidden="true"></i>
+            <span>Alerts</span>
+        </a>
+        <a href="{% url 'dashboard:user_management' %}"
+           class="{% if 'user_management' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="ph ph-users-three" aria-hidden="true"></i>
+            <span>Users</span>
+        </a>
+        <a href="{% url 'dashboard:settings' %}"
+           class="{% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+            <i class="ph ph-gear" aria-hidden="true"></i>
+            <span>Settings</span>
+        </a>
+        {% else %}
+        <a href="{% url 'dashboard:home' %}"
+           class="{% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+            <i class="ph ph-house" aria-hidden="true"></i>
+            <span>Dashboard</span>
+        </a>
+        <a href="{% url 'analysis:live_map' %}"
+           class="{% if request.resolver_match.url_name == 'live_map' %}active{% endif %}">
+            <i class="ph ph-map-trifold" aria-hidden="true"></i>
+            <span>Map</span>
+        </a>
+        <a href="{% url 'dashboard:alerts' %}"
+           class="{% if 'alerts' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="ph ph-warning" aria-hidden="true"></i>
+            <span>Alerts</span>
+        </a>
+        <a href="{% url 'dashboard:report' %}"
+           class="{% if request.resolver_match.url_name == 'report' %}active{% endif %}">
+            <i class="ph ph-file-text" aria-hidden="true"></i>
+            <span>Reports</span>
+        </a>
+        {% endif %}
+    </nav>
+    {% endif %}
+
+    <!-- ── Footer ───────────────────────────────────────────── -->
+    <footer class="fixed bottom-0 left-64 right-0 py-2 px-5" style="background: #0a0e14; border-top: 1px solid rgba(79,70,52,0.12);">
+        <div class="flex justify-between items-center">
+            <span class="text-[11px] text-fg-muted">{{ settings.APP_NAME }} <span class="text-fg-muted opacity-60">v{{ settings.APP_VERSION }}</span></span>
+            <span class="text-[11px] text-fg-muted opacity-60">&copy; 2025 Environmental Protection Agency</span>
+        </div>
+    </footer>
+
+    <!-- ── Command Palette (Ctrl+K / ⌘K) ─────────────────── -->
+    <div id="cmd-palette" class="hidden fixed inset-0 z-[200] flex items-start justify-center"
+         style="padding-top: 18vh; background: rgba(0,0,0,0.55);"
+         role="dialog" aria-modal="true" aria-label="Command palette">
+        <div class="cmd-card w-full max-w-md mx-4 gw-card rounded-xl overflow-hidden"
+             style="border: 1px solid var(--border-default); box-shadow: 0 24px 64px rgba(0,0,0,0.55);">
+            <!-- Search input -->
+            <div class="flex items-center gap-3 px-4 py-3"
+                 style="border-bottom: 1px solid var(--border-subtle);">
+                <i class="ph ph-magnifying-glass" style="font-size:17px; color: var(--text-tertiary);" aria-hidden="true"></i>
+                <input id="cmd-input" type="text" placeholder="Search commands…"
+                       class="flex-1 bg-transparent text-[14px] outline-none"
+                       style="color: var(--text-primary);"
+                       autocomplete="off" spellcheck="false">
+                <kbd class="text-[10px] px-1.5 py-0.5 rounded font-mono"
+                     style="background: var(--surface-3); color: var(--text-tertiary); border: 1px solid var(--border-subtle);">Esc</kbd>
+            </div>
+            <!-- Results list -->
+            <div id="cmd-list" class="overflow-y-auto" style="max-height: 320px;"></div>
+            <!-- Footer hint -->
+            <div class="px-4 py-2 text-[10px] flex gap-4"
+                 style="border-top: 1px solid var(--border-subtle); color: var(--text-tertiary);">
+                <span><kbd class="font-mono">↑↓</kbd> navigate</span>
+                <span><kbd class="font-mono">↵</kbd> select</span>
+                <span><kbd class="font-mono">Esc</kbd> close</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Right-Click Context Menu ────────────────────────── -->
+    <div id="ctx-menu" role="menu" aria-label="Context menu"></div>
+
+    <!-- JavaScript -->
+    <script src="{% static 'js/main.js' %}"></script>
+
+    <!-- Sidebar collapse (desktop icon-only mode) -->
+    <script>
+    (function () {
+        'use strict';
+        var STORAGE_KEY = 'gw_sidebar_collapsed';
+
+        function applyCollapsedState(collapsed) {
+            document.body.classList.toggle('sidebar-collapsed', collapsed);
+            // Set data-label on nav items so CSS tooltip can read it
+            document.querySelectorAll('.gw-nav-item').forEach(function (el) {
+                var span = el.querySelector('span');
+                if (span) el.setAttribute('data-label', span.textContent.trim());
+            });
+        }
+
+        window.toggleSidebarCollapse = function () {
+            var isCollapsed = document.body.classList.toggle('sidebar-collapsed');
+            localStorage.setItem(STORAGE_KEY, isCollapsed ? '1' : '0');
+            // Re-apply data-labels
+            document.querySelectorAll('.gw-nav-item').forEach(function (el) {
+                var span = el.querySelector('span');
+                if (span) el.setAttribute('data-label', span.textContent.trim());
+            });
+        };
+
+        // Restore on load
+        document.addEventListener('DOMContentLoaded', function () {
+            if (localStorage.getItem(STORAGE_KEY) === '1') {
+                applyCollapsedState(true);
+            }
+        });
+    })();
+    </script>
+
+    <!-- Command palette (Ctrl+K / ⌘K) -->
+    <script>
+    (function () {
+        'use strict';
+        var palette  = document.getElementById('cmd-palette');
+        var input    = document.getElementById('cmd-input');
+        var list     = document.getElementById('cmd-list');
+        if (!palette || !input || !list) return;
+
+        var role = document.body.dataset.userRole || '';
+
+        // ── Command registry ──────────────────────────────────────────────
+        var COMMANDS = [
+            { icon: 'ph-house',              label: 'Dashboard',          hint: 'Go to dashboard',          group: 'Navigate', href: null },
+            { icon: 'ph-map-trifold',        label: 'Live Map',           hint: 'Open live map',            group: 'Navigate', href: '/analysis/map/' },
+            { icon: 'ph-warning',            label: 'Alerts',             hint: 'View alerts',              group: 'Navigate', href: '/dashboard/alerts/' },
+            { icon: 'ph-file-text',          label: 'Reports',            hint: 'Open reports',             group: 'Navigate', href: '/dashboard/report/' },
+            { icon: 'ph-broadcast', label: 'Auto Scan', hint: 'Automated scanning', group: 'Navigate',
+              href: role === 'system_admin' ? '/scanning/control/' : '/scanning/' },
+            { icon: 'ph-globe-hemisphere-west', label: 'Regions',         hint: 'Browse regions',           group: 'Navigate', href: '/dashboard/regions/' },
+            { icon: 'ph-gear',               label: 'Settings',           hint: 'Account settings',         group: 'Navigate', href: '/dashboard/settings/' },
+            { icon: 'ph-user',               label: 'My Account',         hint: 'Edit profile',             group: 'Navigate', href: '/accounts/me/' },
+            { icon: 'ph-users-three',        label: 'Manage Users',       hint: 'User management',          group: 'Admin',    href: '/dashboard/users/', roles: ['system_admin'] },
+            { icon: 'ph-buildings',          label: 'Organisations',      hint: 'Manage organisations',     group: 'Admin',    href: '/dashboard/organisations/', roles: ['system_admin'] },
+            { icon: 'ph-scroll',             label: 'Audit Trail',        hint: 'View audit log',           group: 'Admin',    href: '/dashboard/audit/', roles: ['system_admin'] },
+            { icon: 'ph-chart-bar',          label: 'Model Insights',     hint: 'ML model performance',     group: 'Admin',    href: '/dashboard/model-insights/', roles: ['system_admin', 'agency_admin'] },
+            { icon: 'ph-sun',                label: 'Switch to Light Mode', hint: 'Toggle theme',           group: 'UI',       action: 'theme-light' },
+            { icon: 'ph-moon',               label: 'Switch to Dark Mode',  hint: 'Toggle theme',           group: 'UI',       action: 'theme-dark' },
+        ];
+
+        // Resolve dashboard href based on role
+        COMMANDS[0].href = role === 'system_admin' ? '/dashboard/admin/'
+                         : role === 'inspector'    ? '/dashboard/inspector/'
+                         : '/dashboard/home/';
+
+        var filtered = [];
+        var activeIdx = 0;
+
+        function visibleCommands(q) {
+            q = (q || '').toLowerCase();
+            return COMMANDS.filter(function (cmd) {
+                if (cmd.roles && !cmd.roles.includes(role)) return false;
+                return !q || cmd.label.toLowerCase().includes(q) || (cmd.hint || '').toLowerCase().includes(q);
+            });
+        }
+
+        function renderList(cmds) {
+            if (!cmds.length) {
+                list.innerHTML = '<p style="padding:20px 14px;font-size:13px;color:var(--text-tertiary);">No commands found</p>';
+                return;
+            }
+            var lastGroup = null;
+            list.innerHTML = cmds.map(function (cmd, i) {
+                var groupHeader = '';
+                if (cmd.group !== lastGroup) {
+                    groupHeader = '<p class="cmd-section-label">' + cmd.group + '</p>';
+                    lastGroup = cmd.group;
+                }
+                var cls = 'cmd-item' + (i === activeIdx ? ' cmd-active' : '');
+                var tag = cmd.href ? 'a' : 'button';
+                var href = cmd.href ? ' href="' + cmd.href + '"' : '';
+                return groupHeader + '<' + tag + cls + '"' + href + ' data-cmd-idx="' + i + '" role="menuitem">'
+                    + '<i class="ph ' + cmd.icon + '" aria-hidden="true"></i>'
+                    + '<span class="cmd-label">' + cmd.label + '</span>'
+                    + (cmd.hint ? '<span class="cmd-hint">' + cmd.hint + '</span>' : '')
+                    + '</' + tag + '>';
+            }).join('');
+        }
+
+        function open() {
+            palette.classList.remove('hidden');
+            input.value = '';
+            activeIdx = 0;
+            filtered = visibleCommands('');
+            renderList(filtered);
+            setTimeout(function () { input.focus(); }, 30);
+        }
+
+        function close() {
+            palette.classList.add('hidden');
+        }
+
+        function executeCmd(cmd) {
+            close();
+            if (cmd.href) { window.location.href = cmd.href; return; }
+            if (cmd.action === 'theme-light') { document.body.setAttribute('data-theme', 'light'); }
+            if (cmd.action === 'theme-dark')  { document.body.setAttribute('data-theme', 'dark'); }
+        }
+
+        // ── Events ────────────────────────────────────────────────────────
+        input.addEventListener('input', function () {
+            activeIdx = 0;
+            filtered = visibleCommands(input.value);
+            renderList(filtered);
+        });
+
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowDown') { activeIdx = Math.min(activeIdx + 1, filtered.length - 1); renderList(filtered); e.preventDefault(); }
+            if (e.key === 'ArrowUp')   { activeIdx = Math.max(activeIdx - 1, 0);                   renderList(filtered); e.preventDefault(); }
+            if (e.key === 'Enter' && filtered[activeIdx]) { executeCmd(filtered[activeIdx]); }
+            if (e.key === 'Escape') { close(); }
+        });
+
+        list.addEventListener('click', function (e) {
+            var el = e.target.closest('[data-cmd-idx]');
+            if (el) executeCmd(filtered[parseInt(el.dataset.cmdIdx, 10)]);
+        });
+
+        palette.addEventListener('click', function (e) {
+            if (e.target === palette) close();
+        });
+
+        // Global Ctrl+K / ⌘K
+        document.addEventListener('keydown', function (e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); open(); }
+        });
+
+        window._cmdPalette = { open: open, close: close };
+    })();
+    </script>
+
+    <!-- Sidebar toggle (mobile / small screens) -->
+    <script>
+        function toggleSidebar() {
+            const sidebar  = document.getElementById('main-sidebar');
+            const overlay  = document.getElementById('sidebar-overlay');
+            const toggle   = document.getElementById('sidebar-toggle');
+            const isOpen   = sidebar.classList.toggle('open');
+            overlay.classList.toggle('open', isOpen);
+            toggle.setAttribute('aria-expanded', String(isOpen));
+        }
+
+        function closeSidebar() {
+            const sidebar  = document.getElementById('main-sidebar');
+            const overlay  = document.getElementById('sidebar-overlay');
+            const toggle   = document.getElementById('sidebar-toggle');
+            sidebar.classList.remove('open');
+            overlay.classList.remove('open');
+            toggle.setAttribute('aria-expanded', 'false');
+        }
+
+        // Close sidebar on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeSidebar();
+        });
+    </script>
+
+    <!-- User menu toggle -->
+    <script>
+        function toggleUserMenu() {
+            const menu = document.getElementById('userMenu');
+            const btn  = document.getElementById('user-menu-btn');
+            const isHidden = menu.classList.toggle('hidden');
+            btn.setAttribute('aria-expanded', String(!isHidden));
+            if (!isHidden) {
+                document.addEventListener('click', function closeMenu(e) {
+                    if (!e.target.closest('#userMenu') && !e.target.closest('#user-menu-btn')) {
+                        menu.classList.add('hidden');
+                        btn.setAttribute('aria-expanded', 'false');
+                        document.removeEventListener('click', closeMenu);
+                    }
+                });
+                // Close on Escape
+                document.addEventListener('keydown', function escClose(e) {
+                    if (e.key === 'Escape') {
+                        menu.classList.add('hidden');
+                        btn.setAttribute('aria-expanded', 'false');
+                        btn.focus();
+                        document.removeEventListener('keydown', escClose);
+                    }
+                });
+            }
+        }
+    </script>
+
+    <!-- Notification system -->
+    <script>
+    (function () {
+        {% if not user.is_authenticated %}return;{% endif %}
+
+        const NOTIF_API     = '/api/notifications/';
+        const MARK_READ_API = '/api/notifications/mark-read/';
+
+        {% if user.is_authenticated and user.profile.role == 'inspector' %}
+        const FOOTER_LINK = '/dashboard/inspector/';
+        {% else %}
+        const FOOTER_LINK = '/dashboard/alerts/';
+        {% endif %}
+
+        const KIND_LABEL = {
+            assignment: 'Assignment',
+            alert:      'Alert',
+            sla:        'SLA',
+            report:     'Report',
+            system:     'System',
+        };
+        const KIND_COLOR = {
+            assignment: '#aac7ff',
+            alert:      '#ffb4ab',
+            sla:        '#f6be39',
+            report:     '#67df70',
+            system:     '#9b8f7a',
+        };
+
+        function getCsrf() {
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        }
+
+        function setBadge(count) {
+            const badge = document.getElementById('notif-badge');
+            if (!badge) return;
+            if (count > 0) {
+                badge.textContent = count > 99 ? '99+' : count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        async function loadNotifCount() {
+            try {
+                const res = await fetch(NOTIF_API, { credentials: 'include' });
+                if (!res.ok) return;
+                const data = await res.json();
+                setBadge(data.unread || 0);
+            } catch (_) {}
+        }
+
+        async function markAllRead() {
+            try {
+                await fetch(MARK_READ_API, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+                    body: '{}',
+                });
+                setBadge(0);
+            } catch (_) {}
+        }
+
+        async function loadNotifications() {
+            const list  = document.getElementById('notif-list');
+            const label = document.getElementById('notif-count-label');
+            if (!list) return;
+            list.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:#9b8f7a;">Loading…</div>';
+            try {
+                const res = await fetch(NOTIF_API, { credentials: 'include' });
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                const unread = data.unread || 0;
+                const items  = data.items  || [];
+
+                if (label) label.textContent = unread > 0 ? `${unread} unread` : 'All read';
+                setBadge(unread);
+
+                if (!items.length) {
+                    list.innerHTML = '<div style="padding:24px 16px;text-align:center;font-size:13px;color:#9b8f7a;">No notifications yet</div>';
+                    return;
+                }
+
+                list.innerHTML = items.map(item => {
+                    const kindColor = KIND_COLOR[item.kind] || KIND_COLOR.system;
+                    const kindLabel = KIND_LABEL[item.kind] || item.kind;
+                    const dotStyle  = item.is_read
+                        ? 'background:transparent;border:1px solid rgba(79,70,52,0.3)'
+                        : 'background:#f6be39;box-shadow:0 0 5px rgba(246,190,57,0.4)';
+                    const rowBg     = item.is_read
+                        ? ''
+                        : 'style="background:rgba(246,190,57,0.03)"';
+                    const titleW    = item.is_read ? '400' : '600';
+                    const href      = item.link || FOOTER_LINK;
+                    const bodyHtml  = item.body
+                        ? `<p style="font-size:11px;color:#9b8f7a;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.body}</p>`
+                        : '';
+                    return `<a href="${href}"
+                               style="display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-bottom:1px solid rgba(79,70,52,0.1);text-decoration:none;transition:background 0.12s;"
+                               onmouseover="this.style.background='#262a31'"
+                               onmouseout="this.style.background=''" ${rowBg}>
+                        <span style="margin-top:5px;width:7px;height:7px;border-radius:50%;flex-shrink:0;${dotStyle}"></span>
+                        <div style="min-width:0;flex:1">
+                            <p style="font-size:13px;font-weight:${titleW};color:#dfe2eb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.title}</p>
+                            ${bodyHtml}
+                            <p style="font-size:11px;color:${kindColor};margin-top:3px">${kindLabel} &middot; ${item.created_at}</p>
+                        </div>
+                    </a>`;
+                }).join('');
+
+                if (unread > 0) markAllRead();
+            } catch (_) {
+                list.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:#9b8f7a;">Failed to load</div>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const btn = document.getElementById('notif-btn');
+            const dd  = document.getElementById('notif-dropdown');
+            if (!btn || !dd) return;
+
+            loadNotifCount();
+            setInterval(loadNotifCount, 60000);
+
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                const isOpen = !dd.classList.contains('hidden');
+                dd.classList.toggle('hidden');
+                if (!isOpen) loadNotifications();
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!e.target.closest('#notif-wrapper')) {
+                    dd.classList.add('hidden');
+                }
+            });
+        });
+    })();
+    
+    // Theme Application
+    (function() {
+        function applyThemeAndStyles() {
+            const body = document.body;
+            if (!body) return;
+            
+            const theme = body.dataset.theme || 'light';
+            const layout = body.dataset.layout || 'comfortable';
+            const fontSize = body.dataset.fontSize || 'medium';
+            
+            // Apply theme
+            if (theme === 'dark') {
+                body.classList.add('theme-dark');
+                body.setAttribute('data-theme', 'dark');
+            } else if (theme === 'light') {
+                body.classList.add('theme-light');
+                body.setAttribute('data-theme', 'light');
+            } else {
+                // Auto - check system preference
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    body.classList.add('theme-dark');
+                    body.setAttribute('data-theme', 'dark');
+                } else {
+                    body.classList.add('theme-light');
+                    body.setAttribute('data-theme', 'light');
+                }
+            }
+            
+            // Apply layout
+            body.classList.remove('layout-compact', 'layout-spaced', 'layout-comfortable');
+            body.classList.add(`layout-${layout}`);
+            
+            // Apply font size
+            body.classList.remove('font-small', 'font-medium', 'font-large', 'font-extra-large');
+            body.classList.add(`font-${fontSize}`);
+        }
+        
+        // Apply theme on page load
+        document.addEventListener('DOMContentLoaded', applyThemeAndStyles);
+        
+        // Listen for system theme changes if using auto theme
+        if (window.matchMedia) {
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
+                const body = document.body;
+                if (body && body.dataset.theme === 'auto') {
+                    applyThemeAndStyles();
+                }
+            });
+        }
+    })();
+    </script>
+
+    <!-- ── Focus trap utility (used by all modals) ────────────────── -->
+    <script>
+    (function () {
+        var FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+        window.trapFocus = function (modal, openerEl) {
+            modal._trapOpener = openerEl || document.activeElement;
+            var handler = function (e) {
+                if (e.key !== 'Tab') return;
+                var focusable = Array.from(modal.querySelectorAll(FOCUSABLE)).filter(function (el) {
+                    return !el.closest('[hidden]') && el.offsetParent !== null;
+                });
+                if (focusable.length === 0) return;
+                var first = focusable[0];
+                var last  = focusable[focusable.length - 1];
+                if (e.shiftKey) {
+                    if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+                } else {
+                    if (document.activeElement === last)  { e.preventDefault(); first.focus(); }
+                }
+            };
+            modal._trapHandler = handler;
+            modal.addEventListener('keydown', handler);
+            var firstFocusable = modal.querySelectorAll(FOCUSABLE)[0];
+            if (firstFocusable) firstFocusable.focus();
+        };
+
+        window.releaseFocus = function (modal) {
+            if (modal && modal._trapHandler) {
+                modal.removeEventListener('keydown', modal._trapHandler);
+                delete modal._trapHandler;
+            }
+            if (modal && modal._trapOpener && modal._trapOpener.focus) {
+                modal._trapOpener.focus();
+                delete modal._trapOpener;
+            }
+        };
+    })();
+    </script>
+
+    <!-- ── Global page animations ───────────────────────────────────────── -->
+    <script>
+    (function () {
+        var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // Count-up for any element with data-countup="NUMBER"
+            document.querySelectorAll('[data-countup]').forEach(function (el) {
+                var target = parseInt(el.dataset.countup, 10);
+                if (!target || target <= 0) { el.textContent = target || el.dataset.countup; return; }
+                if (reducedMotion) { el.textContent = target; return; }
+                el.textContent = '0';
+                var start = performance.now(), dur = 900;
+                function tick(now) {
+                    var p = Math.min((now - start) / dur, 1);
+                    el.textContent = Math.round((1 - Math.pow(1 - p, 3)) * target);
+                    if (p < 1) requestAnimationFrame(tick); else el.textContent = target;
+                }
+                requestAnimationFrame(tick);
+            });
+
+            // Card entrance stagger — only on pages that opt in with data-animate-cards
+            // Skip cards that use AOS (data-aos attribute) to avoid double-animation
+            if (!reducedMotion && document.querySelector('[data-animate-cards]')) {
+                document.querySelectorAll('[data-animate-cards] .gw-card').forEach(function (card, i) {
+                    if (!card.hasAttribute('data-aos')) {
+                        card.style.animation = 'gwCardIn 0.4s ease ' + (i * 55) + 'ms both';
+                    }
+                });
+            }
+        });
+    })();
+    </script>
+
+    <!-- NProgress — trigger on internal link navigation -->
+    <script>
+    (function () {
+        if (typeof NProgress === 'undefined') return;
+        NProgress.configure({ showSpinner: false, speed: 300, minimum: 0.12 });
+        document.addEventListener('click', function (e) {
+            var link = e.target.closest('a[href]');
+            if (!link) return;
+            var href = link.getAttribute('href');
+            if (!href || href.startsWith('#') || href.startsWith('javascript:') ||
+                href.startsWith('mailto:') || href.startsWith('tel:') ||
+                link.target === '_blank' || link.dataset.noProgress !== undefined) return;
+            NProgress.start();
+        });
+        window.addEventListener('pageshow', function () { NProgress.done(); });
+    })();
+    </script>
+
+    <!-- AOS init -->
+    <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (typeof AOS !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            AOS.init({ duration: 420, easing: 'ease-out-quart', once: true, offset: 20 });
+        }
+    });
+    </script>
+
+    <!-- Notyf init (global window.notyf) -->
+    <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+    <script>
+    window.notyf = new Notyf({
+        duration: 3500,
+        position: { x: 'right', y: 'top' },
+        ripple: false,
+        dismissible: true,
+        types: [
+            { type: 'success', background: '#3fb950', className: 'notyf-gw' },
+            { type: 'error',   background: '#e05252', className: 'notyf-gw' },
+            { type: 'info',    background: '#388bfd', className: 'notyf-gw' },
+            { type: 'warning', background: '#d4a017', className: 'notyf-gw' }
+        ]
+    });
+    </script>
+    {% block extra_js %}{% endblock %}
+
+    <!-- ── Session Idle-Timeout ───────────────────────────────────────────
+         Watches for inactivity.  At IDLE_TIMEOUT - WARNING_LEAD the warning
+         modal appears with a live countdown.  If the user clicks
+         "Stay logged in" a ping is sent and the timer resets.  If the
+         countdown hits zero (or the user clicks "Log out now") the logout
+         form is submitted immediately.
+    ──────────────────────────────────────────────────────────────────────── -->
+    {% if user.is_authenticated %}
+
+    <!-- Warning modal (hidden until the idle timer fires) -->
+    <div id="idle-modal"
+         class="hidden fixed inset-0 z-[9000] flex items-center justify-center"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="idle-modal-title"
+         aria-describedby="idle-modal-desc">
+
+        <!-- Backdrop -->
+        <div class="absolute inset-0" style="background:rgba(0,0,0,0.65);backdrop-filter:blur(3px);"></div>
+
+        <!-- Card -->
+        <div class="relative rounded-2xl p-8 w-full max-w-sm text-center shadow-2xl"
+             style="background:var(--surface-2);border:1px solid var(--border-default);">
+
+            <!-- Icon -->
+            <div class="mx-auto mb-4 w-14 h-14 rounded-full flex items-center justify-center"
+                 style="background:var(--status-moderate-bg);border:1px solid var(--status-moderate-border);">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                     style="color:var(--status-moderate);" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+
+            <h2 id="idle-modal-title"
+                class="text-[16px] font-semibold mb-2"
+                style="color:var(--text-primary);">
+                Still there?
+            </h2>
+            <p id="idle-modal-desc"
+               class="text-[13px] mb-1"
+               style="color:var(--text-secondary);">
+                You've been inactive. For security, you'll be logged out in
+            </p>
+            <p class="text-[32px] font-bold tabular-nums mb-5"
+               id="idle-countdown"
+               style="color:var(--status-moderate);"
+               aria-live="polite"
+               aria-atomic="true">
+                5:00
+            </p>
+
+            <div class="flex gap-3 justify-center">
+                <button id="idle-stay-btn"
+                        class="btn-primary px-5 py-2 text-[13px]"
+                        onclick="idleKeepAlive()">
+                    Stay logged in
+                </button>
+                <button class="btn-secondary px-5 py-2 text-[13px]"
+                        onclick="idleLogout()">
+                    Log out now
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden logout form — submitted programmatically on timeout -->
+    <form id="idle-logout-form" method="post" action="{% url 'logout' %}" style="display:none;">
+        {% csrf_token %}
+    </form>
+
+    <script>
+    (function () {
+        'use strict';
+
+        // ── Config (seconds) ────────────────────────────────────────────
+        var IDLE_TIMEOUT  = {{ settings.SESSION_IDLE_TIMEOUT }};  // from Django settings
+        var WARNING_LEAD  = 5 * 60;   // show modal this many seconds before logout
+        var PING_URL      = '/api/session/ping/';
+
+        // ── State ────────────────────────────────────────────────────────
+        var idleTimer       = null;
+        var countdownTimer  = null;
+        var warningActive   = false;
+        var countdownSecs   = WARNING_LEAD;
+
+        // ── DOM refs ─────────────────────────────────────────────────────
+        var modal      = document.getElementById('idle-modal');
+        var countdownEl= document.getElementById('idle-countdown');
+        var stayBtn    = document.getElementById('idle-stay-btn');
+
+        // ── Helpers ──────────────────────────────────────────────────────
+        function fmt(s) {
+            var m = Math.floor(s / 60);
+            var sec = s % 60;
+            return m + ':' + (sec < 10 ? '0' : '') + sec;
+        }
+
+        function getCsrf() {
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        }
+
+        // ── Show the warning modal ───────────────────────────────────────
+        function showWarning() {
+            warningActive   = true;
+            countdownSecs   = WARNING_LEAD;
+            countdownEl.textContent = fmt(countdownSecs);
+            modal.classList.remove('hidden');
+            if (stayBtn) stayBtn.focus();
+            if (window.trapFocus) window.trapFocus(modal);
+
+            countdownTimer = setInterval(function () {
+                countdownSecs--;
+                countdownEl.textContent = fmt(countdownSecs);
+                if (countdownSecs <= 0) {
+                    clearInterval(countdownTimer);
+                    idleLogout();
+                }
+            }, 1000);
+        }
+
+        // ── Reset the idle clock ─────────────────────────────────────────
+        function resetIdle() {
+            if (warningActive) return;   // don't interfere once warning is up
+            clearTimeout(idleTimer);
+            idleTimer = setTimeout(showWarning, (IDLE_TIMEOUT - WARNING_LEAD) * 1000);
+        }
+
+        // ── Keep-alive (Stay logged in button) ───────────────────────────
+        window.idleKeepAlive = function () {
+            // Dismiss modal
+            clearInterval(countdownTimer);
+            warningActive = false;
+            modal.classList.add('hidden');
+            if (window.releaseFocus) window.releaseFocus(modal);
+
+            // Ping the server (extends the Django session)
+            fetch(PING_URL, {
+                method: 'GET',
+                headers: { 'X-CSRFToken': getCsrf(), 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            }).catch(function () {});
+
+            // Restart the idle clock
+            resetIdle();
+        };
+
+        // ── Logout ───────────────────────────────────────────────────────
+        window.idleLogout = function () {
+            clearInterval(countdownTimer);
+            clearTimeout(idleTimer);
+            document.getElementById('idle-logout-form').submit();
+        };
+
+        // ── Activity events that reset the clock ─────────────────────────
+        var EVENTS = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+        EVENTS.forEach(function (ev) {
+            document.addEventListener(ev, resetIdle, { passive: true });
+        });
+
+        // Page-visibility: if the user returns to the tab after being away,
+        // check whether the warning should be active; otherwise keep ticking.
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden && !warningActive) {
+                resetIdle();
+            }
+        });
+
+        // ── Kick off ─────────────────────────────────────────────────────
+        resetIdle();
+
+    })();
+    </script>
+
+    {% endif %}
+</body>
+</html>

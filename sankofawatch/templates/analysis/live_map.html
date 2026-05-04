@@ -1,0 +1,1188 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Live Map - SankofaWatch{% endblock %}
+
+{% block extra_css %}
+<style>
+    html, body { overflow: hidden !important; }
+    #main-sidebar { overflow-y: auto !important; }
+
+    /* ── Scan sweep canvas ────────────────────────────────── */
+    #scan-sweep-canvas {
+        position: absolute; inset: 0;
+        width: 100%; height: 100%;
+        pointer-events: none;
+        z-index: 10;
+        display: none;
+    }
+
+    /* ── Scan HUD ─────────────────────────────────────────── */
+    #scan-hud {
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        background: rgba(0,0,0,0.72);
+        border: 1px solid rgba(74,222,128,0.35);
+        border-radius: 999px;
+        box-shadow: 0 0 28px rgba(74,222,128,0.12), 0 4px 20px rgba(0,0,0,0.45);
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    @keyframes pulseGreenDot {
+        0%,100% { box-shadow: 0 0 0 0 rgba(74,222,128,0.6); }
+        60%      { box-shadow: 0 0 0 5px rgba(74,222,128,0); }
+    }
+    #scan-hud-dot { animation: pulseGreenDot 1.6s ease infinite; }
+
+    /* ── Batch scan panel ─────────────────────────────────── */
+    #batch-scan-panel {
+        position: absolute;
+        top: 62px;
+        left: 12px;
+        z-index: 20;
+        width: 220px;
+        max-height: 55vh;
+        overflow-y: auto;
+        background: rgba(0,0,0,0.76);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 12px;
+        padding: 10px;
+        scrollbar-width: none;
+    }
+    #batch-scan-panel::-webkit-scrollbar { display: none; }
+
+    /* ── Coordinate HUD ───────────────────────────────────── */
+    #map-coords-hud {
+        font-family: 'SF Mono','Fira Code','Fira Mono',ui-monospace,monospace;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        color: rgba(255,255,255,0.6);
+        background: rgba(0,0,0,0.52);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 6px;
+        padding: 3px 10px;
+        line-height: 1.8;
+    }
+
+    /* ── Legend glassmorphism ─────────────────────────────── */
+    #map-legend-inner {
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        background: rgba(9,13,20,0.8);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+
+    /* ── Detection card animation ─────────────────────────── */
+    @keyframes cardFadeSlide {
+        from { opacity: 0; transform: translateY(-6px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Detection count badge pulse ──────────────────────── */
+    @keyframes badgeBounce {
+        0%   { transform: scale(1); }
+        40%  { transform: scale(1.3); }
+        70%  { transform: scale(0.92); }
+        100% { transform: scale(1); }
+    }
+    .badge-pulse { animation: badgeBounce 0.4s ease; }
+
+    /* ── Site modal fade-in ───────────────────────────────── */
+    @keyframes modalIn {
+        from { opacity: 0; transform: scale(0.97) translateY(8px); }
+        to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .modal-card-animate { animation: modalIn 0.22s ease forwards; }
+
+    /* ── Confidence bar animate ───────────────────────────── */
+    @keyframes barReveal { from { width: 0 !important; } }
+    .conf-bar-animate { animation: barReveal 0.55s ease forwards; }
+
+    /* ── Toast notifications ──────────────────────────────── */
+    #toast-container {
+        position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+        display: flex; flex-direction: column-reverse; gap: 10px;
+        pointer-events: none;
+    }
+    .toast {
+        display: flex; align-items: flex-start; gap: 10px;
+        padding: 12px 16px; border-radius: 10px;
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        font-size: 13px; font-weight: 500;
+        pointer-events: all; max-width: 340px; line-height: 1.45;
+        animation: toastSlideIn 0.3s ease forwards;
+    }
+    @keyframes toastSlideIn {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes toastSlideOut {
+        to { opacity: 0; transform: translateY(14px); }
+    }
+    .toast-success { background: rgba(4,40,20,0.93); border: 1px solid rgba(74,222,128,0.3); color: #86efac; }
+    .toast-error   { background: rgba(60,8,8,0.93);  border: 1px solid rgba(248,113,113,0.3); color: #fca5a5; }
+    .toast-info    { background: rgba(6,22,55,0.93); border: 1px solid rgba(96,165,250,0.3); color: #93c5fd; }
+    .toast-icon    { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+
+    /* ── Custom map controls ──────────────────────────────── */
+    .map-ctrl-btn {
+        display: flex; align-items: center; justify-content: center;
+        width: 36px; height: 36px;
+        background: var(--surface-2);
+        border: 1px solid var(--border-default);
+        border-radius: 8px;
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    }
+    .map-ctrl-btn:hover { background: var(--surface-3); }
+    .map-ctrl-btn svg { width: 18px; height: 18px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="sr-only">Live Map — SankofaWatch</h1>
+<div class="flex" style="height:calc(100vh - 4rem)">
+
+    <!-- Map -->
+    <div class="flex-1 relative">
+        <div id="live-map" class="w-full h-full"></div>
+
+        <!-- Radar sweep canvas (shown during scans) -->
+        <canvas id="scan-sweep-canvas"></canvas>
+
+        <!-- Scan status HUD (top center of map) -->
+        <div id="scan-hud" class="hidden absolute z-30 flex items-center gap-2.5 px-4 py-2"
+             style="top:14px;left:50%;transform:translateX(-50%);">
+            <div id="scan-hud-dot" class="w-2 h-2 rounded-full shrink-0" style="background:#4ade80;"></div>
+            <span id="scan-hud-text" class="text-sm font-medium" style="color:#4ade80;">Scanning…</span>
+            <span id="scan-hud-elapsed" class="text-xs" style="color:rgba(74,222,128,0.5);">0s</span>
+        </div>
+
+        <!-- Batch scan panel (top right of map) -->
+        <div id="batch-scan-panel" class="hidden">
+            <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;
+                        color:rgba(255,255,255,0.35);margin-bottom:8px;padding:0 2px;">
+                Active Scans
+            </div>
+            <div id="batch-job-list"></div>
+        </div>
+
+        <!-- Coordinate HUD (bottom center of map) -->
+        <div id="map-coords-hud" class="absolute bottom-4 z-20 pointer-events-none"
+             style="left:50%;transform:translateX(-50%);">
+            <span id="lat-display">0.0000</span>° N &nbsp;·&nbsp; <span id="lng-display">0.0000</span>° W
+        </div>
+
+        <!-- Map Controls (zoom + locate) -->
+        <div class="absolute z-30 flex flex-col gap-2" style="top: 14px; right: 10px;">
+            <button onclick="if(window.mapHandler) window.mapHandler.zoomIn();"
+                    aria-label="Zoom in" class="map-ctrl-btn">
+                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/>
+                </svg>
+            </button>
+            <button onclick="if(window.mapHandler) window.mapHandler.zoomOut();"
+                    aria-label="Zoom out" class="map-ctrl-btn">
+                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/>
+                </svg>
+            </button>
+            <button id="locate-me-btn" onclick="locateMe()"
+                    aria-label="Center map on my location" class="map-ctrl-btn">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="3" stroke-width="2"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Legend -->
+        <div class="absolute bottom-14 left-4 z-20 pointer-events-none">
+            <div id="map-legend-inner" class="px-3 py-2.5">
+                <p class="text-xs font-semibold mb-2" style="color:rgba(255,255,255,0.35);letter-spacing:0.07em;">LEGEND</p>
+                <div class="space-y-1.5">
+                    <div class="flex items-center gap-2 text-xs" style="color:rgba(255,255,255,0.65);">
+                        <div class="w-3 h-3 rounded-sm shrink-0" style="background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,0.55);"></div>Illegal Mining
+                    </div>
+                    <div class="flex items-center gap-2 text-xs" style="color:rgba(255,255,255,0.65);">
+                        <div class="w-3 h-3 rounded-sm shrink-0" style="background:#3b82f6;box-shadow:0 0 6px rgba(59,130,246,0.55);"></div>Legal Mining
+                    </div>
+                    <div class="flex items-center gap-2 text-xs" style="color:rgba(255,255,255,0.65);">
+                        <div class="w-3 h-3 rounded-sm shrink-0" style="background:#22c55e;opacity:0.55;border:1px dashed #16a34a;"></div>Concession
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detection Sidebar -->
+    <aside class="w-80 gw-detection-panel flex flex-col shrink-0 overflow-hidden"
+           aria-label="Detection results"
+           style="background: var(--surface-1); border-left: 1px solid var(--border-default);">
+
+        <!-- Sidebar header -->
+        <div class="px-4 py-3 shrink-0"
+             style="border-bottom: 1px solid var(--border-subtle);">
+            <div class="flex items-center justify-between">
+                <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Detections</h2>
+                <span id="detection-count"
+                      class="px-2 py-0.5 bg-red-500 text-white text-xs font-semibold rounded-full min-w-[20px] text-center"
+                      aria-live="polite"
+                      aria-label="detection count">
+                    0
+                </span>
+            </div>
+        </div>
+
+        <!-- Confidence filter -->
+        <div class="px-4 py-3 shrink-0"
+             style="border-bottom: 1px solid var(--border-subtle);">
+            <div class="flex items-center justify-between mb-1.5">
+                <label for="confidence-slider" class="text-xs" style="color: var(--text-secondary);">Min Confidence</label>
+                <span id="confidence-value" class="text-xs font-semibold" style="color: var(--text-primary);" aria-live="polite">50%</span>
+            </div>
+            <input type="range" id="confidence-slider" min="0" max="100" value="50"
+                   class="w-full" style="accent-color: var(--accent);"
+                   aria-label="Minimum confidence threshold"
+                   aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" aria-valuetext="50%"/>
+        </div>
+
+        <!-- Detection list -->
+        <div class="flex-1 overflow-y-auto">
+            <div id="detection-empty" class="py-10 px-4 text-center">
+                <svg class="w-10 h-10 mx-auto mb-2" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                          d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                </svg>
+                <p class="text-sm font-medium" style="color: var(--text-tertiary);">No detections yet</p>
+                <p class="text-xs mt-1" style="color: var(--text-tertiary);">Draw an AOI and scan to start</p>
+            </div>
+
+            <div id="detection-list" class="p-3 space-y-2 hidden"></div>
+        </div>
+    </aside>
+</div>
+
+
+<!-- ── Site Detail Modal ── -->
+<div id="site-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4"
+     style="background: rgba(0,0,0,0.6);"
+     role="dialog" aria-modal="true" aria-labelledby="site-modal-title">
+    <div class="gw-card w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden rounded-lg">
+
+        <div class="flex items-center justify-between px-6 py-4 shrink-0"
+             style="border-bottom: 1px solid var(--border-subtle);">
+            <h3 id="site-modal-title" class="text-base font-semibold" style="color: var(--text-primary);">Detection Details</h3>
+            <button id="site-modal-close" style="color: var(--text-tertiary);"
+                    aria-label="Close Detection Details dialog"
+                    onmouseover="this.style.color='var(--text-primary)'"
+                    onmouseout="this.style.color='var(--text-tertiary)'">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="overflow-y-auto flex-1">
+            <div class="px-6 py-5 space-y-4">
+
+                <div class="flex items-center gap-2">
+                    <span id="site-legal-badge" class="px-2.5 py-1 rounded-full text-xs font-bold"></span>
+                    <span id="site-status-badge" class="px-2.5 py-1 rounded-full text-xs font-semibold"
+                          style="background: var(--surface-3); color: var(--text-secondary);"></span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Confidence</p>
+                        <div class="flex items-center gap-2">
+                            <span id="site-confidence" class="text-sm font-semibold" style="color: var(--text-primary);"></span>
+                            <div class="flex-1 rounded-full h-1.5" style="background: var(--surface-3);">
+                                <div id="site-confidence-bar" class="h-1.5 rounded-full" style="width:0%; background: var(--accent);"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Area</p>
+                        <p id="site-area" class="text-sm font-semibold" style="color: var(--text-primary);"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Detection Date</p>
+                        <p id="site-date" class="text-sm" style="color: var(--text-primary);"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Recurrences</p>
+                        <p id="site-recurrence" class="text-sm" style="color: var(--text-primary);"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">District</p>
+                        <p id="site-district" class="text-sm" style="color: var(--text-primary);"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Region</p>
+                        <p id="site-region" class="text-sm" style="color: var(--text-primary);"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Coordinates</p>
+                        <p id="site-coords" class="text-sm font-mono text-xs" style="color: var(--text-primary);"></p>
+                    </div>
+                </div>
+
+                <div id="site-concession-block" class="hidden rounded-lg p-3"
+                     style="background: var(--status-resolved-bg); border: 1px solid var(--status-resolved-border);">
+                    <p class="text-xs font-semibold mb-1" style="color: var(--status-resolved);">Licensed Concession</p>
+                    <p id="site-concession-name" class="text-xs" style="color: var(--status-resolved);"></p>
+                    <p id="site-concession-holder" class="text-xs mt-0.5" style="color: var(--status-resolved); opacity: 0.85;"></p>
+                </div>
+            </div>
+
+            <!-- ML Visualization Panels -->
+            <div id="site-ml-panels" class="hidden px-6 py-5" style="border-top: 1px solid var(--border-subtle);">
+                <h4 class="text-sm font-semibold mb-3" style="color: var(--text-primary);">ML Analysis</h4>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">False Colour</p>
+                        <a id="site-img-false-color-link" href="#" target="_blank">
+                            <img id="site-img-false-color" src="" alt="False Colour"
+                                 class="w-full rounded" style="height:100px;object-fit:cover;background:var(--surface-3);"/>
+                        </a>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Prediction Mask</p>
+                        <a id="site-img-prediction-mask-link" href="#" target="_blank">
+                            <img id="site-img-prediction-mask" src="" alt="Prediction Mask"
+                                 class="w-full rounded" style="height:100px;object-fit:cover;background:var(--surface-3);"/>
+                        </a>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Probability Heatmap</p>
+                        <a id="site-img-probability-heatmap-link" href="#" target="_blank">
+                            <img id="site-img-probability-heatmap" src="" alt="Probability Heatmap"
+                                 class="w-full rounded" style="height:100px;object-fit:cover;background:var(--surface-3);"/>
+                        </a>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Overlay</p>
+                        <a id="site-img-overlay-link" href="#" target="_blank">
+                            <img id="site-img-overlay" src="" alt="Overlay"
+                                 class="w-full rounded" style="height:100px;object-fit:cover;background:var(--surface-3);"/>
+                        </a>
+                    </div>
+                </div>
+                <p class="text-xs mt-2" style="color: var(--text-tertiary);">Click any image to open full-size.</p>
+            </div>
+
+            <!-- Detection History (only shown for recurring sites) -->
+            <div id="site-history-section" class="hidden px-6 py-5" style="border-top: 1px solid var(--border-subtle);">
+                <h4 class="text-sm font-semibold mb-3" style="color: var(--text-primary);">Detection History</h4>
+                <div id="site-history-loading" class="py-4 text-center">
+                    <div class="inline-block w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
+                         style="border-color: var(--accent); border-top-color: transparent;"></div>
+                    <p class="text-xs mt-1" style="color: var(--text-tertiary);">Loading history…</p>
+                </div>
+                <div id="site-history-list" class="hidden space-y-0"></div>
+            </div>
+
+            <!-- Timelapse -->
+            <div class="px-6 py-5" style="border-top: 1px solid var(--border-subtle);">
+                <h4 class="text-sm font-semibold mb-3" style="color: var(--text-primary);">Site Timelapse</h4>
+
+                <div id="site-tl-loading" class="py-6 text-center">
+                    <div class="inline-block w-5 h-5 border-2 border-t-transparent rounded-full animate-spin mb-2"
+                         style="border-color: var(--accent); border-top-color: transparent;"></div>
+                    <p class="text-xs" style="color: var(--text-tertiary);">Loading imagery…</p>
+                </div>
+
+                <div id="site-tl-empty" class="hidden py-6 text-center">
+                    <svg class="w-8 h-8 mx-auto mb-2" style="color: var(--text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    <p class="text-xs" style="color: var(--text-tertiary);">No imagery yet — fetched after detection.</p>
+                </div>
+
+                <div id="site-tl-viewer" class="hidden">
+                    <div class="relative rounded-lg overflow-hidden" style="height:210px; background: var(--surface-4);">
+                        <img id="site-tl-img" src="" alt="Satellite" class="w-full h-full object-cover"/>
+                        <div id="site-tl-fallback"
+                             class="hidden absolute inset-0 flex items-center justify-center text-xs"
+                             style="background: var(--surface-4); color: var(--text-tertiary);">
+                            No image
+                        </div>
+                        <div class="absolute top-2 left-2 text-white text-xs px-2 py-0.5 rounded font-semibold"
+                             style="background: rgba(0,0,0,0.6);"
+                             id="site-tl-year"></div>
+                    </div>
+                    <div class="mt-3">
+                        <input id="site-tl-slider" type="range" min="0" max="0" value="0"
+                               class="w-full" style="accent-color: var(--accent);"
+                               oninput="renderSiteTlFrame(parseInt(this.value))"/>
+                        <div id="site-tl-ticks"
+                             class="flex justify-between text-xs mt-1 px-0.5"
+                             style="color: var(--text-tertiary);"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-6 py-4 flex justify-end shrink-0"
+             style="border-top: 1px solid var(--border-subtle);">
+            <button onclick="closeSiteModal()"
+                    class="btn-secondary px-4 py-2 text-sm rounded-lg">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+<!-- ── AOI Upload Confirmation Modal ───────────────────────────────────────── -->
+<div id="aoi-upload-modal" class="hidden fixed inset-0 z-[8000] flex items-center justify-center"
+     role="dialog" aria-modal="true" aria-labelledby="aoi-upload-modal-title">
+    <!-- backdrop -->
+    <div class="absolute inset-0" style="background:rgba(0,0,0,0.6);" onclick="closeAOIUploadModal()"></div>
+    <!-- card -->
+    <div class="relative w-full max-w-md mx-4 rounded-xl shadow-2xl overflow-hidden"
+         style="background:var(--surface-1);border:1px solid var(--border-default);">
+        <div class="px-6 py-4" style="border-bottom:1px solid var(--border-subtle);">
+            <h2 id="aoi-upload-modal-title" class="text-[15px] font-semibold" style="color:var(--text-primary);">
+                Confirm Batch Scan
+            </h2>
+            <p id="aoi-upload-summary" class="text-[13px] mt-0.5" style="color:var(--text-secondary);"></p>
+        </div>
+        <div id="aoi-upload-list" class="px-6 py-3 space-y-2 max-h-64 overflow-y-auto"></div>
+        <!-- Date range -->
+        <div class="px-6 pb-3 grid grid-cols-2 gap-3">
+            <div class="space-y-1">
+                <label class="text-[11px]" style="color:var(--text-tertiary)">Start date</label>
+                <input id="upload-start-date" type="date"
+                       class="w-full rounded px-2 py-1 text-[12px]"
+                       style="background:var(--surface-3);border:1px solid var(--border-default);color:var(--text-primary);">
+            </div>
+            <div class="space-y-1">
+                <label class="text-[11px]" style="color:var(--text-tertiary)">End date</label>
+                <input id="upload-end-date" type="date"
+                       class="w-full rounded px-2 py-1 text-[12px]"
+                       style="background:var(--surface-3);border:1px solid var(--border-default);color:var(--text-primary);">
+            </div>
+        </div>
+        <div id="aoi-upload-progress" class="hidden px-6 pb-3">
+            <div class="rounded-lg p-3 text-[13px]" style="background:var(--surface-3);border:1px solid var(--border-default);">
+                <p id="aoi-upload-progress-text" style="color:var(--text-secondary);"></p>
+                <div class="mt-2 rounded-full h-1.5 overflow-hidden" style="background:var(--surface-4);">
+                    <div id="aoi-upload-progress-bar" class="h-1.5 rounded-full transition-all"
+                         style="width:0%;background:var(--accent);"></div>
+                </div>
+            </div>
+        </div>
+        <div class="px-6 py-4 flex justify-end gap-3" style="border-top:1px solid var(--border-subtle);">
+            <button id="aoi-upload-cancel-btn" onclick="closeAOIUploadModal()"
+                    class="btn-secondary px-4 py-2 text-[13px]">Cancel</button>
+            <button id="aoi-upload-confirm-btn" onclick="submitAOIBatch()"
+                    class="btn-primary px-4 py-2 text-[13px]">Scan All Valid Areas</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast notification container -->
+<div id="toast-container"></div>
+{% endblock %}
+
+
+{% block extra_js %}
+<script src="{% static 'js/map_search.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-gl-draw@1.4.3/dist/mapbox-gl-draw.js"></script>
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-gl-draw@1.4.3/dist/mapbox-gl-draw.css">
+<script src="{% static 'js/map_handler.js' %}"></script>
+
+<script>
+// ── Toast notifications ────────────────────────────────────────────────────
+window.showToast = function(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const icons = { success: '✓', error: '✕', info: 'ℹ' };
+    const el = document.createElement('div');
+    el.className = `toast toast-${type}`;
+    el.innerHTML = `<span class="toast-icon">${icons[type] || icons.info}</span><span>${message}</span>`;
+    container.appendChild(el);
+    setTimeout(() => {
+        el.style.animation = 'toastSlideOut 0.3s ease forwards';
+        setTimeout(() => el.remove(), 300);
+    }, 4500);
+};
+
+// ── Timelapse helpers ──────────────────────────────────────────────────────
+let _siteTlFrames = [];
+
+function renderSiteTlFrame(idx) {
+    const f = _siteTlFrames[idx];
+    if (!f) return;
+    document.getElementById('site-tl-year').textContent = f.year;
+    const img = document.getElementById('site-tl-img');
+    const fb  = document.getElementById('site-tl-fallback');
+    if (f.thumbnail_url) {
+        img.src = f.thumbnail_url;
+        img.classList.remove('hidden');
+        fb.classList.add('hidden');
+    } else {
+        img.src = '';
+        img.classList.add('hidden');
+        fb.classList.remove('hidden');
+    }
+}
+
+async function loadSiteTimelapse(siteId) {
+    try {
+        const res = await fetch(`/api/sites/${siteId}/timelapse/`, { credentials: 'include' });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        _siteTlFrames = data.frames || [];
+        document.getElementById('site-tl-loading').classList.add('hidden');
+        if (!_siteTlFrames.length) {
+            document.getElementById('site-tl-empty').classList.remove('hidden');
+            return;
+        }
+        const viewer = document.getElementById('site-tl-viewer');
+        viewer.classList.remove('hidden');
+        const slider = document.getElementById('site-tl-slider');
+        slider.min   = 0;
+        slider.max   = _siteTlFrames.length - 1;
+        slider.value = _siteTlFrames.length - 1;
+        document.getElementById('site-tl-ticks').innerHTML =
+            _siteTlFrames.map(f => `<span>${f.year}</span>`).join('');
+        renderSiteTlFrame(_siteTlFrames.length - 1);
+    } catch {
+        document.getElementById('site-tl-loading').classList.add('hidden');
+        document.getElementById('site-tl-empty').classList.remove('hidden');
+    }
+}
+
+// ── Detection History ──────────────────────────────────────────────────────
+async function loadSiteHistory(siteId) {
+    const section = document.getElementById('site-history-section');
+    const loading = document.getElementById('site-history-loading');
+    const list    = document.getElementById('site-history-list');
+    section.classList.remove('hidden');
+    loading.classList.remove('hidden');
+    list.classList.add('hidden');
+    list.innerHTML = '';
+    try {
+        const res = await fetch(`/api/sites/${siteId}/history/`, { credentials: 'include' });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        loading.classList.add('hidden');
+        if (!data.snapshots || !data.snapshots.length) return;
+        const total = data.snapshots.length;
+        const ordinals = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th'];
+        list.innerHTML = data.snapshots.map((snap, i) => {
+            const label = ordinals[snap.occurrence_number - 1] || `${snap.occurrence_number}th`;
+            const isLast = i === total - 1;
+            const dotColor = snap.occurrence_number === 1 ? 'var(--accent)' : 'var(--status-critical)';
+            const imgHtml = snap.images
+                ? ['false_color','prediction_mask','probability_heatmap','overlay']
+                    .filter(k => snap.images[k])
+                    .map(k => `<a href="${snap.images[k]}" target="_blank" rel="noopener">
+                        <img src="${snap.images[k]}" loading="lazy" class="w-full rounded"
+                             style="height:44px;object-fit:cover;background:var(--surface-4);"/></a>`)
+                    .join('')
+                : '';
+            return `<div class="flex gap-3">
+                <div class="flex flex-col items-center shrink-0">
+                    <div class="w-5 h-5 rounded-full flex items-center justify-center shrink-0 font-bold"
+                         style="background:${dotColor};color:#000;font-size:9px;">${snap.occurrence_number}</div>
+                    ${!isLast ? `<div class="w-px flex-1 mt-1" style="background:var(--border-subtle);min-height:1rem;"></div>` : ''}
+                </div>
+                <div class="flex-1 pb-4">
+                    <div class="flex items-baseline justify-between">
+                        <span class="text-xs font-semibold" style="color:var(--text-primary);">${label} Detection</span>
+                        <span class="text-xs" style="color:var(--text-tertiary);">${snap.detection_date}</span>
+                    </div>
+                    <div class="flex gap-4 mt-0.5">
+                        <span class="text-xs" style="color:var(--text-secondary);">Confidence: <strong style="color:var(--text-primary);">${snap.confidence_pct}%</strong></span>
+                        <span class="text-xs" style="color:var(--text-secondary);">Area: <strong style="color:var(--text-primary);">${snap.area_hectares} ha</strong></span>
+                    </div>
+                    ${imgHtml ? `<div class="grid grid-cols-4 gap-1 mt-2">${imgHtml}</div>` : ''}
+                </div>
+            </div>`;
+        }).join('');
+        list.classList.remove('hidden');
+    } catch {
+        loading.classList.add('hidden');
+    }
+}
+
+// ── Site modal ─────────────────────────────────────────────────────────────
+async function openSiteModal(siteId) {
+    _siteTlFrames = [];
+    const siteModal = document.getElementById('site-modal');
+    siteModal.classList.remove('hidden');
+    // Animate the modal card in
+    const card = siteModal.querySelector('.gw-card');
+    if (card) {
+        card.classList.remove('modal-card-animate');
+        void card.offsetWidth;
+        card.classList.add('modal-card-animate');
+    }
+    window.trapFocus && window.trapFocus(siteModal, document.activeElement);
+    document.getElementById('site-tl-loading').classList.remove('hidden');
+    document.getElementById('site-tl-empty').classList.add('hidden');
+    document.getElementById('site-tl-viewer').classList.add('hidden');
+    document.getElementById('site-history-section').classList.add('hidden');
+
+    try {
+        const res  = await fetch(`/api/sites/${siteId}/`, { credentials: 'include' });
+        if (!res.ok) throw new Error();
+        const site = await res.json();
+
+        const legalBadge = document.getElementById('site-legal-badge');
+        legalBadge.textContent = (site.legal_status_display || site.legal_status || '—').toUpperCase();
+        if (site.legal_status === 'legal') {
+            legalBadge.style.background = 'var(--status-info-bg)';
+            legalBadge.style.border = '1px solid var(--status-info-border)';
+            legalBadge.style.color = 'var(--status-info)';
+        } else if (site.legal_status === 'illegal') {
+            legalBadge.style.background = 'var(--status-critical-bg)';
+            legalBadge.style.border = '1px solid var(--status-critical-border)';
+            legalBadge.style.color = 'var(--status-critical)';
+        } else {
+            legalBadge.style.background = 'var(--surface-3)';
+            legalBadge.style.border = '1px solid var(--border-default)';
+            legalBadge.style.color = 'var(--text-secondary)';
+        }
+
+        document.getElementById('site-status-badge').textContent = site.status_display || site.status || '—';
+
+        const pct = Math.round((site.confidence_score || 0) * 100);
+        document.getElementById('site-confidence').textContent = pct + '%';
+        const confBar = document.getElementById('site-confidence-bar');
+        confBar.style.width = pct + '%';
+        confBar.classList.remove('conf-bar-animate');
+        void confBar.offsetWidth;
+        confBar.classList.add('conf-bar-animate');
+        document.getElementById('site-area').textContent           = site.area_hectares + ' ha';
+        document.getElementById('site-date').textContent           = site.detection_date || '—';
+        document.getElementById('site-recurrence').textContent     = site.recurrence_count + 'x';
+        document.getElementById('site-district').textContent        = site.district || '—';
+        document.getElementById('site-region').textContent          = site.region || 'Unknown';
+
+        const lat = site.lat, lng = site.lng;
+        const coordEl = document.getElementById('site-coords');
+        if (lat != null && lng != null) {
+            // Try to use the actual detection polygon from the map source for a precise link
+            let geLat = lat, geLng = lng, eyeDist = 600;
+            try {
+                const src = window.mapHandler && window.mapHandler.map.getSource('detections');
+                const data = src && src._data;
+                const feat = data && data.features.find(f => f.properties.site_id === siteId);
+                if (feat) {
+                    const c = turf.centroid(feat).geometry.coordinates;
+                    geLng = c[0];
+                    geLat = c[1];
+                    const bb = turf.bbox(feat);
+                    const dLat = (bb[3] - bb[1]) * 111320;
+                    const dLng = (bb[2] - bb[0]) * 111320 * Math.cos(geLat * Math.PI / 180);
+                    eyeDist = Math.max(Math.round(Math.sqrt(dLat ** 2 + dLng ** 2) * 3), 300);
+                }
+            } catch (_) {}
+            coordEl.innerHTML = `<a href="https://maps.google.com/maps?q=${geLat.toFixed(6)},${geLng.toFixed(6)}&t=k&z=17"
+                target="_blank" rel="noopener noreferrer" title="Open in Google Maps (Satellite)"
+                style="color:inherit;text-decoration:underline;text-decoration-style:dotted;"
+                >${lat}° N, ${Math.abs(lng)}° W ↗</a>`;
+        } else {
+            coordEl.textContent = '—';
+        }
+
+        const concBlock = document.getElementById('site-concession-block');
+        if (site.concession) {
+            concBlock.classList.remove('hidden');
+            document.getElementById('site-concession-name').textContent =
+                site.concession.name + ' (' + site.concession.license_number + ')';
+            document.getElementById('site-concession-holder').textContent =
+                site.concession.holder + ' — ' + site.concession.license_type;
+        } else {
+            concBlock.classList.add('hidden');
+        }
+
+        // ML patch images
+        const mlPanel = document.getElementById('site-ml-panels');
+        const imgs = site.patch_images;
+        if (imgs && (imgs.false_color || imgs.prediction_mask || imgs.probability_heatmap || imgs.overlay)) {
+            mlPanel.classList.remove('hidden');
+            const panels = [
+                ['false-color',         imgs.false_color],
+                ['prediction-mask',     imgs.prediction_mask],
+                ['probability-heatmap', imgs.probability_heatmap],
+                ['overlay',             imgs.overlay],
+            ];
+            panels.forEach(([key, url]) => {
+                const img  = document.getElementById(`site-img-${key}`);
+                const link = document.getElementById(`site-img-${key}-link`);
+                if (url) { img.src = url; link.href = url; }
+            });
+        } else {
+            mlPanel.classList.add('hidden');
+        }
+
+        // Show detection history only for recurring sites
+        if (site.recurrence_count > 1) {
+            loadSiteHistory(siteId);
+        }
+
+        loadSiteTimelapse(siteId);
+    } catch (e) {
+        console.error('Failed to load site detail:', e);
+        document.getElementById('site-tl-loading').classList.add('hidden');
+        document.getElementById('site-tl-empty').classList.remove('hidden');
+    }
+}
+
+function closeSiteModal() {
+    const siteModal = document.getElementById('site-modal');
+    siteModal.classList.add('hidden');
+    window.releaseFocus && window.releaseFocus(siteModal);
+}
+
+// ── Locate Me ──────────────────────────────────────────────────────────────
+let _locationMarker = null;
+
+function locateMe() {
+    if (!navigator.geolocation) {
+        alert('Geolocation is not supported by your browser.');
+        return;
+    }
+    const btn = document.getElementById('locate-me-btn');
+    if (btn) btn.classList.add('opacity-50', 'pointer-events-none');
+
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            if (btn) btn.classList.remove('opacity-50', 'pointer-events-none');
+            const { longitude: lng, latitude: lat } = pos.coords;
+            window.mapHandler.map.flyTo({ center: [lng, lat], zoom: 14, duration: 1200 });
+
+            if (_locationMarker) _locationMarker.remove();
+            const el = document.createElement('div');
+            el.style.cssText = 'width:14px;height:14px;background:#3b82f6;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 5px rgba(59,130,246,0.25)';
+            _locationMarker = new maplibregl.Marker({ element: el })
+                .setLngLat([lng, lat])
+                .addTo(window.mapHandler.map);
+        },
+        err => {
+            if (btn) btn.classList.remove('opacity-50', 'pointer-events-none');
+            if (err.code === 1)
+                alert('Location access denied. Allow location access in your browser settings and try again.');
+            else
+                alert('Unable to determine your location. Please try again.');
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+    );
+}
+
+// ── Sidebar rendering ──────────────────────────────────────────────────────
+let _allFeatures = [];
+
+function renderDetectionSidebar(features, meta) {
+    _allFeatures = features;
+    applyDetectionFilter();
+}
+
+function applyDetectionFilter() {
+    const minConf = (document.getElementById('confidence-slider')?.value || 0) / 100;
+
+    // Keep map layer filter in sync with the sidebar slider
+    window.mapHandler?.updateConfidenceFilter(minConf);
+
+    let filtered = _allFeatures.filter(f => {
+        const conf = (f.properties || {}).confidence_score || 0;
+        return conf >= minConf;
+    });
+
+    // Always newest-first for consistency
+    filtered = filtered.slice().sort((a, b) => {
+        const da = new Date((a.properties || {}).detection_date || 0);
+        const db = new Date((b.properties || {}).detection_date || 0);
+        return db - da;
+    });
+
+    const countEl = document.getElementById('detection-count');
+    const prevCount = parseInt(countEl.textContent) || 0;
+    countEl.textContent = filtered.length;
+    if (filtered.length !== prevCount) {
+        countEl.classList.remove('badge-pulse');
+        void countEl.offsetWidth;
+        countEl.classList.add('badge-pulse');
+        countEl.addEventListener('animationend', () => countEl.classList.remove('badge-pulse'), { once: true });
+    }
+    const emptyEl = document.getElementById('detection-empty');
+    const listEl  = document.getElementById('detection-list');
+
+    if (!filtered.length) {
+        emptyEl.classList.remove('hidden');
+        listEl.classList.add('hidden');
+        listEl.innerHTML = '';
+        return;
+    }
+
+    emptyEl.classList.add('hidden');
+    listEl.classList.remove('hidden');
+
+    listEl.innerHTML = filtered.map((f, idx) => {
+        const p    = f.properties || {};
+        const id   = p.site_id || '';
+        const conf = Math.round((p.confidence_score || 0) * 100);
+        const area = p.area_hectares != null ? Number(p.area_hectares).toFixed(1) : '—';
+        const legal = p.legal_status || 'unknown';
+        const region = p.region || null;
+        const district = p.district || null;
+
+        let lat = p.lat, lng = p.lng;
+        if ((lat == null || lng == null) && f.geometry) {
+            try {
+                const c = turf.centroid(f).geometry.coordinates;
+                lng = c[0]; lat = c[1];
+            } catch (_) {}
+        }
+        let geUrl = null;
+        if (lat != null && lng != null) {
+            let geLat = parseFloat(lat), geLng = parseFloat(lng), eyeDist = 600;
+            try {
+                if (f && f.geometry) {
+                    const bb = turf.bbox(f);
+                    const dLat = (bb[3] - bb[1]) * 111320;
+                    const dLng = (bb[2] - bb[0]) * 111320 * Math.cos(geLat * Math.PI / 180);
+                    eyeDist = Math.max(Math.round(Math.sqrt(dLat ** 2 + dLng ** 2) * 3), 300);
+                }
+            } catch (_) {}
+            geUrl = `https://maps.google.com/maps?q=${geLat.toFixed(6)},${geLng.toFixed(6)}&t=k&z=17`;
+        }
+        const coordStr = geUrl
+            ? `<a href="${geUrl}" target="_blank" rel="noopener noreferrer" title="Open in Google Earth" onclick="event.stopPropagation()"
+                   style="color:var(--text-tertiary);text-decoration:underline;text-decoration-style:dotted;"
+               >${parseFloat(lat).toFixed(4)}° N, ${Math.abs(parseFloat(lng)).toFixed(4)}° W ↗</a>`
+            : '—';
+
+        let legalStyle;
+        if (legal === 'legal') {
+            legalStyle = 'background:var(--status-info-bg);border:1px solid var(--status-info-border);color:var(--status-info);';
+        } else if (legal === 'illegal') {
+            legalStyle = 'background:var(--status-critical-bg);border:1px solid var(--status-critical-border);color:var(--status-critical);';
+        } else {
+            legalStyle = 'background:var(--surface-3);border:1px solid var(--border-default);color:var(--text-secondary);';
+        }
+        const legalLabel = legal.charAt(0).toUpperCase() + legal.slice(1);
+
+        const barColor = conf >= 80 ? '#3fb950' : conf >= 60 ? '#f59e0b' : '#ef4444';
+        const accentColor = legal === 'illegal' ? '#ef4444' : legal === 'legal' ? '#3b82f6' : 'var(--border-subtle)';
+        const accentHover = legal === 'illegal' ? '#f87171' : legal === 'legal' ? '#60a5fa' : 'var(--border-default)';
+
+        return `
+<div style="background:var(--surface-2);border:1px solid var(--border-subtle);border-left:3px solid ${accentColor};border-radius:6px;padding:12px;cursor:pointer;transition:background 0.15s,border-color 0.15s;animation:cardFadeSlide 0.25s ease ${idx * 0.04}s both;"
+     onmouseover="this.style.background='var(--surface-3)';this.style.borderLeftColor='${accentHover}'"
+     onmouseout="this.style.background='var(--surface-2)';this.style.borderLeftColor='${accentColor}'"
+     onclick="openSiteModal('${id}')">
+    <div class="flex items-start justify-between mb-2">
+        <div class="flex-1 min-w-0 pr-2">
+            ${district
+                ? `<p class="text-xs font-semibold leading-snug" style="color:var(--text-primary);">${district}</p>
+                   <p class="text-xs leading-snug" style="color:var(--text-tertiary);">${region || ''} · ${id.slice(0,6).toUpperCase()}</p>`
+                : `<p class="text-xs font-semibold leading-snug" style="color:var(--text-primary);">${region || 'Unknown Area'} · ${id.slice(0,6).toUpperCase()}</p>`
+            }
+        </div>
+        <span class="px-1.5 py-0.5 rounded text-xs font-bold shrink-0" style="${legalStyle}">${legalLabel}</span>
+    </div>
+    <div class="flex items-center gap-2 mb-2">
+        <span class="text-xs font-semibold w-9 shrink-0" style="color:var(--text-primary);">${conf}%</span>
+        <div class="flex-1 rounded-full h-1.5" style="background:var(--surface-3);">
+            <div class="h-1.5 rounded-full" style="width:${conf}%;background:${barColor};"></div>
+        </div>
+        <span class="text-xs shrink-0" style="color:var(--text-tertiary);">${area} ha</span>
+    </div>
+    <p class="text-xs font-mono mb-2" style="color:var(--text-tertiary);">${coordStr}</p>
+    <button class="w-full text-xs px-3 py-1.5 rounded-lg font-medium transition-colors btn-secondary"
+            onclick="event.stopPropagation();openSiteModal('${id}')">
+        View Details &amp; Images
+    </button>
+</div>`;
+    }).join('');
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
+    // Default date range: rolling 2-year window ending today
+    const _today = new Date().toISOString().split('T')[0];
+    const _twoYearsAgo = new Date(); _twoYearsAgo.setFullYear(_twoYearsAgo.getFullYear() - 2);
+    const _twoYearsAgoStr = _twoYearsAgo.toISOString().split('T')[0];
+    const _edScan   = document.getElementById('scan-end-date');
+    const _edUpload = document.getElementById('upload-end-date');
+    const _sdScan   = document.getElementById('scan-start-date');
+    const _sdUpload = document.getElementById('upload-start-date');
+    if (_edScan)   _edScan.value   = _today;
+    if (_edUpload) _edUpload.value = _today;
+    if (_sdScan)   _sdScan.value   = _twoYearsAgoStr;
+    if (_sdUpload) _sdUpload.value = _twoYearsAgoStr;
+
+    window.mapHandler = new MapHandler('live-map', {
+        center: {{ settings.MAP_DEFAULT_CENTER }},
+        zoom: {{ settings.MAP_DEFAULT_ZOOM }},
+        drawing: true
+    });
+
+    window.mapHandler.onDetectionsUpdated(renderDetectionSidebar);
+    window.mapHandler.onSiteClick(openSiteModal);
+
+    initMapSearch('live-map', (lng, lat) => window.mapHandler.map.flyTo({ center: [lng, lat], zoom: 13 }));
+
+    // Start background polling — begins 5s after load so initial fetch settles first
+    setTimeout(() => window.mapHandler.startSitePolling(60000), 5000);
+
+    // Restore any in-progress batch jobs from a previous session
+    (async function restoreActiveJobs() {
+        try {
+            const res = await fetch('/api/jobs/active/', { credentials: 'include' });
+            if (!res.ok) return;
+            const jobs = await res.json();
+            if (!jobs.length) return;
+            const toTrack = jobs.map((j, i) => ({
+                id: j.id,
+                name: j.name || `Area ${i + 1}`,
+                geometry: j.aoi_geometry,
+            }));
+            window.mapHandler.trackBatchJobs(toTrack);
+        } catch (_) {}
+    })();
+
+    // draw-aoi-btn lives in base.html left sidebar
+    const drawBtn = document.getElementById('draw-aoi-btn');
+    const drawInstructions = document.getElementById('aoi-draw-instructions');
+    if (drawBtn) {
+        drawBtn.addEventListener('click', function () {
+            if (window.mapHandler && window.mapHandler.toggleDrawingMode) {
+                window.mapHandler.toggleDrawingMode();
+            }
+            // Sync instructions with new button state (classes updated synchronously by toggleDrawingMode)
+            if (drawInstructions) {
+                drawInstructions.classList.toggle('hidden', !drawBtn.classList.contains('bg-red-600'));
+            }
+        });
+
+        // Also hide instructions when polygon auto-closes (map_handler resets button classes)
+        if (drawInstructions) {
+            new MutationObserver(() => {
+                drawInstructions.classList.toggle('hidden', !drawBtn.classList.contains('bg-red-600'));
+            }).observe(drawBtn, { attributes: true, attributeFilter: ['class'] });
+        }
+    }
+
+    // Layer toggles (buttons in base.html left sidebar)
+    const satBtn = document.getElementById('toggle-satellite-layer');
+    if (satBtn) satBtn.addEventListener('click', () => window.mapHandler.toggleLayer('street-labels'));
+    const detBtn = document.getElementById('toggle-detection-layer');
+    if (detBtn) detBtn.addEventListener('click', () => window.mapHandler.toggleLayer('detections'));
+    const conBtn = document.getElementById('toggle-concession-layer');
+    if (conBtn) conBtn.addEventListener('click', () => window.mapHandler.toggleLayer('concessions'));
+    const regionsBtn = document.getElementById('toggle-regions-layer');
+    if (regionsBtn) regionsBtn.addEventListener('click', () => window.mapHandler.toggleLayer('admin-regions'));
+    const districtsBtn = document.getElementById('toggle-districts-layer');
+    if (districtsBtn) districtsBtn.addEventListener('click', () => window.mapHandler.toggleLayer('admin-districts'));
+
+    const slider = document.getElementById('confidence-slider');
+    if (slider) {
+        // Restore saved preference
+        const saved = localStorage.getItem('confidenceSlider');
+        if (saved !== null) {
+            slider.value = saved;
+            const lbl = document.getElementById('confidence-value');
+            if (lbl) lbl.textContent = saved + '%';
+        }
+
+        slider.addEventListener('input', function () {
+            document.getElementById('confidence-value').textContent = this.value + '%';
+            localStorage.setItem('confidenceSlider', this.value);
+            window.mapHandler.updateConfidenceFilter(this.value / 100);
+            applyDetectionFilter();
+        });
+    }
+
+    document.getElementById('site-modal').addEventListener('click', function (e) {
+        if (e.target === this) closeSiteModal();
+    });
+    document.getElementById('site-modal-close').addEventListener('click', closeSiteModal);
+
+});
+</script>
+
+<!-- ── AOI File Upload ──────────────────────────────────────────────────────── -->
+<script>
+const AOI_MIN_HA = 10;
+const AOI_MAX_HA = 6000;
+const AOI_MAX_FEATURES = 20;
+
+let _aoiBatchFeatures = [];
+
+document.getElementById('aoi-file-input').addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file) return;
+    this.value = '';  // reset so same file can be re-selected
+
+    if (file.name.endsWith('.zip')) {
+        // Shapefile — send to server for parsing
+        const formData = new FormData();
+        formData.append('file', file);
+        fetch('/api/parse-aoi/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrfToken() },
+            credentials: 'include',
+            body: formData,
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { alert('Could not read file: ' + data.error); return; }
+            openAOIUploadModal(data.features, data.total);
+        })
+        .catch(() => alert('Network error while parsing file.'));
+    } else {
+        // GeoJSON — parse client-side
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            try {
+                const geojson = JSON.parse(e.target.result);
+                const rawFeatures = geojson.features || (geojson.type === 'Feature' ? [geojson] : []);
+                if (!rawFeatures.length) { alert('No features found in file.'); return; }
+                const features = rawFeatures.slice(0, AOI_MAX_FEATURES).map((f, i) => {
+                    const props = f.properties || {};
+                    const name = props.name || props.Name || props.NAME ||
+                                 props.DISTRICT || props.label || `Area ${i + 1}`;
+                    let area_ha = 0;
+                    try { area_ha = Math.round(turf.area(f) / 100) / 100; } catch (_) {}
+                    const valid = area_ha >= AOI_MIN_HA && area_ha <= AOI_MAX_HA;
+                    const reason = area_ha < AOI_MIN_HA
+                        ? `Too small (${area_ha} ha, min ${AOI_MIN_HA} ha)`
+                        : area_ha > AOI_MAX_HA
+                            ? `Too large (${area_ha} ha, max ${AOI_MAX_HA} ha)`
+                            : null;
+                    return { name: String(name).trim() || `Area ${i + 1}`, area_ha, geometry: f.geometry, valid, reason };
+                });
+                openAOIUploadModal(features, rawFeatures.length);
+            } catch (err) {
+                alert('Could not parse GeoJSON: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+    }
+});
+
+function openAOIUploadModal(features, total) {
+    _aoiBatchFeatures = features;
+    const valid = features.filter(f => f.valid);
+    const invalid = features.filter(f => !f.valid);
+    const skipped = total > AOI_MAX_FEATURES ? total - AOI_MAX_FEATURES : 0;
+
+    let summary = `Found ${total} area${total !== 1 ? 's' : ''}.`;
+    if (skipped) summary += ` Showing first ${AOI_MAX_FEATURES}.`;
+    summary += ` <strong style="color:var(--text-primary)">${valid.length} valid</strong>`;
+    if (invalid.length) summary += `, ${invalid.length} will be skipped.`;
+    document.getElementById('aoi-upload-summary').innerHTML = summary;
+
+    const listEl = document.getElementById('aoi-upload-list');
+    listEl.innerHTML = features.map(f => `
+        <div class="flex items-center justify-between gap-3 py-2 text-[13px]"
+             style="border-bottom:1px solid var(--border-subtle);">
+            <div class="flex items-center gap-2 min-w-0">
+                <span class="w-2 h-2 rounded-full flex-shrink-0"
+                      style="background:${f.valid ? 'var(--status-resolved)' : 'var(--status-critical)'}"></span>
+                <span class="truncate" style="color:var(--text-primary);">${f.name}</span>
+            </div>
+            <span class="shrink-0 text-[12px]" style="color:${f.valid ? 'var(--text-secondary)' : 'var(--status-critical)'};">
+                ${f.valid ? f.area_ha + ' ha' : f.reason}
+            </span>
+        </div>`).join('');
+
+    document.getElementById('aoi-upload-progress').classList.add('hidden');
+    document.getElementById('aoi-upload-confirm-btn').disabled = valid.length === 0;
+    document.getElementById('aoi-upload-confirm-btn').textContent =
+        valid.length === 1 ? 'Scan 1 Valid Area' : `Scan All ${valid.length} Valid Areas`;
+    document.getElementById('aoi-upload-cancel-btn').disabled = false;
+    document.getElementById('aoi-upload-modal').classList.remove('hidden');
+}
+
+function closeAOIUploadModal() {
+    document.getElementById('aoi-upload-modal').classList.add('hidden');
+    _aoiBatchFeatures = [];
+}
+
+async function submitAOIBatch() {
+    const valid = _aoiBatchFeatures.filter(f => f.valid);
+    if (!valid.length) return;
+
+    document.getElementById('aoi-upload-confirm-btn').disabled = true;
+    document.getElementById('aoi-upload-cancel-btn').disabled = true;
+    document.getElementById('aoi-upload-progress').classList.remove('hidden');
+
+    const today = new Date().toISOString().split('T')[0];
+    const startInput = document.getElementById('upload-start-date');
+    const endInput   = document.getElementById('upload-end-date');
+    const startDate = (startInput && startInput.value) ? startInput.value : '2023-01-01';
+    const endDate   = (endInput   && endInput.value)   ? endInput.value   : today;
+
+    let submitted = 0, failed = 0;
+    const submittedJobs = [];
+
+    for (let i = 0; i < valid.length; i++) {
+        const feat = valid[i];
+        document.getElementById('aoi-upload-progress-text').textContent =
+            `Submitting "${feat.name}" (${i + 1} of ${valid.length})…`;
+        document.getElementById('aoi-upload-progress-bar').style.width =
+            `${Math.round((i / valid.length) * 100)}%`;
+
+        try {
+            const resp = await fetch('/api/jobs/', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken(),
+                },
+                body: JSON.stringify({
+                    name: feat.name || '',
+                    aoi_geometry: feat.geometry,
+                    start_date: startDate,
+                    end_date: endDate,
+                    model_version: 'v1.0',
+                }),
+            });
+            if (resp.ok) {
+                const job = await resp.json();
+                submittedJobs.push({ id: job.id, name: feat.name, geometry: feat.geometry });
+                submitted++;
+            } else { failed++; }
+        } catch (_) { failed++; }
+    }
+
+    document.getElementById('aoi-upload-progress-bar').style.width = '100%';
+    document.getElementById('aoi-upload-progress-text').textContent =
+        `Done — ${submitted} job${submitted !== 1 ? 's' : ''} submitted` +
+        (failed ? `, ${failed} failed.` : '.');
+
+    // Hand off to map handler for live tracking
+    if (submittedJobs.length > 0 && window.mapHandler) {
+        window.mapHandler.trackBatchJobs(submittedJobs);
+    }
+
+    setTimeout(() => closeAOIUploadModal(), 1500);
+}
+
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta) return meta.getAttribute('content') || '';
+    const v = document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)');
+    return v ? decodeURIComponent(v.pop()) : '';
+}
+</script>
+{% endblock %}

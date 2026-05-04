@@ -1,0 +1,563 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Report — SankofaWatch{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Bar chart ── */
+.bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.bar-label { width: 160px; font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+.bar-track { flex: 1; height: 8px; background: var(--surface-4); border-radius: 4px; overflow: hidden; }
+.bar-fill  { height: 100%; background: linear-gradient(90deg, var(--accent), var(--status-resolved)); border-radius: 4px; min-width: 2px; }
+.bar-count { width: 36px; text-align: right; font-size: 12px; font-weight: 600; color: var(--text-secondary); flex-shrink: 0; }
+
+/* ── Trend chart container ── */
+#trend-chart-report { position: relative; height: 200px; }
+
+/* ── Tables ── */
+.report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.report-table thead th {
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-tertiary);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-default);
+}
+.report-table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    vertical-align: middle;
+}
+.report-table tbody tr:last-child td { border-bottom: none; }
+.report-table tbody tr:hover td { background: var(--surface-3); }
+
+/* ── Badges ── */
+.rpt-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+}
+.rpt-badge-red    { background: var(--status-critical-bg);   color: var(--status-critical);  border: 1px solid var(--status-critical-border); }
+.rpt-badge-amber  { background: var(--status-high-bg);        color: var(--status-high);       border: 1px solid var(--status-high-border); }
+.rpt-badge-blue   { background: var(--status-info-bg);        color: var(--status-info);       border: 1px solid var(--status-info-border); }
+.rpt-badge-green  { background: var(--status-resolved-bg);    color: var(--status-resolved);   border: 1px solid var(--status-resolved-border); }
+.rpt-badge-gray   { background: var(--surface-4);             color: var(--text-secondary);    border: 1px solid var(--border-default); }
+.rpt-badge-purple { background: var(--status-dispatched-bg);  color: var(--status-dispatched); border: 1px solid var(--status-dispatched-border); }
+
+/* ── Section divider ── */
+.rpt-section {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--text-tertiary);
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+    margin-top: 32px;
+}
+.rpt-section:first-child { margin-top: 0; }
+
+@media print {
+    @page { margin: 14mm; size: A4; }
+
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+    /* Strip chrome */
+    header,
+    #main-sidebar,
+    #sidebar-overlay,
+    .print-hide { display: none !important; }
+
+    /* Remove sidebar offset and padding */
+    body > div.flex { padding-top: 0 !important; }
+    #main-content   { margin-left: 0 !important; width: 100% !important; }
+    body > div.flex > main { padding: 0 !important; }
+
+    /* Light theme — works regardless of browser B&W or background settings */
+    body { background: #fff !important; color: #111 !important; }
+
+    .gw-card {
+        box-shadow: none !important;
+        background: #f5f5f5 !important;
+        border: 1px solid #ddd !important;
+        break-inside: avoid;
+    }
+
+    /* Force 4-column stat grids regardless of viewport breakpoint */
+    .grid.grid-cols-2.lg\\:grid-cols-4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    }
+
+    /* Text colour overrides for light background */
+    [style*="color: var(--text-primary)"],
+    [style*="color: var(--text-secondary)"],
+    [style*="color: var(--text-tertiary)"] { color: #444 !important; }
+    [style*="color: var(--status-critical)"] { color: #c0392b !important; }
+    [style*="color: var(--status-high)"]     { color: #d35400 !important; }
+    [style*="color: var(--accent)"]          { color: #b8860b !important; }
+
+    /* Bar chart */
+    .bar-track { background: #e0e0e0 !important; }
+    .bar-fill  { background: #b8860b !important; }
+
+    /* Section dividers */
+    .rpt-section { color: #555 !important; border-color: #ccc !important; }
+
+    /* Badges — keep colours but ensure readable on light bg */
+    .rpt-badge { border-width: 1px !important; }
+
+    /* Tables */
+    .report-table thead th { color: #555 !important; border-color: #ccc !important; }
+    .report-table tbody td { color: #222 !important; border-color: #eee !important; }
+    .report-table tbody tr:hover td { background: transparent !important; }
+
+    /* Section header text */
+    h1, h2, h3 { color: #111 !important; }
+    p { color: #444 !important; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6" data-animate-cards>
+
+    <!-- Header -->
+    <div class="gw-page-header">
+        <div>
+            <h1 class="text-2xl font-bold" style="color: var(--text-primary);">Detection Report</h1>
+            <p class="text-sm mt-0.5" style="color: var(--text-secondary);">
+                {% if org_name %}{{ org_name }} · {% endif %}
+                {{ period_start|date:"N j, Y" }} — {{ period_end|date:"N j, Y" }}
+            </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 print-hide">
+            <!-- Date range form -->
+            <form method="get" class="flex flex-wrap items-center gap-2">
+                <input type="date" name="start_date" value="{{ period_start|date:'Y-m-d' }}"
+                       class="gw-input text-sm px-3 py-1.5">
+                <span class="text-sm" style="color: var(--text-tertiary);">to</span>
+                <input type="date" name="end_date" value="{{ period_end|date:'Y-m-d' }}"
+                       class="gw-input text-sm px-3 py-1.5">
+                <button type="submit" class="btn-secondary text-sm px-3 py-1.5">Apply</button>
+            </form>
+            <a href="/dashboard/report/pdf/?start_date={{ period_start|date:'Y-m-d' }}&end_date={{ period_end|date:'Y-m-d' }}"
+               class="btn-secondary inline-flex items-center gap-2 text-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                Download PDF
+            </a>
+            <button onclick="window.print()" class="btn-primary inline-flex items-center gap-2 text-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a1 1 0 001-1v-5a1 1 0 00-1-1H9a1 1 0 00-1 1v5a1 1 0 001 1zm1-16v4h4V5l-4-4H9z"/>
+                </svg>
+                Print
+            </button>
+        </div>
+    </div>
+
+    <!-- ── 1. Executive Summary (all-time — matches dashboard KPIs) ── -->
+    <div class="rpt-section">Executive Summary</div>
+    <p class="text-[11px] mb-3" style="color: var(--text-tertiary);">Cumulative totals as of {{ report_date|date:"j N Y" }} — these figures match your dashboard.</p>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Illegal Sites</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--status-critical);">{{ all_time.illegal_sites }}</p>
+            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">of {{ all_time.total_detected_sites }} total detected</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Open Alerts</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--status-high);">{{ all_time.open_alerts }}</p>
+            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">currently open, all time</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Area Affected</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--accent);">{{ all_time.total_area_ha }}</p>
+            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">hectares of degraded land</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">High-Risk Zones</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ all_time.high_risk_zones }}</p>
+            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">recurring or critical sites</p>
+        </div>
+    </div>
+
+    <!-- ── Period Activity ── -->
+    <div class="rpt-section">Period Activity</div>
+    <p class="text-[11px] mb-3" style="color: var(--text-tertiary);">Detections and alerts recorded between {{ period_start|date:"j N Y" }} and {{ period_end|date:"j N Y" }}.</p>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Illegal Sites</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--status-critical);">{{ stats.illegal_sites }}</p>
+            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">of {{ stats.total_detected_sites }} detected in period</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">New Alerts</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--status-high);">{{ stats.open_alerts }}</p>
+            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">{{ stats.critical_alerts }} critical · {{ stats.high_alerts }} high</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Area Detected</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--accent);">{{ stats.total_area_ha }}</p>
+            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">hectares (illegal, in period)</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">High-Risk in Period</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ stats.high_risk_zones }}</p>
+            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">recurring or critical sites</p>
+        </div>
+    </div>
+
+    <!-- ── 2. Alert Status & Severity ── -->
+    <div class="rpt-section">Alert Status &amp; Severity</div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="gw-card">
+            <div class="px-5 py-3 border-b" style="border-color: var(--border-subtle);">
+                <h3 class="text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">By Status</h3>
+            </div>
+            <div class="overflow-x-auto"><table class="report-table">
+                <thead><tr><th>Status</th><th>Count</th></tr></thead>
+                <tbody>
+                    {% for status, cnt in alerts_by_status.items %}
+                    <tr>
+                        <td>
+                            {% if status == 'open' %}<span class="rpt-badge rpt-badge-red">Open</span>
+                            {% elif status == 'acknowledged' %}<span class="rpt-badge rpt-badge-amber">Acknowledged</span>
+                            {% elif status == 'dispatched' %}<span class="rpt-badge rpt-badge-purple">Dispatched</span>
+                            {% elif status == 'resolved' %}<span class="rpt-badge rpt-badge-green">Resolved</span>
+                            {% elif status == 'dismissed' %}<span class="rpt-badge rpt-badge-gray">Dismissed</span>
+                            {% else %}<span class="rpt-badge rpt-badge-gray">{{ status|capfirst }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="font-semibold" style="color: var(--text-primary);">{{ cnt }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="2" style="color: var(--text-tertiary);">No alert data</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table></div>
+        </div>
+        <div class="gw-card">
+            <div class="px-5 py-3 border-b" style="border-color: var(--border-subtle);">
+                <h3 class="text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">By Severity</h3>
+            </div>
+            <div class="overflow-x-auto"><table class="report-table">
+                <thead><tr><th>Severity</th><th>Count</th></tr></thead>
+                <tbody>
+                    {% for sev, cnt in alerts_by_severity.items %}
+                    <tr>
+                        <td>
+                            {% if sev == 'critical' %}<span class="rpt-badge rpt-badge-red">Critical</span>
+                            {% elif sev == 'high' %}<span class="rpt-badge rpt-badge-amber">High</span>
+                            {% elif sev == 'medium' %}<span class="rpt-badge rpt-badge-blue">Medium</span>
+                            {% else %}<span class="rpt-badge rpt-badge-gray">{{ sev|capfirst }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="font-semibold" style="color: var(--text-primary);">{{ cnt }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="2" style="color: var(--text-tertiary);">No alert data</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table></div>
+        </div>
+    </div>
+
+    <!-- ── 3. Field Verification ── -->
+    <div class="rpt-section">Field Verification Outcomes</div>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Assignments Resolved</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ resolved_assignments }}</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Mining Confirmed</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--status-critical);">{{ confirmed_mining }}</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">False Positives</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--status-resolved);">{{ false_positives }}</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Model Accuracy</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">
+                {% if resolved_assignments > 0 %}{{ confirmed_mining }}/{{ resolved_assignments }}{% else %}—{% endif %}
+            </p>
+            <p class="text-[11px] mt-1" style="color: var(--text-tertiary);">confirmed vs resolved</p>
+        </div>
+    </div>
+
+    {% if inspector_stats %}
+    <div class="gw-card">
+        <div class="px-5 py-3 border-b" style="border-color: var(--border-subtle);">
+            <h3 class="text-xs font-semibold uppercase tracking-wide" style="color: var(--text-tertiary);">Inspector Performance Breakdown</h3>
+        </div>
+        <div class="overflow-x-auto"><table class="report-table">
+            <thead>
+                <tr>
+                    <th>Inspector</th>
+                    <th class="text-center">Total</th>
+                    <th class="text-center">Confirmed</th>
+                    <th class="text-center">False Pos.</th>
+                    <th class="text-center">Inconclusive</th>
+                    <th class="text-center">Pending</th>
+                    <th class="text-center">Avg Days</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in inspector_stats %}
+                <tr>
+                    <td class="font-medium" style="color: var(--text-primary);">{{ row.inspector__user__username|default:"Unknown" }}</td>
+                    <td class="text-center">{{ row.total }}</td>
+                    <td class="text-center">{% if row.confirmed > 0 %}<span class="rpt-badge rpt-badge-red">{{ row.confirmed }}</span>{% else %}—{% endif %}</td>
+                    <td class="text-center">{% if row.fp > 0 %}<span class="rpt-badge rpt-badge-green">{{ row.fp }}</span>{% else %}—{% endif %}</td>
+                    <td class="text-center">{{ row.inconclusive|default:"—" }}</td>
+                    <td class="text-center">{% if row.pending > 0 %}<span style="color: var(--status-high); font-weight: 600;">{{ row.pending }}</span>{% else %}—{% endif %}</td>
+                    <td class="text-center">{% if row.avg_days %}{{ row.avg_days }}d{% else %}—{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table></div>
+    </div>
+    {% endif %}
+
+    <!-- ── 4. Top Regions ── -->
+    {% if stats.top_regions %}
+    <div class="rpt-section">Top Regions by Detection Count</div>
+    <div class="gw-card p-5 space-y-2">
+        {% for region in stats.top_regions %}
+        <div class="bar-row">
+            <div class="bar-label" title="{{ region.region_display }}">
+                {{ region.region_display|default:"Unknown" }}
+            </div>
+            <div class="bar-track">
+                <div class="bar-fill" style="width: {{ region.bar_pct }}%;"></div>
+            </div>
+            <div class="bar-count">{{ region.total }}</div>
+            <span class="rpt-badge rpt-badge-red" style="width: 44px; text-align: center;">{{ region.illegal_pct }}%</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- ── 5. Detection Trend ── -->
+    {% if stats.trend_labels %}
+    <div class="rpt-section">Detection Trend — Period</div>
+    <div class="gw-card overflow-hidden">
+        <div class="px-5 py-3 flex items-center gap-4" style="border-bottom: 1px solid var(--border-subtle);">
+            <div class="flex items-center gap-3 text-xs" style="color: var(--text-secondary);">
+                <span class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-sm inline-block" style="background: rgba(224,82,82,0.9);"></span>Illegal
+                </span>
+                <span class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-sm inline-block" style="background: rgba(56,139,253,0.8);"></span>Legal
+                </span>
+            </div>
+            <span class="text-xs ml-auto" style="color: var(--text-tertiary);">{{ period_start|date:"j N Y" }} — {{ period_end|date:"j N Y" }}</span>
+        </div>
+        <div class="p-5">
+            <div id="trend-chart-report">
+                <canvas id="report-trend-canvas"></canvas>
+                {% if not stats.trend_illegal %}
+                <div class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center">
+                    <i class="ph ph-chart-line" style="font-size:32px; color: var(--text-tertiary); opacity:0.5;"></i>
+                    <p class="text-sm font-medium" style="color: var(--text-secondary);">No detections in this period</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ── 6. Recent Detected Sites ── -->
+    {% if stats.recent_sites %}
+    <div class="rpt-section">Recent Detected Sites</div>
+    <div class="gw-card">
+        <div class="overflow-x-auto"><table class="report-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Region</th>
+                    <th>Status</th>
+                    <th>Confidence</th>
+                    <th>Area (ha)</th>
+                    <th>Recurrences</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for site in stats.recent_sites %}
+                <tr>
+                    <td>{{ site.detection_date }}</td>
+                    <td>{{ site.region_display|default:"—" }}</td>
+                    <td>
+                        {% if site.legal_status == 'illegal' %}
+                        <span class="rpt-badge rpt-badge-red">Illegal</span>
+                        {% else %}
+                        <span class="rpt-badge rpt-badge-green">Legal</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ site.confidence_pct }}%</td>
+                    <td>{{ site.area_hectares|floatformat:1 }}</td>
+                    <td>{{ site.recurrence_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table></div>
+    </div>
+    {% endif %}
+
+    <!-- ── 7. Scan Job Summary ── -->
+    <div class="rpt-section">Scan Job Summary</div>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Total Jobs</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">{{ stats.total_jobs }}</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Completed</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--status-resolved);">{{ stats.completed_jobs }}</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Failed</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--status-critical);">{{ stats.failed_jobs }}</p>
+        </div>
+        <div class="gw-card p-5">
+            <p class="text-[10px] font-semibold uppercase tracking-[.06em]" style="color: var(--text-tertiary);">Success Rate</p>
+            <p class="text-[28px] font-bold tabular-nums mt-1" style="color: var(--text-primary);">
+                {% if stats.total_jobs > 0 %}{% widthratio stats.completed_jobs stats.total_jobs 100 %}%{% else %}—{% endif %}
+            </p>
+        </div>
+    </div>
+
+    {% if recent_jobs %}
+    <div class="gw-card">
+        <div class="overflow-x-auto"><table class="report-table">
+            <thead>
+                <tr>
+                    <th>Job ID</th>
+                    <th>Triggered By</th>
+                    <th>Status</th>
+                    <th>Started</th>
+                    <th>Detections</th>
+                    <th>Illegal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for j in recent_jobs %}
+                <tr>
+                    <td class="font-mono text-[11px]">{{ j.id }}</td>
+                    <td>{{ j.created_by__username|default:"Automated" }}</td>
+                    <td>
+                        {% if j.status == 'completed' %}<span class="rpt-badge rpt-badge-green">Completed</span>
+                        {% elif j.status == 'failed' %}<span class="rpt-badge rpt-badge-red">Failed</span>
+                        {% else %}<span class="rpt-badge rpt-badge-gray">{{ j.status|capfirst }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ j.created_at|date:"d M Y H:i" }}</td>
+                    <td>{{ j.total_detections }}</td>
+                    <td>{{ j.illegal_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table></div>
+    </div>
+    {% endif %}
+
+    <!-- Footer note -->
+    <p class="text-[11px] text-right" style="color: var(--text-tertiary);">
+        Generated {{ report_date|date:"N j, Y \a\t g:i A" }} &mdash; SankofaWatch &mdash; Confidential
+    </p>
+
+</div>
+
+<script>
+(function () {
+    var canvas = document.getElementById('report-trend-canvas');
+    if (!canvas) return;
+
+    var labels  = [{% for l in stats.trend_labels %}"{{ l }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    var illegal = [{% for v in stats.trend_illegal %}{{ v }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    var legal   = [{% for v in stats.trend_legal %}{{ v }}{% if not forloop.last %},{% endif %}{% endfor %}];
+
+    // trim leading all-zero columns
+    var firstNonZero = 0;
+    for (var i = 0; i < labels.length; i++) {
+        if (illegal[i] || legal[i]) { firstNonZero = Math.max(0, i - 1); break; }
+    }
+    labels  = labels.slice(firstNonZero);
+    illegal = illegal.slice(firstNonZero);
+    legal   = legal.slice(firstNonZero);
+
+    var hasData = illegal.some(function (v) { return v > 0; }) || legal.some(function (v) { return v > 0; });
+    if (!hasData) return; // empty-state overlay shown via Django template
+
+    new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Illegal',
+                    data: illegal,
+                    borderColor: 'rgba(224,82,82,0.9)',
+                    backgroundColor: 'rgba(224,82,82,0.12)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                },
+                {
+                    label: 'Legal',
+                    data: legal,
+                    borderColor: 'rgba(56,139,253,0.8)',
+                    backgroundColor: 'rgba(56,139,253,0.08)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'var(--surface-2)',
+                    borderColor: 'var(--border-default)',
+                    borderWidth: 1,
+                    titleColor: 'var(--text-primary)',
+                    bodyColor: 'var(--text-secondary)',
+                    padding: 10,
+                },
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: 'var(--text-tertiary)', font: { size: 11 }, maxTicksLimit: 8, maxRotation: 0 },
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(128,128,128,0.08)' },
+                    ticks: { color: 'var(--text-tertiary)', font: { size: 11 }, precision: 0 },
+                },
+            },
+        },
+    });
+})();
+</script>
+{% endblock %}

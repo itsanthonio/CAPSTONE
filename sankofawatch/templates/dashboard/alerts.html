@@ -1,0 +1,2113 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Alerts — SankofaWatch{% endblock %}
+
+{% block content %}
+<!-- New-alerts banner (shown by polling JS) -->
+<div id="new-alerts-banner"
+     class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 text-sm px-5 py-3 rounded-lg"
+     style="background: var(--surface-2); border: 1px solid var(--status-moderate-border); color: var(--status-moderate);">
+    <span id="new-alerts-text"></span>
+    <button onclick="document.getElementById('new-alerts-banner').classList.add('hidden'); window._alertsPage.refreshAlerts();"
+            class="btn-primary px-3 py-1 text-xs font-semibold">
+        Refresh
+    </button>
+    <button onclick="document.getElementById('new-alerts-banner').classList.add('hidden');"
+            aria-label="Dismiss notification"
+            class="text-xs ml-1" style="color: var(--text-tertiary);">✕</button>
+</div>
+
+{% block extra_css %}
+<style>
+.kpi-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.kpi-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,0.28); }
+
+/* ── Modal entrance animations ─────────────────────────────── */
+@keyframes gwModalBackdropIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes gwModalCardIn {
+    from { opacity: 0; transform: translateY(-10px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+#inspector-modal:not(.hidden),
+#alert-modal:not(.hidden),
+#add-alert-modal:not(.hidden) {
+    animation: gwModalBackdropIn 180ms ease both;
+}
+#inspector-modal:not(.hidden) > div > div,
+#alert-modal:not(.hidden) > div,
+#add-alert-modal:not(.hidden) > div {
+    animation: gwModalCardIn 220ms cubic-bezier(0.0, 0, 0.2, 1) both;
+}
+
+/* ── Bulk action bar entrance animation ─────────────────────── */
+@keyframes gwBulkBarIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+#bulk-bar:not(.hidden) {
+    animation: gwBulkBarIn 200ms cubic-bezier(0.0, 0, 0.2, 1) both;
+}
+</style>
+{% endblock %}
+
+<div class="p-6 space-y-5" data-animate-cards>
+
+    <!-- Header -->
+    <div class="gw-page-header">
+        <div>
+            <h1 class="text-2xl font-bold" style="color: var(--text-primary);">Alerts</h1>
+            <p class="text-sm mt-0.5" style="color: var(--text-secondary);">Detection alerts requiring inspector attention</p>
+        </div>
+        <div class="gw-page-actions">
+            <button id="add-alert-btn"
+                    class="btn-primary inline-flex items-center gap-2">
+                <i class="ph ph-plus" style="font-size:16px;" aria-hidden="true"></i>
+                Add Alert
+            </button>
+            <button id="export-csv-btn" class="btn-secondary inline-flex items-center gap-2">
+                <i class="ph ph-download-simple" style="font-size:16px;" aria-hidden="true"></i>
+                Export CSV
+            </button>
+        </div>
+    </div>
+
+    <!-- Summary strip -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3" role="group" aria-label="Alert status summary">
+
+        <div class="gw-card px-4 py-3 kpi-card">
+            <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--text-tertiary);">Total</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--text-primary);" id="s-total" data-countup="{{ summary.total }}">{{ summary.total }}</p>
+        </div>
+
+        <button class="gw-card px-4 py-3 text-left border-l-[3px] hover:bg-surface-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-critical"
+             style="border-left-color: var(--status-critical);"
+             aria-label="Filter by Open status"
+             onclick="document.getElementById('filter-status').value='open'; document.getElementById('apply-filters').click();">
+            <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--status-critical);">Open</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-critical);" id="s-open" data-countup="{{ summary.open }}">{{ summary.open }}</p>
+            <p class="text-xs mt-0.5" style="color: var(--text-tertiary);"><span id="s-critical">{{ summary.critical }}</span> critical</p>
+        </button>
+
+        <button class="gw-card px-4 py-3 text-left border-l-[3px] hover:bg-surface-3 transition-colors"
+             style="border-left-color: var(--status-moderate);"
+             aria-label="Filter by Acknowledged status"
+             onclick="document.getElementById('filter-status').value='acknowledged'; document.getElementById('apply-filters').click();">
+            <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--status-moderate);">Acknowledged</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-moderate);" id="s-acknowledged">{{ summary.acknowledged }}</p>
+        </button>
+
+        <button class="gw-card px-4 py-3 text-left border-l-[3px] hover:bg-surface-3 transition-colors"
+             style="border-left-color: var(--status-dispatched);"
+             aria-label="Filter by Dispatched status"
+             onclick="document.getElementById('filter-status').value='dispatched'; document.getElementById('apply-filters').click();">
+            <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--status-dispatched);">Dispatched</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-dispatched);" id="s-dispatched">{{ summary.dispatched }}</p>
+        </button>
+
+        <button class="gw-card px-4 py-3 text-left border-l-[3px] hover:bg-surface-3 transition-colors"
+             style="border-left-color: var(--status-resolved);"
+             aria-label="Filter by Resolved status"
+             onclick="document.getElementById('filter-status').value='resolved'; document.getElementById('apply-filters').click();">
+            <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--status-resolved);">Resolved</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-resolved);" id="s-resolved">{{ summary.resolved }}</p>
+        </button>
+
+        <button class="gw-card px-4 py-3 text-left hover:bg-surface-3 transition-colors"
+             aria-label="Filter by Dismissed status"
+             onclick="document.getElementById('filter-status').value='dismissed'; document.getElementById('apply-filters').click();">
+            <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--text-tertiary);">Dismissed</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--text-secondary);" id="s-dismissed">{{ summary.dismissed }}</p>
+        </button>
+
+        <button class="gw-card px-4 py-3 text-left hover:bg-surface-3 transition-colors"
+             aria-label="Filter by High and Critical severity"
+             onclick="document.getElementById('filter-severity').value='high'; document.getElementById('apply-filters').click();">
+            <p class="text-[10px] font-medium uppercase tracking-wide" style="color: var(--text-tertiary);">High+</p>
+            <p class="text-[28px] font-bold tabular-nums mt-0.5" style="color: var(--status-high);" id="s-highplus">{{ summary.critical|add:summary.high }}</p>
+            <p class="text-xs mt-0.5" style="color: var(--text-tertiary);">need action</p>
+        </button>
+
+    </div>
+
+    <!-- Filters -->
+    <div class="gw-card p-5">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div>
+                <label for="filter-status" class="gw-label">Status</label>
+                <select id="filter-status" class="gw-select w-full">
+                    <option value="">All</option>
+                    <option value="open">Open</option>
+                    <option value="acknowledged">Acknowledged</option>
+                    <option value="dispatched">Dispatched</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="dismissed">Dismissed</option>
+                </select>
+            </div>
+            <div>
+                <label for="filter-severity" class="gw-label">Severity</label>
+                <select id="filter-severity" class="gw-select w-full">
+                    <option value="">All</option>
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                </select>
+            </div>
+            <div>
+                <label for="filter-type" class="gw-label">Type</label>
+                <select id="filter-type" class="gw-select w-full">
+                    <option value="">All</option>
+                    <option value="new_detection">New Detection</option>
+                    <option value="expansion_detected">Site Expansion</option>
+                    <option value="recurring_site">Recurring Site</option>
+                    <option value="high_confidence">High Confidence</option>
+                </select>
+            </div>
+            <div>
+                <label for="filter-source" class="gw-label">Source</label>
+                <select id="filter-source" class="gw-select w-full">
+                    <option value="">All</option>
+                    <option value="manual">Manual</option>
+                    <option value="automated">Automated</option>
+                </select>
+            </div>
+            <div class="flex items-end gap-2">
+                <button id="apply-filters" class="btn-primary flex-1">
+                    Apply
+                </button>
+                <button id="reset-filters" class="btn-secondary px-4 py-2">
+                    Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inspector Assignment Modal -->
+    <div id="inspector-modal" class="fixed inset-0 z-50 hidden" style="background: rgba(0,0,0,0.6);"
+         role="dialog" aria-modal="true" aria-labelledby="inspector-modal-title">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="rounded-lg w-full max-w-2xl mx-4 overflow-hidden"
+                 style="background: var(--surface-1); border: 1px solid var(--border-default);">
+                <div class="flex items-center justify-between p-6" style="border-bottom: 1px solid var(--border-default);">
+                    <h3 id="inspector-modal-title" class="text-lg font-semibold" style="color: var(--text-primary);">Assign Inspector</h3>
+                    <button onclick="closeInspectorModal()" style="color: var(--text-tertiary);" aria-label="Close Assign Inspector dialog">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="p-6">
+                    <!-- Inspector Search -->
+                    <div class="mb-4">
+                        <label for="inspector-search" class="gw-label">Search Inspectors</label>
+                        <div class="relative">
+                            <input type="text" id="inspector-search"
+                                   placeholder="Search by name..."
+                                   class="gw-input w-full">
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                     style="color: var(--text-tertiary);">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0m-6 18l-6-6m6 6v6"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Inspector List -->
+                    <div id="inspector-list" class="max-h-60 overflow-y-auto rounded-lg mb-4"
+                         style="border: 1px solid var(--border-default);">
+                        <div class="p-2 space-y-1.5" aria-label="Loading inspectors">
+                            <div class="gw-skeleton h-10 rounded-lg"></div>
+                            <div class="gw-skeleton h-10 rounded-lg"></div>
+                            <div class="gw-skeleton h-10 rounded-lg"></div>
+                        </div>
+                    </div>
+
+                    <!-- Assignment Notes -->
+                    <div class="mb-4">
+                        <label class="gw-label">Assignment Notes (Optional)</label>
+                        <textarea id="assignment-notes" rows="3"
+                                  placeholder="Add any notes for the inspector..."
+                                  class="gw-input w-full"></textarea>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex justify-end gap-3 px-6 pb-6">
+                    <button onclick="closeInspectorModal()" class="btn-secondary">
+                        Cancel
+                    </button>
+                    <button onclick="assignInspector()" class="btn-primary">
+                        Assign to Selected Inspector
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table card -->
+    <div class="gw-card overflow-hidden">
+        <div class="kente-bar"></div>
+        <div class="flex items-center justify-between px-5 py-4" style="border-bottom: 1px solid var(--border-subtle);">
+            <h2 class="text-sm font-semibold" style="color: var(--text-primary);">Detection Alerts</h2>
+            <span id="result-count" class="text-xs" style="color: var(--text-secondary);" aria-live="polite" aria-atomic="true">Loading…</span>
+        </div>
+
+        <!-- Loading -->
+        <div id="table-loading" class="py-16 text-center" role="status" aria-label="Loading alerts">
+            <div class="inline-block w-6 h-6 border-2 border-t-transparent rounded-full animate-spin mb-3"
+                 style="border-color: var(--status-info); border-top-color: transparent;" aria-hidden="true"></div>
+            <p class="text-sm" style="color: var(--text-secondary);">Loading alerts…</p>
+        </div>
+
+        <!-- Empty -->
+        <div id="table-empty" class="py-16 text-center hidden">
+            <svg class="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                 style="color: var(--text-tertiary);" aria-hidden="true" focusable="false">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+            <p class="text-sm" style="color: var(--text-secondary);">No alerts match your filters.</p>
+        </div>
+
+        <!-- Table -->
+        <div id="table-wrapper" class="hidden overflow-x-auto">
+            <table class="gw-table min-w-full">
+                <thead>
+                    <tr>
+                        <th class="px-3 py-3 w-8">
+                            <label for="select-all-cb" class="sr-only">Select all alerts</label>
+                            <input type="checkbox" id="select-all-cb"
+                                   class="rounded cursor-pointer"
+                                   aria-label="Select all alerts"
+                                   style="border-color: var(--border-default); accent-color: var(--status-info);">
+                        </th>
+                        <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">ID</th>
+                        <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Title</th>
+                        <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider cursor-pointer select-none group" data-sort="severity" style="color: var(--text-secondary);">
+                            Severity <span class="sort-icon ml-0.5" style="color: var(--text-tertiary);">↕</span>
+                        </th>
+                        <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Type</th>
+                        <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Location</th>
+                        <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider cursor-pointer select-none group" data-sort="-detected_site__confidence_score" style="color: var(--text-secondary);">
+                            Confidence <span class="sort-icon ml-0.5" style="color: var(--text-tertiary);">↕</span>
+                        </th>
+                        <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Status</th>
+                        <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Source</th>
+                        <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider cursor-pointer select-none group" data-sort="-created_at" style="color: var(--text-secondary);">
+                            Created <span class="sort-icon ml-0.5" style="color: var(--text-tertiary);">↓</span>
+                        </th>
+                        <th class="px-3 py-3 text-left text-[10px] font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="alerts-tbody"></tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div id="pagination" class="hidden px-5 py-4 flex items-center justify-between" style="border-top: 1px solid var(--border-subtle);">
+            <span id="pagination-info" class="text-xs" style="color: var(--text-secondary);"></span>
+            <div class="flex gap-1" id="pagination-buttons"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Bulk Action Bar ── -->
+<div id="bulk-bar" class="hidden fixed bottom-16 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-5 py-3 rounded-lg"
+     style="background: var(--surface-3); border: 1px solid var(--border-strong); color: var(--text-primary);">
+    <span id="bulk-count" class="text-sm font-semibold mr-2" style="color: var(--text-secondary);"></span>
+    <button id="bulk-acknowledge" class="hidden px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+            style="background: var(--status-info); color: #fff;">Acknowledge</button>
+    <button id="bulk-dispatch"    class="hidden px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+            style="background: var(--status-dispatched); color: #fff;">Dispatch</button>
+    <button id="bulk-dismiss"     class="hidden px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+            style="background: var(--surface-4); color: var(--text-secondary);">Dismiss</button>
+    <!-- Bulk assign inspector -->
+    <select id="bulk-inspector-select"
+            aria-label="Assign inspector"
+            class="hidden gw-select text-xs">
+        <option value="">Assign inspector…</option>
+    </select>
+    <button id="bulk-assign-inspector-btn"
+            class="hidden px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+            style="background: var(--status-resolved); color: #fff;">
+        Assign
+    </button>
+    <button id="bulk-cancel" class="ml-2 text-sm transition-colors" style="color: var(--text-tertiary);" aria-label="Clear selection">✕</button>
+</div>
+
+<!-- ── Alert Detail Modal ── -->
+<div id="alert-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4"
+     style="background: rgba(0,0,0,0.6);"
+     role="dialog" aria-modal="true" aria-labelledby="alert-modal-title">
+    <div class="rounded-lg w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col"
+         style="background: var(--surface-1); border: 1px solid var(--border-default);">
+        <div class="flex items-center justify-between px-6 py-4 shrink-0" style="border-bottom: 1px solid var(--border-subtle);">
+            <h3 id="alert-modal-title" class="text-base font-semibold" style="color: var(--text-primary);">Alert Detail</h3>
+            <button id="modal-close" style="color: var(--text-tertiary);" aria-label="Close Alert Detail dialog">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="overflow-y-auto flex-1">
+            <div class="px-6 py-5 space-y-4">
+                <div class="flex items-center gap-3">
+                    <span id="modal-severity-badge" class="px-2.5 py-1 rounded-full text-xs font-semibold"></span>
+                    <span id="modal-status-badge"   class="px-2.5 py-1 rounded-full text-xs font-semibold"></span>
+                </div>
+                <div>
+                    <p class="text-xs mb-0.5" style="color: var(--text-secondary);">Title</p>
+                    <p id="modal-title" class="text-sm font-semibold" style="color: var(--text-primary);"></p>
+                </div>
+                <div>
+                    <p class="text-xs mb-0.5" style="color: var(--text-secondary);">Description</p>
+                    <p id="modal-description" class="text-sm whitespace-pre-line" style="color: var(--text-primary);"></p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs mb-0.5" style="color: var(--text-secondary);">Type</p>
+                        <p id="modal-type" class="text-sm" style="color: var(--text-primary);"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-0.5" style="color: var(--text-secondary);">Detected</p>
+                        <p id="modal-date" class="text-sm" style="color: var(--text-primary);"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-0.5" style="color: var(--text-secondary);">Confidence</p>
+                        <p id="modal-confidence" class="text-sm" style="color: var(--text-primary);"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-0.5" style="color: var(--text-secondary);">Area</p>
+                        <p id="modal-area" class="text-sm" style="color: var(--text-primary);"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-0.5" style="color: var(--text-secondary);">Location</p>
+                        <p id="modal-location" class="text-sm" style="color: var(--text-primary);"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-0.5" style="color: var(--text-secondary);">Recurrences</p>
+                        <p id="modal-recurrence" class="text-sm" style="color: var(--text-primary);"></p>
+                    </div>
+                </div>
+                <!-- Field Verification Result (shown when alert is resolved via inspector report) -->
+                <div id="modal-field-verification" class="hidden rounded-lg overflow-hidden"
+                     style="border: 1px solid var(--border-default);">
+                    <div class="px-4 py-2 flex items-center gap-2" style="background: var(--surface-3); border-bottom: 1px solid var(--border-default);">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                             style="color: var(--text-secondary);">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <p class="text-xs font-semibold uppercase tracking-wide" style="color: var(--text-secondary);">Field Verification Result</p>
+                    </div>
+                    <div class="px-4 py-4 space-y-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs shrink-0" style="color: var(--text-secondary);">Outcome:</span>
+                            <span id="modal-fv-outcome" class="px-2.5 py-0.5 rounded-full text-xs font-bold"></span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <p class="text-xs mb-0.5" style="color: var(--text-secondary);">Inspector</p>
+                                <p id="modal-fv-inspector" class="text-sm font-medium" style="color: var(--text-primary);"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs mb-0.5" style="color: var(--text-secondary);">Visit Date</p>
+                                <p id="modal-fv-date" class="text-sm" style="color: var(--text-primary);"></p>
+                            </div>
+                        </div>
+                        <div id="modal-fv-notes-block" class="hidden">
+                            <p class="text-xs mb-1" style="color: var(--text-secondary);">Inspector Notes</p>
+                            <p id="modal-fv-notes" class="text-sm italic rounded p-2.5"
+                               style="color: var(--text-primary); background: var(--surface-3); border: 1px solid var(--border-subtle);"></p>
+                        </div>
+                        <div id="modal-fv-photos-block" class="hidden">
+                            <p class="text-xs mb-2" style="color: var(--text-secondary);">Evidence Photos</p>
+                            <div id="modal-fv-photos" class="grid grid-cols-3 gap-2"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ML Analysis Images -->
+            <div id="alert-ml-panels" class="hidden px-6 py-5" style="border-top: 1px solid var(--border-subtle);">
+                <h4 class="text-sm font-semibold mb-3" style="color: var(--text-primary);">ML Analysis</h4>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">False Colour</p>
+                        <a id="alert-img-false-color-link" href="#" target="_blank">
+                            <img id="alert-img-false-color" src="" alt="False Colour"
+                                 class="w-full rounded" style="height:100px;object-fit:cover;background:var(--surface-3);"/>
+                        </a>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Prediction Mask</p>
+                        <a id="alert-img-prediction-mask-link" href="#" target="_blank">
+                            <img id="alert-img-prediction-mask" src="" alt="Prediction Mask"
+                                 class="w-full rounded" style="height:100px;object-fit:cover;background:var(--surface-3);"/>
+                        </a>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Probability Heatmap</p>
+                        <a id="alert-img-probability-heatmap-link" href="#" target="_blank">
+                            <img id="alert-img-probability-heatmap" src="" alt="Probability Heatmap"
+                                 class="w-full rounded" style="height:100px;object-fit:cover;background:var(--surface-3);"/>
+                        </a>
+                    </div>
+                    <div>
+                        <p class="text-xs mb-1" style="color: var(--text-tertiary);">Overlay</p>
+                        <a id="alert-img-overlay-link" href="#" target="_blank">
+                            <img id="alert-img-overlay" src="" alt="Overlay"
+                                 class="w-full rounded" style="height:100px;object-fit:cover;background:var(--surface-3);"/>
+                        </a>
+                    </div>
+                </div>
+                <p class="text-xs mt-2" style="color: var(--text-tertiary);">Click any image to open full-size.</p>
+            </div>
+
+            <!-- Timelapse Section -->
+            <div class="px-6 py-5" style="border-top: 1px solid var(--border-subtle);">
+                <h4 class="text-sm font-semibold mb-3" style="color: var(--text-primary);">Site Timelapse</h4>
+
+                <!-- Loading -->
+                <div id="modal-tl-loading" class="py-6 text-center">
+                    <div class="inline-block w-5 h-5 border-2 border-t-transparent rounded-full animate-spin mb-2"
+                         style="border-color: var(--status-info); border-top-color: transparent;"></div>
+                    <p class="text-xs" style="color: var(--text-tertiary);">Loading imagery…</p>
+                </div>
+
+                <!-- Empty -->
+                <div id="modal-tl-empty" class="hidden py-6 text-center">
+                    <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                         style="color: var(--text-tertiary);">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    <p class="text-xs" style="color: var(--text-tertiary);">No satellite imagery available yet.</p>
+                    <p class="text-xs mt-0.5" style="color: var(--text-tertiary);">Imagery is fetched asynchronously after detection.</p>
+                </div>
+
+                <!-- Viewer -->
+                <div id="modal-tl-viewer" class="hidden">
+                    <div class="relative rounded-lg overflow-hidden" style="height:220px; background: var(--surface-base);">
+                        <img id="modal-tl-img" src="" alt="Satellite imagery" class="w-full h-full object-cover"/>
+                        <div id="modal-tl-img-fallback" class="hidden absolute inset-0 flex items-center justify-center text-xs"
+                             style="background: var(--surface-3); color: var(--text-tertiary);">No image</div>
+                        <div class="absolute top-2 left-2 text-xs px-2 py-0.5 rounded font-semibold"
+                             style="background: rgba(0,0,0,0.6); color: var(--text-primary);" id="modal-tl-year"></div>
+                    </div>
+                    <div class="mt-3">
+                        <input id="modal-tl-slider" type="range" min="0" max="0" value="0"
+                               class="w-full accent-blue-600" oninput="window._alertsPage.onSliderChange(this.value)"/>
+                        <div id="modal-tl-ticks" class="flex justify-between text-xs mt-1 px-0.5"
+                             style="color: var(--text-tertiary);"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="px-6 py-4 flex justify-end gap-3 shrink-0" style="border-top: 1px solid var(--border-subtle);" id="modal-actions"></div>
+    </div>
+</div>
+
+<!-- Add Alert Modal -->
+<div id="add-alert-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4"
+     style="background: rgba(0,0,0,0.6);"
+     role="dialog" aria-modal="true" aria-labelledby="add-alert-modal-title">
+    <div class="rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+         style="background: var(--surface-1); border: 1px solid var(--border-default); box-shadow: 0 24px 64px rgba(0,0,0,0.55);">
+        <div class="flex items-center justify-between px-6 py-4 shrink-0" style="border-bottom: 1px solid var(--border-subtle);">
+            <h3 id="add-alert-modal-title" class="text-base font-semibold" style="color: var(--text-primary);">Add New Alert</h3>
+            <button onclick="window._alertsPage.closeAddAlertModal()"
+                    aria-label="Close Add Alert dialog"
+                    style="color: var(--text-tertiary);">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <form id="add-alert-form" class="p-6 space-y-5 overflow-y-auto flex-1">
+            <!-- Basic Information -->
+            <div class="space-y-4">
+                <h4 class="text-xs font-semibold uppercase tracking-[0.06em] pb-2"
+                    style="color: var(--text-tertiary); border-bottom: 1px solid var(--border-subtle);">Basic Information</h4>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="gw-label">Title *</label>
+                        <input type="text" name="title" required class="gw-input w-full mt-1">
+                    </div>
+                    <div>
+                        <label class="gw-label">Alert Type *</label>
+                        <select name="alert_type" required class="gw-select w-full mt-1">
+                            <option value="">Select Type</option>
+                            <option value="new_detection">New Detection</option>
+                            <option value="expansion_detected">Site Expansion Detected</option>
+                            <option value="recurring_site">Recurring Illegal Site</option>
+                            <option value="high_confidence">High Confidence Detection</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="gw-label">Description</label>
+                    <textarea name="description" rows="3" class="gw-input w-full mt-1"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="gw-label">Severity *</label>
+                        <select name="severity" required class="gw-select w-full mt-1">
+                            <option value="">Select Severity</option>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="gw-label">Status</label>
+                        <select name="status" class="gw-select w-full mt-1">
+                            <option value="open">Open</option>
+                            <option value="acknowledged">Acknowledged</option>
+                            <option value="dispatched">Dispatched</option>
+                            <option value="resolved">Resolved</option>
+                            <option value="dismissed">Dismissed</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Location Information -->
+            <div class="space-y-4">
+                <h4 class="text-xs font-semibold uppercase tracking-[0.06em] pb-2"
+                    style="color: var(--text-tertiary); border-bottom: 1px solid var(--border-subtle);">Location Information</h4>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="gw-label">Latitude *</label>
+                        <input type="number" step="any" name="latitude" required
+                               placeholder="e.g., 5.5913" class="gw-input w-full mt-1">
+                    </div>
+                    <div>
+                        <label class="gw-label">Longitude *</label>
+                        <input type="number" step="any" name="longitude" required
+                               placeholder="e.g., -0.1793" class="gw-input w-full mt-1">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="gw-label">Confidence Score</label>
+                        <input type="number" step="0.01" min="0" max="1" name="confidence_score"
+                               value="0.8" class="gw-input w-full mt-1">
+                    </div>
+                    <div>
+                        <label class="gw-label">Area (hectares)</label>
+                        <input type="number" step="0.01" min="0" name="area_hectares"
+                               value="0.01" class="gw-input w-full mt-1">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="gw-label">Legal Status</label>
+                    <select name="legal_status" class="gw-select w-full mt-1">
+                        <option value="unknown">Unknown</option>
+                        <option value="legal">Legal</option>
+                        <option value="illegal">Illegal</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Assignment -->
+            <div class="space-y-4">
+                <h4 class="text-xs font-semibold uppercase tracking-[0.06em] pb-2"
+                    style="color: var(--text-tertiary); border-bottom: 1px solid var(--border-subtle);">Assignment</h4>
+
+                <div>
+                    <label class="gw-label">Assign to Inspector</label>
+                    <select name="assigned_to_id" class="gw-select w-full mt-1">
+                        <option value="">Unassigned</option>
+                    </select>
+                </div>
+            </div>
+        </form>
+
+        <div class="px-6 py-4 flex justify-end gap-3 shrink-0" style="border-top: 1px solid var(--border-subtle);">
+            <button type="button" onclick="window._alertsPage.closeAddAlertModal()" class="btn-secondary">
+                Cancel
+            </button>
+            <button type="submit" form="add-alert-form" class="btn-primary">
+                Create Alert
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Inspector Modal Functions - Defined Immediately -->
+<script>
+// Inspector Assignment Variables
+var selectedInspector = null;
+var currentAlertId = null;
+
+var openInspectorModal = function(alertId) {
+    currentAlertId = alertId;
+    var modal = document.getElementById('inspector-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        loadInspectors();
+    }
+};
+
+var closeInspectorModal = function() {
+    var modal = document.getElementById('inspector-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        selectedInspector = null;
+        currentAlertId = null;
+    }
+};
+
+var loadInspectors = function() {
+    fetch('/accounts/api/inspectors/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            var inspectorList = document.getElementById('inspector-list');
+            if (inspectorList) {
+                inspectorList.innerHTML = '';
+
+                // Handle case where no inspectors are available
+                if (!data || data.length === 0) {
+                    inspectorList.innerHTML = '<div class="p-4 text-center" style="color: var(--text-secondary);">No inspectors available</div>';
+                    return;
+                }
+
+                data.forEach(inspector => {
+                    var item = document.createElement('div');
+                    item.className = 'p-3 cursor-pointer';
+                    item.style.cssText = 'border-bottom: 1px solid var(--border-subtle);';
+                    item.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="font-medium" style="color: var(--text-primary);">${inspector.user}</div>
+                                <div class="text-xs" style="color: ${inspector.is_available ? 'var(--status-resolved)' : 'var(--status-critical)'};">${inspector.is_available ? 'Available' : 'Busy'}</div>
+                            </div>
+                            <input type="radio" name="inspector" value="${inspector.user}" class="inspector-radio"
+                                   style="accent-color: var(--status-dispatched);">
+                        </div>
+                    `;
+                    item.onclick = function() { selectInspector(inspector); };
+                    inspectorList.appendChild(item);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error loading inspectors:', error);
+            var inspectorList = document.getElementById('inspector-list');
+            if (inspectorList) {
+                inspectorList.innerHTML = '<div class="p-4 text-center" style="color: var(--status-critical);">Error loading inspectors. Please try again.</div>';
+            }
+        });
+};
+
+var selectInspector = function(inspector) {
+    selectedInspector = inspector;
+    var radios = document.querySelectorAll('.inspector-radio');
+    radios.forEach(function(radio) {
+        radio.checked = radio.value === inspector.user;
+    });
+};
+
+var assignInspector = function() {
+    if (!selectedInspector) {
+        alert('Please select an inspector first.');
+        return;
+    }
+
+    fetch('/accounts/api/assignments/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            alert_id: currentAlertId,
+            inspector: selectedInspector.user,
+            notes: document.getElementById('assignment-notes').value
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        closeInspectorModal();
+        // Reload the page to refresh alerts list
+        window.location.reload();
+    })
+    .catch(error => console.error('Error creating assignment:', error));
+};
+
+// Helper function for CSRF token
+var getCookie = function(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+};
+
+// Make functions globally available
+window.openInspectorModal = openInspectorModal;
+window.closeInspectorModal = closeInspectorModal;
+window.loadInspectors = loadInspectors;
+window.selectInspector = selectInspector;
+window.assignInspector = assignInspector;
+</script>
+
+<!-- ── Confirm Modal ── -->
+<div id="confirm-modal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center p-4"
+     style="background: rgba(0,0,0,0.6);">
+    <div class="rounded-lg w-full max-w-xs overflow-hidden"
+         style="background: var(--surface-2); border: 1px solid var(--border-default);">
+        <div class="px-5 py-5">
+            <h3 id="confirm-modal-title" class="text-sm font-semibold mb-2" style="color: var(--text-primary);"></h3>
+            <p id="confirm-modal-message" class="text-sm" style="color: var(--text-secondary);"></p>
+        </div>
+        <div class="px-5 py-3 flex justify-end gap-2" style="border-top: 1px solid var(--border-subtle);">
+            <button id="confirm-modal-cancel" class="btn-secondary text-sm px-4 py-2">Cancel</button>
+            <button id="confirm-modal-ok" class="btn-primary text-sm px-4 py-2">Confirm</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+// ── Confirm modal helper ──────────────────────────────────────────────────────
+function showToast(message, type) {
+    const bg = type === 'error' ? 'var(--status-critical)' : type === 'success' ? 'var(--status-resolved)' : 'var(--accent)';
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;top:16px;right:16px;padding:10px 18px;border-radius:8px;z-index:9999;color:#fff;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.4);background:' + bg + ';transition:opacity 0.3s;';
+    el.textContent = message;
+    document.body.appendChild(el);
+    setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 3200);
+}
+
+function showConfirm(title, message) {
+    return new Promise(function (resolve) {
+        document.getElementById('confirm-modal-title').textContent = title;
+        document.getElementById('confirm-modal-message').textContent = message;
+        var modal = document.getElementById('confirm-modal');
+        modal.classList.remove('hidden');
+        var okBtn = document.getElementById('confirm-modal-ok');
+        var cancelBtn = document.getElementById('confirm-modal-cancel');
+        function done(result) {
+            modal.classList.add('hidden');
+            okBtn.removeEventListener('click', onOk);
+            cancelBtn.removeEventListener('click', onCancel);
+            resolve(result);
+        }
+        var onOk = function () { done(true); };
+        var onCancel = function () { done(false); };
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+    });
+}
+
+(function () {
+    let currentPage   = 1;
+    let activeFilters = {};
+    let currentOrdering = '-created_at';
+    let _alerts       = [];
+    let _currentId    = null;
+    let selectedIds   = new Set();
+    let _knownAlertIds = new Set();
+    let selectedStatuses = {};   // id → status
+
+    // ── Severity / status styling ──
+    const SEVERITY_CLASS = {
+        critical: 'gw-badge gw-badge--critical',
+        high:     'gw-badge gw-badge--high',
+        medium:   'gw-badge gw-badge--moderate',
+        low:      'gw-badge gw-badge--info',
+    };
+    const SEVERITY_DOT_COLOR = {
+        critical: 'var(--status-critical)',
+        high:     'var(--status-high)',
+        medium:   'var(--status-moderate)',
+        low:      'var(--status-info)',
+    };
+    const STATUS_CLASS = {
+        open:         'gw-badge gw-badge--critical',
+        acknowledged: 'gw-badge gw-badge--moderate',
+        dispatched:   'gw-badge gw-badge--dispatched',
+        resolved:     'gw-badge gw-badge--resolved',
+        dismissed:    'gw-badge gw-badge--neutral',
+    };
+    const STATUS_ICON = {
+        open:         '●',
+        acknowledged: '◑',
+        dispatched:   '↑',
+        resolved:     '✓',
+        dismissed:    '×',
+    };
+
+    // ── Fetch ──
+    function refreshSummary() {
+        fetch('/api/alerts/summary/', { credentials: 'include' })
+            .then(r => r.json())
+            .then(s => {
+                document.getElementById('s-total').textContent        = s.total;
+                document.getElementById('s-open').textContent         = s.open;
+                document.getElementById('s-acknowledged').textContent = s.acknowledged;
+                document.getElementById('s-dispatched').textContent   = s.dispatched;
+                document.getElementById('s-resolved').textContent     = s.resolved;
+                document.getElementById('s-dismissed').textContent    = s.dismissed;
+                document.getElementById('s-highplus').textContent     = s.critical + s.high;
+                document.getElementById('s-critical').textContent     = s.critical;
+            })
+            .catch(() => {});
+    }
+
+    async function loadAlerts(page = 1) {
+        currentPage = page;
+        // Clear selection on each load
+        selectedIds.clear();
+        selectedStatuses = {};
+        updateBulkBar();
+        showLoading();
+
+        const params = new URLSearchParams({ page, ordering: currentOrdering, ...activeFilters });
+        try {
+            const res  = await fetch(`/api/alerts/?${params}`, { credentials: 'include' });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            const prevKnown = new Set(_knownAlertIds);
+            _alerts    = data.results || [];
+            _alerts.forEach(a => _knownAlertIds.add(a.id));
+            renderTable(_alerts);
+            // Flash rows that are newly arrived
+            if (prevKnown.size > 0) {
+                const tbody = document.getElementById('alerts-tbody');
+                tbody.querySelectorAll('tr[data-id]').forEach(function(row) {
+                    if (!prevKnown.has(row.dataset.id)) {
+                        row.classList.add('row-flash-gold');
+                    }
+                });
+            }
+            renderPagination(data);
+            document.getElementById('result-count').textContent =
+                `${data.total} alert${data.total !== 1 ? 's' : ''}`;
+            refreshSummary();
+        } catch (e) {
+            console.error('Failed to load alerts:', e);
+            showEmpty();
+        }
+    }
+
+    // ── Render table ──
+    function renderTable(alerts) {
+        const tbody = document.getElementById('alerts-tbody');
+        if (!alerts.length) { showEmpty(); return; }
+
+        tbody.innerHTML = alerts.map(a => {
+            const sevCls = SEVERITY_CLASS[a.severity] || 'gw-badge--info';
+            const staCls = STATUS_CLASS[a.status]     || 'gw-badge--info';
+            const locStr = a.site.lat != null
+                ? `<a href="https://earth.google.com/web/search/${a.site.lat},${a.site.lng}"
+                       target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()"
+                       aria-label="Open site location for alert ${a.short_id} in Google Earth (opens in new tab)"
+                       style="color:var(--text-secondary);text-decoration:underline;text-decoration-style:dotted;"
+                   >${a.site.lat}° N, ${Math.abs(a.site.lng)}° W ↗</a>`
+                : (a.site.region || '—');
+            const isSelectable = a.status === 'open' || a.status === 'acknowledged';
+            const srcBadge = a.source === 'automated'
+                ? `<span class="px-1.5 py-0.5 text-[10px] font-semibold rounded" style="background:rgba(212,160,23,0.12);color:var(--accent);border:1px solid rgba(212,160,23,0.3);">Auto</span>`
+                : `<span class="px-1.5 py-0.5 text-[10px] font-semibold rounded" style="background:var(--surface-3);color:var(--text-tertiary);border:1px solid var(--border-subtle);">Manual</span>`;
+
+            const sevDotCls = { critical:'sev-dot--critical', high:'sev-dot--high', medium:'sev-dot--medium', low:'sev-dot--low' }[a.severity] || '';
+            const rowBorderCls = { critical:'alert-row-critical', high:'alert-row-high', medium:'alert-row-medium', low:'alert-row-low' }[a.severity] || '';
+
+            return `<tr class="cursor-pointer ${rowBorderCls}" style="border-bottom: 1px solid var(--border-subtle);"
+                        onmouseover="this.style.background='var(--surface-3)'" onmouseout="this.style.background=''"
+                        oncontextmenu="window._showCtxMenu(event, '${a.id}', '${a.status}', '${a.short_id}')"
+                        data-id="${a.id}" data-status="${a.status}" onclick="window._alertsPage.openModal('${a.id}')">
+                <td class="px-3 py-3 w-8" onclick="event.stopPropagation()">
+                    ${isSelectable ? `<input type="checkbox" class="row-cb rounded cursor-pointer"
+                        style="border-color: var(--border-default); accent-color: var(--status-info);"
+                        data-id="${a.id}" data-status="${a.status}"
+                        aria-label="Select alert ${a.short_id}"
+                        onchange="window._alertsPage.onRowCheck(this)">` : ''}
+                </td>
+                <td class="px-3 py-3 text-xs font-mono" style="color: var(--text-secondary);">
+                    <span class="sev-dot ${sevDotCls}" title="${a.severity} severity"></span>${a.short_id}
+                </td>
+                <td class="px-3 py-3 text-sm font-medium" style="color: var(--text-primary);">${a.title}</td>
+                <td class="px-3 py-3">
+                    <span class="${sevCls}">
+                        <span style="width:5px;height:5px;border-radius:50%;display:inline-block;background:${SEVERITY_DOT_COLOR[a.severity]||'currentColor'};flex-shrink:0;"></span>
+                        ${a.severity_display}
+                    </span>
+                </td>
+                <td class="px-3 py-3 text-xs" style="color: var(--text-secondary);">${a.alert_type_display}</td>
+                <td class="px-3 py-3 text-xs" style="color: var(--text-secondary);">${locStr}</td>
+                <td class="px-3 py-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-medium tabular-nums" style="color: var(--text-primary);">${a.site.confidence_pct}%</span>
+                        <div class="w-10 rounded-full h-1.5" style="background: var(--border-subtle);">
+                            <div class="h-1.5 rounded-full" style="width:${a.site.confidence_pct}%; background: var(--viz-legal);"></div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-3 py-3">
+                    <span class="${staCls}">
+                        <span style="font-size:9px;line-height:1;">${STATUS_ICON[a.status]||''}</span>
+                        ${a.status_display}
+                    </span>
+                </td>
+                <td class="px-3 py-3">${srcBadge}</td>
+                <td class="px-3 py-3 text-xs" style="color: var(--text-secondary);">${a.created_at}</td>
+                <td class="px-3 py-3 text-xs" onclick="event.stopPropagation()">
+                    <div class="flex items-center gap-2">
+                        ${a.status === 'open' ? `
+                            <button onclick="window._alertsPage.action('${a.id}','acknowledge')"
+                                    class="hover:underline" style="color: var(--status-info);"
+                                    aria-label="Acknowledge alert ${a.short_id}">Acknowledge</button>
+                            <button onclick="window._alertsPage.action('${a.id}','dismiss')"
+                                    class="hover:underline" style="color: var(--text-tertiary);"
+                                    aria-label="Dismiss alert ${a.short_id}">Dismiss</button>
+                        ` : a.status === 'acknowledged' ? `
+                            <button onclick="window.openInspectorModal('${a.id}')"
+                                    class="hover:underline" style="color: var(--status-dispatched);"
+                                    aria-label="Dispatch inspector for alert ${a.short_id}">Dispatch Inspector</button>
+                        ` : a.status === 'dispatched' ? `
+                            <span class="italic" style="color: var(--text-tertiary);">Awaiting inspector report</span>
+                        ` : `<span style="color: var(--text-tertiary);">—</span>`}
+
+                        ${window._alertsPage.isAdmin ? `
+                            <button onclick="window._alertsPage.editAlert('${a.id}')"
+                                    class="p-1.5 rounded hover:bg-gray-50 transition-colors"
+                                    style="color: var(--text-secondary);"
+                                    aria-label="Edit alert ${a.short_id}">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                                </svg>
+                            </button>
+                            <button onclick="window._alertsPage.deleteAlert('${a.id}')"
+                                    class="p-1.5 rounded hover:bg-gray-50 transition-colors"
+                                    style="color: var(--text-secondary);"
+                                    aria-label="Delete alert ${a.short_id}">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"/>
+                                </svg>
+                            </button>
+                        ` : ''}
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+
+        // Stagger row entrance
+        tbody.querySelectorAll('tr').forEach(function(row, i) {
+            row.classList.add('table-row-enter');
+            row.style.animationDelay = (i * 30) + 'ms';
+        });
+
+        document.getElementById('table-loading').classList.add('hidden');
+        document.getElementById('table-empty').classList.add('hidden');
+        document.getElementById('table-wrapper').classList.remove('hidden');
+        document.getElementById('pagination').classList.remove('hidden');
+    }
+
+    // ── Pagination ──
+    function renderPagination(data) {
+        const info = document.getElementById('pagination-info');
+        const btns = document.getElementById('pagination-buttons');
+        const start = (data.page - 1) * data.per_page + 1;
+        const end   = Math.min(data.page * data.per_page, data.total);
+        info.textContent = `Showing ${start}–${end} of ${data.total}`;
+
+        btns.innerHTML = '';
+        const addBtn = (label, page, active, disabled) => {
+            const b = document.createElement('button');
+            b.textContent = label;
+            if (active) {
+                b.style.cssText = `padding: 4px 10px; font-size: 12px; border-radius: 4px; background: var(--status-info); color: #fff; border: 1px solid var(--status-info);`;
+            } else if (disabled) {
+                b.style.cssText = `padding: 4px 10px; font-size: 12px; border-radius: 4px; color: var(--text-tertiary); border: 1px solid var(--border-subtle); cursor: not-allowed;`;
+            } else {
+                b.style.cssText = `padding: 4px 10px; font-size: 12px; border-radius: 4px; color: var(--text-secondary); border: 1px solid var(--border-default); cursor: pointer;`;
+                b.onmouseover = () => b.style.background = 'var(--surface-3)';
+                b.onmouseout  = () => b.style.background = '';
+            }
+            if (!disabled && !active) b.onclick = () => loadAlerts(page);
+            btns.appendChild(b);
+        };
+        addBtn('← Prev', data.page - 1, false, data.page === 1);
+        for (let p = 1; p <= data.total_pages; p++) {
+            if (data.total_pages <= 7 || Math.abs(p - data.page) <= 2 || p === 1 || p === data.total_pages) {
+                addBtn(p, p, p === data.page, false);
+            } else if (Math.abs(p - data.page) === 3) {
+                const dots = document.createElement('span');
+                dots.textContent = '…';
+                dots.style.cssText = 'padding: 0 4px; font-size: 12px; color: var(--text-tertiary); align-self: center;';
+                btns.appendChild(dots);
+            }
+        }
+        addBtn('Next →', data.page + 1, false, data.page === data.total_pages);
+    }
+
+    // ── State helpers ──
+    function showLoading() {
+        document.getElementById('table-loading').classList.remove('hidden');
+        document.getElementById('table-empty').classList.add('hidden');
+        document.getElementById('table-wrapper').classList.add('hidden');
+        document.getElementById('pagination').classList.add('hidden');
+    }
+    function showEmpty() {
+        document.getElementById('table-loading').classList.add('hidden');
+        document.getElementById('table-empty').classList.remove('hidden');
+        document.getElementById('table-wrapper').classList.add('hidden');
+        document.getElementById('pagination').classList.add('hidden');
+    }
+
+    // ── Detail modal ──
+    let _tlFrames = [];
+
+    async function openModal(id, prefetchedData) {
+        _currentId = id;
+        _tlFrames  = [];
+        const modal = document.getElementById('alert-modal');
+        modal.classList.remove('hidden');
+        window.trapFocus && window.trapFocus(modal, document.activeElement);
+        // Reset timelapse to loading state
+        document.getElementById('modal-tl-loading').classList.remove('hidden');
+        document.getElementById('modal-tl-empty').classList.add('hidden');
+        document.getElementById('modal-tl-viewer').classList.add('hidden');
+
+        try {
+            const a = prefetchedData || await fetch(`/api/alerts/${id}/`, { credentials: 'include' }).then(r => { if (!r.ok) throw new Error(); return r.json(); });
+            const site = a.site;
+
+            document.getElementById('modal-title').textContent       = a.title;
+            document.getElementById('modal-description').textContent = a.description || '—';
+            document.getElementById('modal-type').textContent        = a.alert_type_display;
+            document.getElementById('modal-date').textContent        = site.detection_date;
+            document.getElementById('modal-confidence').textContent  = site.confidence_pct + '%';
+            document.getElementById('modal-area').textContent        = site.area_hectares + ' ha';
+            document.getElementById('modal-recurrence').textContent  = site.recurrence_count + 'x';
+            const locEl = document.getElementById('modal-location');
+            if (site.lat != null) {
+                locEl.innerHTML = `<a href="https://earth.google.com/web/search/${site.lat},${site.lng}"
+                    target="_blank" rel="noopener noreferrer" title="Open in Google Earth"
+                    style="color:inherit;text-decoration:underline;text-decoration-style:dotted;"
+                    >${site.lat}° N, ${Math.abs(site.lng)}° W ↗</a>`;
+            } else {
+                locEl.textContent = site.region || '—';
+            }
+
+            const sevCls = SEVERITY_CLASS[a.severity] || 'gw-badge--info';
+            const staCls = STATUS_CLASS[a.status]     || 'gw-badge--info';
+            document.getElementById('modal-severity-badge').textContent  = a.severity_display;
+            document.getElementById('modal-severity-badge').className    = sevCls;
+            document.getElementById('modal-status-badge').textContent    = a.status_display;
+            document.getElementById('modal-status-badge').className      = staCls;
+
+            // Field verification panel
+            const fvBlock = document.getElementById('modal-field-verification');
+            const fv = a.field_verification;
+            if (fv) {
+                fvBlock.classList.remove('hidden');
+
+                const OUTCOME_STYLE = {
+                    mining_confirmed: 'background: var(--status-critical-bg); color: var(--status-critical); border: 1px solid var(--status-critical-border);',
+                    false_positive:   'background: var(--status-resolved-bg); color: var(--status-resolved); border: 1px solid var(--status-resolved-border);',
+                    inconclusive:     'background: var(--status-moderate-bg); color: var(--status-moderate); border: 1px solid var(--status-moderate-border);',
+                };
+                const outcomeEl = document.getElementById('modal-fv-outcome');
+                outcomeEl.textContent = fv.outcome_display || fv.outcome || '—';
+                outcomeEl.style.cssText = OUTCOME_STYLE[fv.outcome] || 'background: var(--surface-3); color: var(--text-secondary);';
+
+                document.getElementById('modal-fv-inspector').textContent = fv.inspector_name || '—';
+                document.getElementById('modal-fv-date').textContent      = fv.visit_date || '—';
+
+                const notesBlock = document.getElementById('modal-fv-notes-block');
+                if (fv.notes) {
+                    notesBlock.classList.remove('hidden');
+                    document.getElementById('modal-fv-notes').textContent = fv.notes;
+                } else {
+                    notesBlock.classList.add('hidden');
+                }
+
+                const photosBlock = document.getElementById('modal-fv-photos-block');
+                const photosGrid  = document.getElementById('modal-fv-photos');
+                if (fv.photos && fv.photos.length > 0) {
+                    photosBlock.classList.remove('hidden');
+                    photosGrid.innerHTML = fv.photos.map(url => `
+                        <a href="${url}" target="_blank" rel="noopener"
+                           class="block aspect-square rounded overflow-hidden"
+                           style="border: 1px solid var(--border-default); transition: border-color 0.15s;">
+                            <img src="${url}" alt="Evidence photo"
+                                 class="w-full h-full object-cover"
+                                 onerror="this.parentElement.innerHTML='<div style=\'width:100%;height:100%;background:var(--surface-3);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text-tertiary)\'>No preview</div>'"/>
+                        </a>`).join('');
+                } else {
+                    photosBlock.classList.add('hidden');
+                    photosGrid.innerHTML = '';
+                }
+            } else {
+                fvBlock.classList.add('hidden');
+            }
+
+            // Action buttons
+            const actDiv = document.getElementById('modal-actions');
+            actDiv.innerHTML = `<button onclick="window._alertsPage.closeModal()" class="btn-secondary">Close</button>`;
+            if (a.status === 'open') {
+                actDiv.innerHTML += `
+                    <button onclick="window._alertsPage.action('${id}','dismiss');window._alertsPage.closeModal()"
+                        class="btn-secondary">Dismiss</button>
+                    <button onclick="window._alertsPage.action('${id}','acknowledge');window._alertsPage.closeModal()"
+                        class="btn-primary">Acknowledge</button>`;
+            } else if (a.status === 'acknowledged') {
+                actDiv.innerHTML += `
+                    <button onclick="window._alertsPage.closeModal();window.openInspectorModal('${id}')"
+                        class="btn-primary">Dispatch Inspector</button>`;
+            } else if (a.status === 'dispatched') {
+                actDiv.innerHTML += `
+                    <div class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm"
+                         style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-secondary);">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                             style="color: var(--status-dispatched);">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Awaiting inspector field report
+                    </div>`;
+            }
+
+            // ML Analysis panels
+            const mlPanel = document.getElementById('alert-ml-panels');
+            const imgs = site && site.patch_images;
+            if (imgs && Object.values(imgs).some(Boolean)) {
+                mlPanel.classList.remove('hidden');
+                [
+                    ['alert-img-false-color',         'alert-img-false-color-link',         imgs.false_color],
+                    ['alert-img-prediction-mask',     'alert-img-prediction-mask-link',     imgs.prediction_mask],
+                    ['alert-img-probability-heatmap', 'alert-img-probability-heatmap-link', imgs.probability_heatmap],
+                    ['alert-img-overlay',             'alert-img-overlay-link',             imgs.overlay],
+                ].forEach(([imgId, linkId, url]) => {
+                    document.getElementById(imgId).src   = url || '';
+                    document.getElementById(linkId).href = url || '#';
+                });
+            } else {
+                mlPanel.classList.add('hidden');
+            }
+
+            // Load timelapse for the detected site
+            loadTimelapse(site.id);
+
+        } catch(e) {
+            console.error('Failed to load alert detail:', e);
+            document.getElementById('modal-tl-loading').classList.add('hidden');
+            document.getElementById('modal-tl-empty').classList.remove('hidden');
+        }
+    }
+
+    async function loadTimelapse(siteId) {
+        try {
+            const res = await fetch(`/api/sites/${siteId}/timelapse/`, { credentials: 'include' });
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            _tlFrames = data.frames || [];
+            document.getElementById('modal-tl-loading').classList.add('hidden');
+            if (_tlFrames.length === 0) {
+                document.getElementById('modal-tl-empty').classList.remove('hidden');
+                return;
+            }
+            document.getElementById('modal-tl-viewer').classList.remove('hidden');
+            const slider = document.getElementById('modal-tl-slider');
+            slider.min   = 0;
+            slider.max   = _tlFrames.length - 1;
+            slider.value = _tlFrames.length - 1;
+            document.getElementById('modal-tl-ticks').innerHTML =
+                _tlFrames.map(f => `<span>${f.year}</span>`).join('');
+            renderTlFrame(_tlFrames.length - 1);
+        } catch {
+            document.getElementById('modal-tl-loading').classList.add('hidden');
+            document.getElementById('modal-tl-empty').classList.remove('hidden');
+        }
+    }
+
+    function renderTlFrame(idx) {
+        const f = _tlFrames[idx];
+        if (!f) return;
+        document.getElementById('modal-tl-year').textContent = f.year;
+        const img = document.getElementById('modal-tl-img');
+        const fb  = document.getElementById('modal-tl-img-fallback');
+        if (f.thumbnail_url) { img.src = f.thumbnail_url; img.classList.remove('hidden'); fb.classList.add('hidden'); }
+        else { img.src = ''; img.classList.add('hidden'); fb.classList.remove('hidden'); }
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('alert-modal');
+        modal.classList.add('hidden');
+        window.releaseFocus && window.releaseFocus(modal);
+    }
+
+    // ── Status action ──
+    async function action(id, verb) {
+        const endpointMap = {
+            acknowledge: 'acknowledge',
+            dismiss:     'dismiss',
+            dispatch:    'dispatch',
+            resolve:     'resolve',
+        };
+        const endpoint = endpointMap[verb] || verb;
+
+        // Confirmation for destructive actions
+        if (verb === 'dismiss') {
+            const ok = await showConfirm(
+                'Dismiss Alert',
+                'Dismiss this alert? It will be removed from the active list and marked as resolved.'
+            );
+            if (!ok) return;
+        }
+
+        // ── Inspector Modal ──────────────────────────────────────────────
+        let selectedInspector = null;
+        let currentAlertId = null;
+
+        function openInspectorModal(alertId) {
+            currentAlertId = alertId;
+            const modal = document.getElementById('inspector-modal');
+            modal.classList.remove('hidden');
+            window.trapFocus && window.trapFocus(modal, document.activeElement);
+            loadInspectors();
+        }
+
+        function closeInspectorModal() {
+            const modal = document.getElementById('inspector-modal');
+            modal.classList.add('hidden');
+            window.releaseFocus && window.releaseFocus(modal);
+            selectedInspector = null;
+            currentAlertId = null;
+        }
+
+        async function loadInspectors() {
+            try {
+                const response = await fetch('/accounts/api/inspectors/', {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to load inspectors');
+
+                const inspectors = await response.json();
+                const listContainer = document.getElementById('inspector-list');
+
+                listContainer.innerHTML = inspectors.map(inspector => `
+                    <div class="p-3 cursor-pointer inspector-item"
+                         style="border-bottom: 1px solid var(--border-subtle);"
+                         onmouseover="this.style.background='var(--surface-3)'" onmouseout="this.style.background=''"
+                         data-inspector-username="${inspector.user}"
+                         onclick="selectInspector('${inspector.user}')">
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1">
+                                <div class="font-medium" style="color: var(--text-primary);">${inspector.user}</div>
+                            </div>
+                            <div class="text-sm" style="color: ${inspector.is_available ? 'var(--status-resolved)' : 'var(--status-critical)'};">
+                                ${inspector.is_available ? 'Available' : 'Busy'}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading inspectors:', error);
+                const listContainer = document.getElementById('inspector-list');
+                listContainer.innerHTML = '<div class="p-2 text-sm" style="color: var(--status-critical);">Failed to load inspectors</div>';
+            }
+        }
+
+        function selectInspector(username) {
+            // Remove previous selection
+            document.querySelectorAll('.inspector-item').forEach(item => {
+                item.style.background = '';
+                item.style.borderColor = 'var(--border-subtle)';
+            });
+
+            // Add selection to clicked item
+            const selectedItem = document.querySelector(`[data-inspector-username="${username}"]`);
+            if (selectedItem) {
+                selectedItem.style.background = 'var(--status-dispatched-bg)';
+                selectedItem.style.borderColor = 'var(--status-dispatched-border)';
+                selectedInspector = username;
+            }
+        }
+
+        async function assignInspector() {
+            if (!selectedInspector || !currentAlertId) {
+                alert('Please select an inspector and alert');
+                return;
+            }
+
+            try {
+                const response = await fetch('/accounts/api/assignments/', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                    },
+                    body: JSON.stringify({
+                        alert_id: currentAlertId,
+                        inspector: selectedInspector,
+                        notes: document.getElementById('assignment-notes').value
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to create assignment');
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Update alert status in UI
+                    window._alertsPage.refreshAlerts();
+                    closeInspectorModal();
+
+                    // Show success message
+                    const successMsg = document.createElement('div');
+                    successMsg.style.cssText = 'position:fixed;top:16px;right:16px;padding:8px 16px;border-radius:6px;z-index:9999;background:var(--status-resolved);color:#fff;font-size:14px;';
+                    successMsg.textContent = 'Inspector assigned successfully!';
+                    document.body.appendChild(successMsg);
+
+                    setTimeout(() => {
+                        successMsg.remove();
+                    }, 3000);
+                } else {
+                    alert('Failed to assign inspector: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error assigning inspector:', error);
+                alert('Failed to assign inspector');
+            }
+        }
+        try {
+            const res = await fetch(`/api/alerts/${id}/${endpoint}/`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({}),
+            });
+            if (res.ok) {
+                loadAlerts(currentPage);
+                const labels = { acknowledge: 'Acknowledged', dismiss: 'Dismissed', resolve: 'Resolved' };
+                showToast(labels[verb] || 'Done', 'success');
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                showToast(errData.error || `Failed to ${verb} alert (${res.status})`, 'error');
+            }
+        } catch(e) {
+            console.error('Action failed:', e);
+            showToast('Action failed – check your connection', 'error');
+        }
+    }
+
+    // ── Bulk selection ──
+    function onRowCheck(cb) {
+        const id     = cb.dataset.id;
+        const status = cb.dataset.status;
+        if (cb.checked) { selectedIds.add(id); selectedStatuses[id] = status; }
+        else            { selectedIds.delete(id); delete selectedStatuses[id]; }
+        syncSelectAll();
+        updateBulkBar();
+    }
+
+    function syncSelectAll() {
+        const allCbs = document.querySelectorAll('.row-cb');
+        const selectAll = document.getElementById('select-all-cb');
+        if (!selectAll) return;
+        const checked = [...allCbs].filter(c => c.checked).length;
+        selectAll.checked       = checked > 0 && checked === allCbs.length;
+        selectAll.indeterminate = checked > 0 && checked < allCbs.length;
+    }
+
+    function updateBulkBar() {
+        const bar   = document.getElementById('bulk-bar');
+        const count = document.getElementById('bulk-count');
+        const btnAck   = document.getElementById('bulk-acknowledge');
+        const btnDis   = document.getElementById('bulk-dispatch');
+        const btnDism  = document.getElementById('bulk-dismiss');
+        const selInsp  = document.getElementById('bulk-inspector-select');
+        const btnAssign = document.getElementById('bulk-assign-inspector-btn');
+        if (!bar) return;
+
+        const n = selectedIds.size;
+        if (n === 0) { bar.classList.add('hidden'); return; }
+        bar.classList.remove('hidden');
+        count.textContent = `${n} selected`;
+
+        const statuses = new Set(Object.values(selectedStatuses));
+        const allOpen = [...statuses].every(s => s === 'open');
+        const allAck  = [...statuses].every(s => s === 'acknowledged');
+        const mixed   = !allOpen && !allAck;
+        const assignable = allOpen || allAck;
+
+        btnAck.classList.toggle('hidden',   !allOpen);
+        btnDis.classList.toggle('hidden',   !allAck);
+        btnDism.classList.toggle('hidden',  mixed);
+        selInsp.classList.toggle('hidden',  !assignable);
+        btnAssign.classList.toggle('hidden', !assignable);
+    }
+
+    // ── Bulk inspector assignment ──
+    async function populateBulkInspectorDropdown() {
+        const sel = document.getElementById('bulk-inspector-select');
+        if (!sel) return;
+        try {
+            const res = await fetch('/accounts/api/inspectors/', { credentials: 'include' });
+            if (!res.ok) return;
+            const inspectors = await res.json();
+            // Keep the placeholder option, then add one per inspector
+            sel.innerHTML = '<option value="">Assign inspector…</option>';
+            inspectors.forEach(ins => {
+                const opt = document.createElement('option');
+                opt.value = ins.user;
+                opt.textContent = `${ins.user}${ins.is_available ? '' : ' (busy)'}`;
+                sel.appendChild(opt);
+            });
+        } catch(_) {}
+    }
+
+    async function bulkAssignInspector() {
+        const inspector = document.getElementById('bulk-inspector-select')?.value;
+        if (!inspector) { alert('Please select an inspector first.'); return; }
+        if (!selectedIds.size) return;
+        try {
+            const res = await fetch('/api/alerts/bulk-assign-inspector/', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                body: JSON.stringify({ alert_ids: [...selectedIds], inspector_username: inspector }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                selectedIds.clear();
+                selectedStatuses = {};
+                document.getElementById('bulk-inspector-select').value = '';
+                loadAlerts(currentPage);
+            } else {
+                alert(data.error || 'Failed to assign inspector.');
+            }
+        } catch(e) { console.error('Bulk assign failed:', e); }
+    }
+
+    async function bulkAction(verb) {
+        if (!selectedIds.size) return;
+        try {
+            const res = await fetch('/api/alerts/bulk_action/', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                body: JSON.stringify({ ids: [...selectedIds], action: verb }),
+            });
+            if (res.ok) {
+                selectedIds.clear();
+                selectedStatuses = {};
+                loadAlerts(currentPage);
+            }
+        } catch(e) { console.error('Bulk action failed:', e); }
+    }
+
+    // ── Sorting ──
+    function updateSortIcons() {
+        document.querySelectorAll('th[data-sort]').forEach(th => {
+            const col  = th.dataset.sort.replace(/^-/, '');
+            const icon = th.querySelector('.sort-icon');
+            if (!icon) return;
+            if (currentOrdering === col)   icon.textContent = '↑';
+            else if (currentOrdering === '-' + col) icon.textContent = '↓';
+            else icon.textContent = '↕';
+        });
+    }
+
+    // ── CSV export ──
+    async function exportCSV() {
+        const params = new URLSearchParams({ ...activeFilters, page: 1, per_page: 10000 });
+        const res = await fetch(`/api/alerts/?${params}`, { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const rows = data.results || [];
+
+        const headers = ['ID','Title','Severity','Type','Status','Source','Region','Lat','Lng','Confidence %','Area (ha)','Detection Date','Recurrences','Created At'];
+        const lines = [headers.join(',')];
+        rows.forEach(a => {
+            lines.push([
+                a.short_id,
+                `"${(a.title || '').replace(/"/g,'""')}"`,
+                a.severity_display,
+                a.alert_type_display,
+                a.status_display,
+                a.source || 'manual',
+                a.site.region || '',
+                a.site.lat ?? '',
+                a.site.lng ?? '',
+                a.site.confidence_pct,
+                a.site.area_hectares,
+                a.site.detection_date,
+                a.site.recurrence_count,
+                `"${a.created_at}"`,
+            ].join(','));
+        });
+
+        const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = `alerts_export_${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function getCookie(name) {
+        if (name === 'csrftoken') {
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            if (meta) return meta.getAttribute('content') || '';
+        }
+        const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+        return match ? decodeURIComponent(match[1]) : null;
+    }
+
+    // ── Init ──
+    document.addEventListener('DOMContentLoaded', function () {
+        // Restore saved filters from localStorage
+        try {
+            const saved = localStorage.getItem('gw_alert_filters');
+            if (saved) {
+                activeFilters = JSON.parse(saved);
+                if (activeFilters.status)      document.getElementById('filter-status').value   = activeFilters.status;
+                if (activeFilters.severity)    document.getElementById('filter-severity').value = activeFilters.severity;
+                if (activeFilters.alert_type)  document.getElementById('filter-type').value     = activeFilters.alert_type;
+                if (activeFilters.source)      document.getElementById('filter-source').value   = activeFilters.source;
+            }
+        } catch(_) {}
+
+        loadAlerts(1);
+
+        // Handle ?highlight= param — fetch alert by ID and open its modal
+        const highlightId = new URLSearchParams(window.location.search).get('highlight');
+        if (highlightId) {
+            fetch(`/api/alerts/${highlightId}/`, { credentials: 'include' })
+                .then(r => r.ok ? r.json() : null)
+                .then(data => { if (data) openModal(highlightId, data); })
+                .catch(() => {});
+        }
+
+        document.getElementById('apply-filters').addEventListener('click', () => {
+            activeFilters = {};
+            const status   = document.getElementById('filter-status').value;
+            const severity = document.getElementById('filter-severity').value;
+            const atype    = document.getElementById('filter-type').value;
+            const source   = document.getElementById('filter-source').value;
+            if (status)   activeFilters.status      = status;
+            if (severity) activeFilters.severity    = severity;
+            if (atype)    activeFilters.alert_type  = atype;
+            if (source)   activeFilters.source      = source;
+            localStorage.setItem('gw_alert_filters', JSON.stringify(activeFilters));
+            loadAlerts(1);
+        });
+
+        document.getElementById('reset-filters').addEventListener('click', () => {
+            document.getElementById('filter-status').value   = '';
+            document.getElementById('filter-severity').value = '';
+            document.getElementById('filter-type').value     = '';
+            document.getElementById('filter-source').value  = '';
+            activeFilters = {};
+            localStorage.removeItem('gw_alert_filters');
+            loadAlerts(1);
+        });
+
+        // Sort header clicks
+        document.querySelectorAll('th[data-sort]').forEach(th => {
+            th.addEventListener('click', () => {
+                const col = th.dataset.sort.replace(/^-/, '');
+                if (currentOrdering === '-' + col) currentOrdering = col;
+                else currentOrdering = '-' + col;
+                updateSortIcons();
+                loadAlerts(1);
+            });
+        });
+
+        // Populate bulk inspector dropdown once
+        populateBulkInspectorDropdown();
+
+        // Bulk bar buttons
+        document.getElementById('bulk-acknowledge').addEventListener('click', () => bulkAction('acknowledged'));
+        document.getElementById('bulk-dispatch').addEventListener('click',    () => bulkAction('dispatched'));
+        document.getElementById('bulk-dismiss').addEventListener('click',     () => bulkAction('dismissed'));
+        document.getElementById('bulk-assign-inspector-btn').addEventListener('click', bulkAssignInspector);
+        document.getElementById('bulk-cancel').addEventListener('click', () => {
+            selectedIds.clear(); selectedStatuses = {};
+            document.querySelectorAll('.row-cb').forEach(c => c.checked = false);
+            const sa = document.getElementById('select-all-cb');
+            if (sa) { sa.checked = false; sa.indeterminate = false; }
+            updateBulkBar();
+        });
+
+        // Select-all checkbox
+        document.getElementById('select-all-cb').addEventListener('change', function () {
+            document.querySelectorAll('.row-cb').forEach(cb => {
+                cb.checked = this.checked;
+                const id = cb.dataset.id, st = cb.dataset.status;
+                if (this.checked) { selectedIds.add(id); selectedStatuses[id] = st; }
+                else              { selectedIds.delete(id); delete selectedStatuses[id]; }
+            });
+            updateBulkBar();
+        });
+
+        document.getElementById('export-csv-btn').addEventListener('click', exportCSV);
+        document.getElementById('modal-close').addEventListener('click', closeModal);
+        document.getElementById('alert-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        // Add Alert button and modal setup
+        if (document.getElementById('add-alert-btn')) {
+            document.getElementById('add-alert-btn').addEventListener('click', () => window._alertsPage.openAddAlertModal());
+        }
+        
+        // Add Alert form submission
+        const addAlertForm = document.getElementById('add-alert-form');
+        if (addAlertForm) {
+            addAlertForm.addEventListener('submit', window._alertsPage.handleAddAlertSubmit);
+        }
+        
+        // Load inspectors for assignment dropdown
+        window._alertsPage.loadInspectorsForCreate();
+
+        updateSortIcons();
+    });
+
+    window._alertsPage = {
+        openModal,
+        closeModal,
+        action,
+        onRowCheck,
+        onSliderChange: (v) => renderTlFrame(parseInt(v, 10)),
+        openInspectorModal,
+        closeInspectorModal,
+        loadInspectors,
+        selectInspector,
+        assignInspector,
+        refreshAlerts: () => loadAlerts(currentPage),
+        isAdmin: document.body.dataset.userRole === 'agency_admin',
+        
+        // Alert Creation Functions
+        openAddAlertModal: function() {
+            const modal = document.getElementById('add-alert-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                // Reset form
+                const form = document.getElementById('add-alert-form');
+                if (form) {
+                    form.reset();
+                }
+            }
+        },
+        
+        closeAddAlertModal: function() {
+            const modal = document.getElementById('add-alert-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        },
+        
+        loadInspectorsForCreate: function() {
+            // Load inspectors for the assignment dropdown in create modal
+            fetch('/accounts/api/inspectors/')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.querySelector('select[name="assigned_to_id"]');
+                    if (select) {
+                        // Keep the "Unassigned" option
+                        select.innerHTML = '<option value="">Unassigned</option>';
+                        data.forEach(inspector => {
+                            const option = document.createElement('option');
+                            option.value = inspector.id;
+                            option.textContent = inspector.name;
+                            select.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error loading inspectors:', error));
+        },
+        
+        handleAddAlertSubmit: async function(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+            
+            try {
+                const response = await fetch('/api/alerts/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(data),
+                    credentials: 'include'
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.error || 'Failed to create alert');
+                }
+                
+                // Close modal and refresh alerts
+                this.closeAddAlertModal();
+                this.refreshAlerts();
+                
+                // Show success message
+                alert('Alert created successfully!');
+                
+            } catch (error) {
+                alert('Error creating alert: ' + error.message);
+            }
+        },
+        
+        editAlert: async function(id) {
+            try {
+                const response = await fetch(`/api/alerts/${id}/`, { credentials: 'include' });
+                if (!response.ok) throw new Error('Failed to load alert');
+                const alertData = await response.json();
+                
+                // Create comprehensive edit modal
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4';
+                modal.innerHTML = `
+                    <div class="rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
+                         style="background: var(--surface-2); color: var(--text-primary);">
+                        <div class="flex items-center justify-between px-6 py-4 shrink-0"
+                             style="border-bottom: 1px solid var(--border-subtle);">
+                            <h3 class="text-lg font-semibold" style="color: var(--text-primary);">Edit Alert</h3>
+                            <button onclick="this.closest('.fixed').remove()" style="color: var(--text-tertiary);">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <form id="edit-alert-form-${id}" class="p-6 space-y-4 overflow-y-auto flex-1">
+                            <!-- Basic Information -->
+                            <div class="space-y-4">
+                                <h4 class="text-sm font-semibold pb-2"
+                                    style="color: var(--text-primary); border-bottom: 1px solid var(--border-subtle);">Basic Information</h4>
+
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Title</label>
+                                        <input type="text" name="title" value="${alertData.title}" required
+                                               class="w-full px-3 py-2 rounded-lg focus:outline-none"
+                                               style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-primary);">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Alert Type</label>
+                                        <select name="alert_type" required
+                                                class="w-full px-3 py-2 rounded-lg focus:outline-none"
+                                                style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-primary);">
+                                            <option value="new_detection" ${alertData.alert_type === 'new_detection' ? 'selected' : ''}>New Detection</option>
+                                            <option value="expansion_detected" ${alertData.alert_type === 'expansion_detected' ? 'selected' : ''}>Site Expansion Detected</option>
+                                            <option value="recurring_site" ${alertData.alert_type === 'recurring_site' ? 'selected' : ''}>Recurring Illegal Site</option>
+                                            <option value="high_confidence" ${alertData.alert_type === 'high_confidence' ? 'selected' : ''}>High Confidence Detection</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Description</label>
+                                    <textarea name="description" rows="3"
+                                              class="w-full px-3 py-2 rounded-lg focus:outline-none"
+                                              style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-primary);">${alertData.description || ''}</textarea>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Severity</label>
+                                        <select name="severity" required
+                                                class="w-full px-3 py-2 rounded-lg focus:outline-none"
+                                                style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-primary);">
+                                            <option value="low" ${alertData.severity === 'low' ? 'selected' : ''}>Low</option>
+                                            <option value="medium" ${alertData.severity === 'medium' ? 'selected' : ''}>Medium</option>
+                                            <option value="high" ${alertData.severity === 'high' ? 'selected' : ''}>High</option>
+                                            <option value="critical" ${alertData.severity === 'critical' ? 'selected' : ''}>Critical</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Status</label>
+                                        <select name="status"
+                                                class="w-full px-3 py-2 rounded-lg focus:outline-none"
+                                                style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-primary);">
+                                            <option value="open" ${alertData.status === 'open' ? 'selected' : ''}>Open</option>
+                                            <option value="acknowledged" ${alertData.status === 'acknowledged' ? 'selected' : ''}>Acknowledged</option>
+                                            <option value="dispatched" ${alertData.status === 'dispatched' ? 'selected' : ''}>Dispatched</option>
+                                            <option value="resolved" ${alertData.status === 'resolved' ? 'selected' : ''}>Resolved</option>
+                                            <option value="dismissed" ${alertData.status === 'dismissed' ? 'selected' : ''}>Dismissed</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Location Information -->
+                            <div class="space-y-4">
+                                <h4 class="text-sm font-semibold pb-2"
+                                    style="color: var(--text-primary); border-bottom: 1px solid var(--border-subtle);">Location Information</h4>
+
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Latitude</label>
+                                        <input type="number" step="any" name="latitude"
+                                               value="${alertData.site?.lat || ''}"
+                                               placeholder="e.g., 5.5913"
+                                               class="w-full px-3 py-2 rounded-lg focus:outline-none"
+                                               style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-primary);">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Longitude</label>
+                                        <input type="number" step="any" name="longitude"
+                                               value="${alertData.site?.lng || ''}"
+                                               placeholder="e.g., -0.1793"
+                                               class="w-full px-3 py-2 rounded-lg focus:outline-none"
+                                               style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-primary);">
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Confidence Score</label>
+                                        <input type="number" step="0.01" min="0" max="1" name="confidence_score"
+                                               value="${alertData.site?.confidence_pct ? (alertData.site.confidence_pct / 100).toFixed(2) : ''}"
+                                               class="w-full px-3 py-2 rounded-lg focus:outline-none"
+                                               style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-primary);">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Area (hectares)</label>
+                                        <input type="number" step="0.01" min="0" name="area_hectares"
+                                               value="${alertData.site?.area_hectares || ''}"
+                                               class="w-full px-3 py-2 rounded-lg focus:outline-none"
+                                               style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-primary);">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Assignment -->
+                            <div class="space-y-4">
+                                <h4 class="text-sm font-semibold pb-2"
+                                    style="color: var(--text-primary); border-bottom: 1px solid var(--border-subtle);">Assignment</h4>
+
+                                <div>
+                                    <label class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Assign to Inspector</label>
+                                    <select name="assigned_to_id"
+                                            class="w-full px-3 py-2 rounded-lg focus:outline-none"
+                                            style="background: var(--surface-3); border: 1px solid var(--border-default); color: var(--text-primary);">
+                                        <option value="">Unassigned</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </form>
+
+                        <div class="px-6 py-4 flex justify-end gap-3 shrink-0"
+                             style="border-top: 1px solid var(--border-subtle);">
+                            <button type="button" onclick="this.closest('.fixed').remove()"
+                                    class="px-4 py-2 rounded-lg"
+                                    style="border: 1px solid var(--border-default); color: var(--text-primary); background: transparent;">
+                                Cancel
+                            </button>
+                            <button type="submit" form="edit-alert-form-${id}"
+                                    class="btn-primary px-4 py-2 rounded-lg">
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // Load inspectors for assignment dropdown
+                this.loadInspectorsForEdit(alertData.assigned_to_id);
+                
+                // Handle form submission
+                const form = document.getElementById(`edit-alert-form-${id}`);
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(form);
+                    const data = Object.fromEntries(formData.entries());
+                    
+                    try {
+                        const response = await fetch(`/api/alerts/${id}/update/`, {
+                            method: 'PUT',
+                            headers: { 
+                                'Content-Type': 'application/json', 
+                                'X-CSRFToken': getCookie('csrftoken') 
+                            },
+                            body: JSON.stringify(data),
+                            credentials: 'include'
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (!response.ok) {
+                            throw new Error(result.error || 'Failed to update alert');
+                        }
+                        
+                        modal.remove();
+                        this.closeModal();
+                        loadAlerts(currentPage);
+                        showToast('Alert updated', 'success');
+
+                    } catch (error) {
+                        showToast('Error updating alert: ' + error.message, 'error');
+                    }
+                });
+                
+            } catch (error) {
+                alert('Error loading alert: ' + error.message);
+            }
+        },
+        
+        loadInspectorsForEdit: function(currentAssignedId) {
+            // Use the correct endpoint that works for dispatch modal
+            fetch('/accounts/api/inspectors/', {
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to load inspectors');
+                return response.json();
+            })
+            .then(data => {
+                // Find the edit form select element
+                const select = document.querySelector('form[id^="edit-alert-form-"] select[name="assigned_to_id"]');
+                
+                if (select) {
+                    select.innerHTML = '<option value="">Unassigned</option>';
+                    data.forEach(inspector => {
+                        const option = document.createElement('option');
+                        option.value = inspector.user;
+                        option.textContent = inspector.user;
+                        if (currentAssignedId && inspector.user === currentAssignedId) {
+                            option.selected = true;
+                        }
+                        select.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => console.error('Error loading inspectors:', error));
+        },
+        
+        deleteAlert: async function(id) {
+            if (!confirm('Are you sure you want to delete this alert? This action cannot be undone.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/alerts/${id}/delete/`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error || `HTTP ${response.status}`);
+                }
+
+                this.closeModal();
+                loadAlerts(currentPage);
+                showToast('Alert deleted', 'success');
+            } catch (error) {
+                showToast('Error deleting alert: ' + error.message, 'error');
+            }
+        },
+    };
+
+    // ── Right-click context menu ──────────────────────────────────────
+    window._showCtxMenu = function (e, alertId, status, shortId) {
+        e.preventDefault();
+        var menu = document.getElementById('ctx-menu');
+        if (!menu) return;
+
+        var items = [];
+        items.push('<button class="ctx-item" onclick="window._alertsPage.openModal(\'' + alertId + '\'); window._hideCtxMenu();"><i class="ph ph-arrow-square-out"></i> Open Detail</button>');
+        if (status === 'open') {
+            items.push('<button class="ctx-item" onclick="window._alertsPage.action(\'' + alertId + '\',\'acknowledge\'); window._hideCtxMenu();"><i class="ph ph-check-circle"></i> Acknowledge</button>');
+            items.push('<button class="ctx-item ctx-item--danger" onclick="window._alertsPage.action(\'' + alertId + '\',\'dismiss\'); window._hideCtxMenu();"><i class="ph ph-x-circle"></i> Dismiss</button>');
+        }
+        if (status === 'acknowledged') {
+            items.push('<button class="ctx-item" onclick="window.openInspectorModal(\'' + alertId + '\'); window._hideCtxMenu();"><i class="ph ph-user-circle-plus"></i> Dispatch Inspector</button>');
+        }
+        items.push('<div class="ctx-divider"></div>');
+        items.push('<button class="ctx-item" onclick="navigator.clipboard.writeText(\'' + shortId + '\'); window._hideCtxMenu();"><i class="ph ph-copy"></i> Copy ID (' + shortId + ')</button>');
+
+        menu.innerHTML = items.join('');
+        menu.style.display = 'block';
+
+        var x = e.clientX, y = e.clientY;
+        var w = menu.offsetWidth  || 190;
+        var h = menu.offsetHeight || 120;
+        if (x + w > window.innerWidth)  x = window.innerWidth  - w - 8;
+        if (y + h > window.innerHeight) y = window.innerHeight - h - 8;
+        menu.style.left = x + 'px';
+        menu.style.top  = y + 'px';
+    };
+    window._hideCtxMenu = function () {
+        var menu = document.getElementById('ctx-menu');
+        if (menu) menu.style.display = 'none';
+    };
+    document.addEventListener('click',       window._hideCtxMenu);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') window._hideCtxMenu(); });
+    document.addEventListener('scroll',      window._hideCtxMenu, true);
+
+    // ── Real-time polling: show banner when open alert count changes ──
+    let _lastOpenCount = null;
+    setInterval(async function () {
+        try {
+            const r = await fetch('/api/alerts/?status=open&per_page=1', { credentials: 'include' });
+            if (!r.ok) return;
+            const d = await r.json();
+            if (_lastOpenCount !== null && d.total !== _lastOpenCount) {
+                const diff = d.total - _lastOpenCount;
+                document.getElementById('new-alerts-text').textContent =
+                    diff > 0
+                        ? `${diff} new alert${diff > 1 ? 's' : ''} arrived`
+                        : `Alert count updated (${d.total} open)`;
+                document.getElementById('new-alerts-banner').classList.remove('hidden');
+            }
+            _lastOpenCount = d.total;
+        } catch (_) {}
+    }, 30000);
+})();
+</script>
+{% endblock %}
