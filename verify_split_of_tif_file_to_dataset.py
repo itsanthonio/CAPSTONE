@@ -1,6 +1,13 @@
-# ===================================================================
-# DIAGNOSTIC: Check what's in your data directories
-# ===================================================================
+# =============================================================================
+# Diagnostic: Dataset Split Integrity Check
+#
+# After running split_tif_file_to_smaller_patches_for_dataset.py, this script
+# verifies that every image in train/val/test has a matching mask file and
+# that no patches are missing from either directory.
+#
+# Run this before uploading the dataset to Google Drive for Colab training
+# to catch any file count mismatches early.
+# =============================================================================
 from pathlib import Path
 
 data_dir = Path('C:\\Users\\mcnob\\Documents\\Ashesi A\\Capstone\\optical_training_data')

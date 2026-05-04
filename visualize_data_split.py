@@ -1,3 +1,20 @@
+# =============================================================================
+# Dataset Visualization: Grid Overview + Per-Patch Detail + Statistics
+#
+# Generates three categories of visualisation from the extracted .npy dataset:
+#   1. Grid overview — 10-column grid of RGB composites per split (train/val/test),
+#      colour-coded red/green by mining label
+#   2. Individual samples — side-by-side RGB + mask for 10 random patches per split
+#   3. Statistics summary — bar chart of positive/negative counts + class balance pie
+#
+# The RGB composite uses the first three bands of the .npy array (bands 0,1,2),
+# which correspond to Blue, Green, Red in the HLS 22-band ordering.
+# These are already normalised to [0,1] by the extraction script, so no further
+# scaling is needed for display.
+#
+# Output saved to ./visualizations/
+# =============================================================================
+
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
@@ -30,15 +47,32 @@ def visualize_patches(data_dir, num_samples=100, save_dir='./visualizations'):
             print(f"  Skipping {split} - directory not found")
             continue
 
-        # Get all files
-        img_files = sorted(list(img_dir.glob('*.npy')))
-        mask_files = sorted(list(mask_dir.glob('*.npy')))
+        if not mask_dir.exists():
+            print(f"  Skipping {split} - masks directory not found")
+            continue
 
-        print(f"  Found {len(img_files)} images, {len(mask_files)} masks")
+        # Pair each image with its mask by extracting the numeric suffix from
+        # the filename. Images are patch_XXXXX.npy; masks are mask_XXXXX.npy.
+        # Positional indexing would silently pair the wrong files if either
+        # directory is incomplete.
+        paired = []
+        for img_path in sorted(img_dir.glob('*.npy')):
+            number = img_path.stem.split('_')[-1]
+            mask_path = mask_dir / f"mask_{number}.npy"
+            if mask_path.exists():
+                paired.append((img_path, mask_path))
+
+        print(f"  Found {len(list(img_dir.glob('*.npy')))} images, "
+              f"{len(list(mask_dir.glob('*.npy')))} masks, "
+              f"{len(paired)} matched pairs")
+
+        if not paired:
+            print(f"  Skipping {split} - no matched image/mask pairs")
+            continue
 
         # Random sample
-        num_to_show = min(num_samples, len(img_files))
-        indices = random.sample(range(len(img_files)), num_to_show)
+        num_to_show = min(num_samples, len(paired))
+        indices = random.sample(range(len(paired)), num_to_show)
 
         # Create grid: 10 columns, as many rows as needed
         cols = 10
@@ -55,9 +89,9 @@ def visualize_patches(data_dir, num_samples=100, save_dir='./visualizations'):
         print(f"  Creating visualization grid: {rows} rows x {cols} cols")
 
         for idx, sample_idx in enumerate(indices):
-            # Load image and mask
-            img = np.load(img_files[sample_idx])  # (256, 256, 22)
-            mask = np.load(mask_files[sample_idx])  # (256, 256)
+            img_path, mask_path = paired[sample_idx]
+            img = np.load(img_path)    # (256, 256, bands)
+            mask = np.load(mask_path)  # (256, 256)
 
             # Create RGB composite (assuming bands 2,1,0 are RGB or close to it)
             # If your bands are B2,B3,B4,B8,B11... then use first 3 for RGB-like
@@ -100,7 +134,7 @@ def visualize_patches(data_dir, num_samples=100, save_dir='./visualizations'):
         plt.close('all')
 
         # Print statistics
-        positive_count = sum(1 for idx in indices if (np.load(mask_files[idx]) == 1).any())
+        positive_count = sum(1 for idx in indices if (np.load(paired[idx][1]) == 1).any())
         negative_count = num_to_show - positive_count
         print(f"  Statistics:")
         print(f"    Positive (mining): {positive_count} ({100 * positive_count / num_to_show:.1f}%)")
@@ -133,21 +167,28 @@ def visualize_individual_samples(data_dir, split='train', num_samples=10, save_d
     print(f"Creating individual sample visualizations from {split.upper()}")
     print(f"{'=' * 60}")
 
-    if not img_dir.exists():
-        print(f"  Error: {split} directory not found")
+    if not img_dir.exists() or not mask_dir.exists():
+        print(f"  Error: {split} images or masks directory not found")
         return
 
-    # Get all files
-    img_files = sorted(list(img_dir.glob('*.npy')))
-    mask_files = sorted(list(mask_dir.glob('*.npy')))
+    paired = []
+    for img_path in sorted(img_dir.glob('*.npy')):
+        number = img_path.stem.split('_')[-1]
+        mask_path = mask_dir / f"mask_{number}.npy"
+        if mask_path.exists():
+            paired.append((img_path, mask_path))
 
-    # Random sample
-    num_to_show = min(num_samples, len(img_files))
-    indices = random.sample(range(len(img_files)), num_to_show)
+    if not paired:
+        print(f"  Error: no matched image/mask pairs found")
+        return
+
+    num_to_show = min(num_samples, len(paired))
+    indices = random.sample(range(len(paired)), num_to_show)
 
     for idx in indices:
-        img = np.load(img_files[idx])
-        mask = np.load(mask_files[idx])
+        img_path, mask_path = paired[idx]
+        img = np.load(img_path)
+        mask = np.load(mask_path)
 
         # Create RGB composite
         rgb = np.clip(img[:, :, :3], 0, 1)
@@ -203,11 +244,14 @@ def visualize_with_statistics(data_dir, save_dir='./visualizations'):
         img_dir = data_dir / split / 'images'
         mask_dir = data_dir / split / 'masks'
 
-        if not img_dir.exists():
+        if not img_dir.exists() or not mask_dir.exists():
             continue
 
         img_files = list(img_dir.glob('*.npy'))
         mask_files = list(mask_dir.glob('*.npy'))
+
+        if not mask_files:
+            continue
 
         # Count positive/negative
         positive = 0
@@ -222,17 +266,18 @@ def visualize_with_statistics(data_dir, save_dir='./visualizations'):
                 negative += 1
             total_mining_pixels += (mask == 1).sum()
 
+        counted = positive + negative
         stats[split] = {
-            'total': len(img_files),
+            'total': counted,
             'positive': positive,
             'negative': negative,
             'mining_pixels': total_mining_pixels
         }
 
         print(f"\n{split.upper()}:")
-        print(f"  Total patches: {len(img_files)}")
-        print(f"  Positive (mining): {positive} ({100 * positive / len(img_files):.1f}%)")
-        print(f"  Negative (no mining): {negative} ({100 * negative / len(img_files):.1f}%)")
+        print(f"  Total patches: {counted}")
+        print(f"  Positive (mining): {positive} ({100 * positive / counted:.1f}%)")
+        print(f"  Negative (no mining): {negative} ({100 * negative / counted:.1f}%)")
         print(f"  Total mining pixels: {total_mining_pixels:,}")
 
     # Create summary visualization
@@ -285,8 +330,8 @@ if __name__ == "__main__":
     random.seed(42)
     np.random.seed(42)
 
-    # Path to your dataset
-    data_dir = './optical_training_data'
+    # Path to the full extracted dataset (all three splits with images + masks)
+    data_dir = r'C:\Users\mcnob\Documents\Ashesi A\Capstone\optical_training_data'
 
     # 1. Create grid visualizations (100 samples per split)
     visualize_patches(data_dir, num_samples=100, save_dir='./visualizations')

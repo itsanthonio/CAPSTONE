@@ -1,3 +1,21 @@
+# =============================================================================
+# Dataset Creation: Balanced Positive/Negative Patch Extraction
+#
+# Splits large HLS (Harmonized Landsat Sentinel-2) GeoTIFF scenes into
+# 256x256 pixel patches for training the FPN-ResNet50 segmentation model.
+#
+# Two scene years are processed (2021 and 2024) to capture temporal variation
+# in galamsey activity. Patches are 50% positive (contain mining) and 50%
+# negative (no mining) to give the model equal exposure to both classes.
+#
+# Normalization: per-patch 2nd–98th percentile stretch so that each patch
+# is independently scaled regardless of scene-level brightness differences.
+# This matches exactly how the model normalises inputs at inference time.
+#
+# Output: ./optical_training_data/{train,val,test}/{images,masks}/*.npy
+#         Each .npy image is float32 (256, 256, bands), mask is uint8 (256, 256)
+# =============================================================================
+
 import rasterio
 import numpy as np
 from pathlib import Path
@@ -57,6 +75,8 @@ class BalancedOpticalExtractor:
         patches = []
         labels = []
 
+        # Equal split: the model sees as many non-mining patches as mining ones,
+        # which prevents it from learning a trivial "always predict no-mining" shortcut.
         target_positive = target_per_year // 2
         target_negative = target_per_year // 2
 
@@ -92,7 +112,8 @@ class BalancedOpticalExtractor:
                 mask_patch = mask[y_start:y_end, x_start:x_end].copy()
                 nodata_patch = nodata_mask[y_start:y_end, x_start:x_end]
 
-                # Skip if >30% NoData
+                # Patches with >30% cloud/shadow/off-scene pixels are unusable
+                # for training, so discard them rather than filling with zeros.
                 nodata_percentage = nodata_patch.sum() / (self.patch_size ** 2)
                 if nodata_percentage > 0.3:
                     rejected_count += 1
@@ -102,7 +123,9 @@ class BalancedOpticalExtractor:
                 for band in range(img_patch.shape[2]):
                     img_patch[:, :, band][nodata_patch] = 0
 
-                # Normalize using percentile stretch on VALID pixels only
+                # Per-patch 2–98th percentile stretch: normalise using only
+                # valid (non-NoData) pixels so that cloud fill zeros don't
+                # skew the stretch. This mirrors inference-time normalisation.
                 img_patch_norm = np.zeros_like(img_patch, dtype=np.float32)
 
                 for band in range(img_patch.shape[2]):
@@ -361,6 +384,11 @@ if __name__ == "__main__":
     )
 
     # YOUR PATHS
+    # Two years of HLS imagery covering the Amansie West / Tarkwa region:
+    #   2021 — captures pre-intervention galamsey footprint
+    #   2024 — captures post-intervention / expanded footprint
+    # Using two years improves generalisation across seasonal and activity changes.
+    # Update these paths to point to your local HLS GeoTIFF files.
     data_config = [
         {
             'image_path': 'C:\\Users\\mcnob\\Documents\\Ashesi A\\Capstone\\HLS_Dataset\\Merged Files and Masks\\2021_Final.tif',

@@ -1,10 +1,20 @@
 # Project-specific ignores
 geowatchai/local_exports/
 geowatchai/media/
-*.ipynb
+geowatchai/staticfiles/
+geowatchai/cookies.txt
+geowatchai/test.txt
+*.pth
 *.docx
 *.png
 *.geojson
+optical_training_data/
+celerybeat-schedule.*
+.DS_Store
+verify.py
+
+# Allow Jupyter notebooks (training pipeline)
+# *.ipynb was previously excluded but notebooks are part of the project
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

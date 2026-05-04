@@ -1,9 +1,24 @@
-# ===================================================================
-# VISUALIZE 6-BAND TRAINING DATA - LOCAL VERSION
-# Display False Color (R-G-NIR) composites from training/val/test sets
-# Shows both positive (mining) and negative (non-mining) samples
-# Run this locally on your computer
-# ===================================================================
+# =============================================================================
+# Dataset Visualization: 6-Band False Color Composites
+#
+# Displays training, validation, test, and negative patches using a false
+# color composite that highlights mining activity more clearly than true color.
+#
+# False color scheme: R = RED (B4), G = GREEN (B3), B = NIR (B8)
+#   - Healthy vegetation appears RED (high NIR reflectance)
+#   - Bare, disturbed mining soil appears CYAN / WHITE (low NIR, high visible)
+#   - Water bodies appear DARK BLUE / BLACK (absorbs NIR)
+# This colour scheme was chosen because mining activity and vegetation loss
+# are visually separable, aiding qualitative validation of the ground truth masks.
+#
+# The 6 bands selected (SELECTED_BANDS) are the subset used for model training:
+#   [2, 3, 7, 10, 11, 19] → GREEN, RED, NIR, SWIR1, SWIR2, BSI
+# These were selected via ablation to maximise mining separability while keeping
+# the model input size manageable (6 bands vs the full 22-band HLS product).
+#
+# This script works on the full 22-band .npy patches produced by the extraction
+# pipeline; it re-selects the 6 training bands and re-normalises for display.
+# =============================================================================
 
 import numpy as np
 import matplotlib.pyplot as plt

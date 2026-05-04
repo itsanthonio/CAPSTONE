@@ -1,7 +1,23 @@
-# ===================================================================
-# SPLIT NEGATIVE TIF FILES TO PATCHES
-# Matches original training data extraction exactly
-# ===================================================================
+# =============================================================================
+# Retraining Negative Patch Extraction — Forests and Water Bodies
+#
+# Early model evaluations produced a high false-positive rate on dense forest
+# canopy and open water surfaces in the Volta Basin and forest reserves.
+# Both land cover types share some spectral characteristics with freshly
+# disturbed mining land (low NDVI, high BSI in degraded forest; dark, reflective
+# surfaces for water), so the model incorrectly flagged them.
+#
+# This script extracts 256x256 negative patches from HLS scenes centred on
+# forest reserves and major water bodies across Ghana. All masks are all-zeros.
+# Mixing these patches into retraining teaches the model to distinguish those
+# surfaces from actual galamsey activity.
+#
+# Normalization exactly matches the training pipeline (per-patch 2–98th
+# percentile on valid pixels only) so the patches integrate without any
+# distribution shift when merged with the existing dataset.
+#
+# Output: ./negative_training_data_HLS/{images,masks}/*.npy
+# =============================================================================
 
 import rasterio
 import numpy as np

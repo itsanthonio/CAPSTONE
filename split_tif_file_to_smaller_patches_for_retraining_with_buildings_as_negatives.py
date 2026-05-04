@@ -1,8 +1,26 @@
-# ===================================================================
-# SPLIT BUILDING NEGATIVE TIF FILES TO PATCHES
-# Processes all 20 downloaded TIF files
-# Empty masks (all zeros) — no mining in buildings
-# ===================================================================
+# =============================================================================
+# Retraining Negative Patch Extraction — Buildings
+#
+# After the initial model training, evaluation showed that large rooftops and
+# dense settlements produced false positive detections. Bare soil and metal
+# roofing have spectral signatures that partially overlap with disturbed
+# mining land, causing the model to misclassify them.
+#
+# This script addresses that by extracting 256x256 negative patches from 20
+# HLS scenes covering urban/semi-urban areas across Ghana (industrial sites,
+# residential clusters, campuses, rural compounds). All masks are all-zeros
+# (no mining present), so mixing these patches into retraining discourages
+# the model from firing on built-up surfaces.
+#
+# 25 patches per file x 20 files = 500 building negatives total.
+# These are merged with the original dataset before retraining.
+#
+# Normalization: per-patch 2–98th percentile to exactly match training.
+# NoData threshold: 5% (stricter than 30% used for mining patches, because
+# building TIFs are higher quality with less cloud cover).
+#
+# Output: ./building_negative_patches/{images,masks}/*.npy
+# =============================================================================
 
 import rasterio
 import numpy as np
@@ -60,7 +78,10 @@ def sample_patches_from_tif(tif_path, images_dir, masks_dir,
                     if patch_data.shape != (patch_size, patch_size, num_bands):
                         continue
 
-                    # Build nodata mask BEFORE nan_to_num
+                    # Build the nodata mask BEFORE nan_to_num so that the
+                    # original sentinel values (not yet zeroed) can be detected.
+                    # Three conditions are combined: exact nodata sentinel,
+                    # astronomically large values (rasterio artefacts), and NaN.
                     if nodata_value is not None:
                         nodata_mask = (patch_data == nodata_value).any(axis=2)
                         nodata_mask |= (np.abs(patch_data) > 1e10).any(axis=2)
