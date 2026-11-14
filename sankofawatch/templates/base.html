@@ -515,6 +515,13 @@
                         </a>
                     </li>
                     <li>
+                        <a href="{% url 'dashboard:system_health' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'system_health' %}active{% endif %}">
+                            <i class="ph ph-heartbeat" aria-hidden="true"></i>
+                            <span>System Health</span>
+                        </a>
+                    </li>
+                    <li>
                         <a href="{% url 'dashboard:audit' %}"
                            class="gw-nav-item {% if request.resolver_match.url_name == 'audit' %}active{% endif %}">
                             <i class="ph ph-scroll" aria-hidden="true"></i>

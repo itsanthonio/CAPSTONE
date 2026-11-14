@@ -95,10 +95,10 @@ def test_health_data_endpoint_is_system_admin_only(client, django_user_model):
 
 
 @pytest.mark.django_db
-def test_old_system_health_url_redirects_to_dashboard_tab(client, django_user_model):
+def test_system_health_page_renders_for_admin(client, django_user_model):
     from django.urls import reverse
     admin = django_user_model.objects.create_user('sysadm2', 'a2@example.com', 'pw-12345-xyz')
     admin.profile.role = 'system_admin'; admin.profile.save()
     client.force_login(admin)
     resp = client.get(reverse('dashboard:system_health'))
-    assert resp.status_code == 302 and resp['Location'].endswith('#health')
+    assert resp.status_code == 200 and b'System Health' in resp.content

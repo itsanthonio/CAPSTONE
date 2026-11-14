@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}System Health — SankofaWatch{% endblock %}
+
+{% block extra_css %}
+<style>
+    .sh-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:14px; }
+    .sh-card { background:#181c22; border-radius:0.5rem; padding:16px 18px; border:1px solid rgba(79,70,52,0.15); }
+    .sh-card-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+    .sh-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+    .sh-dot.ok { background:#67df70; box-shadow:0 0 0 3px rgba(103,223,112,0.15); }
+    .sh-dot.warn { background:#f6be39; box-shadow:0 0 0 3px rgba(246,190,57,0.18); }
+    .sh-dot.crit { background:#e05252; box-shadow:0 0 0 3px rgba(224,82,82,0.18); }
+    .sh-label { font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#9b8f7a; }
+    .sh-detail { font-size:14px; font-weight:600; color:#dfe2eb; line-height:1.45; word-break:break-word; }
+    .sh-banner { border-radius:0.5rem; padding:13px 18px; margin-bottom:16px; font-size:14px; font-weight:700; border:1px solid transparent; }
+    .sh-banner.ok { background:rgba(103,223,112,0.08); color:#67df70; border-color:rgba(103,223,112,0.25); }
+    .sh-banner.warn { background:rgba(246,190,57,0.08); color:#f6be39; border-color:rgba(246,190,57,0.28); }
+    .sh-banner.crit { background:rgba(224,82,82,0.08); color:#ff8f8f; border-color:rgba(224,82,82,0.3); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6" style="padding-top:2rem;">
+    <div style="display:flex; align-items:flex-start; gap:16px;">
+        <div style="width:2px; height:48px; background:#f6be39; border-radius:1px; flex-shrink:0; margin-top:2px;"></div>
+        <div>
+            <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.15em; color:#9b8f7a; margin-bottom:4px;">Administrative Console</p>
+            <h1 style="font-size:22px; font-weight:800; color:#dfe2eb; letter-spacing:-0.02em; line-height:1.2;">System Health</h1>
+            <p id="health-meta" style="font-size:12px; color:#9b8f7a; margin-top:2px;">Loading…</p>
+        </div>
+    </div>
+
+    <div id="health-banner" class="sh-banner" role="status" hidden></div>
+    <div id="health-grid" class="sh-grid"></div>
+
+    <p style="font-size:12px; color:#9b8f7a; max-width:640px; line-height:1.6;">
+        Problems are also checked every 10 minutes in the background and emailed to the operations address.
+        A warning is emailed only if it shows up twice in a row, the same problem is not emailed again for 6 hours,
+        and you get one message when it clears.
+    </p>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    var HEALTH_URL = "{% url 'dashboard:system_health_data' %}";
+    var loading = false;
+    function esc(t) { var d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
+
+    function render(data) {
+        document.getElementById('health-grid').innerHTML = data.checks.map(function (c) {
+            return '<div class="sh-card"><div class="sh-card-head"><span class="sh-dot ' + esc(c.level) +
+                   '" aria-hidden="true"></span><span class="sh-label">' + esc(c.label) +
+                   '</span></div><div class="sh-detail">' + esc(c.detail) + '</div></div>';
+        }).join('');
+        var issues = data.checks.filter(function (c) { return c.level !== 'ok'; }).length;
+        var banner = document.getElementById('health-banner');
+        banner.hidden = false;
+        banner.className = 'sh-banner ' + data.overall;
+        banner.textContent = data.overall === 'ok' ? 'All systems healthy'
+            : data.overall === 'crit' ? 'Attention needed: ' + issues + ' problem' + (issues === 1 ? '' : 's') + ' found'
+            : issues + ' warning' + (issues === 1 ? '' : 's');
+        document.getElementById('health-meta').textContent =
+            'Checked ' + new Date(data.at).toLocaleTimeString() + ' · refreshes every 30 seconds';
+    }
+
+    function load() {
+        if (loading) return;
+        loading = true;
+        fetch(HEALTH_URL, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+            .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .then(render)
+            .catch(function (e) {
+                document.getElementById('health-meta').textContent = 'Could not load health data (' + e.message + ').';
+            })
+            .finally(function () { loading = false; });
+    }
+    load();
+    setInterval(load, 30000);
+})();
+</script>
+{% endblock %}

@@ -2614,14 +2614,13 @@ def organisation_management(request):
 
 @user_passes_test(is_system_admin)
 def system_health(request):
-    """The health view now lives in a tab on the admin dashboard; keep the old URL working
-    (alert emails link to it)."""
-    return redirect(reverse('dashboard:admin_home') + '#health')
+    """System Health page (sidebar entry for system admins; alert emails link here)."""
+    return render(request, 'dashboard/system_health.html')
 
 
 @user_passes_test(is_system_admin)
 def system_health_data(request):
-    """JSON for the System Health tab on the admin dashboard."""
+    """JSON for the System Health page."""
     from apps.core.health import collect_health
     report = collect_health()
     return JsonResponse({
