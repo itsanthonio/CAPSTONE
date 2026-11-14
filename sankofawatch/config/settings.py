@@ -306,7 +306,11 @@ if config('EMAIL_USE_CONSOLE', default=True, cast=bool):
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    # Optional: connect to this IP instead of resolving EMAIL_HOST (TLS is still verified against EMAIL_HOST)
+    if config('EMAIL_CONNECT_IP', default=''):
+        EMAIL_BACKEND = 'config.email_backend.PinnedIPEmailBackend'
 
+EMAIL_CONNECT_IP    = config('EMAIL_CONNECT_IP',    default='')
 EMAIL_HOST          = config('EMAIL_HOST',          default='smtp.gmail.com')
 EMAIL_PORT          = config('EMAIL_PORT',          default=587, cast=int)
 EMAIL_USE_TLS       = config('EMAIL_USE_TLS',       default=True, cast=bool)
