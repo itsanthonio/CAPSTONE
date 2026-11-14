@@ -3,6 +3,7 @@ import logging
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
+from .permissions import IsAdminRole
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -34,7 +35,7 @@ def _resolve_assignment_config(inspector_profile):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminRole])
 def inspector_list(request):
     """Get list of available inspectors, scoped to the requester's org for agency admins."""
     try:

@@ -90,6 +90,15 @@ class JobViewSet(OrgScopedMixin, viewsets.ModelViewSet):
     serializer_class = JobSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_permissions(self):
+        # Reading is open to any signed-in user (scoped by org). Starting a scan needs an
+        # admin role; changing or deleting jobs is for system admins only.
+        if self.action in ('list', 'retrieve') or self.request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return [IsAuthenticated()]
+        if self.action == 'create':
+            return [IsAdminRole()]
+        return [IsSystemAdmin()]
+
     def get_object(self):
         # Job UUIDs are unguessable and only returned to the creator at scan
         # time, so bypassing org-scoped filtering for direct pk lookups is safe.
@@ -269,6 +278,11 @@ class ResultViewSet(OrgScopedMixin, viewsets.ModelViewSet):
 
     serializer_class = ResultSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return [IsAuthenticated()]
+        return [IsSystemAdmin()]
 
     def get_queryset(self):
         """

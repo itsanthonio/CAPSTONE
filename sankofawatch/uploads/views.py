@@ -13,7 +13,23 @@ def _title(s):
     return string.capwords(s.strip().lower())
 
 
-class DataUploadsView(LoginRequiredMixin, TemplateView):
+class SystemAdminRequiredMixin(LoginRequiredMixin):
+    """Login + System Administrator role. Uploads replace national reference data
+    (concessions, districts, ...), so no other role may use them."""
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        profile = getattr(request.user, 'profile', None)
+        if getattr(profile, 'role', None) != 'system_admin':
+            if request.method == 'GET' and 'text/html' in request.headers.get('Accept', ''):
+                from django.shortcuts import redirect
+                return redirect('dashboard:dashboard_router')
+            return JsonResponse({'error': 'System Administrator access required.'}, status=403)
+        return super().dispatch(request, *args, **kwargs)
+
+
+class DataUploadsView(SystemAdminRequiredMixin, TemplateView):
     template_name = 'uploads/data_uploads.html'
 
     def get_context_data(self, **kwargs):
@@ -61,7 +77,7 @@ def _to_multipolygon(geom):
     return None
 
 
-class UploadConcessionsView(LoginRequiredMixin, View):
+class UploadConcessionsView(SystemAdminRequiredMixin, View):
     """
     Import legal concession boundaries from a GeoJSON file.
     Clears all existing concessions, imports the new ones,
@@ -187,7 +203,7 @@ class UploadConcessionsView(LoginRequiredMixin, View):
         })
 
 
-class UploadRegionView(LoginRequiredMixin, View):
+class UploadRegionView(SystemAdminRequiredMixin, View):
     """
     Generic GeoJSON upload for Region records.
     `region_type` is fixed by the URL (water_body or protected_forest).
@@ -285,7 +301,7 @@ class UploadProtectedForestView(UploadRegionView):
     region_type = 'protected_forest'
 
 
-class UploadDistrictsView(LoginRequiredMixin, View):
+class UploadDistrictsView(SystemAdminRequiredMixin, View):
     """
     Import Ghana administrative district boundaries from a GeoJSON file.
     Expects properties: DISTRICT (name), Region_19 or REGION (parent region).
