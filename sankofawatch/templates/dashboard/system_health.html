@@ -5,38 +5,112 @@
 
 {% block extra_css %}
 <style>
-    .sh-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:14px; }
-    .sh-card { background:#181c22; border-radius:0.5rem; padding:16px 18px; border:1px solid rgba(79,70,52,0.15); }
-    .sh-card-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
-    .sh-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
-    .sh-dot.ok { background:#67df70; box-shadow:0 0 0 3px rgba(103,223,112,0.15); }
-    .sh-dot.warn { background:#f6be39; box-shadow:0 0 0 3px rgba(246,190,57,0.18); }
-    .sh-dot.crit { background:#e05252; box-shadow:0 0 0 3px rgba(224,82,82,0.18); }
-    .sh-label { font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#9b8f7a; }
-    .sh-detail { font-size:14px; font-weight:600; color:#dfe2eb; line-height:1.45; word-break:break-word; }
-    .sh-banner { border-radius:0.5rem; padding:13px 18px; margin-bottom:16px; font-size:14px; font-weight:700; border:1px solid transparent; }
-    .sh-banner.ok { background:rgba(103,223,112,0.08); color:#67df70; border-color:rgba(103,223,112,0.25); }
-    .sh-banner.warn { background:rgba(246,190,57,0.08); color:#f6be39; border-color:rgba(246,190,57,0.28); }
-    .sh-banner.crit { background:rgba(224,82,82,0.08); color:#ff8f8f; border-color:rgba(224,82,82,0.3); }
+    .sh-wrap { padding: 2rem 1.5rem 3rem; max-width: 1180px; }
+    .sh-eyebrow { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.15em; color:#9b8f7a; margin-bottom:4px; }
+    .sh-title { font-size:22px; font-weight:800; color:#dfe2eb; letter-spacing:-0.02em; line-height:1.2; }
+
+    /* Hero status */
+    .sh-hero {
+        position:relative; overflow:hidden; border-radius:0.75rem; padding:26px 28px; margin:22px 0 20px;
+        background:#181c22; border:1px solid rgba(79,70,52,0.2);
+        display:flex; align-items:center; gap:22px; flex-wrap:wrap;
+    }
+    .sh-hero::before { content:''; position:absolute; inset:0; opacity:0.9; pointer-events:none; transition:background .4s; }
+    .sh-hero.ok::before   { background:radial-gradient(600px 160px at 0% 0%, rgba(103,223,112,0.16), transparent 70%); }
+    .sh-hero.warn::before { background:radial-gradient(600px 160px at 0% 0%, rgba(246,190,57,0.18), transparent 70%); }
+    .sh-hero.crit::before { background:radial-gradient(600px 160px at 0% 0%, rgba(224,82,82,0.2), transparent 70%); }
+    .sh-hero > * { position:relative; }
+    .sh-pulse { width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:28px; flex-shrink:0; }
+    .sh-hero.ok   .sh-pulse { background:rgba(103,223,112,0.14); color:#67df70; animation:shPulse 2.6s ease-out infinite; --c:103,223,112; }
+    .sh-hero.warn .sh-pulse { background:rgba(246,190,57,0.14);  color:#f6be39; animation:shPulse 2.6s ease-out infinite; --c:246,190,57; }
+    .sh-hero.crit .sh-pulse { background:rgba(224,82,82,0.16);   color:#ff8f8f; animation:shPulse 1.6s ease-out infinite; --c:224,82,82; }
+    @keyframes shPulse { 0%{box-shadow:0 0 0 0 rgba(var(--c),0.45)} 100%{box-shadow:0 0 0 18px rgba(var(--c),0)} }
+    @media (prefers-reduced-motion: reduce) { .sh-pulse { animation:none !important; } }
+    .sh-hero-main { flex:1; min-width:220px; }
+    .sh-hero-state { font-size:20px; font-weight:800; color:#dfe2eb; letter-spacing:-0.01em; }
+    .sh-hero-sub { font-size:13px; color:#9b8f7a; margin-top:3px; }
+    .sh-chips { display:flex; gap:8px; flex-wrap:wrap; }
+    .sh-chip { font-size:11px; font-weight:700; padding:5px 11px; border-radius:999px; border:1px solid rgba(79,70,52,0.3); color:#9b8f7a; background:rgba(16,20,26,0.6); }
+    .sh-chip b { color:#dfe2eb; margin-right:4px; }
+    .sh-chip.ok b { color:#67df70; } .sh-chip.warn b { color:#f6be39; } .sh-chip.crit b { color:#ff8f8f; }
+    .sh-refresh {
+        display:inline-flex; align-items:center; gap:7px; padding:8px 14px; border-radius:6px; cursor:pointer;
+        border:1px solid rgba(246,190,57,0.25); background:transparent; color:#f6be39; font-size:12px; font-weight:700;
+    }
+    .sh-refresh:hover { background:rgba(246,190,57,0.07); }
+    .sh-refresh:focus-visible { outline:2px solid #f6be39; outline-offset:2px; }
+    .sh-refresh.spin i { animation:shSpin .8s linear infinite; }
+    @keyframes shSpin { to { transform:rotate(360deg); } }
+
+    /* Cards */
+    .sh-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(270px, 1fr)); gap:16px; }
+    .sh-card {
+        background:#181c22; border-radius:0.65rem; padding:18px 20px; border:1px solid rgba(79,70,52,0.18);
+        border-top:2px solid var(--lvl, #67df70); transition:transform .15s ease, border-color .15s;
+        animation:shIn .35s ease both;
+    }
+    .sh-card:hover { transform:translateY(-2px); }
+    @keyframes shIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+    .sh-card.ok { --lvl:#67df70; } .sh-card.warn { --lvl:#f6be39; } .sh-card.crit { --lvl:#e05252; }
+    .sh-card-head { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+    .sh-icon { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:17px; background:rgba(155,143,122,0.1); color:#9b8f7a; flex-shrink:0; }
+    .sh-card.ok .sh-icon { color:#67df70; background:rgba(103,223,112,0.1); }
+    .sh-card.warn .sh-icon { color:#f6be39; background:rgba(246,190,57,0.12); }
+    .sh-card.crit .sh-icon { color:#ff8f8f; background:rgba(224,82,82,0.14); }
+    .sh-label { font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#9b8f7a; flex:1; }
+    .sh-badge { font-size:10px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; padding:3px 8px; border-radius:999px; }
+    .sh-card.ok .sh-badge { color:#67df70; background:rgba(103,223,112,0.1); }
+    .sh-card.warn .sh-badge { color:#f6be39; background:rgba(246,190,57,0.12); }
+    .sh-card.crit .sh-badge { color:#ff8f8f; background:rgba(224,82,82,0.14); }
+    .sh-big { font-size:26px; font-weight:800; color:#dfe2eb; letter-spacing:-0.02em; line-height:1.1; }
+    .sh-big small { font-size:13px; font-weight:600; color:#9b8f7a; margin-left:4px; letter-spacing:0; }
+    .sh-detail { font-size:13px; color:#9b8f7a; line-height:1.5; margin-top:6px; word-break:break-word; }
+
+    /* Bars */
+    .sh-bar { height:6px; border-radius:99px; background:rgba(155,143,122,0.15); overflow:hidden; margin-top:12px; }
+    .sh-bar > i { display:block; height:100%; border-radius:99px; background:var(--lvl); width:0; transition:width .6s ease; }
+    .sh-qrow { display:flex; align-items:center; gap:10px; font-size:12px; color:#9b8f7a; margin-top:9px; }
+    .sh-qrow span:first-child { width:70px; text-transform:capitalize; }
+    .sh-qrow .sh-bar { flex:1; margin:0; }
+    .sh-qrow b { width:34px; text-align:right; color:#dfe2eb; }
+    .sh-dots { display:flex; gap:4px; flex-wrap:wrap; margin-top:12px; }
+    .sh-dots i { width:12px; height:12px; border-radius:3px; background:rgba(155,143,122,0.18); }
+    .sh-dots i.on { background:var(--lvl); }
+
+    .sh-foot { font-size:12px; color:#9b8f7a; max-width:680px; line-height:1.65; margin-top:26px; padding-top:16px; border-top:1px solid rgba(79,70,52,0.2); }
+    .sh-skel { height:128px; border-radius:0.65rem; background:linear-gradient(90deg,#181c22 25%,#1f242c 50%,#181c22 75%); background-size:200% 100%; animation:shSkel 1.3s linear infinite; }
+    @keyframes shSkel { to { background-position:-200% 0; } }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="p-6 space-y-6" style="padding-top:2rem;">
-    <div style="display:flex; align-items:flex-start; gap:16px;">
-        <div style="width:2px; height:48px; background:#f6be39; border-radius:1px; flex-shrink:0; margin-top:2px;"></div>
-        <div>
-            <p style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.15em; color:#9b8f7a; margin-bottom:4px;">Administrative Console</p>
-            <h1 style="font-size:22px; font-weight:800; color:#dfe2eb; letter-spacing:-0.02em; line-height:1.2;">System Health</h1>
-            <p id="health-meta" style="font-size:12px; color:#9b8f7a; margin-top:2px;">Loading…</p>
+<div class="sh-wrap">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:flex-start; gap:16px;">
+            <div style="width:2px; height:48px; background:#f6be39; border-radius:1px; flex-shrink:0; margin-top:2px;"></div>
+            <div>
+                <p class="sh-eyebrow">Administrative Console</p>
+                <h1 class="sh-title">System Health</h1>
+            </div>
         </div>
+        <button type="button" class="sh-refresh" id="sh-refresh"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i> Refresh</button>
     </div>
 
-    <div id="health-banner" class="sh-banner" role="status" hidden></div>
-    <div id="health-grid" class="sh-grid"></div>
+    <div class="sh-hero ok" id="sh-hero" role="status" aria-live="polite">
+        <div class="sh-pulse" id="sh-pulse"><i class="ph ph-heartbeat" aria-hidden="true"></i></div>
+        <div class="sh-hero-main">
+            <div class="sh-hero-state" id="sh-state">Checking…</div>
+            <div class="sh-hero-sub" id="sh-sub">Running health checks</div>
+        </div>
+        <div class="sh-chips" id="sh-chips"></div>
+    </div>
 
-    <p style="font-size:12px; color:#9b8f7a; max-width:640px; line-height:1.6;">
-        Problems are also checked every 10 minutes in the background and emailed to the operations address.
+    <div class="sh-grid" id="sh-grid">
+        <div class="sh-skel"></div><div class="sh-skel"></div><div class="sh-skel"></div><div class="sh-skel"></div>
+    </div>
+
+    <p class="sh-foot">
+        Checked automatically every 10 minutes and emailed to the operations address when something is wrong.
         A warning is emailed only if it shows up twice in a row, the same problem is not emailed again for 6 hours,
         and you get one message when it clears.
     </p>
@@ -46,38 +120,86 @@
 {% block extra_js %}
 <script>
 (function () {
-    var HEALTH_URL = "{% url 'dashboard:system_health_data' %}";
+    var URL = "{% url 'dashboard:system_health_data' %}";
+    var ICON = { database:'ph-database', redis:'ph-lightning', queues:'ph-stack', workers:'ph-cpu', disk:'ph-hard-drives',
+                 memory:'ph-memory', scans:'ph-scan', autoscan:'ph-broadcast' };
+    var WORD = { ok:'Healthy', warn:'Warning', crit:'Critical' };
+    var HERO_ICON = { ok:'ph-heartbeat', warn:'ph-warning', crit:'ph-warning-octagon' };
     var loading = false;
+
     function esc(t) { var d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
+    function num(s) { var m = /\d+/.exec(s || ''); return m ? m[0] : ''; }
+
+    function body(c, expected) {
+        var d = c.detail || '', v = c.value;
+        if (c.code === 'disk' && typeof v === 'number') {
+            return '<div class="sh-big">' + v + '<small>% used</small></div><div class="sh-detail">' + esc(d.replace(/^\d+% used, /, '')) +
+                   '</div><div class="sh-bar"><i style="width:' + Math.min(v, 100) + '%"></i></div>';
+        }
+        if (c.code === 'memory' && typeof v === 'number') {
+            var gb = (v / 1024).toFixed(1);
+            return '<div class="sh-big">' + gb + '<small>GB available</small></div><div class="sh-detail">' +
+                   esc(d.replace(/^\d+ MB available,?\s*/, '') || 'no swap in use') + '</div>';
+        }
+        if (c.code === 'workers' && typeof v === 'number') {
+            var total = Math.max(expected || v, v), dots = '';
+            for (var i = 0; i < total && i < 40; i++) dots += '<i class="' + (i < v ? 'on' : '') + '"></i>';
+            return '<div class="sh-big">' + v + '<small>of ' + total + ' online</small></div><div class="sh-dots">' + dots + '</div>';
+        }
+        if (c.code === 'queues' && v && typeof v === 'object') {
+            var lim = { priority: 50, automated: 200, background: 500 };
+            var rows = Object.keys(v).filter(function (k) { return v[k] !== null; }).map(function (k) {
+                var pct = Math.min(100, Math.round(v[k] / (lim[k] || 100) * 100));
+                return '<div class="sh-qrow"><span>' + esc(k) + '</span><div class="sh-bar"><i style="width:' + Math.max(pct, v[k] ? 4 : 0) +
+                       '%"></i></div><b>' + v[k] + '</b></div>';
+            }).join('');
+            var tot = Object.keys(v).reduce(function (a, k) { return a + (v[k] || 0); }, 0);
+            return '<div class="sh-big">' + tot + '<small>waiting</small></div>' + rows;
+        }
+        if (c.code === 'scans' && v && typeof v === 'object') {
+            return '<div class="sh-big">' + v.total + '<small>started, ' + v.failed + ' failed</small></div><div class="sh-detail">In the last hour</div>';
+        }
+        if (c.code === 'autoscan') {
+            var t = d.split(',')[0];
+            return '<div class="sh-big" style="font-size:20px;text-transform:capitalize;">' + esc(t.length > 28 ? t.slice(0, 26) + '…' : t) + '</div>' +
+                   (d.indexOf(',') > -1 ? '<div class="sh-detail">' + esc(d.slice(d.indexOf(',') + 1).trim()) + '</div>' : '<div class="sh-detail">' + esc(t.length > 28 ? d : '') + '</div>');
+        }
+        return '<div class="sh-big" style="font-size:20px;text-transform:capitalize;">' + esc(d) + '</div>';
+    }
 
     function render(data) {
-        document.getElementById('health-grid').innerHTML = data.checks.map(function (c) {
-            return '<div class="sh-card"><div class="sh-card-head"><span class="sh-dot ' + esc(c.level) +
-                   '" aria-hidden="true"></span><span class="sh-label">' + esc(c.label) +
-                   '</span></div><div class="sh-detail">' + esc(c.detail) + '</div></div>';
+        var n = { ok:0, warn:0, crit:0 };
+        data.checks.forEach(function (c) { n[c.level]++; });
+        var hero = document.getElementById('sh-hero');
+        hero.className = 'sh-hero ' + data.overall;
+        document.getElementById('sh-pulse').innerHTML = '<i class="ph ' + HERO_ICON[data.overall] + '" aria-hidden="true"></i>';
+        document.getElementById('sh-state').textContent = data.overall === 'ok' ? 'All systems healthy'
+            : data.overall === 'crit' ? 'Attention needed' : 'Running with warnings';
+        document.getElementById('sh-sub').textContent = 'Checked ' + new Date(data.at).toLocaleTimeString() + ' · refreshes every 30 seconds';
+        document.getElementById('sh-chips').innerHTML =
+            '<span class="sh-chip ok"><b>' + n.ok + '</b>healthy</span>' +
+            (n.warn ? '<span class="sh-chip warn"><b>' + n.warn + '</b>warning' + (n.warn > 1 ? 's' : '') + '</span>' : '') +
+            (n.crit ? '<span class="sh-chip crit"><b>' + n.crit + '</b>critical</span>' : '');
+        document.getElementById('sh-grid').innerHTML = data.checks.map(function (c, i) {
+            return '<div class="sh-card ' + esc(c.level) + '" style="animation-delay:' + (i * 40) + 'ms">' +
+                   '<div class="sh-card-head"><span class="sh-icon"><i class="ph ' + (ICON[c.code] || 'ph-pulse') + '" aria-hidden="true"></i></span>' +
+                   '<span class="sh-label">' + esc(c.label) + '</span><span class="sh-badge">' + WORD[c.level] + '</span></div>' +
+                   body(c, data.expected_workers) + '</div>';
         }).join('');
-        var issues = data.checks.filter(function (c) { return c.level !== 'ok'; }).length;
-        var banner = document.getElementById('health-banner');
-        banner.hidden = false;
-        banner.className = 'sh-banner ' + data.overall;
-        banner.textContent = data.overall === 'ok' ? 'All systems healthy'
-            : data.overall === 'crit' ? 'Attention needed: ' + issues + ' problem' + (issues === 1 ? '' : 's') + ' found'
-            : issues + ' warning' + (issues === 1 ? '' : 's');
-        document.getElementById('health-meta').textContent =
-            'Checked ' + new Date(data.at).toLocaleTimeString() + ' · refreshes every 30 seconds';
     }
 
     function load() {
         if (loading) return;
         loading = true;
-        fetch(HEALTH_URL, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+        var btn = document.getElementById('sh-refresh');
+        btn.classList.add('spin');
+        fetch(URL, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
             .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(render)
-            .catch(function (e) {
-                document.getElementById('health-meta').textContent = 'Could not load health data (' + e.message + ').';
-            })
-            .finally(function () { loading = false; });
+            .catch(function (e) { document.getElementById('sh-sub').textContent = 'Could not load health data (' + e.message + ').'; })
+            .finally(function () { loading = false; setTimeout(function () { btn.classList.remove('spin'); }, 400); });
     }
+    document.getElementById('sh-refresh').addEventListener('click', load);
     load();
     setInterval(load, 30000);
 })();

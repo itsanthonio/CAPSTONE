@@ -2626,8 +2626,9 @@ def system_health_data(request):
     return JsonResponse({
         'overall': report['overall'],
         'at': report['at'].isoformat(),
-        'checks': [{'code': c['code'], 'label': c['label'], 'level': c['level'], 'detail': c['detail']}
-                   for c in report['checks']],
+        'expected_workers': int(getattr(django_settings, 'HEALTH_EXPECTED_WORKERS', 0) or 0),
+        'checks': [{'code': c['code'], 'label': c['label'], 'level': c['level'], 'detail': c['detail'],
+                    'value': c.get('value')} for c in report['checks']],
     })
 
 
