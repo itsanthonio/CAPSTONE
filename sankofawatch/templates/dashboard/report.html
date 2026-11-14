@@ -501,6 +501,9 @@
     var hasData = illegal.some(function (v) { return v > 0; }) || legal.some(function (v) { return v > 0; });
     if (!hasData) return; // empty-state overlay shown via Django template
 
+    // Chart.js can't resolve CSS var(...) strings on a canvas; read the theme's real values.
+    var _cs = getComputedStyle(document.body);
+    function themeColor(name, fallback) { return _cs.getPropertyValue(name).trim() || fallback; }
     new Chart(canvas, {
         type: 'line',
         data: {
@@ -537,23 +540,23 @@
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: 'var(--surface-2)',
-                    borderColor: 'var(--border-default)',
+                    backgroundColor: themeColor('--surface-2', '#1c2128'),
+                    borderColor: themeColor('--border-default', 'rgba(128,128,128,0.3)'),
                     borderWidth: 1,
-                    titleColor: 'var(--text-primary)',
-                    bodyColor: 'var(--text-secondary)',
+                    titleColor: themeColor('--text-primary', '#e6edf3'),
+                    bodyColor: themeColor('--text-secondary', '#9ca4ae'),
                     padding: 10,
                 },
             },
             scales: {
                 x: {
                     grid: { display: false },
-                    ticks: { color: 'var(--text-tertiary)', font: { size: 11 }, maxTicksLimit: 8, maxRotation: 0 },
+                    ticks: { color: themeColor('--text-tertiary', '#8b949e'), font: { size: 11 }, maxTicksLimit: 8, maxRotation: 0 },
                 },
                 y: {
                     beginAtZero: true,
                     grid: { color: 'rgba(128,128,128,0.08)' },
-                    ticks: { color: 'var(--text-tertiary)', font: { size: 11 }, precision: 0 },
+                    ticks: { color: themeColor('--text-tertiary', '#8b949e'), font: { size: 11 }, precision: 0 },
                 },
             },
         },

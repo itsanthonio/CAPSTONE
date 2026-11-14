@@ -385,6 +385,17 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbo
     var canvas  = document.getElementById('trend-chart');
     if (!canvas) return;
 
+    // Chart.js draws on a <canvas> and cannot resolve CSS var(...) strings, so read the
+    // current theme's actual colour values (works for both dark and light themes).
+    var cs = getComputedStyle(document.body);
+    function themeColor(name, fallback) { return cs.getPropertyValue(name).trim() || fallback; }
+    var cTipBg    = themeColor('--surface-3',     '#22272e');
+    var cTipBorder= themeColor('--border-default','rgba(128,128,128,0.3)');
+    var cTitle    = themeColor('--text-primary',  '#e6edf3');
+    var cBody     = themeColor('--text-secondary','#9ca4ae');
+    var cTick     = themeColor('--text-tertiary', '#8b949e');
+    var cGrid     = themeColor('--border-subtle', 'rgba(128,128,128,0.15)');
+
     // Trim leading all-zero columns
     var firstNonZero = 0;
     for (var i = 0; i < labels.length; i++) {
@@ -414,14 +425,14 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbo
                 legend: { display: false },
                 tooltip: {
                     mode: 'index', intersect: false,
-                    backgroundColor: 'var(--surface-3)', borderColor: 'var(--border-default)', borderWidth: 1,
-                    titleColor: 'var(--text-primary)', bodyColor: 'var(--text-secondary)',
+                    backgroundColor: cTipBg, borderColor: cTipBorder, borderWidth: 1,
+                    titleColor: cTitle, bodyColor: cBody,
                     callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.y}` },
                 },
             },
             scales: {
-                x: { ticks: { color: 'rgba(240,246,252,0.4)', font:{size:9}, maxTicksLimit:8, maxRotation:0 }, grid: { color: 'rgba(240,246,252,0.05)' } },
-                y: { beginAtZero: true, ticks: { color: 'rgba(240,246,252,0.4)', font:{size:9}, precision:0 }, grid: { color: 'rgba(240,246,252,0.05)' } },
+                x: { ticks: { color: cTick, font:{size:10}, maxTicksLimit:8, maxRotation:0 }, grid: { color: cGrid } },
+                y: { beginAtZero: true, ticks: { color: cTick, font:{size:10}, precision:0 }, grid: { color: cGrid } },
             },
         },
     });
