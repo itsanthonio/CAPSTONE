@@ -57,6 +57,34 @@
     min-width: 150px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.5);
 }
+
+    /* ── Dashboard tabs + System Health panel ── */
+    .dash-tabs { display:flex; gap:4px; border-bottom:1px solid rgba(79,70,52,0.25); }
+    .dash-tab {
+        background:none; border:0; border-bottom:2px solid transparent; margin-bottom:-1px;
+        padding:10px 16px; font-size:12px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;
+        color:#9b8f7a; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+    }
+    .dash-tab:hover { color:#dfe2eb; }
+    .dash-tab.active { color:#f6be39; border-bottom-color:#f6be39; }
+    .dash-tab:focus-visible { outline:2px solid #f6be39; outline-offset:2px; }
+    .dash-tab-dot { width:8px; height:8px; border-radius:50%; background:#6b6455; display:none; }
+    .dash-tab-dot.ok { background:#67df70; display:inline-block; }
+    .dash-tab-dot.warn { background:#f6be39; display:inline-block; }
+    .dash-tab-dot.crit { background:#e05252; display:inline-block; }
+    .sh-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:14px; }
+    .sh-card { background:#10141a; border-radius:0.5rem; padding:16px 18px; border:1px solid rgba(79,70,52,0.15); }
+    .sh-card-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+    .sh-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+    .sh-dot.ok { background:#67df70; box-shadow:0 0 0 3px rgba(103,223,112,0.15); }
+    .sh-dot.warn { background:#f6be39; box-shadow:0 0 0 3px rgba(246,190,57,0.18); }
+    .sh-dot.crit { background:#e05252; box-shadow:0 0 0 3px rgba(224,82,82,0.18); }
+    .sh-label { font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#9b8f7a; }
+    .sh-detail { font-size:14px; font-weight:600; color:#dfe2eb; line-height:1.45; word-break:break-word; }
+    .sh-banner { border-radius:0.5rem; padding:13px 18px; margin-bottom:16px; font-size:14px; font-weight:700; border:1px solid transparent; }
+    .sh-banner.ok { background:rgba(103,223,112,0.08); color:#67df70; border-color:rgba(103,223,112,0.25); }
+    .sh-banner.warn { background:rgba(246,190,57,0.08); color:#f6be39; border-color:rgba(246,190,57,0.28); }
+    .sh-banner.crit { background:rgba(224,82,82,0.08); color:#ff8f8f; border-color:rgba(224,82,82,0.3); }
 </style>
 {% endblock %}
 
@@ -92,6 +120,16 @@
             </a>
         </div>
     </div>
+
+    <!-- ── Tabs ── -->
+    <div class="dash-tabs" role="tablist" aria-label="Dashboard sections">
+        <button type="button" class="dash-tab active" id="tab-btn-overview" role="tab" aria-selected="true" aria-controls="tab-overview" data-tab="overview">Overview</button>
+        <button type="button" class="dash-tab" id="tab-btn-health" role="tab" aria-selected="false" aria-controls="tab-health" data-tab="health">
+            System Health <span class="dash-tab-dot" id="health-tab-dot" aria-hidden="true"></span>
+        </button>
+    </div>
+
+    <div id="tab-overview" role="tabpanel" aria-labelledby="tab-btn-overview" class="space-y-6">
 
     <!-- ── Bento KPI Cards ── -->
     <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:20px;">
@@ -327,11 +365,83 @@
         </div>
 
     </div>
+    </div><!-- /tab-overview -->
+
+    <!-- ── System Health tab ── -->
+    <div id="tab-health" role="tabpanel" aria-labelledby="tab-btn-health" hidden>
+        <p id="health-meta" style="font-size:12px; color:#9b8f7a; margin-bottom:12px;">Loading…</p>
+        <div id="health-banner" class="sh-banner" role="status" hidden></div>
+        <div id="health-grid" class="sh-grid"></div>
+        <p style="font-size:12px; color:#9b8f7a; margin-top:20px; max-width:640px; line-height:1.6;">
+            Problems are also checked every 10 minutes in the background and emailed to the operations address.
+            A warning is emailed only if it shows up twice in a row, the same problem is not emailed again for 6 hours,
+            and you get one message when it clears.
+        </p>
+    </div>
 
 </div>
 {% endblock %}
 
 {% block extra_js %}
+<script>
+// ── Dashboard tabs + System Health ──────────────────────────────────
+(function () {
+    var HEALTH_URL = "{% url 'dashboard:system_health_data' %}";
+    var btns = document.querySelectorAll('.dash-tab');
+    var panels = { overview: document.getElementById('tab-overview'), health: document.getElementById('tab-health') };
+    var timer = null, loading = false;
+
+    function esc(t) { var d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
+
+    function render(data) {
+        var grid = document.getElementById('health-grid');
+        grid.innerHTML = data.checks.map(function (c) {
+            return '<div class="sh-card"><div class="sh-card-head"><span class="sh-dot ' + esc(c.level) +
+                   '" aria-hidden="true"></span><span class="sh-label">' + esc(c.label) +
+                   '</span></div><div class="sh-detail">' + esc(c.detail) + '</div></div>';
+        }).join('');
+        var issues = data.checks.filter(function (c) { return c.level !== 'ok'; }).length;
+        var banner = document.getElementById('health-banner');
+        banner.hidden = false;
+        banner.className = 'sh-banner ' + data.overall;
+        banner.textContent = data.overall === 'ok' ? 'All systems healthy'
+            : data.overall === 'crit' ? 'Attention needed: ' + issues + ' problem' + (issues === 1 ? '' : 's') + ' found'
+            : issues + ' warning' + (issues === 1 ? '' : 's');
+        var when = new Date(data.at);
+        document.getElementById('health-meta').textContent =
+            'Checked ' + when.toLocaleTimeString() + ' · refreshes every 30 seconds while this tab is open';
+        document.getElementById('health-tab-dot').className = 'dash-tab-dot ' + data.overall;
+    }
+
+    function load() {
+        if (loading) return;
+        loading = true;
+        fetch(HEALTH_URL, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+            .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .then(render)
+            .catch(function (e) {
+                document.getElementById('health-meta').textContent = 'Could not load health data (' + e.message + ').';
+            })
+            .finally(function () { loading = false; });
+    }
+
+    function show(name) {
+        Object.keys(panels).forEach(function (k) { panels[k].hidden = (k !== name); });
+        btns.forEach(function (b) {
+            var on = b.dataset.tab === name;
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        clearInterval(timer);
+        if (name === 'health') { load(); timer = setInterval(load, 30000); }
+        try { history.replaceState(null, '', name === 'health' ? '#health' : location.pathname + location.search); } catch (e) {}
+    }
+
+    btns.forEach(function (b) { b.addEventListener('click', function () { show(b.dataset.tab); }); });
+    if (location.hash === '#health') show('health');
+    else load();   // fetch once so the tab shows its status dot even before it is opened
+})();
+</script>
 <script>
 // ── Ghana SVG map — click region for popup ──────────────────────────
 (function () {

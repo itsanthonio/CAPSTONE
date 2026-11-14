@@ -9135,3 +9135,6 @@ __marimo__/
 
 /Report.docx
 /sankofawatch/media/timelapse/5bcc54fa-b0ea-413b-9d1f-70a9a8ae4412/2019.png
+
+# runtime state for health_check cron
+sankofawatch/.health_state.json

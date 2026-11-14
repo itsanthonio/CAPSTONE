@@ -1,0 +1,4 @@
+# Development / test tools (not needed on the server)
+-r requirements.txt
+pytest>=8.0
+pytest-django>=4.8

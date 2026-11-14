@@ -35,6 +35,10 @@ urlpatterns = [
     path('regions/', views.region_list, name='region_list'),
     path('regions/<uuid:region_id>/', views.region_detail, name='region_detail'),
 
+    # System health (system admin only)
+    path('system-health/', views.system_health, name='system_health'),
+    path('system-health/data/', views.system_health_data, name='system_health_data'),
+
     # User management (admin-only)
     path('users/', views.user_management, name='user_management'),
     path('users/create/', views.user_create, name='user_create'),

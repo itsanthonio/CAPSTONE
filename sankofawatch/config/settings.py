@@ -35,7 +35,6 @@ CSRF_TRUSTED_ORIGINS = [
     'http://localhost:62075',
     'http://localhost:8001',
     'http://127.0.0.1:8001',
-    'http://34.26.32.215',
 ]
 CSRF_TRUSTED_ORIGINS += [o.strip() for o in config('CSRF_EXTRA_ORIGINS', default='').split(',') if o.strip()]
 
@@ -257,12 +256,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
 ]
 
-# Internationalization
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'Africa/Accra'
-USE_I18N = True
-USE_TZ = True
-
 # Application Configuration
 APP_VERSION = '2.0.0'
 APP_NAME = 'SankofaWatch'
@@ -404,6 +397,13 @@ SITE_URL = config('SITE_URL', default='http://localhost:8000')
 # Override in .env: OPS_EMAILS=ops@example.com,manager@example.com
 _ops_raw = config('OPS_EMAILS', default='')
 OPS_EMAILS = [e.strip() for e in _ops_raw.split(',') if e.strip()]
+
+# Number of Celery workers expected online (0 = don't check). Set on the VM to get alerted when workers die.
+HEALTH_EXPECTED_WORKERS = config('HEALTH_EXPECTED_WORKERS', default=0, cast=int)
+
+# Detections smaller than this are discarded as noise. One HLS pixel is 900 m2, so the old
+# 100 m2 limit filtered nothing; 5000 m2 (~0.5 ha, about 5-6 pixels) removes single-pixel specks.
+DETECTION_MIN_AREA_M2 = config('DETECTION_MIN_AREA_M2', default=5000.0, cast=float)
 
 # ML Model constants — FPN-ResNet50 v1.0 (HLS optical, Ghana mining belt)
 MODEL_BASE_ACCURACY = 0.979        # test-set pixel accuracy; EMA starting point

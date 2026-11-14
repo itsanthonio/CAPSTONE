@@ -2613,6 +2613,26 @@ def organisation_management(request):
 # ---------------------------------------------------------------------------
 
 @user_passes_test(is_system_admin)
+def system_health(request):
+    """The health view now lives in a tab on the admin dashboard; keep the old URL working
+    (alert emails link to it)."""
+    return redirect(reverse('dashboard:admin_home') + '#health')
+
+
+@user_passes_test(is_system_admin)
+def system_health_data(request):
+    """JSON for the System Health tab on the admin dashboard."""
+    from apps.core.health import collect_health
+    report = collect_health()
+    return JsonResponse({
+        'overall': report['overall'],
+        'at': report['at'].isoformat(),
+        'checks': [{'code': c['code'], 'label': c['label'], 'level': c['level'], 'detail': c['detail']}
+                   for c in report['checks']],
+    })
+
+
+@user_passes_test(is_system_admin)
 def user_management(request):
     """System Admin user management — searchable/filterable table of all users."""
     qs = User.objects.select_related('profile').order_by('username')
