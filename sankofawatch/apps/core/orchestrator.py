@@ -503,44 +503,22 @@ class MiningDetectionPipeline:
     # ------------------------------------------------------------------
 
     def _classify_legal_status(self, sites: List) -> None:
+        """Judge each site by how much of its area is inside active concessions
+        (>= 80% inside = legal; anything less = illegal, with the overlap kept so the
+        alert can mention partial encroachment). See apps/detections/legal.py."""
         if not sites:
             return
 
+        from apps.detections.legal import judge_site
         DetectedSite, _, _, LegalConcession, *_ = _get_detection_models()
         active_concessions = LegalConcession.objects.filter(is_active=True)
 
         for site in sites:
-            centroid = site.geometry.centroid
-
-            # Primary check: is the centroid of the detected site inside a concession?
-            # This is robust against raster-to-vector edge misalignment where polygon
-            # boundaries may slightly cross the concession boundary.
-            concession = active_concessions.filter(
-                geometry__contains=centroid
-            ).first()
-
-            # Fallback: centroid on boundary edge — try any intersection
-            if not concession:
-                concession = active_concessions.filter(
-                    geometry__intersects=site.geometry
-                ).first()
-
-            if concession:
-                try:
-                    intersection = site.geometry.intersection(concession.geometry)
-                    overlap_pct = (
-                        (intersection.area / site.geometry.area) * 100
-                        if site.geometry.area > 0 else 0.0
-                    )
-                except Exception:
-                    overlap_pct = 100.0  # centroid confirmed inside, assume full overlap
-
-                site.intersecting_concession = concession
-                site.concession_overlap_pct = overlap_pct
-                site.legal_status = DetectedSite.LegalStatus.LEGAL
-            else:
-                site.legal_status = DetectedSite.LegalStatus.ILLEGAL
-
+            is_legal, best, overlap_pct = judge_site(site, active_concessions)
+            site.intersecting_concession = best
+            site.concession_overlap_pct = overlap_pct
+            site.legal_status = (DetectedSite.LegalStatus.LEGAL if is_legal
+                                 else DetectedSite.LegalStatus.ILLEGAL)
             site.save(update_fields=[
                 'legal_status', 'intersecting_concession', 'concession_overlap_pct'
             ])
@@ -552,7 +530,8 @@ class MiningDetectionPipeline:
     # Step 10 — Generate Alerts for illegal sites
     # ------------------------------------------------------------------
 
-    def _generate_alerts(self, sites: List) -> None:
+    @staticmethod
+    def _generate_alerts(sites: List) -> None:
         if not sites:
             return
 
@@ -600,6 +579,11 @@ class MiningDetectionPipeline:
                     f"Area: {site.area_hectares:.2f} ha\n"
                     f"Confidence: {site.confidence_score:.2%}\n"
                     f"Recurrence: {site.recurrence_count}x"
+                    + (
+                        f"\nPartly inside concession: {site.concession_overlap_pct:.0f}% of the site is inside, "
+                        f"{100 - site.concession_overlap_pct:.0f}% outside (possible encroachment)"
+                        if (site.concession_overlap_pct or 0) > 0 and site.intersecting_concession_id else ''
+                    )
                 ),
             )
             created += 1
@@ -656,15 +640,18 @@ _pipeline: Optional[MiningDetectionPipeline] = None
 
 
 def get_detection_pipeline(threshold: float = 0.5,
-                            min_area: float = 100.0) -> MiningDetectionPipeline:
+                            min_area: Optional[float] = None) -> MiningDetectionPipeline:
     global _pipeline
+    if min_area is None:
+        from django.conf import settings as _s
+        min_area = float(getattr(_s, 'DETECTION_MIN_AREA_M2', 5000.0))
     if _pipeline is None:
         _pipeline = MiningDetectionPipeline(threshold, min_area)
     return _pipeline
 
 
 def process_detection_job(job_id: str, threshold: float = 0.5,
-                           min_area: float = 100.0) -> Dict[str, Any]:
+                           min_area: Optional[float] = None) -> Dict[str, Any]:
     return get_detection_pipeline(threshold, min_area).process_job(job_id)
 
 

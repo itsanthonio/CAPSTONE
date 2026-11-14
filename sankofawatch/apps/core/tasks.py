@@ -240,14 +240,14 @@ def check_concession_expiry():
 
 
 @shared_task(bind=True, max_retries=3)
-def run_detection_task(self, job_id: str, threshold: float = 0.5, min_area: float = 100.0):
+def run_detection_task(self, job_id: str, threshold: float = 0.5, min_area: float = None):
     """
     Async task to run detection pipeline for a job.
     
     Args:
         job_id: Job UUID to process
         threshold: Probability threshold for binary classification
-        min_area: Minimum polygon area in square meters
+        min_area: Minimum polygon area in square meters (default: settings.DETECTION_MIN_AREA_M2)
         
     Returns:
         dict: Processing result
