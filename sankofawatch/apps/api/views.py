@@ -728,6 +728,14 @@ class AlertViewSet(viewsets.ViewSet):
         if atype:    qs = qs.filter(alert_type=atype)
         if source in ('manual', 'automated'):
             qs = qs.filter(detected_site__job__source=source)
+        # Alerts from one scan (used by the "Scan complete" notification link)
+        job_id = (self.request.query_params.get('job') or '').strip()
+        if job_id:
+            import uuid as _uuid
+            try:
+                qs = qs.filter(detected_site__job_id=_uuid.UUID(job_id))
+            except ValueError:
+                qs = qs.none()
         # Extra filters: region name (contains), minimum confidence (%), minimum area (ha)
         region = (self.request.query_params.get('region') or '').strip()
         if region:

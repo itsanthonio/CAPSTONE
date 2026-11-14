@@ -56,6 +56,13 @@
 
 <div class="p-6 space-y-5" data-animate-cards>
 
+    <!-- Scan filter banner (shown when opened from a "Scan complete" notification) -->
+    <div id="scan-filter-banner" hidden role="status"
+         style="display:none; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; padding:10px 16px; border-radius:8px; background:rgba(246,190,57,0.08); border:1px solid rgba(246,190,57,0.28); color:#f6be39; font-size:13px; font-weight:600;">
+        <span><i class="ph ph-funnel" aria-hidden="true"></i> Showing alerts from one scan only</span>
+        <a href="/dashboard/alerts/" style="color:#f6be39; text-decoration:underline; font-weight:700;">Show all alerts</a>
+    </div>
+
     <!-- Header -->
     <div class="gw-page-header">
         <div>
@@ -907,7 +914,7 @@ function showConfirm(title, message) {
         updateBulkBar();
         showLoading();
 
-        const params = new URLSearchParams({ page, ordering: currentOrdering, ...activeFilters });
+        const params = new URLSearchParams({ page, ordering: currentOrdering, ...activeFilters, ...scanFilter() });
         try {
             const res  = await fetch(`/api/alerts/?${params}`, { credentials: 'include' });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1566,7 +1573,7 @@ function showConfirm(title, message) {
 
     // ── CSV export ──
     async function exportCSV() {
-        const params = new URLSearchParams({ ...activeFilters, page: 1, per_page: 10000 });
+        const params = new URLSearchParams({ ...activeFilters, ...scanFilter(), page: 1, per_page: 10000 });
         const res = await fetch(`/api/alerts/?${params}`, { credentials: 'include' });
         if (!res.ok) return;
         const data = await res.json();
@@ -1611,11 +1618,19 @@ function showConfirm(title, message) {
         return match ? decodeURIComponent(match[1]) : null;
     }
 
+    // ── Single-scan view (?job=<id>), used by the "Scan complete" notification ──
+    const SCAN_JOB = new URLSearchParams(window.location.search).get('job');
+    function scanFilter() { return SCAN_JOB ? { job: SCAN_JOB } : {}; }
+
     // ── Init ──
     document.addEventListener('DOMContentLoaded', function () {
-        // Restore saved filters from localStorage
+        if (SCAN_JOB) {
+            const b = document.getElementById('scan-filter-banner');
+            b.hidden = false; b.style.display = 'flex';
+        }
+        // Restore saved filters from localStorage (skipped in single-scan view so old filters can't hide the scan's results)
         try {
-            const saved = localStorage.getItem('gw_alert_filters');
+            const saved = SCAN_JOB ? null : localStorage.getItem('gw_alert_filters');
             if (saved) {
                 activeFilters = JSON.parse(saved);
                 if (activeFilters.status)      document.getElementById('filter-status').value   = activeFilters.status;

@@ -290,7 +290,7 @@ def send_scan_completed(job):
             ('Source',     source_label),
         ])
         + summary_box
-        + _cta_button(_site_url('/dashboard/alerts/'), 'View Alerts &rarr;')
+        + _cta_button(_site_url('/dashboard/alerts/?job=' + str(job.id)), 'View Alerts &rarr;')
     )
 
     plain = (
@@ -299,7 +299,7 @@ def send_scan_completed(job):
         f"Source: {source_label}\n"
         f"Total: {total}  Illegal: {illegal}  Legal: {legal}\n\n"
         f"{'No illegal sites detected.' if illegal == 0 else f'{illegal} illegal site(s) flagged.'}\n\n"
-        f"View alerts: {_site_url('/dashboard/alerts/')}"
+        f"View alerts: {_site_url('/dashboard/alerts/?job=' + str(job.id))}"
     )
 
     _send(subject, plain, _wrap(body, f'{total} sites detected, {illegal} illegal'), recipients, tag='scan_completed')
@@ -307,7 +307,7 @@ def send_scan_completed(job):
     notif_body = f'{illegal} illegal site(s) flagged.' if illegal > 0 else 'No illegal sites detected.'
     creator = _job_creator_user(job)
     if creator:
-        push_notification(creator, f'Scan complete — {total} site(s) detected', notif_body, '/dashboard/alerts/', 'alert')
+        push_notification(creator, f'Scan complete — {total} site(s) detected', notif_body, f'/dashboard/alerts/?job={job.id}', 'alert')
 
 
 # ─────────────────────────────────────────────

@@ -46,3 +46,11 @@ def test_inspector_cannot_start_or_change_jobs(client, django_user_model):
     assert client.get('/api/jobs/').status_code == 200          # read still works
     assert client.post('/api/jobs/', {}, content_type='application/json').status_code == 403
     assert client.delete('/api/jobs/00000000-0000-0000-0000-000000000000/').status_code == 403
+
+
+@pytest.mark.django_db
+def test_alerts_api_job_filter(client, django_user_model):
+    _login(client, django_user_model, 'system_admin')
+    for q in ('00000000-0000-0000-0000-000000000000', 'not-a-uuid'):
+        r = client.get('/api/alerts/', {'job': q})
+        assert r.status_code == 200 and r.json()['total'] == 0
