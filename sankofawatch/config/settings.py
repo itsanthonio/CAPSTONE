@@ -37,6 +37,7 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:8001',
     'http://34.26.32.215',
 ]
+CSRF_TRUSTED_ORIGINS += [o.strip() for o in config('CSRF_EXTRA_ORIGINS', default='').split(',') if o.strip()]
 
 # Additional CORS settings for development
 CORS_ALLOW_ALL_ORIGINS = DEBUG
@@ -225,6 +226,8 @@ CSP_STYLE_SRC = (
     "https://api.mapbox.com",
     "https://cdn.tailwindcss.com",
 )
+CARTO_API_KEY = config('CARTO_API_KEY', default='')
+
 CSP_FONT_SRC = (
     "'self'",
     "https://fonts.gstatic.com",
@@ -234,6 +237,7 @@ CSP_IMG_SRC = (
     "'self'", "data:", "blob:",
     "https://api.mapbox.com",
     "https://tile.openstreetmap.org",
+    "https://basemaps.cartocdn.com",
     "https://*.basemaps.cartocdn.com",
 )
 CSP_CONNECT_SRC = (
@@ -314,13 +318,13 @@ DEFAULT_FROM_EMAIL  = config('DEFAULT_FROM_EMAIL',  default='SankofaWatch <norep
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': 'redis://127.0.0.1:6379/1',  # DB 1 — separate from Celery (DB 0)
+        'LOCATION': config('REDIS_CACHE_URL', default='redis://127.0.0.1:6379/1'),  # DB 1 — separate from Celery (DB 0)
     }
 }
 
 # ── Celery Configuration ─────────────────────────────────────────────────────
-CELERY_BROKER_URL       = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND   = 'redis://localhost:6379/0'
+CELERY_BROKER_URL       = config('CELERY_BROKER_URL', default='redis://localhost:6379/0')
+CELERY_RESULT_BACKEND   = config('CELERY_RESULT_BACKEND', default='redis://localhost:6379/0')
 CELERY_ACCEPT_CONTENT   = ['json']
 CELERY_TASK_SERIALIZER  = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
