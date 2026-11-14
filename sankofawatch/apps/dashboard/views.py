@@ -2085,14 +2085,32 @@ def _send_activation_email(request, user):
     subject = "Confirm your SankofaWatch account"
     plain_body = f"Hi {user.username},\n\nClick the link to activate your account:\n{link}\n\nThis link expires in 24 hours."
     html_body = render_to_string('registration/activation_email.html', {'link': link, 'user': user, 'site_url': django_settings.SITE_URL})
-    send_mail(
-        subject=subject,
-        message=plain_body,
-        from_email=django_settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[user.email],
-        html_message=html_body,
-        fail_silently=True,
-    )
+    _send_html_email(subject, plain_body, html_body, [user.email])
+
+
+def _send_html_email(subject, plain_body, html_body, recipients):
+    """Send an HTML email with the header image and logo embedded inline (cid:hero_bg, cid:logo).
+
+    Embedding means the image shows in any inbox, regardless of SITE_URL
+    (e.g. emails sent from localhost) or the client blocking remote images.
+    """
+    from email.mime.image import MIMEImage
+    from django.core.mail import EmailMultiAlternatives
+
+    msg = EmailMultiAlternatives(subject, plain_body, django_settings.DEFAULT_FROM_EMAIL, recipients)
+    msg.attach_alternative(html_body, 'text/html')
+    msg.mixed_subtype = 'related'
+    for cid, filename, subtype in (('hero_bg', 'hero_bg.jpg', 'jpeg'), ('logo', 'email_logo.png', 'png')):
+        try:
+            with open(os.path.join(django_settings.BASE_DIR, 'static', 'images', filename), 'rb') as f:
+                img = MIMEImage(f.read(), _subtype=subtype)
+        except OSError:
+            logger.warning('%s not found; sending email without it', filename)
+            continue
+        img.add_header('Content-ID', f'<{cid}>')
+        img.add_header('Content-Disposition', 'inline', filename=filename)
+        msg.attach(img)
+    msg.send(fail_silently=True)
 
 
 def activation_sent(request):
@@ -2104,14 +2122,7 @@ def _send_activation_pin_email(user, pin):
     subject = "Your SankofaWatch account activation code"
     plain_body = f"Hi {user.username},\n\nYour activation code is: {pin}\n\nThis code expires in 24 hours."
     html_body = render_to_string('registration/activation_pin_email.html', {'pin': pin, 'user': user, 'site_url': django_settings.SITE_URL})
-    send_mail(
-        subject=subject,
-        message=plain_body,
-        from_email=django_settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[user.email],
-        html_message=html_body,
-        fail_silently=True,
-    )
+    _send_html_email(subject, plain_body, html_body, [user.email])
 
 
 def activation_pin_entry(request):
@@ -2205,14 +2216,7 @@ def _send_pin_email(user, pin):
     subject = "Your SankofaWatch password reset code"
     plain_body = f"Hi {user.username},\n\nYour password reset code is: {pin}\n\nThis code expires in 10 minutes.\n\nIf you didn't request this, ignore this email."
     html_body = render_to_string('registration/pin_email.html', {'pin': pin, 'user': user, 'site_url': django_settings.SITE_URL})
-    send_mail(
-        subject=subject,
-        message=plain_body,
-        from_email=django_settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[user.email],
-        html_message=html_body,
-        fail_silently=True,
-    )
+    _send_html_email(subject, plain_body, html_body, [user.email])
 
 
 def password_reset_request(request):
