@@ -314,10 +314,10 @@
                     </div>
                     <div style="text-align:right; flex-shrink:0;">
                         <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em;
-                            {% if u.profile.role == 'inspector' %}color:#67df70;{% else %}color:#9b8f7a;{% endif %}">
-                            {% if u.profile.role == 'inspector' %}Active{% else %}Offline{% endif %}
+                            {% if u.is_online %}color:#67df70;{% else %}color:#9b8f7a;{% endif %}">
+                            {% if u.is_online %}Online{% else %}Offline{% endif %}
                         </div>
-                        <div style="font-size:10px; color:#9b8f7a; margin-top:1px;">{{ u.date_joined|date:"d M Y" }}</div>
+                        <div style="font-size:10px; color:#9b8f7a; margin-top:1px;">{% if u.is_online %}Active now{% elif u.last_seen %}Last seen {{ u.last_seen|timesince }} ago{% else %}Never signed in{% endif %}</div>
                     </div>
                 </div>
                 {% empty %}

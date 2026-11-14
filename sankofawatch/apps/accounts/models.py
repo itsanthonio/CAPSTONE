@@ -218,6 +218,7 @@ class UserProfile(models.Model):
         blank=True,
         related_name='assigned_alerts'
     )
+    last_seen = models.DateTimeField(null=True, blank=True, db_index=True, help_text='Last time the user made a request (updated at most once a minute)')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -2428,9 +2428,16 @@ def system_admin_dashboard(request):
     ).order_by('name')
 
     # Recent users
-    recent_users = User.objects.select_related(
+    from django.db.models import F
+    from apps.accounts.middleware import ONLINE_WINDOW
+    recent_users = list(User.objects.select_related(
         'profile', 'profile__organisation'
-    ).order_by('-date_joined')[:10]
+    ).order_by(F('profile__last_seen').desc(nulls_last=True), '-date_joined')[:10])
+    _online_cutoff = timezone.now() - timedelta(seconds=ONLINE_WINDOW)
+    for _u in recent_users:
+        _seen = getattr(getattr(_u, 'profile', None), 'last_seen', None)
+        _u.is_online = bool(_seen and _seen >= _online_cutoff)
+        _u.last_seen = _seen
 
     # ── Ghana region alert density — SVG map ─────────────────────────
     import os
