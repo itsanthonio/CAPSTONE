@@ -184,6 +184,20 @@
                 </button>
             </div>
         </div>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4">
+            <div>
+                <label for="filter-region" class="gw-label">Region</label>
+                <input type="text" id="filter-region" class="gw-input w-full" placeholder="e.g. Amansie" autocomplete="off">
+            </div>
+            <div>
+                <label for="filter-min-confidence" class="gw-label">Min confidence (%)</label>
+                <input type="number" id="filter-min-confidence" class="gw-input w-full" min="0" max="100" step="5" placeholder="e.g. 70">
+            </div>
+            <div>
+                <label for="filter-min-area" class="gw-label">Min area (ha)</label>
+                <input type="number" id="filter-min-area" class="gw-input w-full" min="0" step="0.5" placeholder="e.g. 1">
+            </div>
+        </div>
     </div>
 
     <!-- Inspector Assignment Modal -->
@@ -1608,6 +1622,9 @@ function showConfirm(title, message) {
                 if (activeFilters.severity)    document.getElementById('filter-severity').value = activeFilters.severity;
                 if (activeFilters.alert_type)  document.getElementById('filter-type').value     = activeFilters.alert_type;
                 if (activeFilters.source)      document.getElementById('filter-source').value   = activeFilters.source;
+                if (activeFilters.region)         document.getElementById('filter-region').value          = activeFilters.region;
+                if (activeFilters.min_confidence) document.getElementById('filter-min-confidence').value  = activeFilters.min_confidence;
+                if (activeFilters.min_area)       document.getElementById('filter-min-area').value        = activeFilters.min_area;
             }
         } catch(_) {}
 
@@ -1632,6 +1649,12 @@ function showConfirm(title, message) {
             if (severity) activeFilters.severity    = severity;
             if (atype)    activeFilters.alert_type  = atype;
             if (source)   activeFilters.source      = source;
+            const region  = document.getElementById('filter-region').value.trim();
+            const minConf = document.getElementById('filter-min-confidence').value;
+            const minArea = document.getElementById('filter-min-area').value;
+            if (region)  activeFilters.region         = region;
+            if (minConf) activeFilters.min_confidence = minConf;
+            if (minArea) activeFilters.min_area       = minArea;
             localStorage.setItem('gw_alert_filters', JSON.stringify(activeFilters));
             loadAlerts(1);
         });
@@ -1641,6 +1664,9 @@ function showConfirm(title, message) {
             document.getElementById('filter-severity').value = '';
             document.getElementById('filter-type').value     = '';
             document.getElementById('filter-source').value  = '';
+            document.getElementById('filter-region').value = '';
+            document.getElementById('filter-min-confidence').value = '';
+            document.getElementById('filter-min-area').value = '';
             activeFilters = {};
             localStorage.removeItem('gw_alert_filters');
             loadAlerts(1);

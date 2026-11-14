@@ -238,13 +238,27 @@ def automated_scan_daily_digest():
     breakdown_lines = '\n'.join(
         f'  {sev}: {cnt}' for sev, cnt in severity_counts.items()
     )
-    detail_lines = '\n'.join(
-        f"  - {a.title} | {a.detected_site.area_hectares:.1f} ha | "
-        f"{_get_site_region(a.detected_site)} | "
-        f"{a.get_severity_display()}"
-        for a in alerts[:30]  # cap at 30 in the email body
-    )
-    suffix = f'\n  ... and {total - 30} more.' if total > 30 else ''
+    # Group by region (largest group first); show the top 8 per region so one
+    # busy region can't bury the rest of the report.
+    by_region = {}
+    for a in alerts:
+        by_region.setdefault(_get_site_region(a.detected_site) or 'Unknown region', []).append(a)
+    PER_REGION = 8
+    blocks = []
+    # Most serious first, then biggest sites (the DB orders severity as text, which would put
+    # 'medium' ahead of 'high' and 'critical').
+    _rank = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3}
+    for region, items in sorted(by_region.items(), key=lambda kv: -len(kv[1])):
+        items.sort(key=lambda x: (_rank.get(x.severity, 9), -(x.detected_site.area_hectares or 0)))
+        lines = [
+            f"    - {a.get_severity_display()} | {a.detected_site.area_hectares:.1f} ha | {a.title}"
+            for a in items[:PER_REGION]
+        ]
+        if len(items) > PER_REGION:
+            lines.append(f"    ... and {len(items) - PER_REGION} more in this region")
+        blocks.append(f"  {region} ({len(items)})\n" + '\n'.join(lines))
+    detail_lines = '\n\n'.join(blocks)
+    suffix = ''
 
     body = (
         f"SankofaWatch — Automated Scan Daily Digest\n"

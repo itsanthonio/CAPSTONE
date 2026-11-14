@@ -714,6 +714,19 @@ class AlertViewSet(viewsets.ViewSet):
         if atype:    qs = qs.filter(alert_type=atype)
         if source in ('manual', 'automated'):
             qs = qs.filter(detected_site__job__source=source)
+        # Extra filters: region name (contains), minimum confidence (%), minimum area (ha)
+        region = (self.request.query_params.get('region') or '').strip()
+        if region:
+            qs = qs.filter(detected_site__region__name__icontains=region)
+        try:
+            min_conf = self.request.query_params.get('min_confidence')
+            if min_conf not in (None, ''):
+                qs = qs.filter(detected_site__confidence_score__gte=float(min_conf) / 100.0)
+            min_area = self.request.query_params.get('min_area')
+            if min_area not in (None, ''):
+                qs = qs.filter(detected_site__area_hectares__gte=float(min_area))
+        except (TypeError, ValueError):
+            pass  # ignore malformed numbers instead of erroring
         # Role-based scoping
         try:
             role = self.request.user.profile.role
