@@ -6,7 +6,8 @@ REM Open separate terminal windows for each worker so you can monitor them.
 echo Starting SankofaWatch Celery workers...
 echo.
 echo Worker layout:
-echo   priority workers  x6  (all detection jobs — manual + automated)
+echo   priority workers  x6  (manual scans)
+echo   automated workers x5  (automatic grid scans only)
 echo   background workers x4  (timelapse fetching)
 echo   beat scheduler    x1
 echo.
@@ -18,6 +19,13 @@ start "GW-Priority-3" cmd /k "celery -A config worker -Q priority --concurrency=
 start "GW-Priority-4" cmd /k "celery -A config worker -Q priority --concurrency=1 -n priority_4@%%h --loglevel=info"
 start "GW-Priority-5" cmd /k "celery -A config worker -Q priority --concurrency=1 -n priority_5@%%h --loglevel=info"
 start "GW-Priority-6" cmd /k "celery -A config worker -Q priority --concurrency=1 -n priority_6@%%h --loglevel=info"
+
+REM Automated-scan workers (5 workers, only automatic Ghana grid scans)
+start "GW-Auto-1" cmd /k "celery -A config worker -Q automated --concurrency=1 -n automated_1@%%h --loglevel=info"
+start "GW-Auto-2" cmd /k "celery -A config worker -Q automated --concurrency=1 -n automated_2@%%h --loglevel=info"
+start "GW-Auto-3" cmd /k "celery -A config worker -Q automated --concurrency=1 -n automated_3@%%h --loglevel=info"
+start "GW-Auto-4" cmd /k "celery -A config worker -Q automated --concurrency=1 -n automated_4@%%h --loglevel=info"
+start "GW-Auto-5" cmd /k "celery -A config worker -Q automated --concurrency=1 -n automated_5@%%h --loglevel=info"
 
 REM Background workers (4 workers, handle timelapse fetching)
 start "GW-Background-1" cmd /k "celery -A config worker -Q background --concurrency=1 -n background_1@%%h --loglevel=info"

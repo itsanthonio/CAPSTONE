@@ -7,6 +7,7 @@ and fires the detection pipeline for each one.
 """
 
 import logging
+import re
 from celery import shared_task
 from django.utils import timezone
 
@@ -153,10 +154,10 @@ def auto_scan_tick():
                 scan_tile_id=str(tile.id),
             )
 
-            # Queue as priority=5 (automated) on the priority queue
+            # Automated scans run on their own 'automated' queue so they never compete with manual scans
             run_detection_task.apply_async(
                 args=[str(job.id)],
-                queue='priority',
+                queue='automated',
                 priority=5,
             )
 
@@ -173,7 +174,7 @@ def auto_scan_tick():
             error_msg = str(exc)
 
             # Detect GEE rate limit error
-            if 'quota' in error_msg.lower() or '429' in error_msg or 'rate' in error_msg.lower():
+            if re.search(r'429|quota exceeded|rate[ _-]?limit|too many requests', error_msg, re.IGNORECASE):
                 logger.warning(f'auto_scan_tick: GEE rate limit hit — stopping for today.')
                 config.rate_limited_date = today
                 config.save(update_fields=['rate_limited_date'])

@@ -273,96 +273,100 @@ class GeeService:
             if ee_geometry is None:
                 return {'success': False, 'error': 'Failed to convert geometry', 'export_id': None}
 
-            # Get HLS collection
-            collection = self.get_hls_collection(
-                job.start_date.strftime('%Y-%m-%d'),
-                job.end_date.strftime('%Y-%m-%d')
-            )
-            if collection is None:
-                return {'success': False, 'error': 'Failed to load HLS collection', 'export_id': None}
+            # Date windows to try, heaviest first. If Earth Engine runs out of memory
+            # computing the full-window median, fall back to a shorter recent window
+            # instead of failing the job.
+            from datetime import timedelta
+            job_start, job_end = job.start_date, job.end_date
+            windows = [(job_start, job_end)]
+            for days in (365, 180):
+                if (job_end - job_start).days > days + 30:
+                    windows.append((job_end - timedelta(days=days), job_end))
 
-            # Spatially filter to AOI — reduces tiles fetched and matches notebook behaviour
-            collection = collection.filterBounds(ee_geometry)
-
-            # Process collection: cloud mask, band selection, median composite.
-            # .multiply(0.0001) converts HLS DN values (0–10000) → float reflectance (0–1).
-            # getDownloadId does NOT apply the band scale factor automatically (unlike
-            # getDownloadURL), so we must do it explicitly here.
-            # .reproject() forces 30 m pixels in UTM Zone 30N — same CRS as training data.
-            processed = collection \
-                .map(self.apply_cloud_mask) \
-                .map(self.select_bands) \
-                .median() \
-                .toFloat() \
-                .multiply(0.0001) \
-                .reproject(crs=ee.Projection('EPSG:32630'), scale=30)
-
-            # Clip to AOI
-            clipped = processed.clip(ee_geometry)
-
-            # Define Metadata for return
-            try:
-                mean_cloud = float(collection.aggregate_mean('CLOUDY_PIXEL_PERCENTAGE').getInfo() or 0.0)
-            except:
-                mean_cloud = 0.0
-            
-            satellite = 'S2A' # Default
-            scene_id = f"HLS.job_{job.id}.{job.start_date.strftime('%Y%m%d')}"
-
-            # 2. DIRECT DOWNLOAD METHOD - bypass GCS/Billing
             local_path = f'local_exports/jobs/{job.id}/hls_imagery.tif'
-            
-            # Ensure directory exists
             os.makedirs(os.path.dirname(local_path), exist_ok=True)
-            
-            # 1. Get Download ID first
-            try:
-                download_id = ee.data.getDownloadId({
-                    'image': clipped,
-                    'scale': config('MAX_RESOLUTION', default=30, cast=int),
-                    'crs': 'EPSG:32630',
-                    'filePerBand': False,
-                    'name': 'hls_imagery',
-                    'format': 'GEO_TIFF'
-                })
-                
-                # 2. Construct the URL manually
-                base_url = 'https://earthengine.googleapis.com/v1alpha/projects/earthengine-legacy/thumbnails'
-                # Wait, legacy endpoint is more reliable for direct downloads:
-                download_url = ee.data.makeDownloadUrl(download_id)
-                
-                logger.info(f"Generated download URL for job {job.id}")
-                
-                # Use requests to pull the file to your local_exports folder
-                response = requests.get(download_url, timeout=300)  # 5 minute timeout
-                if response.status_code == 200:
-                    with open(local_path, 'wb') as f:
-                        f.write(response.content)
-                    logger.info(f"Direct download successful: {local_path}")
-                    
-                    return {
-                        'success': True,
-                        'export_id': f'direct_download_{job.id}',
-                        'scene_id': scene_id,
-                        'satellite': satellite,
-                        'cloud_cover_pct': mean_cloud,
-                        'is_local': True,
-                        'local_path': local_path
-                    }
-                else:
-                    raise Exception(f"GEE Download Failed: {response.text}")
-                    
-            except Exception as e:
-                logger.error(f"Download trigger error: {str(e)}")
-                error_msg = str(e)
-                if 'too large' in error_msg.lower() or 'limit' in error_msg.lower():
-                    error_msg = 'AOI too large for direct download. Please select a smaller area.'
-                
-                return {
-                    'success': False,
-                    'error': error_msg,
-                    'export_id': None
-                }
+            scene_id = f"HLS.job_{job.id}.{job_start.strftime('%Y%m%d')}"
+            last_error = 'Unknown error'
+
+            for w_idx, (w_start, w_end) in enumerate(windows):
+                collection = self.get_hls_collection(
+                    w_start.strftime('%Y-%m-%d'), w_end.strftime('%Y-%m-%d')
+                )
+                if collection is None:
+                    return {'success': False, 'error': 'Failed to load HLS collection', 'export_id': None}
+
+                # Spatially filter to AOI — reduces tiles fetched and matches notebook behaviour
+                collection = collection.filterBounds(ee_geometry)
+
+                # Cloud mask, band selection, median composite.
+                # .multiply(0.0001) converts HLS DN values (0–10000) → float reflectance (0–1).
+                # getDownloadId does NOT apply the band scale factor automatically (unlike
+                # getDownloadURL), so we must do it explicitly here.
+                # .reproject() forces 30 m pixels in UTM Zone 30N — same CRS as training data.
+                processed = collection                     .map(self.apply_cloud_mask)                     .map(self.select_bands)                     .median()                     .toFloat()                     .multiply(0.0001)                     .reproject(crs=ee.Projection('EPSG:32630'), scale=30)
+                clipped = processed.clip(ee_geometry)
+
+                try:
+                    mean_cloud = float(collection.aggregate_mean('CLOUDY_PIXEL_PERCENTAGE').getInfo() or 0.0)
+                except Exception:
+                    mean_cloud = 0.0
+
+                # Direct download (bypasses GCS/billing). Retry transient errors with backoff.
+                transient_markers = ('429', '500', '502', '503', '504', 'timed out', 'timeout',
+                                     'backend error', 'internal error', 'too many requests',
+                                     'connection', 'unavailable')
+                for attempt in range(3):
+                    try:
+                        download_id = ee.data.getDownloadId({
+                            'image': clipped,
+                            'scale': config('MAX_RESOLUTION', default=30, cast=int),
+                            'crs': 'EPSG:32630',
+                            'filePerBand': False,
+                            'name': 'hls_imagery',
+                            'format': 'GEO_TIFF'
+                        })
+                        download_url = ee.data.makeDownloadUrl(download_id)
+                        logger.info(f"Generated download URL for job {job.id} "
+                                    f"(window {w_start}..{w_end})")
+                        response = requests.get(download_url, timeout=300)  # 5 minute timeout
+                        if response.status_code == 200:
+                            with open(local_path, 'wb') as f:
+                                f.write(response.content)
+                            logger.info(f"Direct download successful: {local_path}")
+                            if w_idx > 0:
+                                logger.warning(f"Job {job.id}: used reduced window "
+                                               f"{w_start}..{w_end} after memory limit on full window")
+                            return {
+                                'success': True,
+                                'export_id': f'direct_download_{job.id}',
+                                'scene_id': scene_id,
+                                'satellite': 'S2A',
+                                'cloud_cover_pct': mean_cloud,
+                                'is_local': True,
+                                'local_path': local_path
+                            }
+                        raise Exception(f"GEE Download Failed: {response.text}")
+                    except Exception as e:
+                        last_error = str(e)
+                        low = last_error.lower()
+                        logger.error(f"Download trigger error (window {w_idx}, attempt {attempt + 1}): {last_error}")
+                        if 'memory limit' in low:
+                            break  # retrying the same heavy request won't help; try a shorter window
+                        if any(m in low for m in transient_markers) and attempt < 2:
+                            time.sleep(10 * (attempt + 1))
+                            continue
+                        break
+                if 'memory limit' not in last_error.lower():
+                    break  # not a memory problem: a shorter window won't help
+
+            low = last_error.lower()
+            if 'memory limit' in low:
+                error_msg = 'Earth Engine ran out of memory computing the image composite (even with shorter date ranges).'
+            elif 'too large' in low or 'must be less than or equal to' in low or 'request size' in low:
+                error_msg = 'AOI too large for direct download. Please select a smaller area.'
+            else:
+                error_msg = last_error
+            return {'success': False, 'error': error_msg, 'export_id': None}
 
         except Exception as e:
             logger.error(f"HLS export error: {str(e)}")
