@@ -26,6 +26,7 @@ from django.utils.decorators import method_decorator
 from django.views import View
 
 from .models import AutoScanConfig, OrgScanConfig, ScanTile
+from .places import tile_place_label
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +131,7 @@ class ScanningStatusAPI(View):
                     'job_id':    str(job.id),
                     'status':    job.status,
                     'tile_name': tile.name,
+                    'place':     tile_place_label(tile),
                     'tile_lat':  round(centroid.y, 6),
                     'tile_lng':  round(centroid.x, 6),
                 })
@@ -153,6 +155,7 @@ class ScanningStatusAPI(View):
                 centroid = tile.geometry.centroid
                 next_tiles.append({
                     'name':     tile.name,
+                    'place':    tile_place_label(tile),
                     'priority': tile.priority,
                     'lat':      round(centroid.y, 6),
                     'lng':      round(centroid.x, 6),
@@ -173,6 +176,7 @@ class ScanningStatusAPI(View):
                 centroid = tile.geometry.centroid
                 failed_jobs_today.append({
                     'tile_name':      tile.name,
+                    'place':          tile_place_label(tile),
                     'tile_lat':       round(centroid.y, 6),
                     'tile_lng':       round(centroid.x, 6),
                     'failure_reason': job.failure_reason or 'Unknown error',
@@ -491,6 +495,7 @@ class ScanningRecentTilesAPI(View):
                 'properties': {
                     'id':              str(tile.id),
                     'name':            tile.name,
+                    'place':           tile_place_label(tile),
                     'priority':        tile.priority,
                     'scan_count':      tile.scan_count,
                     'last_scanned_at': tile.last_scanned_at.isoformat() if tile.last_scanned_at else None,
@@ -684,6 +689,7 @@ class ScanningTileDetailAPI(View):
         return JsonResponse({
             'id':              str(tile.id),
             'name':            tile.name,
+            'place':           tile_place_label(tile),
             'priority':        tile.priority,
             'scan_count':      tile.scan_count,
             'last_scanned_at': tile.last_scanned_at.isoformat() if tile.last_scanned_at else None,

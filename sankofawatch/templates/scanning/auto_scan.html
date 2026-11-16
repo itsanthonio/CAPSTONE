@@ -253,20 +253,20 @@
         <!-- Stat chips -->
         <div class="flex items-center gap-5">
             <div>
-                <span class="text-[10px] uppercase tracking-wide mr-1.5" style="color:var(--text-tertiary);">Tiles Today</span>
+                <span class="text-[10px] uppercase tracking-wide mr-1.5" style="color:var(--text-tertiary);" title="Map areas (grid squares, about 8 km wide) scanned today">Areas Today</span>
                 <span id="stat-tiles" class="text-sm font-bold tabular-nums" style="color:var(--text-primary);">—</span>
             </div>
             <div>
-                <span class="text-[10px] uppercase tracking-wide mr-1.5" style="color:var(--text-tertiary);">Detections</span>
+                <span class="text-[10px] uppercase tracking-wide mr-1.5" style="color:var(--text-tertiary);" title="Possible mining sites found today">Sites Found</span>
                 <span id="stat-detections" class="text-sm font-bold tabular-nums" style="color:var(--text-primary);">—</span>
             </div>
             <div>
-                <span class="text-[10px] uppercase tracking-wide mr-1.5" style="color:var(--text-tertiary);">Jobs</span>
+                <span class="text-[10px] uppercase tracking-wide mr-1.5" style="color:var(--text-tertiary);" title="Scans started today by the automatic scanner">Scans</span>
                 <span id="stat-jobs" class="text-sm font-bold tabular-nums" style="color:var(--text-primary);">—</span>
                 <span id="stat-failed" class="text-xs tabular-nums hidden" style="color:var(--status-critical);margin-left:4px;"></span>
             </div>
             <div>
-                <span class="text-[10px] uppercase tracking-wide mr-1.5" style="color:var(--text-tertiary);">Running</span>
+                <span class="text-[10px] uppercase tracking-wide mr-1.5" style="color:var(--text-tertiary);" title="Scans in progress right now">In Progress</span>
                 <span id="stat-running" class="text-sm font-bold tabular-nums" style="color:var(--text-primary);">—</span>
             </div>
         </div>
@@ -344,10 +344,10 @@
                     <legend class="sr-only">Map layer visibility</legend>
                     <div class="space-y-1.5">
                         <label for="toggle-grid"><input type="checkbox" id="toggle-grid" checked> <span style="color:var(--text-secondary);">Grid</span></label>
-                        <label for="toggle-hotspots"><input type="checkbox" id="toggle-hotspots" checked> <span style="color:var(--text-secondary);">Hotspots</span></label>
-                        <label for="toggle-scanned"><input type="checkbox" id="toggle-scanned" checked> <span style="color:var(--text-secondary);">Scanned tiles</span></label>
-                        <label for="toggle-next"><input type="checkbox" id="toggle-next" checked> <span style="color:var(--text-secondary);">Next tiles</span></label>
-                        <label for="toggle-detections"><input type="checkbox" id="toggle-detections" checked> <span style="color:var(--text-secondary);">Detections</span></label>
+                        <label for="toggle-hotspots"><input type="checkbox" id="toggle-hotspots" checked> <span style="color:var(--text-secondary);" title="Known mining zones, scanned more often">High-priority zones</span></label>
+                        <label for="toggle-scanned"><input type="checkbox" id="toggle-scanned" checked> <span style="color:var(--text-secondary);">Scanned areas</span></label>
+                        <label for="toggle-next"><input type="checkbox" id="toggle-next" checked> <span style="color:var(--text-secondary);">Up next</span></label>
+                        <label for="toggle-detections"><input type="checkbox" id="toggle-detections" checked> <span style="color:var(--text-secondary);">Sites found</span></label>
                         <label for="toggle-heatmap"><input type="checkbox" id="toggle-heatmap"> <span style="color:var(--text-secondary);">Heatmap</span></label>
                         <label for="toggle-failures"><input type="checkbox" id="toggle-failures" checked> <span style="color:var(--text-secondary);">Failures</span></label>
                     </div>
@@ -374,7 +374,7 @@
                 <div class="text-[9px] uppercase tracking-[0.1em] font-semibold mb-2" style="color:rgba(212,160,23,0.6);">Legend</div>
                 <div class="flex items-center gap-2">
                     <div class="w-3 h-3 rounded-sm" style="border:1px solid rgba(212,160,23,0.3);"></div>
-                    <span style="color:var(--text-secondary);">Scan grid tile</span>
+                    <span style="color:var(--text-secondary);">Scan area (grid square)</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <div class="w-3 h-3 rounded-sm" style="background:rgba(212,160,23,0.7);"></div>
@@ -382,11 +382,11 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <div class="w-3 h-3 rounded-sm" style="background:rgba(248,81,73,0.6);"></div>
-                    <span style="color:var(--text-secondary);">Detection found</span>
+                    <span style="color:var(--text-secondary);">Site found</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <div class="w-3 h-3 rounded-sm" style="background:rgba(88,166,255,0.3); border:1px solid rgba(88,166,255,0.5);"></div>
-                    <span style="color:var(--text-secondary);">Hotspot zone</span>
+                    <span style="color:var(--text-secondary);">High-priority zone</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <div class="w-3 h-3 rounded-sm flex items-center justify-center" style="font-size:9px;color:#f85149;">✕</div>
@@ -401,10 +401,16 @@
 
             <div class="kente-bar"></div>
 
+            <!-- Today at a glance (plain-language summary) -->
+            <div id="today-summary" class="px-4 py-3 shrink-0" style="border-bottom:1px solid var(--border-subtle);" aria-live="polite">
+                <p id="summary-state" class="text-xs font-semibold" style="color:var(--text-primary);">Checking scanner…</p>
+                <p id="summary-text" class="text-[11px] mt-1" style="color:var(--text-secondary);"></p>
+            </div>
+
             <!-- Tabs -->
             <div class="flex shrink-0" style="border-bottom:1px solid var(--border-subtle);">
-                <button id="tab-activity" class="panel-tab tab-active flex-1 py-2.5 text-[11px] font-semibold uppercase tracking-wide">Activity</button>
-                <button id="tab-regions"  class="panel-tab flex-1 py-2.5 text-[11px] font-semibold uppercase tracking-wide">Regions</button>
+                <button id="tab-activity" class="panel-tab tab-active flex-1 py-2.5 text-[11px] font-semibold uppercase tracking-wide" title="Areas the scanner has finished, newest first">Recent scans</button>
+                <button id="tab-regions"  class="panel-tab flex-1 py-2.5 text-[11px] font-semibold uppercase tracking-wide" title="Regions with the most sites found">Top regions</button>
             </div>
 
             <!-- Activity feed -->
@@ -414,16 +420,17 @@
                     <div class="skeleton skeleton-row" style="opacity:0.7"></div>
                     <div class="skeleton skeleton-row" style="opacity:0.5"></div>
                 </div>
-                <div id="activity-empty" class="hidden py-8 text-center">
-                    <p class="text-xs" style="color:var(--text-tertiary);">No tiles scanned yet today.</p>
-                    <p id="activity-window-label" class="text-xs mt-1" style="color:var(--text-tertiary);">Scanner runs 6am – 6pm.</p>
+                <div id="activity-empty" class="hidden py-8 px-5 text-center">
+                    <p id="activity-empty-title" class="text-xs font-semibold" style="color:var(--text-secondary);">No areas scanned yet.</p>
+                    <p id="activity-empty-detail" class="text-xs mt-1.5" style="color:var(--text-tertiary);"></p>
                 </div>
                 <ul id="activity-list" class="list-none m-0 p-0 hidden"></ul>
             </div>
 
             <!-- Regions panel -->
             <div id="regions-panel" class="flex-1 overflow-y-auto hidden px-4 py-3">
-                <p class="text-[10px] uppercase tracking-wide mb-3 font-semibold" style="color:var(--text-tertiary);">Top regions by detections</p>
+                <p class="text-[10px] uppercase tracking-wide mb-1 font-semibold" style="color:var(--text-tertiary);">Top regions</p>
+                <p class="text-[11px] mb-3" style="color:var(--text-tertiary);">Regions where auto scan has found the most possible mining sites, all time.</p>
                 <ul id="regions-list" class="space-y-3 list-none p-0 m-0">
                     <li class="text-xs" style="color:var(--text-tertiary);">Loading…</li>
                 </ul>
@@ -447,7 +454,7 @@
             <div class="px-4 py-3 shrink-0" style="border-top:1px solid var(--border-subtle);">
                 <!-- Coverage bar -->
                 <div class="flex items-center justify-between text-xs mb-1.5">
-                    <span style="color:var(--text-secondary);">Ghana grid coverage</span>
+                    <span style="color:var(--text-secondary);" title="Share of Ghana's map areas that have been scanned at least once">Ghana scanned so far</span>
                     <span id="coverage-pct" class="font-semibold tabular-nums" style="color:var(--text-primary);">—</span>
                 </div>
                 <div class="w-full rounded-full h-1.5" style="background:var(--border-subtle);">
@@ -456,14 +463,20 @@
                 </div>
                 <div class="flex items-center justify-between mt-1.5">
                     <p class="text-[10px]" style="color:var(--text-tertiary);">
-                        <span id="coverage-scanned">—</span> / <span id="coverage-total">—</span> tiles
+                        <span id="coverage-scanned">—</span> of <span id="coverage-total">—</span> areas
                     </p>
-                    <!-- Confidence donut -->
-                    <div class="flex items-center gap-1.5" title="Confidence distribution: gold=high, blue=mid, faint=low">
-                        <svg id="confidence-donut" width="24" height="24" viewBox="0 0 24 24">
-                            <circle cx="12" cy="12" r="9" fill="none" stroke="rgba(240,246,252,0.07)" stroke-width="4"/>
-                        </svg>
-                        <span id="donut-label" class="text-[10px]" style="color:var(--text-tertiary);">—</span>
+                </div>
+                <!-- Confidence donut -->
+                <div class="flex items-center gap-2 mt-2.5" title="How sure the model is about the sites found: high is 80% or more, medium is 50–80%, low is under 50%">
+                    <svg id="confidence-donut" width="24" height="24" viewBox="0 0 24 24" class="shrink-0">
+                        <circle cx="12" cy="12" r="9" fill="none" stroke="rgba(240,246,252,0.07)" stroke-width="4"/>
+                    </svg>
+                    <div class="min-w-0">
+                        <p id="donut-label" class="text-[11px]" style="color:var(--text-secondary);">No sites found yet</p>
+                        <p class="text-[10px] mt-0.5" style="color:var(--text-tertiary);">
+                            <span style="color:rgba(212,160,23,0.95);">●</span> high 80%+
+                            <span style="color:rgba(88,166,255,0.9);margin-left:6px;">●</span> medium 50–80%
+                        </p>
                     </div>
                 </div>
                 <!-- ETA -->
@@ -852,10 +865,10 @@
             })
             .bindTooltip(
                 `<div style="font-size:11px;line-height:1.5;">
-                    <b>${f.properties.name}</b><br>
-                    Priority: ${f.properties.priority}<br>
-                    Scanned: ${f.properties.scan_count}×<br>
-                    Last: ${f.properties.last_scanned_at ? new Date(f.properties.last_scanned_at).toLocaleString() : '—'}
+                    <b>${f.properties.place ? 'Near ' + f.properties.place : 'Area ' + f.properties.name}</b><br>
+                    ${f.properties.priority === 'hotspot' ? 'High-priority area' : 'Standard area'}<br>
+                    ${plural(f.properties.scan_count, 'time')} scanned<br>
+                    Last scanned: ${f.properties.last_scanned_at ? new Date(f.properties.last_scanned_at).toLocaleString() : '—'}
                  </div>`,
                 { className:'scan-popup', direction:'top', sticky:true }
             )
@@ -994,6 +1007,34 @@
         _pendingDets = [];
     }
 
+    // ── Plain-language helpers ────────────────────────────────────────────
+    function plural(n, word) {
+        n = Number(n) || 0;
+        return `${n} ${word}${n === 1 ? '' : 's'}`;
+    }
+    function escapeHtml(v) {
+        return String(v == null ? '' : v).replace(/[&<>"']/g, c => (
+            { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+    }
+    function friendlyWhen(iso) {
+        if (!iso) return '—';
+        const d = new Date(iso), now = new Date();
+        const hm = d.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+        const dayStart = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+        const diffDays = Math.round((dayStart(now) - dayStart(d)) / 86400000);
+        if (diffDays === 0) return `Today ${hm}`;
+        if (diffDays === 1) return `Yesterday ${hm}`;
+        return `${d.toLocaleDateString([], { day:'numeric', month:'short' })} ${hm}`;
+    }
+    const STAGE_LABEL = {
+        queued:'Waiting in line', validating:'Checking the area', exporting:'Downloading satellite images',
+        preprocessing:'Preparing images', inferring:'Running the model',
+        postprocessing:'Finding mining sites', storing:'Saving results',
+    };
+    const SCAN_RESULT_LABEL = {
+        completed:'Completed', failed:'Failed', cancelled:'Cancelled', queued:'Waiting',
+    };
+
     // ── Tile detail panel (inside right panel) ────────────────────────────
     // Simple centroid from GeoJSON polygon ring (average of corner points)
     function _geomCentroid(geom) {
@@ -1035,9 +1076,10 @@
             })
             .then(data => {
                 document.getElementById('tile-detail-title').textContent =
-                    data.name || '—';
+                    data.place ? `Near ${data.place}` : (data.name || '—');
                 document.getElementById('tile-detail-subtitle').textContent =
-                    `${data.priority} · ${data.scan_count}× scanned · last: ${
+                    `${data.priority === 'hotspot' ? 'High-priority area' : 'Standard area'} · ${
+                        plural(data.scan_count, 'scan')} · last scanned ${
                         data.last_scanned_at
                             ? new Date(data.last_scanned_at).toLocaleDateString()
                             : 'never'
@@ -1045,26 +1087,26 @@
 
                 const histHtml = data.scan_history && data.scan_history.length
                     ? `<div>
-                        <p class="text-[10px] uppercase tracking-wide font-semibold mb-2" style="color:var(--text-tertiary);">Scan history</p>
+                        <p class="text-[10px] uppercase tracking-wide font-semibold mb-2" style="color:var(--text-tertiary);">Past scans of this area</p>
                         <div class="space-y-1.5">
                             ${data.scan_history.map(s => `
                             <div class="flex items-center justify-between text-[11px]">
                                 <span style="color:var(--text-secondary);">${s.date}</span>
-                                <span class="px-1.5 py-0.5 rounded text-[10px]" style="background:var(--surface-3);color:var(--text-tertiary);">${s.status}</span>
+                                <span class="px-1.5 py-0.5 rounded text-[10px]" style="background:var(--surface-3);color:var(--text-tertiary);">${SCAN_RESULT_LABEL[s.status] || escapeHtml(s.status)}</span>
                             </div>`).join('')}
                         </div>
                        </div>`
-                    : `<p class="text-[11px]" style="color:var(--text-tertiary);">No scan history yet.</p>`;
+                    : `<p class="text-[11px]" style="color:var(--text-tertiary);">This area has not been scanned by auto scan yet.</p>`;
 
                 const detsHtml = data.detections && data.detections.length
                     ? `<div>
-                        <p class="text-[10px] uppercase tracking-wide font-semibold mb-2" style="color:var(--text-tertiary);">Detections</p>
+                        <p class="text-[10px] uppercase tracking-wide font-semibold mb-2" style="color:var(--text-tertiary);">Sites found here</p>
                         <div class="space-y-1.5">
                             ${data.detections.map(d => `
                             <div class="px-2.5 py-2 rounded" style="background:var(--surface-3);border-left:3px solid ${d.legal_status === 'illegal' ? 'rgba(248,81,73,0.7)' : 'rgba(88,166,255,0.5)'};">
                                 <div class="flex items-center justify-between text-[11px]">
-                                    <span style="color:var(--text-primary);">${d.legal_status}</span>
-                                    <span class="tabular-nums" style="color:var(--accent);">${d.confidence_pct}%</span>
+                                    <span style="color:var(--text-primary);">${d.legal_status === 'illegal' ? 'Illegal mining' : 'Legal / inconclusive'}</span>
+                                    <span class="tabular-nums" style="color:var(--accent);" title="How sure the model is">${d.confidence_pct}% sure</span>
                                 </div>
                                 <div class="text-[10px] mt-0.5" style="color:var(--text-tertiary);">${d.area_hectares} ha · ${d.detection_date}</div>
                             </div>`).join('')}
@@ -1095,42 +1137,112 @@
     document.getElementById('tile-detail-back').addEventListener('click', hideTileDetail);
 
     // ── Activity feed ─────────────────────────────────────────────────────
+    let _feedEmpty   = false;
+    let _lastStatus  = null;
+
+    // Say WHY nothing is happening, based on the scanner state.
+    function refreshEmptyState() {
+        const title  = document.getElementById('activity-empty-title');
+        const detail = document.getElementById('activity-empty-detail');
+        if (!title || !detail) return;
+        const d = _lastStatus;
+        if (!d) { title.textContent = 'No areas scanned yet.'; detail.textContent = ''; return; }
+        const ws = String(d.window_start).padStart(2, '0') + ':00';
+        const we = String(d.window_end).padStart(2, '0') + ':00';
+        const T = {
+            paused:       ['Auto scan is paused',
+                           'An administrator paused it, so nothing is being scanned. Results will appear here once it is resumed.'],
+            waiting:      ['Outside scanning hours',
+                           `The scanner works between ${ws} and ${we}. It starts at ${ws}.`],
+            done:         ['Finished for today',
+                           `The scanner works between ${ws} and ${we}. It starts again at ${ws} tomorrow.`],
+            rate_limited: ['Stopped for today',
+                           'Google Earth Engine\'s daily limit was reached. Scanning continues tomorrow.'],
+            running:      ['Waiting for the first scan to finish',
+                           'The scanner is running. Each area appears here as soon as it is done.'],
+        };
+        const t = T[d.system_status] || ['No areas scanned yet.', ''];
+        title.textContent  = t[0];
+        detail.textContent = t[1];
+    }
+
+    // One-sentence summary of the scanner at the top of the panel.
+    function renderSummary(d) {
+        const st = document.getElementById('summary-state');
+        const tx = document.getElementById('summary-text');
+        if (!st || !tx) return;
+        const ws = String(d.window_start).padStart(2, '0') + ':00';
+        const inProgress = Number(d.running_auto_today) || 0;
+        let state, color = 'var(--text-primary)';
+        switch (d.system_status) {
+            case 'running':
+                state = inProgress > 0
+                    ? `Scanning now: ${plural(inProgress, 'area')} in progress`
+                    : 'Running: waiting for the next area';
+                color = '#3cc878'; break;
+            case 'paused':       state = 'Auto scan is paused'; color = 'var(--text-secondary)'; break;
+            case 'waiting':      state = `Waiting to start at ${ws}`; color = 'var(--accent)'; break;
+            case 'done':         state = `Finished for today. Back at ${ws} tomorrow`; color = '#58a6ff'; break;
+            case 'rate_limited': state = 'Stopped for today: Earth Engine limit reached'; color = '#f85149'; break;
+            default:             state = d.system_status || '—';
+        }
+        st.textContent = state;
+        st.style.color = color;
+
+        const tiles = Number(d.tiles_scanned_today) || 0;
+        const sites = Number(d.detections_today) || 0;
+        const failed = Number(d.failed_auto_today) || 0;
+        if (!tiles && !sites && !failed) {
+            tx.textContent = 'Nothing scanned yet today.';
+        } else {
+            const parts = [`${plural(tiles, 'area')} scanned`, `${plural(sites, 'possible site')} found`];
+            if (failed) parts.push(`${failed} failed`);
+            tx.textContent = `Today: ${parts.join(', ')}.`;
+        }
+    }
+
     function renderActivityFeed(geojson) {
         const loading = document.getElementById('activity-loading');
         const empty   = document.getElementById('activity-empty');
         const list    = document.getElementById('activity-list');
         loading.classList.add('hidden');
         if (!geojson || !geojson.features || !geojson.features.length) {
+            _feedEmpty = true;
+            refreshEmptyState();
             empty.classList.remove('hidden');
             list.classList.add('hidden');
             return;
         }
+        _feedEmpty = false;
         empty.classList.add('hidden');
         list.classList.remove('hidden');
         list.innerHTML = geojson.features.map(f => {
             const p              = f.properties;
             const { lat, lng }   = _geomCentroid(f.geometry);
-            const time = p.last_scanned_at
-                ? new Date(p.last_scanned_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })
-                : '—';
-            const dot = p.priority === 'hotspot'
+            const time = friendlyWhen(p.last_scanned_at);
+            const isHot = p.priority === 'hotspot';
+            const dot = isHot
                 ? 'background:rgba(212,160,23,0.9)'
                 : 'background:rgba(240,246,252,0.25)';
             const detBadge = (p.detection_count > 0)
-                ? `<span class="det-badge">${p.detection_count} det${p.detection_count > 1 ? 's' : ''}</span>`
+                ? `<span class="det-badge">${plural(p.detection_count, 'site')} found</span>`
                 : '';
+            const heading = p.place ? `Near ${escapeHtml(p.place)}` : `Area ${escapeHtml(p.name)}`;
             return `<li class="activity-item px-4 py-2.5 flex items-start gap-2.5"
                         data-lat="${lat}" data-lng="${lng}"
+                        title="Click to see this area on the map (grid square ${escapeHtml(p.name)})"
                         style="opacity:0;max-height:0;">
-                <div class="w-2 h-2 rounded-full mt-1 shrink-0" style="${dot};"></div>
+                <div class="w-2 h-2 rounded-full mt-1 shrink-0" style="${dot};"
+                     title="${isHot ? 'High-priority area: a known mining zone, scanned more often' : 'Standard area'}"></div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-xs font-medium truncate" style="color:var(--text-primary);">${p.name}</p>
-                    <p class="text-[10px] mt-0.5 flex items-center gap-1.5 flex-wrap" style="color:var(--text-tertiary);">
-                        ${p.priority === 'hotspot' ? '<span style="color:rgba(212,160,23,0.8);">Hotspot</span> ·' : ''}${time}
+                    <p class="text-xs font-medium truncate" style="color:var(--text-primary);">${heading}</p>
+                    <p class="text-[10px] mt-0.5 flex items-center gap-x-1.5 flex-wrap" style="color:var(--text-tertiary);">
+                        <span>${time}</span> ·
+                        <span>scanned ${plural(p.scan_count, 'time')}</span>
+                        ${isHot ? '· <span style="color:rgba(212,160,23,0.85);" title="A known mining zone, scanned more often">High priority</span>' : ''}
                         ${detBadge}
                     </p>
                 </div>
-                <span class="text-[10px] shrink-0 tabular-nums" style="color:var(--text-tertiary);">${p.scan_count}×</span>
             </li>`;
         }).join('');
 
@@ -1139,7 +1251,7 @@
         requestAnimationFrame(() => {
             items.forEach((el, i) => {
                 setTimeout(() => {
-                    el.style.maxHeight = '60px';
+                    el.style.maxHeight = '90px';
                     el.style.opacity   = '1';
                 }, i * 60);
             });
@@ -1194,8 +1306,9 @@
         const _wStart = String(data.window_start).padStart(2,'0');
         const _wEnd   = String(data.window_end).padStart(2,'0');
         document.getElementById('window-label').textContent = `${_wStart}:00 – ${_wEnd}:00`;
-        const _awl = document.getElementById('activity-window-label');
-        if (_awl) _awl.textContent = `Scanner runs ${_wStart}:00 – ${_wEnd}:00.`;
+        _lastStatus = data;
+        renderSummary(data);
+        if (_feedEmpty) refreshEmptyState();
         _setStatAnimated('stat-tiles',      data.tiles_scanned_today ?? '—', _firstStatusUpdate);
         _setStatAnimated('stat-detections', data.detections_today    ?? '—', _firstStatusUpdate);
         _setStatAnimated('stat-jobs',       data.total_auto_today    ?? '—', _firstStatusUpdate);
@@ -1227,7 +1340,7 @@
                 if (recentTiles > 0 && remaining > 0) {
                     const daysEta = Math.ceil(remaining / recentTiles);
                     const etaEl = document.getElementById('eta-label');
-                    etaEl.textContent = `At today's rate — full coverage in ~${daysEta} day${daysEta !== 1 ? 's' : ''}`;
+                    etaEl.textContent = `At today's pace, all of Ghana would be scanned in about ${daysEta} day${daysEta !== 1 ? 's' : ''}.`;
                     etaEl.style.display = 'block';
                 }
             }
@@ -1309,7 +1422,10 @@
     // ── Confidence donut ──────────────────────────────────────────────────
     function renderConfidenceDonut(features) {
         const total = features.length;
-        if (!total) return;
+        if (!total) {
+            document.getElementById('donut-label').textContent = 'No sites found yet';
+            return;
+        }
         const high = features.filter(f => f.properties.confidence_pct >= 80).length;
         const mid  = features.filter(f => f.properties.confidence_pct >= 50 && f.properties.confidence_pct < 80).length;
         const low  = total - high - mid;
@@ -1331,7 +1447,8 @@
                 stroke-dashoffset="${(-highLen).toFixed(1)}"
                 transform="rotate(-90,${cx},${cy})" stroke-linecap="round"/>` : ''}
         `;
-        document.getElementById('donut-label').textContent = `${Math.round((high/total)*100)}% hi`;
+        document.getElementById('donut-label').textContent =
+            `${Math.round((high/total)*100)}% of ${plural(total, 'site')} found are high confidence`;
     }
 
     // ── Regional leaderboard ──────────────────────────────────────────────
@@ -1374,7 +1491,7 @@
                 icon: L.divIcon({ html:el, className:'', iconSize:[14,14], iconAnchor:[7,7] }),
                 zIndexOffset: 900,
             })
-            .bindTooltip(`⚙ Scanning: ${job.tile_name}<br><small>${job.status}</small>`,
+            .bindTooltip(`⚙ Scanning: ${job.place ? 'near ' + job.place : job.tile_name}<br><small>${STAGE_LABEL[job.status] || job.status}</small>`,
                 { className:'scan-popup', direction:'top', sticky:true })
             .addTo(runningLayer);
         });
@@ -1392,7 +1509,7 @@
                 fillColor: 'rgba(212,160,23,0.04)', fillOpacity: 1,
                 dashArray: '3 3',
             })
-            .bindTooltip(`Next #${i+1}: ${t.name}`, { className:'scan-popup', sticky:true })
+            .bindTooltip(`Up next #${i+1}: ${t.place ? 'near ' + t.place : t.name}`, { className:'scan-popup', sticky:true })
             .addTo(nextTilesLayer);
         });
     }
@@ -1408,7 +1525,7 @@
                 icon: L.divIcon({ html:el, className:'', iconSize:[14,14], iconAnchor:[7,7] }),
             })
             .bindTooltip(
-                `<b>Failed: ${job.tile_name}</b><br><small style="color:#8b949e;">${job.failure_reason}</small>`,
+                `<b>Failed: ${job.place ? 'near ' + job.place : job.tile_name}</b><br><small style="color:#8b949e;">${job.failure_reason}</small>`,
                 { className:'scan-popup', direction:'top' }
             )
             .addTo(failuresLayer);
