@@ -67,3 +67,51 @@ def test_auto_scan_page_renders_plain_language_sidebar(client, django_user_model
     assert 'id="today-summary"' in html
     assert 'Recent scans' in html and 'Top regions' in html
     assert 'activity-empty-title' in html
+
+
+@pytest.mark.django_db
+def test_recent_tiles_report_sites_found_per_tile(client, django_user_model):
+    from datetime import date
+    from apps.detections.models import DetectedSite
+    from apps.jobs.models import Job
+    from apps.scanning.models import ScanTile
+    from django.contrib.gis.geos import Point
+
+    def mk(name, x0):
+        return ScanTile.objects.create(
+            name=name,
+            geometry=Polygon(((x0, 5.27), (x0 + 0.07, 5.27), (x0 + 0.07, 5.34), (x0, 5.34), (x0, 5.27)), srid=4326),
+            priority='normal', scan_count=1, last_scanned_at=timezone.now())
+
+    t1, t2 = mk('T1', -2.0), mk('T2', -1.93)
+    aoi = Polygon(((-2.0, 5.27), (-1.8, 5.27), (-1.8, 5.34), (-2.0, 5.34), (-2.0, 5.27)), srid=4326)
+    job = Job.objects.create(aoi_geometry=aoi, start_date=date.today(), end_date=date.today(),
+                             model_version='v', preprocessing_version='v', source='automated')
+
+    def site(x, y):
+        sq = Polygon(((x, y), (x + 0.001, y), (x + 0.001, y + 0.001), (x, y + 0.001), (x, y)), srid=4326)
+        DetectedSite.objects.create(geometry=sq, centroid=Point(x, y, srid=4326), confidence_score=0.9,
+                                    area_hectares=1.0, detection_date=date.today(), job=job)
+
+    site(-1.97, 5.30); site(-1.96, 5.31)      # inside T1
+    site(-1.90, 5.30)                         # inside T2
+    site(-1.50, 5.30)                         # outside both
+
+    admin = django_user_model.objects.create_user('sa', 'sa@example.com', 'pw-12345-xyz')
+    admin.profile.role = 'system_admin'
+    admin.profile.save()
+    client.force_login(admin)
+    feats = client.get(reverse('scanning:api_recent_tiles')).json()['features']
+    counts = {f['properties']['name']: f['properties']['detection_count'] for f in feats}
+    assert counts == {'T1': 2, 'T2': 1}
+
+
+@pytest.mark.django_db
+def test_system_admin_can_open_auto_scan_map(client, django_user_model):
+    u = django_user_model.objects.create_user('sa2', 'sa2@example.com', 'pw-12345-xyz')
+    u.profile.role = 'system_admin'
+    u.profile.save()
+    client.force_login(u)
+    r = client.get(reverse('scanning:auto_scan'))
+    assert r.status_code == 200
+    assert 'const IS_STAFF = true' in r.content.decode()

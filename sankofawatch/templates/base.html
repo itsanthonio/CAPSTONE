@@ -496,6 +496,13 @@
                             <span>Auto Scan</span>
                         </a>
                     </li>
+                    <li>
+                        <a href="{% url 'scanning:auto_scan' %}"
+                           class="gw-nav-item {% if request.resolver_match.url_name == 'auto_scan' %}active{% endif %}">
+                            <i class="ph ph-map-trifold" aria-hidden="true"></i>
+                            <span>Auto Scan Map</span>
+                        </a>
+                    </li>
                 </ul>
 
                 <p class="gw-nav-group">Administration</p>

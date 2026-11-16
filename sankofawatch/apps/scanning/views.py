@@ -58,17 +58,15 @@ def auto_scan_control(request):
 
 @login_required
 def auto_scan(request):
-    """Render the detailed Auto Scan page (agency_admin). Redirect system_admin."""
+    """Render the detailed Auto Scan map page (agency_admin and system_admin)."""
     if not (hasattr(request.user, 'profile') and request.user.profile.role in ('system_admin', 'agency_admin')):
         from django.shortcuts import redirect
         return redirect('dashboard:home')
-    if request.user.profile.role == 'system_admin':
-        from django.shortcuts import redirect
-        return redirect('scanning:auto_scan_control')
     config = AutoScanConfig.get()
+    is_sys = request.user.profile.role == 'system_admin'
     return render(request, 'scanning/auto_scan.html', {
         'config': config,
-        'is_system_admin': False,
+        'is_system_admin': is_sys,
         'title': 'Auto Scan',
     })
 
@@ -459,6 +457,49 @@ class OrgScanConfigAPI(View):
         })
 
 
+def _sites_per_tile(user, tiles):
+    """{tile.id: number of automated detections inside the tile}, in ONE query.
+
+    Fetches the detection centroids that fall in the tiles' combined bounding
+    box and assigns them to tiles in Python (tiles are axis-aligned squares).
+    Applies the same per-organisation filters as the detections API.
+    """
+    if not tiles:
+        return {}
+    from apps.detections.models import DetectedSite
+    from django.contrib.gis.geos import Polygon
+
+    boxes = {t.id: t.geometry.extent for t in tiles}      # (minx, miny, maxx, maxy)
+    minx = min(b[0] for b in boxes.values()); miny = min(b[1] for b in boxes.values())
+    maxx = max(b[2] for b in boxes.values()); maxy = max(b[3] for b in boxes.values())
+
+    qs = DetectedSite.objects.filter(
+        job__source='automated', centroid__isnull=False,
+        centroid__within=Polygon.from_bbox((minx, miny, maxx, maxy)),
+    )
+    try:
+        if user.profile.role == 'agency_admin':
+            org = user.profile.organisation
+            if org is None:
+                return {}
+            cfg = OrgScanConfig.get_for_org(org)
+            qs = qs.filter(cfg.automated_job_window_q('job__'))
+            cutoff = cfg.automated_alert_cutoff()
+            if cutoff:
+                qs = qs.filter(job__created_at__lt=cutoff)
+    except Exception:
+        return {}
+
+    counts = {}
+    for pt in qs.values_list('centroid', flat=True):
+        x, y = pt.x, pt.y
+        for tid, (bx0, by0, bx1, by1) in boxes.items():
+            if bx0 <= x < bx1 and by0 <= y < by1:
+                counts[tid] = counts.get(tid, 0) + 1
+                break
+    return counts
+
+
 @method_decorator(login_required, name='dispatch')
 class ScanningRecentTilesAPI(View):
     """GET /scanning/api/recent-tiles/ — last N scanned tiles as GeoJSON.
@@ -481,7 +522,8 @@ class ScanningRecentTilesAPI(View):
             except ValueError:
                 pass
 
-        tiles = qs.order_by('-last_scanned_at')[:limit]
+        tiles = list(qs.order_by('-last_scanned_at')[:limit])
+        site_counts = _sites_per_tile(request.user, tiles)
 
         features = []
         for tile in tiles:
@@ -498,6 +540,7 @@ class ScanningRecentTilesAPI(View):
                     'place':           tile_place_label(tile),
                     'priority':        tile.priority,
                     'scan_count':      tile.scan_count,
+                    'detection_count': site_counts.get(tile.id, 0),
                     'last_scanned_at': tile.last_scanned_at.isoformat() if tile.last_scanned_at else None,
                 },
             })
