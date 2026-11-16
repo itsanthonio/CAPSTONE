@@ -54,3 +54,43 @@ def test_alerts_api_job_filter(client, django_user_model):
     for q in ('00000000-0000-0000-0000-000000000000', 'not-a-uuid'):
         r = client.get('/api/alerts/', {'job': q})
         assert r.status_code == 200 and r.json()['total'] == 0
+
+
+@pytest.mark.django_db
+def test_org_create_rename_delete_are_audited(client, django_user_model):
+    import json
+    from apps.detections.models import AuditLog
+    _login(client, django_user_model, 'system_admin')
+    url = reverse('dashboard:organisation_management')
+    post = lambda body: client.post(url, json.dumps(body), content_type='application/json',
+                                    HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+    org_id = post({'action': 'create', 'name': 'Audit Org'}).json()['id']
+    post({'action': 'rename', 'org_id': org_id, 'name': 'Audit Org 2'})
+    post({'action': 'delete', 'org_id': org_id})
+    actions = list(AuditLog.objects.filter(action__startswith='org.').order_by('timestamp').values_list('action', flat=True))
+    assert actions == ['org.created', 'org.renamed', 'org.deleted']
+
+
+@pytest.mark.django_db
+def test_audit_object_and_detail_filters(client, django_user_model):
+    from apps.detections.models import AuditLog
+    u = _login(client, django_user_model, 'system_admin')
+    AuditLog.objects.create(user=u, action='org.created', object_id='abc123', detail={'name': 'Zebra Org'})
+    AuditLog.objects.create(user=u, action='org.created', object_id='xyz789', detail={'name': 'Other'})
+    get = lambda q: client.get('/dashboard/audit/', q, HTTP_X_REQUESTED_WITH='XMLHttpRequest').json()['total']
+    assert get({'object': 'abc'}) == 1
+    assert get({'detail': 'zebra'}) == 1
+    assert get({'detail': 'nothing-like-this'}) == 0
+
+
+@pytest.mark.django_db
+def test_geocode_requires_login_and_matches_words_in_any_order(client, django_user_model):
+    from apps.scanning.models import GhanaPlace
+    assert client.get('/api/geocode/?q=ashesi').status_code == 302
+    GhanaPlace.objects.create(name='Ashesi University College', ascii_name='Ashesi University College',
+                              latitude=5.76, longitude=-0.22, source='osm', region='Eastern')
+    _login(client, django_user_model, 'inspector')
+    from unittest.mock import patch
+    with patch('requests.get', side_effect=RuntimeError('offline')):
+        res = client.get('/api/geocode/?q=university ashesi').json()['results']
+    assert res and res[0]['display_name'].startswith('Ashesi University College')

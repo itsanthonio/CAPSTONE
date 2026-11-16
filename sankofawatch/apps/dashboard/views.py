@@ -818,7 +818,13 @@ def dashboard_audit(request):
     user_filter   = request.GET.get('user', '').strip()
     date_from     = request.GET.get('date_from', '').strip()
     date_to       = request.GET.get('date_to', '').strip()
+    object_filter = request.GET.get('object', '').strip()
+    detail_filter = request.GET.get('detail', '').strip()
 
+    if object_filter:
+        qs = qs.filter(object_id__icontains=object_filter)
+    if detail_filter:
+        qs = qs.filter(detail__icontains=detail_filter)
     if action_filter:
         qs = qs.filter(action=action_filter)
     if user_filter == '__system__':
@@ -856,6 +862,9 @@ def dashboard_audit(request):
         'job.failed':              'Scan — Failed',
         'user.created':            'User — Created',
         'user.edited':             'User — Updated',
+        'org.created':             'Organisation — Created',
+        'org.renamed':             'Organisation — Renamed',
+        'org.deleted':             'Organisation — Deleted',
         'assignment.field_report': 'Assignment — Field Report',
         'assignment.sla_escalated':'Assignment — SLA Escalated',
     }
@@ -909,6 +918,8 @@ def dashboard_audit(request):
             'user':      user_filter,
             'date_from': date_from,
             'date_to':   date_to,
+            'object':    object_filter,
+            'detail':    detail_filter,
         },
     })
 
@@ -2537,6 +2548,16 @@ def system_admin_dashboard(request):
 # Organisation Management (system admin only)
 # ---------------------------------------------------------------------------
 
+def _log_org_audit(user, action, org_id, detail):
+    """Record an organisation change in the audit trail (never breaks the request)."""
+    try:
+        from apps.detections.models import AuditLog
+        AuditLog.objects.create(user=user, action=action, object_id=str(org_id),
+                                detail={**detail, 'by': user.username})
+    except Exception:
+        logger.exception('could not write organisation audit entry')
+
+
 @user_passes_test(is_system_admin)
 def organisation_management(request):
     """System Admin page to manage organisations."""
@@ -2565,6 +2586,8 @@ def organisation_management(request):
                     return JsonResponse({'success': False, 'error': 'Name is required.'}, status=400)
             else:
                 org, created = Organisation.objects.get_or_create(name=name)
+                if created:
+                    _log_org_audit(request.user, 'org.created', org.id, {'name': org.name})
                 if is_ajax:
                     return JsonResponse({
                         'success': True,
@@ -2579,7 +2602,10 @@ def organisation_management(request):
                 if is_ajax:
                     return JsonResponse({'success': False, 'error': 'Name and org ID are required.'}, status=400)
             else:
+                _old = Organisation.objects.filter(id=org_id).first()
                 Organisation.objects.filter(id=org_id).update(name=name)
+                if _old and _old.name != name:
+                    _log_org_audit(request.user, 'org.renamed', org_id, {'from': _old.name, 'to': name})
                 if is_ajax:
                     return JsonResponse({'success': True})
                 messages.success(request, 'Organisation renamed.')
@@ -2589,7 +2615,10 @@ def organisation_management(request):
                 if is_ajax:
                     return JsonResponse({'success': False, 'error': 'Org ID is required.'}, status=400)
             else:
+                _old = Organisation.objects.filter(id=org_id).first()
                 Organisation.objects.filter(id=org_id).delete()
+                if _old:
+                    _log_org_audit(request.user, 'org.deleted', org_id, {'name': _old.name})
                 if is_ajax:
                     return JsonResponse({'success': True})
                 messages.success(request, 'Organisation deleted.')

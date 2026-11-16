@@ -52,12 +52,47 @@ def _to_gcs_uri(uri: str, meta: dict) -> str:
 class GeeService:
     """Google Earth Engine integration service following Anti-Vibe guardrails"""
 
+    # Waits between login attempts when Google can't be reached (about a minute in total).
+    AUTH_RETRY_DELAYS = (3, 8, 15, 30)
+
     def __init__(self):
         self._ee_initialized = False
+        self._init_error = ''
         self._authenticate()
 
+    @staticmethod
+    def _is_network_error(exc: Exception) -> bool:
+        """True for connection problems and temporary Google-side errors (worth retrying)."""
+        if isinstance(exc, (requests.exceptions.ConnectionError, requests.exceptions.Timeout, ConnectionError, TimeoutError, OSError)):
+            return True
+        text = str(exc).lower()
+        return any(t in text for t in ('network is unreachable', 'max retries exceeded', 'temporary failure',
+                                       'timed out', 'connection reset', '503', '502', '500 server'))
+
     def _authenticate(self):
+        """Initialize GEE, retrying when Google can't be reached for a moment."""
+        attempts = len(self.AUTH_RETRY_DELAYS) + 1
+        for attempt in range(attempts):
+            self._authenticate_once()
+            if self._ee_initialized or not self._init_error_is_network:
+                return
+            if attempt < attempts - 1:
+                delay = self.AUTH_RETRY_DELAYS[attempt]
+                logger.warning(f"GEE login attempt {attempt + 1}/{attempts} could not reach Google; retrying in {delay}s")
+                time.sleep(delay)
+
+    def user_facing_init_error(self) -> str:
+        """Plain-language reason the last login failed."""
+        if self._init_error_is_network:
+            return 'Could not reach Google Earth Engine (network problem). Please try the scan again in a few minutes.'
+        return f'Google Earth Engine is not available: {self._init_error or "not configured"}'
+
+    _init_error_is_network = False
+
+    def _authenticate_once(self):
         """Initialize GEE — service account if configured, else personal credentials"""
+        self._init_error = ''
+        self._init_error_is_network = False
         try:
             service_account_path = config('GEE_SERVICE_ACCOUNT', default='')
             project_id = config('GEE_PROJECT_ID', default='')
@@ -77,6 +112,7 @@ class GeeService:
                 logger.info(f"GEE authenticated via personal credentials (project={project_id})")
             else:
                 logger.warning("GEE_PROJECT_ID not set — falling back to mock mode")
+                self._init_error = 'GEE_PROJECT_ID is not set'
                 self._ee_initialized = False
                 return
 
@@ -84,6 +120,8 @@ class GeeService:
 
         except Exception as e:
             logger.error(f"GEE authentication failed: {str(e)}")
+            self._init_error = str(e)[:300]
+            self._init_error_is_network = self._is_network_error(e)
             self._ee_initialized = False
 
     def validate_aoi(self, aoi_geometry: Polygon) -> Tuple[bool, Optional[str]]:
@@ -258,7 +296,10 @@ class GeeService:
         
         try:
             if not self._ee_initialized:
-                return {'success': False, 'error': 'GEE not initialized', 'export_id': None}
+                # The service object can outlive a network blip at start-up: try to log in again.
+                self._authenticate()
+            if not self._ee_initialized:
+                return {'success': False, 'error': self.user_facing_init_error(), 'export_id': None}
 
             # Validate AOI
             is_valid, error_msg = self.validate_aoi(job.aoi_geometry)

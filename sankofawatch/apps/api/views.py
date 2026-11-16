@@ -1576,7 +1576,23 @@ def my_assignments_notifications(request):
 
 from django.views.decorators.http import require_GET
 
+def _merge_places(first, second, limit=8):
+    """Local matches first, then online ones, skipping near-duplicates (same name and spot)."""
+    out, seen = [], set()
+    for p in list(first) + list(second):
+        try:
+            key = (p['display_name'].split(',')[0].strip().lower(), round(float(p['lat']), 2), round(float(p['lon']), 2))
+        except (KeyError, TypeError, ValueError):
+            continue
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(p)
+    return out[:limit]
+
+
 @require_GET
+@login_required
 def geocode_proxy(request):
     """
     Geocoding with a three-tier lookup:
@@ -1594,8 +1610,14 @@ def geocode_proxy(request):
         return JsonResponse({'results': []})
 
     # ── 1. Local database ────────────────────────────────────────────────────
+    # Every word must appear in the name, in any order ("university ashesi" finds
+    # "Ashesi University College"), so partial and re-ordered searches still match.
+    words = [w for w in q.replace(',', ' ').split() if w]
+    word_filter = Q()
+    for w in words:
+        word_filter &= (Q(name__icontains=w) | Q(ascii_name__icontains=w))
     local_qs = GhanaPlace.objects.filter(
-        Q(name__icontains=q) | Q(ascii_name__icontains=q)
+        Q(name__icontains=q) | Q(ascii_name__icontains=q) | word_filter
     ).annotate(
         # Exact / starts-with matches first, then contains
         rank=Case(
@@ -1607,15 +1629,18 @@ def geocode_proxy(request):
         )
     ).order_by('rank', '-population')[:8]
 
-    if local_qs.exists():
-        results = []
-        for p in local_qs:
-            label = p.name
-            if p.region:
-                label += f', {p.region}'
-            label += ', Ghana'
-            results.append({'display_name': label, 'lat': p.latitude, 'lon': p.longitude})
-        return JsonResponse({'results': results})
+    local_results = []
+    for p in local_qs:
+        label = p.name
+        if p.region:
+            label += f', {p.region}'
+        label += ', Ghana'
+        local_results.append({'display_name': label, 'lat': p.latitude, 'lon': p.longitude})
+
+    # Plenty of local matches: answer instantly. Only a few (or none): also ask the
+    # online services below, so a place missing from the local list is still found.
+    if len(local_results) >= 5:
+        return JsonResponse({'results': local_results})
 
     # ── 2. Google Places Text Search ─────────────────────────────────────────
     # Uses Places API (not Geocoding) so results have proper place names like
@@ -1648,7 +1673,7 @@ def geocode_proxy(request):
             if to_cache:
                 GhanaPlace.objects.bulk_create(to_cache, ignore_conflicts=True)
             if results:
-                return JsonResponse({'results': results})
+                return JsonResponse({'results': _merge_places(local_results, results)})
         except Exception:
             pass
 
@@ -1668,9 +1693,10 @@ def geocode_proxy(request):
             resp = _requests.get(global_url, timeout=5, headers={'User-Agent': 'SankofaWatch/1.0'})
             data = resp.json()
         results = [{'display_name': p['display_name'], 'lat': p['lat'], 'lon': p['lon']} for p in data]
-        return JsonResponse({'results': results})
+        return JsonResponse({'results': _merge_places(local_results, results)})
     except Exception as exc:
-        return JsonResponse({'results': [], 'error': str(exc)})
+        # Online lookup failed: still return whatever the local list found
+        return JsonResponse({'results': local_results, 'error': str(exc)})
 
 
 @login_required

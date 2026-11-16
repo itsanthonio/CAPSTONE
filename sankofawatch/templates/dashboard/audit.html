@@ -105,51 +105,18 @@
         </div>
     </div>
 
-    <!-- ── Filters ── -->
-    <form method="get" style="background: #181c22; border: 1px solid rgba(79,70,52,0.15); border-radius: 8px; padding: 16px 20px; margin-bottom: 20px;" role="search" aria-label="Filter audit records">
-        <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 20px;">
-
-            <div style="min-width: 160px;">
-                <label for="audit-filter-action" class="s-label">Action</label>
-                <select id="audit-filter-action" name="action" class="s-input" style="min-width: 140px;">
-                    <option value="">All actions</option>
-                    {% for ac_val, ac_label in action_choices %}
-                    <option value="{{ ac_val }}" {% if filters.action == ac_val %}selected{% endif %}>{{ ac_label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div style="min-width: 140px;">
-                <label for="audit-filter-user" class="s-label">User</label>
-                <select id="audit-filter-user" name="user" class="s-input" style="min-width: 130px;">
-                    <option value="">All users</option>
-                    <option value="__system__" {% if filters.user == '__system__' %}selected{% endif %}>System (auto)</option>
-                    {% for username in user_choices %}
-                    <option value="{{ username }}" {% if filters.user == username %}selected{% endif %}>{{ username }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div>
-                <label for="audit-filter-from" class="s-label">From</label>
-                <input id="audit-filter-from" type="date" name="date_from" value="{{ filters.date_from }}" class="s-input" style="min-width: 120px;">
-            </div>
-
-            <div>
-                <label for="audit-filter-to" class="s-label">To</label>
-                <input id="audit-filter-to" type="date" name="date_to" value="{{ filters.date_to }}" class="s-input" style="min-width: 120px;">
-            </div>
-
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <button type="submit" class="s-btn-primary">Apply</button>
-                <a href="{% url 'dashboard:audit' %}" class="s-btn-secondary">Reset</a>
-            </div>
+    <!-- ── Filters (each column has its own filter in the table header) ── -->
+    <form id="audit-form" method="get" style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; background:#181c22; border:1px solid rgba(79,70,52,0.15); border-radius:8px; padding:10px 20px; margin-bottom:16px;" role="search" aria-label="Filter audit records">
+        <span style="font-size:12px; color:#9b8f7a;"><i class="ph ph-funnel" aria-hidden="true"></i> Use the boxes under each column heading to filter that column. Filters combine.</span>
+        <div style="display:flex; align-items:center; gap:10px;">
+            <button type="submit" class="s-btn-primary">Apply</button>
+            <a href="{% url 'dashboard:audit' %}" class="s-btn-secondary">Reset</a>
         </div>
     </form>
 
     <!-- ── Table ── -->
     <div style="background: #181c22; border: 1px solid rgba(79,70,52,0.15); border-radius: 8px; overflow: hidden;">
-        {% if page_obj %}
+        {% if page_obj.paginator.count or filters.action or filters.user or filters.date_from or filters.date_to or filters.object or filters.detail %}
         <div style="overflow-x: auto;">
             <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                 <thead>
@@ -159,6 +126,37 @@
                         <th style="text-align:left; padding: 11px 20px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.15em; color:#9b8f7a;">Action</th>
                         <th style="text-align:left; padding: 11px 20px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.15em; color:#9b8f7a;">Object</th>
                         <th style="text-align:left; padding: 11px 20px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.15em; color:#9b8f7a;">Details</th>
+                    </tr>
+                    <tr class="audit-filter-row" style="background:#1f232a; border-bottom:1px solid rgba(79,70,52,0.15);">
+                        <th style="padding:6px 20px 10px;">
+                            <div style="display:flex; flex-direction:column; gap:4px;">
+                                <input id="audit-filter-from" form="audit-form" type="date" name="date_from" value="{{ filters.date_from }}" class="s-input" aria-label="Timestamp from" title="From date" style="min-width:120px;">
+                                <input id="audit-filter-to" form="audit-form" type="date" name="date_to" value="{{ filters.date_to }}" class="s-input" aria-label="Timestamp to" title="To date" style="min-width:120px;">
+                            </div>
+                        </th>
+                        <th style="padding:6px 20px 10px; vertical-align:bottom;">
+                            <select id="audit-filter-user" form="audit-form" name="user" class="s-input" aria-label="Filter by user" style="min-width:120px;">
+                                <option value="">All users</option>
+                                <option value="__system__" {% if filters.user == '__system__' %}selected{% endif %}>System (auto)</option>
+                                {% for username in user_choices %}
+                                <option value="{{ username }}" {% if filters.user == username %}selected{% endif %}>{{ username }}</option>
+                                {% endfor %}
+                            </select>
+                        </th>
+                        <th style="padding:6px 20px 10px; vertical-align:bottom;">
+                            <select id="audit-filter-action" form="audit-form" name="action" class="s-input" aria-label="Filter by action" style="min-width:140px;">
+                                <option value="">All actions</option>
+                                {% for ac_val, ac_label in action_choices %}
+                                <option value="{{ ac_val }}" {% if filters.action == ac_val %}selected{% endif %}>{{ ac_label }}</option>
+                                {% endfor %}
+                            </select>
+                        </th>
+                        <th style="padding:6px 20px 10px; vertical-align:bottom;">
+                            <input id="audit-filter-object" form="audit-form" type="text" name="object" value="{{ filters.object }}" class="s-input" placeholder="Object ID…" aria-label="Filter by object ID" style="width:110px;" autocomplete="off">
+                        </th>
+                        <th style="padding:6px 20px 10px; vertical-align:bottom;">
+                            <input id="audit-filter-detail" form="audit-form" type="text" name="detail" value="{{ filters.detail }}" class="s-input" placeholder="Search details…" aria-label="Filter by details" style="width:100%; min-width:140px;" autocomplete="off">
+                        </th>
                     </tr>
                 </thead>
                 <tbody id="audit-tbody">
@@ -329,6 +327,9 @@
         'job.failed':              { label: 'Scan Failed',        cls: 'gw-badge gw-badge--critical',   icon: 'ph-x-circle' },
         'user.created':            { label: 'User Created',       cls: 'gw-badge gw-badge--info',       icon: 'ph-user-plus' },
         'user.edited':             { label: 'User Updated',       cls: 'gw-badge gw-badge--neutral',    icon: 'ph-pencil-simple' },
+        'org.created':             { label: 'Org Created',        cls: 'gw-badge gw-badge--resolved',   icon: 'ph-buildings' },
+        'org.renamed':             { label: 'Org Renamed',        cls: 'gw-badge gw-badge--neutral',    icon: 'ph-pencil-simple' },
+        'org.deleted':             { label: 'Org Deleted',        cls: 'gw-badge gw-badge--critical',   icon: 'ph-trash' },
         'assignment.field_report': { label: 'Field Report',       cls: 'gw-badge gw-badge--moderate',   icon: 'ph-clipboard-text' },
         'assignment.sla_escalated':{ label: 'SLA Escalated',      cls: 'gw-badge gw-badge--critical',   icon: 'ph-warning' },
     };
@@ -437,7 +438,7 @@
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             _currentFilters = {};
-            ['action','user','date_from','date_to'].forEach(function (name) {
+            ['action','user','date_from','date_to','object','detail'].forEach(function (name) {
                 var el = form.elements[name];
                 if (el && el.value) _currentFilters[name] = el.value;
             });
@@ -453,6 +454,18 @@
                 loadAuditPage(1);
             });
         }
+    }
+
+    // ── Filter as you go: dropdowns and dates apply at once, text boxes after a short pause ──
+    if (form) {
+        var _t;
+        document.querySelectorAll('.audit-filter-row [form="audit-form"]').forEach(function (el) {
+            var isText = el.type === 'text';
+            el.addEventListener(isText ? 'input' : 'change', function () {
+                clearTimeout(_t);
+                _t = setTimeout(function () { form.requestSubmit(); }, isText ? 350 : 0);
+            });
+        });
     }
 
     // ── Pagination buttons ──
